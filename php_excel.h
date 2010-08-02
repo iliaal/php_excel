@@ -34,6 +34,17 @@ extern zend_module_entry excel_module_entry;
 #include "TSRM.h"
 #endif
 
+#ifndef Z_SET_ISREF_P
+# define Z_SET_ISREF_P(pz)				(pz)->is_ref = 1
+# define Z_SET_ISREF_PP(ppz)			Z_SET_ISREF_P(*(ppz))
+# define Z_SET_ISREF(z)				Z_SET_ISREF_P(&(z))
+#endif
+
+#ifndef Z_SET_REFCOUNT_P
+# define Z_SET_REFCOUNT_P(pz, rc)      (pz)->refcount = rc
+# define Z_SET_REFCOUNT_PP(ppz, rc)    Z_SET_REFCOUNT_P(*(ppz), rc)
+#endif
+
 #endif	/* PHP_EXCEL_H */
 
 /*

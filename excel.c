@@ -462,8 +462,8 @@ EXCEL_METHOD(Book, getSheet)
 
 	Z_TYPE_P(return_value) = IS_OBJECT;
 	object_init_ex(return_value, excel_ce_sheet);
-	return_value->refcount = 1;
-	return_value->is_ref = 1;
+	Z_SET_REFCOUNT_P(return_value, 1);
+	Z_SET_ISREF_P(return_value);
 	fo = (excel_sheet_object *) zend_object_store_get_object(return_value TSRMLS_CC);
 	fo->sheet = sh;
 	fo->book = book;
@@ -545,8 +545,8 @@ EXCEL_METHOD(Book, addSheet)
 
 	Z_TYPE_P(return_value) = IS_OBJECT;
 	object_init_ex(return_value, excel_ce_sheet);
-	return_value->refcount = 1;
-	return_value->is_ref = 1;
+	Z_SET_REFCOUNT_P(return_value, 1);
+	Z_SET_ISREF_P(return_value);
 	fo = (excel_sheet_object *) zend_object_store_get_object(return_value TSRMLS_CC);
 	fo->sheet = sh;
 	fo->book = book;
@@ -583,8 +583,8 @@ EXCEL_METHOD(Book, copySheet)
 
 	Z_TYPE_P(return_value) = IS_OBJECT;
 	object_init_ex(return_value, excel_ce_sheet);
-	return_value->refcount = 1;
-	return_value->is_ref = 1;
+	Z_SET_REFCOUNT_P(return_value, 1);
+	Z_SET_ISREF_P(return_value);
 	fo = (excel_sheet_object *) zend_object_store_get_object(return_value TSRMLS_CC);
 	fo->sheet = sh;
 	fo->book = book;
@@ -662,8 +662,8 @@ EXCEL_METHOD(Book, addFont)
 
 	Z_TYPE_P(return_value) = IS_OBJECT;
 	object_init_ex(return_value, excel_ce_font);
-	return_value->refcount = 1;
-	return_value->is_ref = 1;
+	Z_SET_REFCOUNT_P(return_value, 1);
+	Z_SET_ISREF_P(return_value);
 	fo = (excel_font_object *) zend_object_store_get_object(return_value TSRMLS_CC);
 	fo->font = nfont;
 	fo->book = book;
@@ -697,8 +697,8 @@ EXCEL_METHOD(Book, addFormat)
 
 	Z_TYPE_P(return_value) = IS_OBJECT;
 	object_init_ex(return_value, excel_ce_format);
-	return_value->refcount = 1;
-	return_value->is_ref = 1;
+	Z_SET_REFCOUNT_P(return_value, 1);
+	Z_SET_ISREF_P(return_value);
 	fo = (excel_format_object *) zend_object_store_get_object(return_value TSRMLS_CC);
 	fo->format = nformat;
 	fo->book = book;
@@ -1327,8 +1327,8 @@ EXCEL_METHOD(Format, getFont)
 
 	Z_TYPE_P(return_value) = IS_OBJECT;
 	object_init_ex(return_value, excel_ce_font);
-	return_value->refcount = 1;
-	return_value->is_ref = 1;
+	Z_SET_REFCOUNT_P(return_value, 1);
+	Z_SET_ISREF_P(return_value);
 	fo = (excel_font_object *) zend_object_store_get_object(return_value TSRMLS_CC);
 	fo->font = font;
 	fo->book = obj->book;
@@ -1635,8 +1635,8 @@ EXCEL_METHOD(Sheet, cellFormat)
 
 	Z_TYPE_P(return_value) = IS_OBJECT;
 	object_init_ex(return_value, excel_ce_format);
-	return_value->refcount = 1;
-	return_value->is_ref = 1;
+	Z_SET_REFCOUNT_P(return_value, 1);
+	Z_SET_ISREF_P(return_value);
 	fo = (excel_format_object *) zend_object_store_get_object(return_value TSRMLS_CC);
 	fo->format = format;
 }
@@ -2773,272 +2773,342 @@ EXCEL_METHOD(Sheet, setProtect)
 	PHP_EXCEL_SET_BOOL_VAL(SetProtect)
 }*/
 
-static
+#if PHP_MAJOR_VERSION > 5 || (PHP_MAJOR_VERSION == 5 && PHP_MINOR_VERSION >= 3)
+# define PHP_EXCEL_ARGINFO
+# else
+# define PHP_EXCEL_ARGINFO static
+#endif
+PHP_EXCEL_ARGINFO
 ZEND_BEGIN_ARG_INFO_EX(arginfo_Book_load, 0, 0, 1)
 	ZEND_ARG_INFO(0, data)
 ZEND_END_ARG_INFO()
-static
+
+PHP_EXCEL_ARGINFO
 ZEND_BEGIN_ARG_INFO_EX(arginfo_Book_loadFile, 0, 0, 1)
 	ZEND_ARG_INFO(0, filename)
 ZEND_END_ARG_INFO()
-static
+
+PHP_EXCEL_ARGINFO
 ZEND_BEGIN_ARG_INFO_EX(arginfo_Book_save, 0, 0, 0)
 	ZEND_ARG_INFO(0, filename)
 ZEND_END_ARG_INFO()
-static
+
+PHP_EXCEL_ARGINFO
 ZEND_BEGIN_ARG_INFO_EX(arginfo_Book_getSheet, 0, 0, 0)
 	ZEND_ARG_INFO(0, sheet)
 ZEND_END_ARG_INFO()
-static
+
+PHP_EXCEL_ARGINFO
 ZEND_BEGIN_ARG_INFO_EX(arginfo_Book_deleteSheet, 0, 0, 1)
 	ZEND_ARG_INFO(0, sheet)
 ZEND_END_ARG_INFO()
-static
+
+PHP_EXCEL_ARGINFO
 ZEND_BEGIN_ARG_INFO_EX(arginfo_Book_activeSheet, 0, 0, 0)
 	ZEND_ARG_INFO(0, sheet)
 ZEND_END_ARG_INFO()
-static
+
+PHP_EXCEL_ARGINFO
 ZEND_BEGIN_ARG_INFO_EX(arginfo_Book_addSheet, 0, 0, 1)
 	ZEND_ARG_INFO(0, name)
 ZEND_END_ARG_INFO()
-static
+
+PHP_EXCEL_ARGINFO
 ZEND_BEGIN_ARG_INFO_EX(arginfo_Book_copySheet, 0, 0, 2)
 	ZEND_ARG_INFO(0, name)
 	ZEND_ARG_INFO(0, sheet_number)
 ZEND_END_ARG_INFO()
-static
+
+PHP_EXCEL_ARGINFO
 ZEND_BEGIN_ARG_INFO_EX(arginfo_Book_sheetCount, 0, 0, 0)
 ZEND_END_ARG_INFO()
-static
+
+PHP_EXCEL_ARGINFO
 ZEND_BEGIN_ARG_INFO_EX(arginfo_Book_getError, 0, 0, 0)
 ZEND_END_ARG_INFO()
-static
+
+PHP_EXCEL_ARGINFO
 ZEND_BEGIN_ARG_INFO_EX(arginfo_Book_addFont, 0, 0, 0)
 	ZEND_ARG_INFO(0, font)
 ZEND_END_ARG_INFO()
-static
+
+PHP_EXCEL_ARGINFO
 ZEND_BEGIN_ARG_INFO_EX(arginfo_Book_addFormat, 0, 0, 0)
 	ZEND_ARG_INFO(0, format)
 ZEND_END_ARG_INFO()
-static
+
+PHP_EXCEL_ARGINFO
 ZEND_BEGIN_ARG_INFO_EX(arginfo_Book_addCustomFormat, 0, 0, 1)
 	ZEND_ARG_INFO(0, format)
 ZEND_END_ARG_INFO()
-static
+
+PHP_EXCEL_ARGINFO
 ZEND_BEGIN_ARG_INFO_EX(arginfo_Book_getCustomFormat, 0, 0, 1)
 	ZEND_ARG_INFO(0, id)
 ZEND_END_ARG_INFO()
-static
+
+PHP_EXCEL_ARGINFO
 ZEND_BEGIN_ARG_INFO_EX(arginfo_Book_packDate, 0, 0, 1)
 	ZEND_ARG_INFO(0, timestamp)
 ZEND_END_ARG_INFO()
-static
+
+PHP_EXCEL_ARGINFO
 ZEND_BEGIN_ARG_INFO_EX(arginfo_Book_unpackDate, 0, 0, 1)
 	ZEND_ARG_INFO(0, date)
 ZEND_END_ARG_INFO()
-static
+
+PHP_EXCEL_ARGINFO
 ZEND_BEGIN_ARG_INFO_EX(arginfo_Book_getActiveSheet, 0, 0, 0)
 ZEND_END_ARG_INFO()
-static
+
+PHP_EXCEL_ARGINFO
 ZEND_BEGIN_ARG_INFO_EX(arginfo_Book_getDefaultFont, 0, 0, 0)
 ZEND_END_ARG_INFO()
-static
+
+PHP_EXCEL_ARGINFO
 ZEND_BEGIN_ARG_INFO_EX(arginfo_Book_setDefaultFont, 0, 0, 2)
 	ZEND_ARG_INFO(0, font)
 	ZEND_ARG_INFO(0, font_size)
 ZEND_END_ARG_INFO()
-static
+
+PHP_EXCEL_ARGINFO
 ZEND_BEGIN_ARG_INFO_EX(arginfo_Book_setLocale, 0, 0, 0)
 ZEND_END_ARG_INFO()
-static
+
+PHP_EXCEL_ARGINFO
 ZEND_BEGIN_ARG_INFO_EX(arginfo_Book___construct, 0, 0, 2)
 	ZEND_ARG_INFO(0, license_name)
 	ZEND_ARG_INFO(0, license_key)
 ZEND_END_ARG_INFO()
-static
+
+PHP_EXCEL_ARGINFO
 ZEND_BEGIN_ARG_INFO_EX(arginfo_Book_setActiveSheet, 0, 0, 1)
 	ZEND_ARG_INFO(0, sheet)
 ZEND_END_ARG_INFO()
-static
+
+PHP_EXCEL_ARGINFO
 ZEND_BEGIN_ARG_INFO_EX(arginfo_Book_addPictureFromFile, 0, 0, 1)
 	ZEND_ARG_INFO(0, filename)
 ZEND_END_ARG_INFO()
-static
+
+PHP_EXCEL_ARGINFO
 ZEND_BEGIN_ARG_INFO_EX(arginfo_Book_addPictureFromString, 0, 0, 1)
 	ZEND_ARG_INFO(0, data)
 ZEND_END_ARG_INFO()
-static
+
+PHP_EXCEL_ARGINFO
 ZEND_BEGIN_ARG_INFO_EX(arginfo_Font_size, 0, 0, 0)
 	ZEND_ARG_INFO(0, size)
 ZEND_END_ARG_INFO()
-static
+
+PHP_EXCEL_ARGINFO
 ZEND_BEGIN_ARG_INFO_EX(arginfo_Font_italics, 0, 0, 0)
 	ZEND_ARG_INFO(0, size)
 ZEND_END_ARG_INFO()
-static
+
+PHP_EXCEL_ARGINFO
 ZEND_BEGIN_ARG_INFO_EX(arginfo_Font_strike, 0, 0, 0)
 	ZEND_ARG_INFO(0, strike)
 ZEND_END_ARG_INFO()
-static
+
+PHP_EXCEL_ARGINFO
 ZEND_BEGIN_ARG_INFO_EX(arginfo_Font_bold, 0, 0, 0)
 	ZEND_ARG_INFO(0, bold)
 ZEND_END_ARG_INFO()
-static
+
+PHP_EXCEL_ARGINFO
 ZEND_BEGIN_ARG_INFO_EX(arginfo_Font_color, 0, 0, 0)
 	ZEND_ARG_INFO(0, color)
 ZEND_END_ARG_INFO()
-static
+
+PHP_EXCEL_ARGINFO
 ZEND_BEGIN_ARG_INFO_EX(arginfo_Font_mode, 0, 0, 0)
 	ZEND_ARG_INFO(0, mode)
 ZEND_END_ARG_INFO()
-static
+
+PHP_EXCEL_ARGINFO
 ZEND_BEGIN_ARG_INFO_EX(arginfo_Font_underline, 0, 0, 0)
 	ZEND_ARG_INFO(0, underline_style)
 ZEND_END_ARG_INFO()
-static
+
+PHP_EXCEL_ARGINFO
 ZEND_BEGIN_ARG_INFO_EX(arginfo_Font_name, 0, 0, 0)
 	ZEND_ARG_INFO(0, name)
 ZEND_END_ARG_INFO()
-static
+
+PHP_EXCEL_ARGINFO
 ZEND_BEGIN_ARG_INFO_EX(arginfo_Format___construct, 0, 0, 1)
 	ZEND_ARG_INFO(0, book)
 ZEND_END_ARG_INFO()
-static
+
+PHP_EXCEL_ARGINFO
 ZEND_BEGIN_ARG_INFO_EX(arginfo_Font___construct, 0, 0, 1)
 	ZEND_ARG_INFO(0, book)
 ZEND_END_ARG_INFO()
-static
+
+PHP_EXCEL_ARGINFO
 ZEND_BEGIN_ARG_INFO_EX(arginfo_Format_setFont, 0, 0, 1)
 	ZEND_ARG_INFO(0, font)
 ZEND_END_ARG_INFO()
-static
+
+PHP_EXCEL_ARGINFO
 ZEND_BEGIN_ARG_INFO_EX(arginfo_Format_getFont, 0, 0, 0)
 ZEND_END_ARG_INFO()
-static
+
+PHP_EXCEL_ARGINFO
 ZEND_BEGIN_ARG_INFO_EX(arginfo_Format_numberFormat, 0, 0, 0)
 	ZEND_ARG_INFO(0, format)
 ZEND_END_ARG_INFO()
-static
+
+PHP_EXCEL_ARGINFO
 ZEND_BEGIN_ARG_INFO_EX(arginfo_Format_horizontalAlign, 0, 0, 0)
 	ZEND_ARG_INFO(0, align_mode)
 ZEND_END_ARG_INFO()
-static
+
+PHP_EXCEL_ARGINFO
 ZEND_BEGIN_ARG_INFO_EX(arginfo_Format_verticalAlign, 0, 0, 0)
 	ZEND_ARG_INFO(0, align_mode)
 ZEND_END_ARG_INFO()
-static
+
+PHP_EXCEL_ARGINFO
 ZEND_BEGIN_ARG_INFO_EX(arginfo_Format_wrap, 0, 0, 0)
 	ZEND_ARG_INFO(0, wrap)
 ZEND_END_ARG_INFO()
-static
+
+PHP_EXCEL_ARGINFO
 ZEND_BEGIN_ARG_INFO_EX(arginfo_Format_rotate, 0, 0, 0)
 	ZEND_ARG_INFO(0, angle)
 ZEND_END_ARG_INFO()
-static
+
+PHP_EXCEL_ARGINFO
 ZEND_BEGIN_ARG_INFO_EX(arginfo_Format_indent, 0, 0, 0)
 	ZEND_ARG_INFO(0, indent)
 ZEND_END_ARG_INFO()
-static
+
+PHP_EXCEL_ARGINFO
 ZEND_BEGIN_ARG_INFO_EX(arginfo_Format_shrinkToFit, 0, 0, 0)
 	ZEND_ARG_INFO(0, shrink)
 ZEND_END_ARG_INFO()
-static
+
+PHP_EXCEL_ARGINFO
 ZEND_BEGIN_ARG_INFO_EX(arginfo_Format_borderStyle, 0, 0, 0)
 	ZEND_ARG_INFO(0, style)
 ZEND_END_ARG_INFO()
-static
+
+PHP_EXCEL_ARGINFO
 ZEND_BEGIN_ARG_INFO_EX(arginfo_Format_borderColor, 0, 0, 0)
 	ZEND_ARG_INFO(0, color)
 ZEND_END_ARG_INFO()
-static
+
+PHP_EXCEL_ARGINFO
 ZEND_BEGIN_ARG_INFO_EX(arginfo_Format_borderLeftStyle, 0, 0, 0)
 	ZEND_ARG_INFO(0, style)
 ZEND_END_ARG_INFO()
-static
+
+PHP_EXCEL_ARGINFO
 ZEND_BEGIN_ARG_INFO_EX(arginfo_Format_borderLeftColor, 0, 0, 0)
 	ZEND_ARG_INFO(0, color)
 ZEND_END_ARG_INFO()
-static
+
+PHP_EXCEL_ARGINFO
 ZEND_BEGIN_ARG_INFO_EX(arginfo_Format_borderRightStyle, 0, 0, 0)
 	ZEND_ARG_INFO(0, style)
 ZEND_END_ARG_INFO()
-static
+
+PHP_EXCEL_ARGINFO
 ZEND_BEGIN_ARG_INFO_EX(arginfo_Format_borderRightColor, 0, 0, 0)
 	ZEND_ARG_INFO(0, color)
 ZEND_END_ARG_INFO()
-static
+
+PHP_EXCEL_ARGINFO
 ZEND_BEGIN_ARG_INFO_EX(arginfo_Format_borderTopStyle, 0, 0, 0)
 	ZEND_ARG_INFO(0, style)
 ZEND_END_ARG_INFO()
-static
+
+PHP_EXCEL_ARGINFO
 ZEND_BEGIN_ARG_INFO_EX(arginfo_Format_borderTopColor, 0, 0, 0)
 	ZEND_ARG_INFO(0, color)
 ZEND_END_ARG_INFO()
-static
+
+PHP_EXCEL_ARGINFO
 ZEND_BEGIN_ARG_INFO_EX(arginfo_Format_borderBottomStyle, 0, 0, 0)
 	ZEND_ARG_INFO(0, style)
 ZEND_END_ARG_INFO()
-static
+
+PHP_EXCEL_ARGINFO
 ZEND_BEGIN_ARG_INFO_EX(arginfo_Format_borderBottomColor, 0, 0, 0)
 	ZEND_ARG_INFO(0, color)
 ZEND_END_ARG_INFO()
-static
+
+PHP_EXCEL_ARGINFO
 ZEND_BEGIN_ARG_INFO_EX(arginfo_Format_borderDiagonalStyle, 0, 0, 0)
 	ZEND_ARG_INFO(0, style)
 ZEND_END_ARG_INFO()
-static
+
+PHP_EXCEL_ARGINFO
 ZEND_BEGIN_ARG_INFO_EX(arginfo_Format_borderDiagonalColor, 0, 0, 0)
 	ZEND_ARG_INFO(0, color)
 ZEND_END_ARG_INFO()
-static
+
+PHP_EXCEL_ARGINFO
 ZEND_BEGIN_ARG_INFO_EX(arginfo_Format_fillPattern, 0, 0, 0)
 	ZEND_ARG_INFO(0, patern)
 ZEND_END_ARG_INFO()
-static
+
+PHP_EXCEL_ARGINFO
 ZEND_BEGIN_ARG_INFO_EX(arginfo_Format_patternForegroundColor, 0, 0, 0)
 	ZEND_ARG_INFO(0, color)
 ZEND_END_ARG_INFO()
-static
+
+PHP_EXCEL_ARGINFO
 ZEND_BEGIN_ARG_INFO_EX(arginfo_Format_patternBackgroundColor, 0, 0, 0)
 	ZEND_ARG_INFO(0, color)
 ZEND_END_ARG_INFO()
-static
+
+PHP_EXCEL_ARGINFO
 ZEND_BEGIN_ARG_INFO_EX(arginfo_Format_locked, 0, 0, 0)
 	ZEND_ARG_INFO(0, locked)
 ZEND_END_ARG_INFO()
-static
+
+PHP_EXCEL_ARGINFO
 ZEND_BEGIN_ARG_INFO_EX(arginfo_Format_hidden, 0, 0, 0)
 	ZEND_ARG_INFO(0, hidden)
 ZEND_END_ARG_INFO()
-static
+
+PHP_EXCEL_ARGINFO
 ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_cellType, 0, 0, 2)
 	ZEND_ARG_INFO(0, row)
 	ZEND_ARG_INFO(0, column)
 ZEND_END_ARG_INFO()
-static
+
+PHP_EXCEL_ARGINFO
 ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_cellFormat, 0, 0, 2)
 	ZEND_ARG_INFO(0, row)
 	ZEND_ARG_INFO(0, column)
 ZEND_END_ARG_INFO()
-static
+
+PHP_EXCEL_ARGINFO
 ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_readRow, 0, 0, 1)
 	ZEND_ARG_INFO(0, row)
 	ZEND_ARG_INFO(0, start_col)
 	ZEND_ARG_INFO(0, end_column)
 ZEND_END_ARG_INFO()
-static
+
+PHP_EXCEL_ARGINFO
 ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_readCol, 0, 0, 1)
 	ZEND_ARG_INFO(0, column)
 	ZEND_ARG_INFO(0, start_row)
 	ZEND_ARG_INFO(0, end_row)
 ZEND_END_ARG_INFO()
-static
+
+PHP_EXCEL_ARGINFO
 ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_read, 0, 0, 2)
 	ZEND_ARG_INFO(0, row)
 	ZEND_ARG_INFO(0, column)
 	ZEND_ARG_INFO(1, format)
 ZEND_END_ARG_INFO()
-static
+
+PHP_EXCEL_ARGINFO
 ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_write, 0, 0, 3)
 	ZEND_ARG_INFO(0, row)
 	ZEND_ARG_INFO(0, column)
@@ -3046,64 +3116,76 @@ ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_write, 0, 0, 3)
 	ZEND_ARG_INFO(0, format)
 	ZEND_ARG_INFO(0, datatype)
 ZEND_END_ARG_INFO()
-static
+
+PHP_EXCEL_ARGINFO
 ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_writeRow, 0, 0, 2)
 	ZEND_ARG_INFO(0, row)
 	ZEND_ARG_INFO(0, data)
 	ZEND_ARG_INFO(0, start_column)
 	ZEND_ARG_INFO(0, format)
 ZEND_END_ARG_INFO()
-static
+
+PHP_EXCEL_ARGINFO
 ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_writeCol, 0, 0, 2)
 	ZEND_ARG_INFO(0, row)
 	ZEND_ARG_INFO(0, data)
 	ZEND_ARG_INFO(0, start_row)
 	ZEND_ARG_INFO(0, format)
 ZEND_END_ARG_INFO()
-static
+
+PHP_EXCEL_ARGINFO
 ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_isFormula, 0, 0, 2)
 	ZEND_ARG_INFO(0, row)
 	ZEND_ARG_INFO(0, column)
 ZEND_END_ARG_INFO()
-static
+
+PHP_EXCEL_ARGINFO
 ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_isDate, 0, 0, 2)
 	ZEND_ARG_INFO(0, row)
 	ZEND_ARG_INFO(0, column)
 ZEND_END_ARG_INFO()
-static
+
+PHP_EXCEL_ARGINFO
 ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_insertRow, 0, 0, 2)
 	ZEND_ARG_INFO(0, row_first)
 	ZEND_ARG_INFO(0, row_last)
 ZEND_END_ARG_INFO()
-static
+
+PHP_EXCEL_ARGINFO
 ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_insertCol, 0, 0, 2)
 	ZEND_ARG_INFO(0, col_first)
 	ZEND_ARG_INFO(0, col_last)
 ZEND_END_ARG_INFO()
-static
+
+PHP_EXCEL_ARGINFO
 ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_removeRow, 0, 0, 2)
 	ZEND_ARG_INFO(0, row_first)
 	ZEND_ARG_INFO(0, row_last)
 ZEND_END_ARG_INFO()
-static
+
+PHP_EXCEL_ARGINFO
 ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_removeCol, 0, 0, 2)
 	ZEND_ARG_INFO(0, col_first)
 	ZEND_ARG_INFO(0, col_last)
 ZEND_END_ARG_INFO()
-static
+
+PHP_EXCEL_ARGINFO
 ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_colWidth, 0, 0, 1)
 	ZEND_ARG_INFO(0, column)
 ZEND_END_ARG_INFO()
-static
+
+PHP_EXCEL_ARGINFO
 ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_rowHeight, 0, 0, 1)
 	ZEND_ARG_INFO(0, row)
 ZEND_END_ARG_INFO()
-static
+
+PHP_EXCEL_ARGINFO
 ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_readComment, 0, 0, 2)
 	ZEND_ARG_INFO(0, row)
 	ZEND_ARG_INFO(0, column)
 ZEND_END_ARG_INFO()
-static
+
+PHP_EXCEL_ARGINFO
 ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_writeComment, 0, 0, 6)
 	ZEND_ARG_INFO(0, row)
 	ZEND_ARG_INFO(0, column)
@@ -3112,7 +3194,8 @@ ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_writeComment, 0, 0, 6)
 	ZEND_ARG_INFO(0, width)
 	ZEND_ARG_INFO(0, height)
 ZEND_END_ARG_INFO()
-static
+
+PHP_EXCEL_ARGINFO
 ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_setColWidth, 0, 0, 3)
 	ZEND_ARG_INFO(0, column_start)
 	ZEND_ARG_INFO(0, column_end)
@@ -3120,38 +3203,44 @@ ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_setColWidth, 0, 0, 3)
 	ZEND_ARG_INFO(0, hidden)
 	ZEND_ARG_INFO(0, format)
 ZEND_END_ARG_INFO()
-static
+
+PHP_EXCEL_ARGINFO
 ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_setRowHeight, 0, 0, 2)
 	ZEND_ARG_INFO(0, row)
 	ZEND_ARG_INFO(0, height)
 	ZEND_ARG_INFO(0, format)
 	ZEND_ARG_INFO(0, hidden)
 ZEND_END_ARG_INFO()
-static
+
+PHP_EXCEL_ARGINFO
 ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_getMerge, 0, 0, 2)
 	ZEND_ARG_INFO(0, row)
 	ZEND_ARG_INFO(0, column)
 ZEND_END_ARG_INFO()
-static
+
+PHP_EXCEL_ARGINFO
 ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_setMerge, 0, 0, 4)
 	ZEND_ARG_INFO(0, row_start)
 	ZEND_ARG_INFO(0, row_end)
 	ZEND_ARG_INFO(0, col_start)
 	ZEND_ARG_INFO(0, col_end)
 ZEND_END_ARG_INFO()
-static
+
+PHP_EXCEL_ARGINFO
 ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_deleteMerge, 0, 0, 2)
 	ZEND_ARG_INFO(0, row)
 	ZEND_ARG_INFO(0, column)
 ZEND_END_ARG_INFO()
-static
+
+PHP_EXCEL_ARGINFO
 ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_addPictureScaled, 0, 0, 4)
 	ZEND_ARG_INFO(0, row)
 	ZEND_ARG_INFO(0, column)
 	ZEND_ARG_INFO(0, pic_id)
 	ZEND_ARG_INFO(0, scale)
 ZEND_END_ARG_INFO()
-static
+
+PHP_EXCEL_ARGINFO
 ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_addPictureDim, 0, 0, 5)
 	ZEND_ARG_INFO(0, row)
 	ZEND_ARG_INFO(0, column)
@@ -3159,172 +3248,216 @@ ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_addPictureDim, 0, 0, 5)
 	ZEND_ARG_INFO(0, width)
 	ZEND_ARG_INFO(0, height)
 ZEND_END_ARG_INFO()
-static
+
+PHP_EXCEL_ARGINFO
 ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_horPageBreak, 0, 0, 2)
 	ZEND_ARG_INFO(0, row)
 	ZEND_ARG_INFO(0, break)
 ZEND_END_ARG_INFO()
-static
+
+PHP_EXCEL_ARGINFO
 ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_verPageBreak, 0, 0, 2)
 	ZEND_ARG_INFO(0, col)
 	ZEND_ARG_INFO(0, break)
 ZEND_END_ARG_INFO()
-static
+
+PHP_EXCEL_ARGINFO
 ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_splitSheet, 0, 0, 2)
 	ZEND_ARG_INFO(0, row)
 	ZEND_ARG_INFO(0, column)
 ZEND_END_ARG_INFO()
-static
+
+PHP_EXCEL_ARGINFO
 ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_groupRows, 0, 0, 2)
 	ZEND_ARG_INFO(0, start_row)
 	ZEND_ARG_INFO(0, end_row)
 	ZEND_ARG_INFO(0, collapse)
 ZEND_END_ARG_INFO()
-static
+
+PHP_EXCEL_ARGINFO
 ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_groupCols, 0, 0, 2)
 	ZEND_ARG_INFO(0, start_column)
 	ZEND_ARG_INFO(0, end_column)
 	ZEND_ARG_INFO(0, collapse)
 ZEND_END_ARG_INFO()
-static
+
+PHP_EXCEL_ARGINFO
 ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_clear, 0, 0, 4)
 	ZEND_ARG_INFO(0, row_s)
 	ZEND_ARG_INFO(0, row_e)
 	ZEND_ARG_INFO(0, col_s)
 	ZEND_ARG_INFO(0, col_s)
 ZEND_END_ARG_INFO()
-static
+
+PHP_EXCEL_ARGINFO
 ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_copy, 0, 0, 4)
 	ZEND_ARG_INFO(0, row)
 	ZEND_ARG_INFO(0, col)
 	ZEND_ARG_INFO(0, to_row)
 	ZEND_ARG_INFO(0, to_col)
 ZEND_END_ARG_INFO()
-static
+
+PHP_EXCEL_ARGINFO
 ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_firstRow, 0, 0, 0)
 ZEND_END_ARG_INFO()
-static
+
+PHP_EXCEL_ARGINFO
 ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_lastRow, 0, 0, 0)
 ZEND_END_ARG_INFO()
-static
+
+PHP_EXCEL_ARGINFO
 ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_firstCol, 0, 0, 0)
 ZEND_END_ARG_INFO()
-static
+
+PHP_EXCEL_ARGINFO
 ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_lastCol, 0, 0, 0)
 ZEND_END_ARG_INFO()
-static
+
+PHP_EXCEL_ARGINFO
 ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_displayGridlines, 0, 0, 0)
 ZEND_END_ARG_INFO()
-static
+
+PHP_EXCEL_ARGINFO
 ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_printGridlines, 0, 0, 0)
 ZEND_END_ARG_INFO()
-static
+
+PHP_EXCEL_ARGINFO
 ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_setDisplayGridlines, 0, 0, 1)
 	ZEND_ARG_INFO(0, value)
 ZEND_END_ARG_INFO()
-static
+
+PHP_EXCEL_ARGINFO
 ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_setPrintGridlines, 0, 0, 1)
 	ZEND_ARG_INFO(0, value)
 ZEND_END_ARG_INFO()
-static
+
+PHP_EXCEL_ARGINFO
 ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_zoom, 0, 0, 0)
 ZEND_END_ARG_INFO()
-static
+
+PHP_EXCEL_ARGINFO
 ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_zoomPrint, 0, 0, 0)
 ZEND_END_ARG_INFO()
-static
+
+PHP_EXCEL_ARGINFO
 ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_setZoom, 0, 0, 1)
 	ZEND_ARG_INFO(0, value)
 ZEND_END_ARG_INFO()
-static
+
+PHP_EXCEL_ARGINFO
 ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_setZoomPrint, 0, 0, 1)
 	ZEND_ARG_INFO(0, value)
 ZEND_END_ARG_INFO()
-static
+
+PHP_EXCEL_ARGINFO
 ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_setLandscape, 0, 0, 1)
 	ZEND_ARG_INFO(0, value)
 ZEND_END_ARG_INFO()
-static
+
+PHP_EXCEL_ARGINFO
 ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_landscape, 0, 0, 0)
 ZEND_END_ARG_INFO()
-static
+
+PHP_EXCEL_ARGINFO
 ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_paper, 0, 0, 0)
 ZEND_END_ARG_INFO()
-static
+
+PHP_EXCEL_ARGINFO
 ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_setPaper, 0, 0, 1)
 	ZEND_ARG_INFO(0, value)
 ZEND_END_ARG_INFO()
-static
+
+PHP_EXCEL_ARGINFO
 ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_header, 0, 0, 0)
 ZEND_END_ARG_INFO()
-static
+
+PHP_EXCEL_ARGINFO
 ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_footer, 0, 0, 0)
 ZEND_END_ARG_INFO()
-static
+
+PHP_EXCEL_ARGINFO
 ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_setHeader, 0, 0, 0)
 ZEND_END_ARG_INFO()
-static
+
+PHP_EXCEL_ARGINFO
 ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_setFooter, 0, 0, 0)
 ZEND_END_ARG_INFO()
-static
+
+PHP_EXCEL_ARGINFO
 ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_headerMargin, 0, 0, 0)
 ZEND_END_ARG_INFO()
-static
+
+PHP_EXCEL_ARGINFO
 ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_footerMargin, 0, 0, 0)
 ZEND_END_ARG_INFO()
-static
+
+PHP_EXCEL_ARGINFO
 ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_hcenter, 0, 0, 0)
 ZEND_END_ARG_INFO()
-static
+
+PHP_EXCEL_ARGINFO
 ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_vcenter, 0, 0, 0)
 ZEND_END_ARG_INFO()
-static
+
+PHP_EXCEL_ARGINFO
 ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_setHCenter, 0, 0, 1)
 	ZEND_ARG_INFO(0, value)
 ZEND_END_ARG_INFO()
-static
+
+PHP_EXCEL_ARGINFO
 ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_setVCenter, 0, 0, 1)
 	ZEND_ARG_INFO(0, value)
 ZEND_END_ARG_INFO()
-static
+
+PHP_EXCEL_ARGINFO
 ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_marginLeft, 0, 0, 0)
 ZEND_END_ARG_INFO()
-static
+
+PHP_EXCEL_ARGINFO
 ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_marginRight, 0, 0, 0)
 ZEND_END_ARG_INFO()
-static
+
+PHP_EXCEL_ARGINFO
 ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_marginTop, 0, 0, 0)
 ZEND_END_ARG_INFO()
-static
+
+PHP_EXCEL_ARGINFO
 ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_marginBottom, 0, 0, 0)
 ZEND_END_ARG_INFO()
-static
+
+PHP_EXCEL_ARGINFO
 ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_setMarginLeft, 0, 0, 1)
 	ZEND_ARG_INFO(0, value)
 ZEND_END_ARG_INFO()
-static
+
+PHP_EXCEL_ARGINFO
 ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_setMarginRight, 0, 0, 1)
 	ZEND_ARG_INFO(0, value)
 ZEND_END_ARG_INFO()
-static
+
+PHP_EXCEL_ARGINFO
 ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_setMarginTop, 0, 0, 1)
 	ZEND_ARG_INFO(0, value)
 ZEND_END_ARG_INFO()
-static
+
+PHP_EXCEL_ARGINFO
 ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_setMarginBottom, 0, 0, 1)
 	ZEND_ARG_INFO(0, value)
 ZEND_END_ARG_INFO()
-static
+
+PHP_EXCEL_ARGINFO
 ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_printHeaders, 0, 0, 0)
 ZEND_END_ARG_INFO()
 /*static
 ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_setPrintHeaders, 0, 0, 1)
 	ZEND_ARG_INFO(0, value)
 ZEND_END_ARG_INFO()*/
-static
+
+PHP_EXCEL_ARGINFO
 ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_name, 0, 0, 0)
 ZEND_END_ARG_INFO()
-static
+
+PHP_EXCEL_ARGINFO
 ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_setName, 0, 0, 0)
 ZEND_END_ARG_INFO()
 /*static
