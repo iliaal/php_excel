@@ -1,3 +1,5 @@
+	* Fixed build on 5.4 (patch from Felipe Pena)
+
 [2010-08-01] - Version 0.8.2
 	* Fixed shared build
 
