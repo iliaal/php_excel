@@ -27,8 +27,6 @@ date.timezone=America/Toronto
 	var_dump($s->readCol(1));
 	var_dump($s->readCol(2));
 
-
-	
 	echo "OK\n";
 ?>
 --EXPECTF--

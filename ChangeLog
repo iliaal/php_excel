@@ -1,8 +1,12 @@
-[2010-08-01]
+[2010-08-01] - Version 0.8.1
 
 	* Fixed build on 5.3 (patch from Felipe Pena)
+	* Allow compilation against LibXL 2.4.3k
+	* Added ExcelSheet::setProtect(), ExcelSheet::protect() to set/get sheet protection
+	* Added ExcelSheet::setPrintHeaders() to set printability of column/row headers
+	* Added ExcelSheet::setCellFormat() method (LibXL 2.4.3k+) to set a cell format
+	* Added ExcelBook::getAllFormats() method (LibXL 2.4.3k+) to get a list of all document formats
 
-
-[2010-08-01]
+[2010-08-01] - Version 0.8
 
 	* Initial Release

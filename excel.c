@@ -16,8 +16,6 @@
   +----------------------------------------------------------------------+
 */
 
-/* $Id: header 297205 2010-03-30 21:09:07Z johannes $ */
-
 #ifdef HAVE_CONFIG_H
 #include "config.h"
 #endif
@@ -41,11 +39,17 @@ static long xlFormatBorderColor(FormatHandle f)
 	return 1;
 }
 
+/* work-around for missing headers in LibXL */
+#define xlSheetSetProtect xlSheetSetProtectA
+#ifndef HAVE_LIBXL_243_PLUS
+#define xlSheetProtect xlSheetProtectA
+#endif
+
 #define PHP_EXCEL_DATE 1
 #define PHP_EXCEL_FORMULA 2
 #define PHP_EXCEL_NUMERIC_STRING 3
 
-#define PHP_EXCEL_VERSION "0.8"
+#define PHP_EXCEL_VERSION "0.8.1"
 
 #ifdef COMPILE_DL_EXCEL
 ZEND_GET_MODULE(excel)
@@ -705,6 +709,52 @@ EXCEL_METHOD(Book, addFormat)
 }
 /* }}} */
 
+#ifdef HAVE_LIBXL_243_PLUS
+/* {{{ proto array ExcelBook::getAllFormats()
+   Get an array of all ExcelFormat objects used inside a document. */
+EXCEL_METHOD(Book, getAllFormats)
+{
+	BookHandle book;
+	zval *object = getThis();
+	unsigned short fc;
+	unsigned short c;
+
+	if (ZEND_NUM_ARGS()) {
+		RETURN_FALSE;
+	}
+
+	BOOK_FROM_OBJECT(book, object);
+
+	array_init(return_value);
+
+	fc = xlBookFormatSize(book);
+	if (!fc) {
+		return;
+	}
+
+	for (c = 0; c < fc; c++) {
+		FormatHandle format;
+
+		if ((format = xlBookFormat(book, c))) {
+			excel_format_object *fo;
+			zval *value;
+
+			MAKE_STD_ZVAL(value);
+			Z_TYPE_P(value) = IS_OBJECT;
+			object_init_ex(value, excel_ce_format);
+			Z_SET_REFCOUNT_P(value, 1);
+			Z_SET_ISREF_P(value);
+			fo = (excel_format_object *) zend_object_store_get_object(value TSRMLS_CC);
+			fo->format = format;
+			fo->book = book;
+
+			add_next_index_zval(return_value, value);
+		}
+	}
+}
+/* }}} */
+#endif
+
 /* {{{ proto int ExcelBook::addCustomFormat(string format)
    Create a custom cell format */
 EXCEL_METHOD(Book, addCustomFormat)
@@ -769,7 +819,11 @@ static double _php_excel_date_pack(BookHandle book, long ts)
 	tm.tm_year += 1900;
 	tm.tm_mon += 1;
 
-	return xlBookDatePack(book, tm.tm_year, tm.tm_mon, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec);
+	return xlBookDatePack(book, tm.tm_year, tm.tm_mon, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec
+#ifdef HAVE_LIBXL_243_PLUS
+							, 0
+#endif
+	);
 }
 
 /* {{{ proto float ExcelBook::packDate(int timestamp)
@@ -801,10 +855,16 @@ EXCEL_METHOD(Book, packDate)
 static int _php_excel_date_unpack(BookHandle book, double dt)
 {
 	struct tm tm = {0};
+#ifdef HAVE_LIBXL_243_PLUS
+	unsigned short msec;
+#endif
 
 	if (!xlBookDateUnpack(book, dt, (short unsigned int *) &(tm.tm_year), (short unsigned int *) &(tm.tm_mon), (short unsigned int *) &(tm.tm_mday),
-									(short unsigned int *) &(tm.tm_hour), (short unsigned int *) &(tm.tm_min), (short unsigned int *) &(tm.tm_sec))
-	) {
+									(short unsigned int *) &(tm.tm_hour), (short unsigned int *) &(tm.tm_min), (short unsigned int *) &(tm.tm_sec)
+#ifdef HAVE_LIBXL_243_PLUS
+									, &msec
+#endif
+	)) {
 		return -1;
 	}
 
@@ -864,7 +924,7 @@ EXCEL_METHOD(Book, getDefaultFont)
 {
 	BookHandle book;
 	zval *object = getThis();
-	char *font;
+	const char *font;
 	unsigned short font_size;
 
 	if (ZEND_NUM_ARGS()) {
@@ -878,7 +938,7 @@ EXCEL_METHOD(Book, getDefaultFont)
 	}
 
 	array_init(return_value);
-	add_assoc_string(return_value, "font", font, 1);
+	add_assoc_string(return_value, "font", (char *)font, 1);
 	add_assoc_long(return_value, "font_size", font_size);
 }
 /* }}} */
@@ -1616,7 +1676,7 @@ EXCEL_METHOD(Sheet, cellType)
 /* }}} */
 
 /* {{{ proto ExcelFormat ExcelSheet::cellFormat(int row, int column)
-	Get cell type */
+	Get cell format */
 EXCEL_METHOD(Sheet, cellFormat)
 {
 	zval *object = getThis();
@@ -1641,6 +1701,29 @@ EXCEL_METHOD(Sheet, cellFormat)
 	fo->format = format;
 }
 /* }}} */
+
+#ifdef HAVE_LIBXL_243_PLUS
+/* {{{ proto void ExcelFormat ExcelSheet::setCellFormat(int row, int column, ExcelFormat format)
+	Set cell format */
+EXCEL_METHOD(Sheet, setCellFormat)
+{
+	zval *object = getThis();
+	SheetHandle sheet;
+	FormatHandle format;
+	zval *oformat;
+	long row, col;
+
+	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "llo", &row, &col, &oformat, excel_ce_format) == FAILURE) {
+		RETURN_FALSE;
+	}
+
+	SHEET_FROM_OBJECT(sheet, object);
+	FORMAT_FROM_OBJECT(format, oformat);
+
+	xlSheetSetCellFormat(sheet, row, col, format);
+}
+/* }}} */
+#endif
 
 static zend_bool php_excel_read_cell(unsigned short row, unsigned short col, zval *val, SheetHandle sheet, BookHandle book, FormatHandle *format)
 {
@@ -2727,12 +2810,11 @@ EXCEL_METHOD(Sheet, printHeaders)
 }
 
 /* {{{ proto bool ExcelSheet::setPrintHeaders(bool value)
-	Sets a flag that the row and column headers are printed: 1 - yes, 0 - no.
+	Sets a flag that the row and column headers are printed: 1 - yes, 0 - no. */
 EXCEL_METHOD(Sheet, setPrintHeaders)
 {
-	PHP_EXCEL_SET_BOOL_VAL(SetRowCol)
+	PHP_EXCEL_SET_BOOL_VAL(SetPrintRowCol)
 }
-*/
 
 /* {{{ proto string ExcelSheet::name()
 	Returns the name of the sheet. */
@@ -2760,18 +2842,18 @@ EXCEL_METHOD(Sheet, setName)
 }
 
 /* {{{ proto bool ExcelSheet::protect()
-	Returns whether sheet is protected: 1 - yes, 0 - no.
+	Returns whether sheet is protected: 1 - yes, 0 - no. */
 EXCEL_METHOD(Sheet, protect)
 {
 	PHP_EXCEL_INFO(Protect, IS_BOOL)
-}*/
+}
 
 /* {{{ proto bool ExcelSheet::setProtect(bool value)
-	Protects (protect = 1) or unprotects (protect = 0) the sheet.
+	Protects (protect = 1) or unprotects (protect = 0) the sheet. */
 EXCEL_METHOD(Sheet, setProtect)
 {
 	PHP_EXCEL_SET_BOOL_VAL(SetProtect)
-}*/
+}
 
 #if PHP_MAJOR_VERSION > 5 || (PHP_MAJOR_VERSION == 5 && PHP_MINOR_VERSION >= 3)
 # define PHP_EXCEL_ARGINFO
@@ -2836,6 +2918,12 @@ PHP_EXCEL_ARGINFO
 ZEND_BEGIN_ARG_INFO_EX(arginfo_Book_addFormat, 0, 0, 0)
 	ZEND_ARG_INFO(0, format)
 ZEND_END_ARG_INFO()
+
+#ifdef HAVE_LIBXL_243_PLUS
+PHP_EXCEL_ARGINFO
+ZEND_BEGIN_ARG_INFO_EX(arginfo_Book_getAllFormats, 0, 0, 0)
+ZEND_END_ARG_INFO()
+#endif
 
 PHP_EXCEL_ARGINFO
 ZEND_BEGIN_ARG_INFO_EX(arginfo_Book_addCustomFormat, 0, 0, 1)
@@ -3086,6 +3174,15 @@ ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_cellFormat, 0, 0, 2)
 	ZEND_ARG_INFO(0, row)
 	ZEND_ARG_INFO(0, column)
 ZEND_END_ARG_INFO()
+
+#ifdef HAVE_LIBXL_243_PLUS
+PHP_EXCEL_ARGINFO
+ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_setCellFormat, 0, 0, 3)
+	ZEND_ARG_INFO(0, row)
+	ZEND_ARG_INFO(0, column)
+	ZEND_ARG_INFO(0, format)
+ZEND_END_ARG_INFO()
+#endif
 
 PHP_EXCEL_ARGINFO
 ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_readRow, 0, 0, 1)
@@ -3448,10 +3545,11 @@ ZEND_END_ARG_INFO()
 PHP_EXCEL_ARGINFO
 ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_printHeaders, 0, 0, 0)
 ZEND_END_ARG_INFO()
-/*static
+
+PHP_EXCEL_ARGINFO
 ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_setPrintHeaders, 0, 0, 1)
 	ZEND_ARG_INFO(0, value)
-ZEND_END_ARG_INFO()*/
+ZEND_END_ARG_INFO()
 
 PHP_EXCEL_ARGINFO
 ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_name, 0, 0, 0)
@@ -3460,13 +3558,15 @@ ZEND_END_ARG_INFO()
 PHP_EXCEL_ARGINFO
 ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_setName, 0, 0, 0)
 ZEND_END_ARG_INFO()
-/*static
+
+PHP_EXCEL_ARGINFO
 ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_protect, 0, 0, 0)
 ZEND_END_ARG_INFO()
-static
+
+PHP_EXCEL_ARGINFO
 ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_setProtect, 0, 0, 1)
 	ZEND_ARG_INFO(0, value)
-ZEND_END_ARG_INFO()*/
+ZEND_END_ARG_INFO()
 
 #define EXCEL_ME(class_name, function_name, arg_info, flags) \
     PHP_ME( Excel ## class_name, function_name, arg_info, flags)
@@ -3474,6 +3574,9 @@ ZEND_END_ARG_INFO()*/
 zend_function_entry excel_funcs_book[] = {
 	EXCEL_ME(Book, addFont, arginfo_Book_addFont, 0)
 	EXCEL_ME(Book, addFormat, arginfo_Book_addFormat, 0)
+#ifdef HAVE_LIBXL_243_PLUS
+	EXCEL_ME(Book, getAllFormats, arginfo_Book_getAllFormats, 0)
+#endif
 	EXCEL_ME(Book, getError, arginfo_Book_getError, 0)
 	EXCEL_ME(Book, loadFile, arginfo_Book_loadFile, 0)
 	EXCEL_ME(Book, load, arginfo_Book_load, 0)
@@ -3502,6 +3605,9 @@ zend_function_entry excel_funcs_book[] = {
 zend_function_entry excel_funcs_sheet[] = {
 	EXCEL_ME(Sheet, cellType, arginfo_Sheet_cellType, 0)
 	EXCEL_ME(Sheet, cellFormat, arginfo_Sheet_cellFormat, 0)
+#ifdef HAVE_LIBXL_243_PLUS
+	EXCEL_ME(Sheet, setCellFormat, arginfo_Sheet_setCellFormat, 0)
+#endif
 	EXCEL_ME(Sheet, read, arginfo_Sheet_read, 0)
 	EXCEL_ME(Sheet, readRow, arginfo_Sheet_readRow, 0)
 	EXCEL_ME(Sheet, readCol, arginfo_Sheet_readCol, 0)
@@ -3567,11 +3673,11 @@ zend_function_entry excel_funcs_sheet[] = {
 	EXCEL_ME(Sheet, setMarginTop, arginfo_Sheet_setMarginTop, 0)
 	EXCEL_ME(Sheet, setMarginBottom, arginfo_Sheet_setMarginBottom, 0)
 	EXCEL_ME(Sheet, printHeaders, arginfo_Sheet_printHeaders, 0)
-/*	EXCEL_ME(Sheet, setPrintHeaders, arginfo_Sheet_setPrintHeaders, 0) */
+	EXCEL_ME(Sheet, setPrintHeaders, arginfo_Sheet_setPrintHeaders, 0)
 	EXCEL_ME(Sheet, name, arginfo_Sheet_name, 0)
 	EXCEL_ME(Sheet, setName, arginfo_Sheet_setName, 0)
-/*	EXCEL_ME(Sheet, protect, arginfo_Sheet_protect, 0)
-	EXCEL_ME(Sheet, setProtect, arginfo_Sheet_setProtect, 0) */
+	EXCEL_ME(Sheet, protect, arginfo_Sheet_protect, 0)
+	EXCEL_ME(Sheet, setProtect, arginfo_Sheet_setProtect, 0)
    {NULL, NULL, NULL}
 };
 
@@ -3776,7 +3882,11 @@ PHP_MINIT_FUNCTION(excel)
 	REGISTER_EXCEL_CLASS_CONST_LONG(format, "FILLPATTERN_GRAY50", FILLPATTERN_GRAY50);
 	REGISTER_EXCEL_CLASS_CONST_LONG(format, "FILLPATTERN_GRAY75", FILLPATTERN_GRAY75);
 	REGISTER_EXCEL_CLASS_CONST_LONG(format, "FILLPATTERN_GRAY25", FILLPATTERN_GRAY25);
+#ifdef HAVE_LIBXL_243_PLUS
+	REGISTER_EXCEL_CLASS_CONST_LONG(format, "FILLPATTERN_HORSTRIPE", FILLPATTERN_HORSTRIPE);
+#else
 	REGISTER_EXCEL_CLASS_CONST_LONG(format, "FILLPATTERN_HORSTRIPE", FILLPATTEN_HORSTRIPE);
+#endif
 	REGISTER_EXCEL_CLASS_CONST_LONG(format, "FILLPATTERN_VERSTRIPE", FILLPATTERN_VERSTRIPE);
 	REGISTER_EXCEL_CLASS_CONST_LONG(format, "FILLPATTERN_REVDIAGSTRIPE", FILLPATTERN_REVDIAGSTRIPE);
 	REGISTER_EXCEL_CLASS_CONST_LONG(format, "FILLPATTERN_DIAGSTRIPE", FILLPATTERN_DIAGSTRIPE);

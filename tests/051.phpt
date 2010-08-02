@@ -1,5 +1,5 @@
 --TEST--
-Column Heading Printing
+Sheet protection test
 --INI--
 date.timezone=America/Toronto
 --SKIPIF--
@@ -13,11 +13,11 @@ date.timezone=America/Toronto
 	$s->write(1, 1, "Test");
 
 	var_dump(
-			$s->printHeaders(),
-			$s->setPrintHeaders(true),
-			$s->printHeaders()
+			$s->protect(),
+			$s->setProtect(true),
+			$s->protect()
 	);
-
+	
 	echo "OK\n";
 ?>
 --EXPECT--
