@@ -1,0 +1,11 @@
+ARG_WITH("xl", "Excel", "no");
+
+if (PHP_EXCEL != "no") {
+	if (CHECK_LIB("libxl.lib", "xl", PHP_EXCEL) && CHECK_HEADER_ADD_INCLUDE("libxl.h", "CFLAGS_EXCEL")) {
+		EXTENSION("xl", "excel.c");
+		AC_DEFINE('HAVE_EXCELLIB', 1, 'Have LibXL library');
+	} else {
+		WARNING("excel not enabled; libraries and headers not found");
+		PHP_EXCEL = "no";
+	}
+}
