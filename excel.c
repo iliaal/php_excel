@@ -1021,7 +1021,7 @@ EXCEL_METHOD(Book, __construct)
 	BookHandle book;
 	zval *object = getThis();
 	char *name = NULL, *key;
-	int name_len, key_len;
+	int name_len = 0, key_len = 0;
 	wchar_t *nw, *kw;
 	size_t nw_l, kw_l;
 #ifdef LIBXL_VERSION
@@ -1044,6 +1044,7 @@ EXCEL_METHOD(Book, __construct)
 	if (new_excel) {
 		excel_book_object *obj = (excel_book_object*) zend_object_store_get_object(object TSRMLS_CC);
 		if ((book = xlCreateXMLBook())) {
+			xlBookRelease(obj->book);
 			obj->book = book;
 		} else {
 			RETURN_FALSE;
@@ -1182,7 +1183,7 @@ EXCEL_METHOD(Book, setRGBMode)
 	xlBookSetRgbMode(book, val);
 }
 
-/* {{{ proto void ExcelBook::colorPack(int r, int g, int b)
+/* {{{ proto int ExcelBook::colorPack(int r, int g, int b)
    Packs red, green and blue components in color value. Used for xlsx format only. */
 EXCEL_METHOD(Book, colorPack)
 {
@@ -1224,7 +1225,7 @@ EXCEL_METHOD(Book, colorUnpack)
 		RETURN_FALSE;
 	}
 
-	if (color < 0) {
+	if (color <= 0) {
 		php_error_docref(NULL TSRMLS_CC, E_WARNING, "Invalid '%ld' value for color code", color);
 		RETURN_FALSE;
 	}
