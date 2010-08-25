@@ -49,7 +49,7 @@ static long xlFormatBorderColor(FormatHandle f)
 #define PHP_EXCEL_FORMULA 2
 #define PHP_EXCEL_NUMERIC_STRING 3
 
-#define PHP_EXCEL_VERSION "0.8.5"
+#define PHP_EXCEL_VERSION "0.8.6"
 
 #ifdef COMPILE_DL_EXCEL
 ZEND_GET_MODULE(excel)
@@ -554,7 +554,11 @@ EXCEL_METHOD(Book, addSheet)
 
 	BOOK_FROM_OBJECT(book, object);
 
+#ifdef LIBXL_VERSION
+	sh = xlBookAddSheet(book, name, 0);
+#else
 	sh = xlBookAddSheet(book, name);
+#endif
 
 	if (!sh) {
 		RETURN_FALSE;
@@ -581,6 +585,9 @@ EXCEL_METHOD(Book, copySheet)
 	char *name;
 	int name_len;
 	long num;
+#ifdef LIBXL_VERSION
+	SheetHandle osh;
+#endif
 
 	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "sl", &name, &name_len, &num) == FAILURE) {
 		RETURN_FALSE;
@@ -592,7 +599,14 @@ EXCEL_METHOD(Book, copySheet)
 
 	BOOK_FROM_OBJECT(book, object);
 
+#ifdef LIBXL_VERSION
+	if (!(osh = xlBookGetSheet(book, num))) {
+		RETURN_FALSE;
+	}
+	sh = xlBookAddSheet(book, name, osh);
+#else
 	sh = xlBookCopySheet(book, name, num);
+#endif
 
 	if (!sh) {
 		RETURN_FALSE;
@@ -995,7 +1009,7 @@ EXCEL_METHOD(Book, setLocale)
 }
 /* }}} */
 
-/* {{{ proto ExcelBook ExcelBook::__construct(string license_name, string license_key)
+/* {{{ proto ExcelBook ExcelBook::__construct(string license_name, string license_key [, bool excel_2007 = false])
     Book Contructor. */
 EXCEL_METHOD(Book, __construct)
 {
@@ -1005,17 +1019,35 @@ EXCEL_METHOD(Book, __construct)
 	int name_len, key_len;
 	wchar_t *nw, *kw;
 	size_t nw_l, kw_l;
+#ifdef LIBXL_VERSION
+	zend_bool new_excel = 0;
 
+	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "|ssb", &name, &name_len, &key, &key_len, &new_excel) == FAILURE) {
+		RETURN_FALSE;
+	}
+#else
 	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "|ss", &name, &name_len, &key, &key_len) == FAILURE) {
 		RETURN_FALSE;
 	}
-
+#endif
 	if (!name) {
 		return;
 	}
 
 	BOOK_FROM_OBJECT(book, object);
-
+#ifdef LIBXL_VERSION
+	if (new_excel) {
+		excel_book_object *obj = (excel_book_object*) zend_object_store_get_object(object TSRMLS_CC);
+		if ((book = xlCreateXMLBook())) {
+			obj->book = book;
+		} else {
+			RETURN_FALSE;
+		}
+		if (!name_len && !key_len) {
+			return;
+		}
+	}
+#endif
 	if (!name_len || !key_len) {
 		RETURN_FALSE;
 	}
@@ -1110,6 +1142,99 @@ EXCEL_METHOD(Book, addPictureFromString)
 	php_excel_add_picture(INTERNAL_FUNCTION_PARAM_PASSTHRU, 1);
 }
 /* }}} */
+
+#ifdef LIBXL_VERSION
+/* {{{ proto bool ExcelBook::rgbMode()
+   Returns whether the RGB mode is active. */
+EXCEL_METHOD(Book, rgbMode)
+{
+	BookHandle book;
+	zval *object = getThis();
+
+	if (ZEND_NUM_ARGS()) {
+		RETURN_FALSE;
+	}
+
+	BOOK_FROM_OBJECT(book, object);
+
+	RETURN_BOOL(xlBookRgbMode(book));
+}
+
+/* {{{ proto void ExcelBook::setRGBMode(bool mode)
+   Sets a RGB mode on or off. */
+EXCEL_METHOD(Book, setRGBMode)
+{
+	BookHandle book;
+	zval *object = getThis();
+	zend_bool val;
+
+	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "b", &val) == FAILURE) {
+		RETURN_FALSE;
+	}
+
+	BOOK_FROM_OBJECT(book, object);
+
+	xlBookSetRgbMode(book, val);
+}
+
+/* {{{ proto void ExcelBook::colorPack(int r, int g, int b)
+   Packs red, green and blue components in color value. Used for xlsx format only. */
+EXCEL_METHOD(Book, colorPack)
+{
+	BookHandle book;
+	zval *object = getThis();
+	long r, g, b;
+
+	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "lll", &r, &g, &b) == FAILURE) {
+		RETURN_FALSE;
+	}
+
+	if (r < 0 || r > 255) {
+		php_error_docref(NULL TSRMLS_CC, E_WARNING, "Invalid '%ld' value for color red", r);
+		RETURN_FALSE;
+	} else if (g < 0 || g > 255) {
+		php_error_docref(NULL TSRMLS_CC, E_WARNING, "Invalid '%ld' value for color green", g);
+		RETURN_FALSE;
+	} else if (b < 0 || b > 255) {
+		php_error_docref(NULL TSRMLS_CC, E_WARNING, "Invalid '%ld' value for color blue", b);
+		RETURN_FALSE;
+	}
+
+	BOOK_FROM_OBJECT(book, object);
+
+	RETURN_LONG(xlBookColorPack(book, (unsigned short)r, (unsigned short)g, (unsigned short)b));
+}
+/* }}} */
+
+/* {{{ proto array ExcelBook::colorUnpack(int color)
+   Unpacks color value to red, green and blue components. Used for xlsx format only. */
+EXCEL_METHOD(Book, colorUnpack)
+{
+	BookHandle book;
+	zval *object = getThis();
+	unsigned short r, g, b;
+	long color;
+
+	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "l", &color) == FAILURE) {
+		RETURN_FALSE;
+	}
+
+	if (color < 0) {
+		php_error_docref(NULL TSRMLS_CC, E_WARNING, "Invalid '%ld' value for color code", color);
+		RETURN_FALSE;
+	}
+
+	BOOK_FROM_OBJECT(book, object);
+
+	xlBookColorUnpack(book, (int)color, &r, &g, &b);
+
+	array_init(return_value);
+	add_assoc_long(return_value, "red", r);
+	add_assoc_long(return_value, "green", g);
+	add_assoc_long(return_value, "blue", b);
+}
+/* }}} */
+#endif
 
 /* {{{ proto int ExcelFont::size([int size])
 	Get or Set the font size  */
@@ -2999,6 +3124,29 @@ ZEND_BEGIN_ARG_INFO_EX(arginfo_Book_addPictureFromString, 0, 0, 1)
 	ZEND_ARG_INFO(0, data)
 ZEND_END_ARG_INFO()
 
+#ifdef LIBXL_VERSION
+PHP_EXCEL_ARGINFO
+ZEND_BEGIN_ARG_INFO_EX(arginfo_Book_rgbMode, 0, 0, 0)
+ZEND_END_ARG_INFO()
+
+PHP_EXCEL_ARGINFO
+ZEND_BEGIN_ARG_INFO_EX(arginfo_Book_setRGBMode, 0, 0, 1)
+	ZEND_ARG_INFO(0, mode)
+ZEND_END_ARG_INFO()
+
+PHP_EXCEL_ARGINFO
+ZEND_BEGIN_ARG_INFO_EX(arginfo_Book_colorPack, 0, 0, 3)
+	ZEND_ARG_INFO(0, r)
+	ZEND_ARG_INFO(0, g)
+	ZEND_ARG_INFO(0, b)
+ZEND_END_ARG_INFO()
+
+PHP_EXCEL_ARGINFO
+ZEND_BEGIN_ARG_INFO_EX(arginfo_Book_colorUnpack, 0, 0, 1)
+	ZEND_ARG_INFO(0, color)
+ZEND_END_ARG_INFO()
+#endif
+
 PHP_EXCEL_ARGINFO
 ZEND_BEGIN_ARG_INFO_EX(arginfo_Font_size, 0, 0, 0)
 	ZEND_ARG_INFO(0, size)
@@ -3613,6 +3761,12 @@ zend_function_entry excel_funcs_book[] = {
 	EXCEL_ME(Book, setLocale, arginfo_Book_setLocale, 0)
 	EXCEL_ME(Book, addPictureFromFile, arginfo_Book_addPictureFromFile, 0)
 	EXCEL_ME(Book, addPictureFromString, arginfo_Book_addPictureFromString, 0)
+#ifdef LIBXL_VERSION
+	EXCEL_ME(Book, rgbMode, arginfo_Book_rgbMode, 0)
+	EXCEL_ME(Book, setRGBMode, arginfo_Book_setRGBMode, 0)
+	EXCEL_ME(Book, colorPack, arginfo_Book_colorPack, 0)
+	EXCEL_ME(Book, colorUnpack, arginfo_Book_colorUnpack, 0)
+#endif
 	EXCEL_ME(Book, __construct, arginfo_Book___construct, 0)
 	{NULL, NULL, NULL}
 };

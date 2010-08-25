@@ -29,16 +29,15 @@ if test "$PHP_EXCEL" != "no"; then
   [
     PHP_ADD_INCLUDE($EXCEL_DIR/include)
     PHP_ADD_LIBRARY_WITH_PATH(xl, $EXCEL_DIR/$PHP_LIBDIR, EXCEL_SHARED_LIBADD)
-    AC_DEFINE(HAVE_EXCELLIB,1,[ ])
+    AC_DEFINE(HAVE_EXCELLIB, 1, [ ])
   ], [
-    AC_MSG_ERROR(excel module requires libxl >= 2.4.3)
+    AC_MSG_ERROR([excel module requires libxl >= 2.4.3])
   ], [
     -L$EXCEL_DIR/$PHP_LIBDIR
   ])
 
-  AC_MSG_CHECKING(for LibXL version)
-  if grep -c FILLPATTERN_HORSTRIPE $EXCEL_DIR/include/enum.h 2>&1 >/dev/null; then
-	AC_DEFINE([HAVE_LIBXL_243_PLUS], [1], [Have LibXL 2.4.3+])
+  if test `grep -c FILLPATTERN_HORSTRIPE $EXCEL_DIR/include/enum.h` -eq 1; then
+    AC_DEFINE(HAVE_LIBXL_243_PLUS,1,[ ])
   fi
 
   PHP_SUBST(EXCEL_SHARED_LIBADD)

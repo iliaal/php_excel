@@ -1,3 +1,13 @@
+[2010-??-??] - Version 0.8.6
+
+	* Added support for LibXL 3.0.0
+	* Added support for generating Excel 2007/2010 (xlsx files)
+		- the ExcelBook() method now has a constructor parameter that can be used to toggle xlsx mode
+	* Added Book methods for xlsx color
+		- colorUnpack, colorPack, setRGBMode, rgbMode
+
+[2010-08-11] - Version 0.8.5
+
 	* Fixed build on 5.4 (patch from Felipe Pena)
 
 [2010-08-01] - Version 0.8.2
