@@ -40,9 +40,14 @@ static long xlFormatBorderColor(FormatHandle f)
 }
 
 /* work-around for missing headers in LibXL */
+
+#ifndef LIBXL_VERSION
+
 #define xlSheetSetProtect xlSheetSetProtectA
 #ifndef HAVE_LIBXL_243_PLUS
 #define xlSheetProtect xlSheetProtectA
+#endif
+
 #endif
 
 #define PHP_EXCEL_DATE 1
