@@ -344,6 +344,7 @@ static wchar_t * _php_excel_to_wide(const char *string, size_t len, size_t *out_
 
 	*out_len = mbstowcs(buf, string, len);
 	if (*out_len == (size_t) -1) {
+		efree(buf);
 		return NULL;
 	}
 
