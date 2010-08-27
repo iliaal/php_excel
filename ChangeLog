@@ -5,6 +5,7 @@
 		- the ExcelBook() method now has a constructor parameter that can be used to toggle xlsx mode
 	* Added Book methods for xlsx color
 		- colorUnpack, colorPack, setRGBMode, rgbMode
+	* Added missing validation checks and fixed on-error memory leak
 
 [2010-08-11] - Version 0.8.5
 
