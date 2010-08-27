@@ -89,7 +89,7 @@ array(21) {
   &object(ExcelFormat)#22 (0) {
   }
 }
-string(46) "format is inaccessible (for internal use only)"
+bool(false)
 array(23) {
   [0]=>
   &object(ExcelFormat)#20 (0) {
