@@ -54,7 +54,7 @@ static long xlFormatBorderColor(FormatHandle f)
 #define PHP_EXCEL_FORMULA 2
 #define PHP_EXCEL_NUMERIC_STRING 3
 
-#define PHP_EXCEL_VERSION "0.8.6"
+#define PHP_EXCEL_VERSION "0.9.0"
 
 #ifdef COMPILE_DL_EXCEL
 ZEND_GET_MODULE(excel)
@@ -889,11 +889,19 @@ static int _php_excel_date_unpack(BookHandle book, double dt)
 {
 	struct tm tm = {0};
 #ifdef HAVE_LIBXL_243_PLUS
+#if LIBXL_VERSION >= 0x03010000
+	int msec;
+#else
 	unsigned short msec;
 #endif
+#endif
 
+#if LIBXL_VERSION >= 0x03010000
+	if (!xlBookDateUnpack(book, dt, (int *) &(tm.tm_year), (int *) &(tm.tm_mon), (int *) &(tm.tm_mday), (int *) &(tm.tm_hour), (int *) &(tm.tm_min), (int *) &(tm.tm_sec)
+#else
 	if (!xlBookDateUnpack(book, dt, (short unsigned int *) &(tm.tm_year), (short unsigned int *) &(tm.tm_mon), (short unsigned int *) &(tm.tm_mday),
 									(short unsigned int *) &(tm.tm_hour), (short unsigned int *) &(tm.tm_min), (short unsigned int *) &(tm.tm_sec)
+#endif
 #ifdef HAVE_LIBXL_243_PLUS
 									, &msec
 #endif
@@ -958,7 +966,11 @@ EXCEL_METHOD(Book, getDefaultFont)
 	BookHandle book;
 	zval *object = getThis();
 	const char *font;
+#if LIBXL_VERSION >= 0x03010000
+	int font_size;
+#else
 	unsigned short font_size;
+#endif
 
 	if (ZEND_NUM_ARGS()) {
 		RETURN_FALSE;
@@ -1219,7 +1231,11 @@ EXCEL_METHOD(Book, colorUnpack)
 {
 	BookHandle book;
 	zval *object = getThis();
+#if LIBXL_VERSION >= 0x03010000
+	int r, g, b;
+#else
 	unsigned short r, g, b;
+#endif
 	long color;
 
 	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "l", &color) == FAILURE) {
@@ -2452,7 +2468,11 @@ EXCEL_METHOD(Sheet, getMerge)
 		SheetHandle sheet;
 		zval *object = getThis();
 		long row, col;
+#if LIBXL_VERSION >= 0x03010000
+		int rowFirst, rowLast, colFirst, colLast;
+#else
 		unsigned short rowFirst, rowLast, colFirst, colLast;
+#endif
 
 		if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "ll", &row, &col) == FAILURE) {
 			RETURN_FALSE;
@@ -2987,6 +3007,194 @@ EXCEL_METHOD(Sheet, setName)
 
 	xlSheetSetName(sheet, val);
 }
+
+#if LIBXL_VERSION >= 0x03010000
+/* {{{ proto void ExcelSheet::setNamedRange(string name, int row, int col, int to_row, int to_col)
+	Create a named range */
+EXCEL_METHOD(Sheet, setNamedRange)
+{
+	SheetHandle sheet;
+	zval *object = getThis();
+	long row, col, to_row, to_col;
+	char *name;
+	int name_len;
+
+	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "sllll", &name, &name_len, &row, &col, &to_row, &to_col) == FAILURE) {
+		RETURN_FALSE;
+	}
+
+	if (!name_len) {
+		php_error_docref(NULL TSRMLS_CC, E_WARNING, "The range name cannot be empty.");
+		RETURN_FALSE;
+	}
+	if (row > to_row) {
+		php_error_docref(NULL TSRMLS_CC, E_WARNING, "The range row start cannot be greater than row end.");
+		RETURN_FALSE;
+	} else if (col > to_col) {
+		php_error_docref(NULL TSRMLS_CC, E_WARNING, "The range column start cannot be greater than column end.");
+		RETURN_FALSE;
+	}
+
+	SHEET_FROM_OBJECT(sheet, object);
+
+	RETURN_BOOL(xlSheetSetNamedRange(sheet, name, row, col, to_row, to_col));
+}
+
+/* {{{ proto void ExcelSheet::delNamedRange(string name)
+	Delete a named range. */
+EXCEL_METHOD(Sheet, delNamedRange)
+{
+	SheetHandle sheet;
+	zval *object = getThis();
+	char *val;
+	int val_len;
+
+	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "s", &val, &val_len) == FAILURE) {
+		RETURN_FALSE;
+	}
+
+	if (!val_len) {
+		php_error_docref(NULL TSRMLS_CC, E_WARNING, "The range name cannot be empty.");
+		RETURN_FALSE;
+	}
+
+	SHEET_FROM_OBJECT(sheet, object);
+
+	RETURN_BOOL(xlSheetDelNamedRange(sheet, val));
+}
+
+#define PHP_EXCEL_SHEET_PRINT_AREA(func_name)	\
+	{	\
+		SheetHandle sheet;	\
+		zval *object = getThis();	\
+		long s, e;	\
+		if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "ll", &s, &e) == FAILURE) {	\
+			RETURN_FALSE;	\
+		}	\
+		if (s > e) {	\
+			php_error_docref(NULL TSRMLS_CC, E_WARNING, "The range start is greater than the end.");	\
+			RETURN_FALSE;	\
+		}	\
+		SHEET_FROM_OBJECT(sheet, object);	\
+		xlSheet ## func_name (sheet, s, e);	\
+		RETURN_TRUE;	\
+	}
+
+/* {{{ proto void ExcelSheet::setPrintRepeatRows(int rowFirst, int rowLast)
+	Sets repeated rows on each page from rowFirst to rowLast. */
+EXCEL_METHOD(Sheet, setPrintRepeatRows)
+{
+	PHP_EXCEL_SHEET_PRINT_AREA(SetPrintRepeatRows)
+}
+
+/* {{{ proto void ExcelSheet::setPrintRepeatCols(int colFirst, int colLast)
+	Sets repeated columns on each page from colFirst to colLast. */
+EXCEL_METHOD(Sheet, setPrintRepeatCols)
+{
+	PHP_EXCEL_SHEET_PRINT_AREA(SetPrintRepeatCols)
+}
+
+/* {{{ proto void ExcelSheet::getGroupSummaryBelow()
+	Returns whether grouping rows summary is below. Returns 1 if summary is below and 0 if isn't. */
+EXCEL_METHOD(Sheet, getGroupSummaryBelow)
+{
+	SheetHandle sheet;
+	zval *object = getThis();
+
+	if (ZEND_NUM_ARGS()) {
+		RETURN_FALSE;
+	}
+
+	SHEET_FROM_OBJECT(sheet, object);
+	RETURN_BOOL(xlSheetGroupSummaryBelow(sheet));
+}
+
+/* {{{ proto void ExcelSheet::setGroupSummaryBelow(bool direction)
+	Sets a flag of grouping rows summary: 1 - below, 0 - above. */
+EXCEL_METHOD(Sheet, setGroupSummaryBelow)
+{
+	SheetHandle sheet;
+	zval *object = getThis();
+	zend_bool val;
+
+	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "b", &val) == FAILURE) {
+		RETURN_FALSE;
+	}
+
+	SHEET_FROM_OBJECT(sheet, object);
+	xlSheetSetGroupSummaryBelow(sheet, val);
+
+	RETURN_TRUE;
+}
+
+/* {{{ proto void ExcelSheet::getGroupSummaryRight()
+	Returns whether grouping columns summary is right. Returns 1 if summary is right and 0 if isn't. */
+EXCEL_METHOD(Sheet, getGroupSummaryRight)
+{
+	SheetHandle sheet;
+	zval *object = getThis();
+
+	if (ZEND_NUM_ARGS()) {
+		RETURN_FALSE;
+	}
+
+	SHEET_FROM_OBJECT(sheet, object);
+	RETURN_BOOL(xlSheetGroupSummaryRight(sheet));
+}
+
+/* {{{ proto void ExcelSheet::setGroupSummaryRight(bool direction)
+	Sets a flag of grouping columns summary: 1 - right, 0 - left. */
+EXCEL_METHOD(Sheet, setGroupSummaryRight)
+{
+	SheetHandle sheet;
+	zval *object = getThis();
+	zend_bool val;
+
+	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "b", &val) == FAILURE) {
+		RETURN_FALSE;
+	}
+
+	SHEET_FROM_OBJECT(sheet, object);
+	xlSheetSetGroupSummaryRight(sheet, val);
+
+	RETURN_TRUE;
+}
+
+/* {{{ proto bool ExcelSheet::clearPrintRepeats()
+	Clears repeated rows and columns on each page. */
+EXCEL_METHOD(Sheet, clearPrintRepeats)
+{
+	zval *object = getThis();
+	SheetHandle sheet;
+
+	if (ZEND_NUM_ARGS()) {
+		RETURN_FALSE;
+	}
+
+	SHEET_FROM_OBJECT(sheet, object);
+	xlSheetClearPrintRepeats(sheet);
+
+	RETURN_TRUE;
+}
+
+/* {{{ proto bool ExcelSheet::clearPrintArea()
+	Clears the print area. */
+EXCEL_METHOD(Sheet, clearPrintArea)
+{
+	zval *object = getThis();
+	SheetHandle sheet;
+
+	if (ZEND_NUM_ARGS()) {
+		RETURN_FALSE;
+	}
+
+	SHEET_FROM_OBJECT(sheet, object);
+	xlSheetClearPrintArea(sheet);
+
+	RETURN_TRUE;
+}
+
+#endif
 
 /* {{{ proto bool ExcelSheet::protect()
 	Returns whether sheet is protected: 1 - yes, 0 - no. */
@@ -3738,6 +3946,61 @@ ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_setProtect, 0, 0, 1)
 	ZEND_ARG_INFO(0, value)
 ZEND_END_ARG_INFO()
 
+#if LIBXL_VERSION >= 0x03010000
+PHP_EXCEL_ARGINFO
+ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_setNamedRange, 0, 0, 5)
+	ZEND_ARG_INFO(0, name)
+	ZEND_ARG_INFO(0, row)
+	ZEND_ARG_INFO(0, col)
+	ZEND_ARG_INFO(0, to_row)
+	ZEND_ARG_INFO(0, to_col)
+ZEND_END_ARG_INFO()
+
+PHP_EXCEL_ARGINFO
+ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_delNamedRange, 0, 0, 1)
+	ZEND_ARG_INFO(0, name)
+ZEND_END_ARG_INFO()
+
+PHP_EXCEL_ARGINFO
+ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_setPrintRepeatRows, 0, 0, 2)
+	ZEND_ARG_INFO(0, row_start)
+	ZEND_ARG_INFO(0, row_end)
+ZEND_END_ARG_INFO()
+
+PHP_EXCEL_ARGINFO
+ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_setPrintRepeatCols, 0, 0, 2)
+	ZEND_ARG_INFO(0, col_start)
+	ZEND_ARG_INFO(0, col_end)
+ZEND_END_ARG_INFO()
+
+PHP_EXCEL_ARGINFO
+ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_clearPrintRepeats, 0, 0, 0)
+ZEND_END_ARG_INFO()
+
+PHP_EXCEL_ARGINFO
+ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_clearPrintArea, 0, 0, 0)
+ZEND_END_ARG_INFO()
+
+PHP_EXCEL_ARGINFO
+ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_getGroupSummaryRight, 0, 0, 0)
+ZEND_END_ARG_INFO()
+
+PHP_EXCEL_ARGINFO
+ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_getGroupSummaryBelow, 0, 0, 0)
+ZEND_END_ARG_INFO()
+
+PHP_EXCEL_ARGINFO
+ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_setGroupSummaryBelow, 0, 0, 1)
+	ZEND_ARG_INFO(0, direction)
+ZEND_END_ARG_INFO()
+
+PHP_EXCEL_ARGINFO
+ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_setGroupSummaryRight, 0, 0, 1)
+	ZEND_ARG_INFO(0, direction)
+ZEND_END_ARG_INFO()
+
+#endif
+
 #define EXCEL_ME(class_name, function_name, arg_info, flags) \
     PHP_ME( Excel ## class_name, function_name, arg_info, flags)
 
@@ -3854,6 +4117,18 @@ zend_function_entry excel_funcs_sheet[] = {
 	EXCEL_ME(Sheet, setName, arginfo_Sheet_setName, 0)
 	EXCEL_ME(Sheet, protect, arginfo_Sheet_protect, 0)
 	EXCEL_ME(Sheet, setProtect, arginfo_Sheet_setProtect, 0)
+#if LIBXL_VERSION >= 0x03010000
+	EXCEL_ME(Sheet, setNamedRange, arginfo_Sheet_setNamedRange, 0)
+	EXCEL_ME(Sheet, delNamedRange, arginfo_Sheet_delNamedRange, 0)
+	EXCEL_ME(Sheet, setPrintRepeatRows, arginfo_Sheet_setPrintRepeatRows, 0)
+	EXCEL_ME(Sheet, setPrintRepeatCols, arginfo_Sheet_setPrintRepeatCols, 0)
+	EXCEL_ME(Sheet, clearPrintRepeats, arginfo_Sheet_clearPrintRepeats, 0)
+	EXCEL_ME(Sheet, clearPrintArea, arginfo_Sheet_clearPrintArea, 0)
+	EXCEL_ME(Sheet, getGroupSummaryRight, arginfo_Sheet_getGroupSummaryRight, 0)
+	EXCEL_ME(Sheet, setGroupSummaryBelow, arginfo_Sheet_setGroupSummaryBelow, 0)
+	EXCEL_ME(Sheet, getGroupSummaryBelow, arginfo_Sheet_getGroupSummaryBelow, 0)
+	EXCEL_ME(Sheet, setGroupSummaryRight, arginfo_Sheet_setGroupSummaryRight, 0)
+#endif
    {NULL, NULL, NULL}
 };
 
