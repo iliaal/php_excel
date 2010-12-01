@@ -60,6 +60,15 @@ static long xlFormatBorderColor(FormatHandle f)
 ZEND_GET_MODULE(excel)
 #endif
 
+ZEND_DECLARE_MODULE_GLOBALS(excel)
+
+static PHP_GINIT_FUNCTION(excel);
+
+PHP_INI_BEGIN()
+	STD_PHP_INI_ENTRY("excel.license_name", NULL, PHP_INI_ALL, OnUpdateString, ini_license_name, zend_excel_globals, excel_globals)
+	STD_PHP_INI_ENTRY("excel.license_key", NULL, PHP_INI_ALL, OnUpdateString, ini_license_key, zend_excel_globals, excel_globals)
+PHP_INI_END()
+
 /* {{{ OO init/structure stuff */
 #define REGISTER_EXCEL_CLASS(name, c_name, clone) \
 	{ \
@@ -1027,7 +1036,7 @@ EXCEL_METHOD(Book, setLocale)
 }
 /* }}} */
 
-/* {{{ proto ExcelBook ExcelBook::__construct(string license_name, string license_key [, bool excel_2007 = false])
+/* {{{ proto ExcelBook ExcelBook::__construct([string license_name, string license_key [, bool excel_2007 = false]])
     Book Contructor. */
 EXCEL_METHOD(Book, __construct)
 {
@@ -1049,7 +1058,14 @@ EXCEL_METHOD(Book, __construct)
 	}
 #endif
 	if (!name) {
-		return;
+		if (excel_globals.ini_license_name && excel_globals.ini_license_key) {
+			name = excel_globals.ini_license_name;
+			name_len = strlen(excel_globals.ini_license_name);
+			key = excel_globals.ini_license_key;
+			key_len = strlen(excel_globals.ini_license_key);
+		} else {
+			return;
+		}
 	}
 
 	BOOK_FROM_OBJECT(book, object);
@@ -4180,6 +4196,8 @@ zend_function_entry excel_funcs_format[] = {
  */
 PHP_MINIT_FUNCTION(excel)
 {
+	REGISTER_INI_ENTRIES();
+
 	REGISTER_EXCEL_CLASS(Book,		book,	NULL);
 	REGISTER_EXCEL_CLASS(Sheet,		sheet,	NULL);
 	REGISTER_EXCEL_CLASS(Format,	format,	excel_format_object_clone);
@@ -4425,6 +4443,14 @@ PHP_MINFO_FUNCTION(excel)
 }
 /* }}} */
 
+/* {{{ PHP_GINIT_FUNCTION
+ */
+static PHP_GINIT_FUNCTION(excel)
+{
+	memset(excel_globals, 0, sizeof(*excel_globals));
+}
+/* }}} */
+
 /* {{{ excel_functions[]
  */
 zend_function_entry excel_functions[] = {
@@ -4444,7 +4470,11 @@ zend_module_entry excel_module_entry = {
 	NULL,
 	PHP_MINFO(excel),
 	PHP_EXCEL_VERSION,
-	STANDARD_MODULE_PROPERTIES
+	PHP_MODULE_GLOBALS(excel),
+	PHP_GINIT(excel),
+	NULL,
+	NULL,
+	STANDARD_MODULE_PROPERTIES_EX
 };
 /* }}} */
 

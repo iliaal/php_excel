@@ -22,6 +22,12 @@
 extern zend_module_entry excel_module_entry;
 #define phpext_excel_ptr &excel_module_entry
 
+ZEND_BEGIN_MODULE_GLOBALS(excel)
+	char *ini_license_name;
+	char *ini_license_key;
+ZEND_END_MODULE_GLOBALS(excel)
+
+
 #ifdef PHP_WIN32
 #define PHP_EXCEL_API __declspec(dllexport)
 #else
