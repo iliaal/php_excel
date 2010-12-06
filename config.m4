@@ -1,8 +1,8 @@
 dnl $Id$
 dnl config.m4 for extension excel
 
-PHP_ARG_ENABLE(excel, whether to enable excel support,
-[  --enable-excel          Enable excel support])
+PHP_ARG_WITH(excel, whether to enable excel support,
+[  --with-excel          Enable excel support])
 
 PHP_ARG_WITH(libxl-incdir, C include dir for libxl,
 [  --with-libxl-incdir[=DIR] Include path for the C headers of libxl])
