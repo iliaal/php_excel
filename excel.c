@@ -1064,7 +1064,9 @@ EXCEL_METHOD(Book, __construct)
 			key = excel_globals.ini_license_key;
 			key_len = strlen(excel_globals.ini_license_key);
 		} else {
+#ifndef LIBXL_VERSION
 			return;
+#endif
 		}
 	}
 
