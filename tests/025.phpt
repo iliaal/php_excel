@@ -37,10 +37,10 @@ date.timezone=America/Toronto
 
 	echo "OK\n";
 ?>
---EXPECT--
-int(0)
+--EXPECTF--
+int(%d)
 bool(false)
-int(1)
+int(%d)
 bool(false)
 bool(false)
 bool(false)
