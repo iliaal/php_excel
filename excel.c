@@ -1915,15 +1915,13 @@ static zend_bool php_excel_read_cell(unsigned short row, unsigned short col, zva
 			ZVAL_EMPTY_STRING(val);
 			return 1;
 
-		case CELLTYPE_BLANK: { /* for reading a blank cell, libXL requires the format not to be NULL */
-			FormatHandle f = format ? *format : NULL;
-			if (!xlSheetReadBlank(sheet, row, col, &f)) {
+		case CELLTYPE_BLANK:
+			if (!xlSheetReadBlank(sheet, row, col, format)) {
 				return 0;
 			} else {
 				ZVAL_NULL(val);
 				return 1;
 			}
-		}
 
 		case CELLTYPE_NUMBER: {
 			double d = xlSheetReadNum(sheet, row, col, format);
@@ -2011,9 +2009,10 @@ EXCEL_METHOD(Sheet, readRow)
 	array_init(return_value);
 	while (lc < col_end) {
 		zval *value;
+		FormatHandle format = NULL;
 
 		MAKE_STD_ZVAL(value);
-		if (!php_excel_read_cell(row, lc, value, sheet, book, NULL)) {
+		if (!php_excel_read_cell(row, lc, value, sheet, book, &format)) {
 			zval_ptr_dtor(&value);
 			zval_dtor(return_value);
 			RETURN_FALSE;
@@ -2069,9 +2068,10 @@ EXCEL_METHOD(Sheet, readCol)
 	array_init(return_value);
 	while (lc < row_end) {
 		zval *value;
+		FormatHandle format = NULL;
 
 		MAKE_STD_ZVAL(value);
-		if (!php_excel_read_cell(lc, col, value, sheet, book, NULL)) {
+		if (!php_excel_read_cell(lc, col, value, sheet, book, &format)) {
 			zval_ptr_dtor(&value);
 			zval_dtor(return_value);
 			RETURN_FALSE;
