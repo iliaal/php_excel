@@ -525,7 +525,7 @@ EXCEL_METHOD(Book, deleteSheet)
 /* }}} */
 
 /* {{{ proto int ExcelBook::activeSheet([int sheet])
-   Get or Set an active excel sheet. */
+   Get or set an active excel sheet. */
 EXCEL_METHOD(Book, activeSheet)
 {
 	BookHandle book;
@@ -998,7 +998,7 @@ EXCEL_METHOD(Book, getDefaultFont)
 /* }}} */
 
 /* {{{ proto void ExcelBook::setDefaultFont(string font, int font_size)
-    Set the default font size. */
+    Set the default font, and size. */
 EXCEL_METHOD(Book, setDefaultFont)
 {
 	BookHandle book;
@@ -1017,7 +1017,7 @@ EXCEL_METHOD(Book, setDefaultFont)
 }
 /* }}} */
 
-/* {{{ proto void ExcelBook::setLocale()
+/* {{{ proto void ExcelBook::setLocale(string locale)
     Set the locale. */
 EXCEL_METHOD(Book, setLocale)
 {
@@ -1196,6 +1196,7 @@ EXCEL_METHOD(Book, rgbMode)
 
 	RETURN_BOOL(xlBookRgbMode(book));
 }
+/* }}} */
 
 /* {{{ proto void ExcelBook::setRGBMode(bool mode)
    Sets a RGB mode on or off. */
@@ -1213,6 +1214,7 @@ EXCEL_METHOD(Book, setRGBMode)
 
 	xlBookSetRgbMode(book, val);
 }
+/* }}} */
 
 /* {{{ proto int ExcelBook::colorPack(int r, int g, int b)
    Packs red, green and blue components in color value. Used for xlsx format only. */
@@ -1278,7 +1280,7 @@ EXCEL_METHOD(Book, colorUnpack)
 #endif
 
 /* {{{ proto int ExcelFont::size([int size])
-	Get or Set the font size  */
+	Get or set the font size  */
 EXCEL_METHOD(Font, size)
 {
 	zval *object = getThis();
@@ -1299,8 +1301,8 @@ EXCEL_METHOD(Font, size)
 }
 /* }}} */
 
-/* {{{ proto bool ExcelFont::italics([bool size])
-	Get or Set the font size  */
+/* {{{ proto bool ExcelFont::italics([bool italics])
+	Get or set the if italics are enabled  */
 EXCEL_METHOD(Font, italics)
 {
 	zval *object = getThis();
@@ -1322,7 +1324,7 @@ EXCEL_METHOD(Font, italics)
 /* }}} */
 
 /* {{{ proto bool ExcelFont::strike([bool strike])
-	Get or Set the font strike-through  */
+	Get or set the font strike-through  */
 EXCEL_METHOD(Font, strike)
 {
 	zval *object = getThis();
@@ -1344,7 +1346,7 @@ EXCEL_METHOD(Font, strike)
 /* }}} */
 
 /* {{{ proto bool ExcelFont::bold([bool bold])
-	Get or Set the font bold  */
+	Get or set the font bold  */
 EXCEL_METHOD(Font, bold)
 {
 	zval *object = getThis();
@@ -1366,7 +1368,7 @@ EXCEL_METHOD(Font, bold)
 /* }}} */
 
 /* {{{ proto int ExcelFont::color([int color])
-	Get or Set the font color  */
+	Get or set the font color  */
 EXCEL_METHOD(Font, color)
 {
 	zval *object = getThis();
@@ -1388,7 +1390,7 @@ EXCEL_METHOD(Font, color)
 /* }}} */
 
 /* {{{ proto int ExcelFont::mode([int mode])
-	Get or Set the font mode  */
+	Get or set the font mode  */
 EXCEL_METHOD(Font, mode)
 {
 	zval *object = getThis();
@@ -1410,7 +1412,7 @@ EXCEL_METHOD(Font, mode)
 /* }}} */
 
 /* {{{ proto int ExcelFont::underline([int underline_style])
-	Get or Set the font underline style  */
+	Get or set the font underline style  */
 EXCEL_METHOD(Font, underline)
 {
 	zval *object = getThis();
@@ -1432,7 +1434,7 @@ EXCEL_METHOD(Font, underline)
 /* }}} */
 
 /* {{{ proto string ExcelFont::name([string name])
-	Get or Set the font name  */
+	Get or set the font name  */
 EXCEL_METHOD(Font, name)
 {
 	zval *object = getThis();
@@ -1611,7 +1613,7 @@ EXCEL_METHOD(Format, getFont)
 	}
 
 /* {{{ proto int ExcelFormat::numberFormat([int format])
-	Get or Set the cell format  */
+	Get or set the cell number format  */
 EXCEL_METHOD(Format, numberFormat)
 {
 	PHP_EXCEL_LONG_FORMAT_OPTION(NumFormat, 0);
@@ -1619,7 +1621,7 @@ EXCEL_METHOD(Format, numberFormat)
 /* }}} */
 
 /* {{{ proto int ExcelFormat::horizontalAlign([int align_mode])
-	Get or Set the cell horizontal alignment  */
+	Get or set the cell horizontal alignment  */
 EXCEL_METHOD(Format, horizontalAlign)
 {
 	PHP_EXCEL_LONG_FORMAT_OPTION(AlignH, 0);
@@ -1627,7 +1629,7 @@ EXCEL_METHOD(Format, horizontalAlign)
 /* }}} */
 
 /* {{{ proto int ExcelFormat::verticalAlign([int align_mode])
-	Get or Set the cell vertical alignment  */
+	Get or set the cell vertical alignment  */
 EXCEL_METHOD(Format, verticalAlign)
 {
 	PHP_EXCEL_LONG_FORMAT_OPTION(AlignV, 0);
@@ -1635,7 +1637,7 @@ EXCEL_METHOD(Format, verticalAlign)
 /* }}} */
 
 /* {{{ proto bool ExcelFormat::wrap([bool wrap])
-	Get or Set the cell wrapping  */
+	Get or set the cell wrapping  */
 EXCEL_METHOD(Format, wrap)
 {
 	PHP_EXCEL_BOOL_FORMAT_OPTION(Wrap);
@@ -1643,7 +1645,7 @@ EXCEL_METHOD(Format, wrap)
 /* }}} */
 
 /* {{{ proto int ExcelFormat::rotate([int angle])
-	Get or Set the cell data rotation  */
+	Get or set the cell data rotation  */
 EXCEL_METHOD(Format, rotate)
 {
 	FormatHandle format;
@@ -1669,7 +1671,7 @@ EXCEL_METHOD(Format, rotate)
 /* }}} */
 
 /* {{{ proto int ExcelFormat::indent([int indent])
-	Get or Set the cell text indentation level  */
+	Get or set the cell text indentation level  */
 EXCEL_METHOD(Format, indent)
 {
 	FormatHandle format;
@@ -1695,7 +1697,7 @@ EXCEL_METHOD(Format, indent)
 /* }}} */
 
 /* {{{ proto bool ExcelFormat::shrinkToFit([bool shrink])
-	Get or Set the whether the cell is shrink-to-fit */
+	Get or set whether the cell is shrink-to-fit */
 EXCEL_METHOD(Format, shrinkToFit)
 {
 	PHP_EXCEL_BOOL_FORMAT_OPTION(ShrinkToFit);
@@ -1703,7 +1705,7 @@ EXCEL_METHOD(Format, shrinkToFit)
 /* }}} */
 
 /* {{{ proto int ExcelFormat::borderStyle([int style])
-	Get or Set the cell border */
+	Get or set the cell border */
 EXCEL_METHOD(Format, borderStyle)
 {
 	PHP_EXCEL_LONG_FORMAT_OPTION(Border, 1);
@@ -1711,7 +1713,7 @@ EXCEL_METHOD(Format, borderStyle)
 /* }}} */
 
 /* {{{ proto int ExcelFormat::borderColor([int color])
-	Get or Set the cell color */
+	Get or set the cell color */
 EXCEL_METHOD(Format, borderColor)
 {
 	PHP_EXCEL_LONG_FORMAT_OPTION(BorderColor, 1);
@@ -1719,7 +1721,7 @@ EXCEL_METHOD(Format, borderColor)
 /* }}} */
 
 /* {{{ proto int ExcelFormat::borderLeftStyle([int style])
-	Get or Set the cell left border */
+	Get or set the cell left border */
 EXCEL_METHOD(Format, borderLeftStyle)
 {
 	PHP_EXCEL_LONG_FORMAT_OPTION(BorderLeft, 0);
@@ -1727,7 +1729,7 @@ EXCEL_METHOD(Format, borderLeftStyle)
 /* }}} */
 
 /* {{{ proto int ExcelFormat::borderLeftColor([int color])
-	Get or Set the cell left color */
+	Get or set the cell left color */
 EXCEL_METHOD(Format, borderLeftColor)
 {
 	PHP_EXCEL_LONG_FORMAT_OPTION(BorderLeftColor, 0);
@@ -1735,7 +1737,7 @@ EXCEL_METHOD(Format, borderLeftColor)
 /* }}} */
 
 /* {{{ proto int ExcelFormat::borderRightStyle([int style])
-	Get or Set the cell right border */
+	Get or set the cell right border */
 EXCEL_METHOD(Format, borderRightStyle)
 {
 	PHP_EXCEL_LONG_FORMAT_OPTION(BorderRight, 0);
@@ -1743,7 +1745,7 @@ EXCEL_METHOD(Format, borderRightStyle)
 /* }}} */
 
 /* {{{ proto int ExcelFormat::borderRightColor([int color])
-	Get or Set the cell right color */
+	Get or set the cell right color */
 EXCEL_METHOD(Format, borderRightColor)
 {
 	PHP_EXCEL_LONG_FORMAT_OPTION(BorderRightColor, 0);
@@ -1751,7 +1753,7 @@ EXCEL_METHOD(Format, borderRightColor)
 /* }}} */
 
 /* {{{ proto int ExcelFormat::borderTopStyle([int style])
-	Get or Set the cell top border */
+	Get or set the cell top border */
 EXCEL_METHOD(Format, borderTopStyle)
 {
 	PHP_EXCEL_LONG_FORMAT_OPTION(BorderTop, 0);
@@ -1759,7 +1761,7 @@ EXCEL_METHOD(Format, borderTopStyle)
 /* }}} */
 
 /* {{{ proto int ExcelFormat::borderTopColor([int color])
-	Get or Set the cell top color */
+	Get or set the cell top color */
 EXCEL_METHOD(Format, borderTopColor)
 {
 	PHP_EXCEL_LONG_FORMAT_OPTION(BorderTopColor, 0);
@@ -1767,7 +1769,7 @@ EXCEL_METHOD(Format, borderTopColor)
 /* }}} */
 
 /* {{{ proto int ExcelFormat::borderBottomStyle([int style])
-	Get or Set the cell bottom border */
+	Get or set the cell bottom border */
 EXCEL_METHOD(Format, borderBottomStyle)
 {
 	PHP_EXCEL_LONG_FORMAT_OPTION(BorderBottom, 0);
@@ -1775,7 +1777,7 @@ EXCEL_METHOD(Format, borderBottomStyle)
 /* }}} */
 
 /* {{{ proto int ExcelFormat::borderBottomColor([int color])
-	Get or Set the cell bottom color */
+	Get or set the cell bottom color */
 EXCEL_METHOD(Format, borderBottomColor)
 {
 	PHP_EXCEL_LONG_FORMAT_OPTION(BorderBottomColor, 0);
@@ -1783,7 +1785,7 @@ EXCEL_METHOD(Format, borderBottomColor)
 /* }}} */
 
 /* {{{ proto int ExcelFormat::borderDiagonalStyle([int style])
-	Get or Set the cell diagonal border */
+	Get or set the cell diagonal border */
 EXCEL_METHOD(Format, borderDiagonalStyle)
 {
 	PHP_EXCEL_LONG_FORMAT_OPTION(BorderDiagonal, 0);
@@ -1791,15 +1793,15 @@ EXCEL_METHOD(Format, borderDiagonalStyle)
 /* }}} */
 
 /* {{{ proto int ExcelFormat::borderDiagonalColor([int color])
-	Get or Set the cell diagonal color */
+	Get or set the cell diagonal color */
 EXCEL_METHOD(Format, borderDiagonalColor)
 {
 	PHP_EXCEL_LONG_FORMAT_OPTION(BorderDiagonalColor, 0);
 }
 /* }}} */
 
-/* {{{ proto int ExcelFormat::fillPattern([bool patern])
-	Get or Set the cell fill pattern */
+/* {{{ proto int ExcelFormat::fillPattern([int patern])
+	Get or set the cell fill pattern */
 EXCEL_METHOD(Format, fillPattern)
 {
 	PHP_EXCEL_LONG_FORMAT_OPTION(FillPattern, 0);
@@ -1807,7 +1809,7 @@ EXCEL_METHOD(Format, fillPattern)
 /* }}} */
 
 /* {{{ proto int ExcelFormat::patternForegroundColor([int color])
-	Get or Set the cell pattern foreground color color */
+	Get or set the cell pattern foreground color */
 EXCEL_METHOD(Format, patternForegroundColor)
 {
 	PHP_EXCEL_LONG_FORMAT_OPTION(PatternForegroundColor, 0);
@@ -1815,7 +1817,7 @@ EXCEL_METHOD(Format, patternForegroundColor)
 /* }}} */
 
 /* {{{ proto int ExcelFormat::patternBackgroundColor([int color])
-	Get or Set the cell pattern background color color */
+	Get or set the cell pattern background color */
 EXCEL_METHOD(Format, patternBackgroundColor)
 {
 	PHP_EXCEL_LONG_FORMAT_OPTION(PatternBackgroundColor, 0);
@@ -1823,7 +1825,7 @@ EXCEL_METHOD(Format, patternBackgroundColor)
 /* }}} */
 
 /* {{{ proto bool ExcelFormat::locked([bool locked])
-	Get or Set the whether the cell is locked */
+	Get or set whether the cell is locked */
 EXCEL_METHOD(Format, locked)
 {
 	PHP_EXCEL_BOOL_FORMAT_OPTION(Locked);
@@ -1831,7 +1833,7 @@ EXCEL_METHOD(Format, locked)
 /* }}} */
 
 /* {{{ proto bool ExcelFormat::hidden([bool hidden])
-	Get or Set the whether the cell is hidden */
+	Get or set whether the cell is hidden */
 EXCEL_METHOD(Format, hidden)
 {
 	PHP_EXCEL_BOOL_FORMAT_OPTION(Hidden);
@@ -2191,7 +2193,7 @@ EXCEL_METHOD(Sheet, write)
 }
 /* }}} */
 
-/* {{{ proto bool ExcelSheet::writeRow(int row, mixed data [, int start_column [, ExcelFormat format]])
+/* {{{ proto bool ExcelSheet::writeRow(int row, array data [, int start_column [, ExcelFormat format]])
 	Write an array of values into a row */
 EXCEL_METHOD(Sheet, writeRow)
 {
@@ -2240,7 +2242,7 @@ EXCEL_METHOD(Sheet, writeRow)
 }
 /* }}} */
 
-/* {{{ proto bool ExcelSheet::writeCol(int row, mixed data [, int start_row [, ExcelFormat format]])
+/* {{{ proto bool ExcelSheet::writeCol(int row, array data [, int start_row [, ExcelFormat format]])
 	Write an array of values into a column */
 EXCEL_METHOD(Sheet, writeCol)
 {
@@ -2307,6 +2309,7 @@ EXCEL_METHOD(Sheet, isFormula)
 {
 	PHP_EXCEL_SHEET_GET_BOOL_STATE(IsFormula)
 }
+/* }}} */
 
 /* {{{ proto bool ExcelSheet::isDate(int row, int column)
 	Determine if the cell contains a date */
@@ -2314,6 +2317,7 @@ EXCEL_METHOD(Sheet, isDate)
 {
 	PHP_EXCEL_SHEET_GET_BOOL_STATE(IsDate)
 }
+/* }}} */
 
 /* {{{ proto bool ExcelSheet::insertRow(int row_first, int row_last)
 	Inserts rows from rowFirst to rowLast */
@@ -2321,6 +2325,7 @@ EXCEL_METHOD(Sheet, insertRow)
 {
 	PHP_EXCEL_SHEET_GET_BOOL_STATE(InsertRow)
 }
+/* }}} */
 
 /* {{{ proto bool ExcelSheet::insertCol(int col_first, int col_last)
 	Inserts columns from colFirst to colLast */
@@ -2328,6 +2333,7 @@ EXCEL_METHOD(Sheet, insertCol)
 {
 	PHP_EXCEL_SHEET_GET_BOOL_STATE(InsertCol)
 }
+/* }}} */
 
 /* {{{ proto bool ExcelSheet::removeRow(int row_first, int row_last)
 	Removes rows from rowFirst to rowLast */
@@ -2335,6 +2341,7 @@ EXCEL_METHOD(Sheet, removeRow)
 {
 	PHP_EXCEL_SHEET_GET_BOOL_STATE(RemoveRow)
 }
+/* }}} */
 
 /* {{{ proto bool ExcelSheet::removeCol(int col_first, int col_last)
 	Removes columns from colFirst to colLast */
@@ -2342,6 +2349,7 @@ EXCEL_METHOD(Sheet, removeCol)
 {
 	PHP_EXCEL_SHEET_GET_BOOL_STATE(RemoveCol)
 }
+/* }}} */
 
 #define PHP_EXCEL_SHEET_GET_DOUBLE_STATE(func_name)	\
 	{	\
@@ -2361,6 +2369,7 @@ EXCEL_METHOD(Sheet, colWidth)
 {
 	PHP_EXCEL_SHEET_GET_DOUBLE_STATE(ColWidth)
 }
+/* }}} */
 
 /* {{{ proto double ExcelSheet::rowHeight(int row)
 	Returns the cell height */
@@ -2368,6 +2377,7 @@ EXCEL_METHOD(Sheet, rowHeight)
 {
 	PHP_EXCEL_SHEET_GET_DOUBLE_STATE(RowHeight)
 }
+/* }}} */
 
 /* {{{ proto string ExcelSheet::readComment(int row, int column)
 	Read comment from a cell */
@@ -2390,6 +2400,7 @@ EXCEL_METHOD(Sheet, readComment)
 		}
 		RETURN_STRING((char *)s, 1);
 }
+/* }}} */
 
 /* {{{ proto void ExcelSheet::writeComment(int row, int column, string value, string author, int width, int height)
 	Write comment to a cell */
@@ -2409,6 +2420,7 @@ EXCEL_METHOD(Sheet, writeComment)
 
 		xlSheetWriteComment(sheet, r, c, val, auth, w, h);
 }
+/* }}} */
 
 /* {{{ proto void ExcelSheet::setColWidth(int column_start, int column_end, double width [, bool hidden [, ExcelFormat format]])
 	Set width of cells within column(s) */
@@ -2445,6 +2457,7 @@ EXCEL_METHOD(Sheet, setColWidth)
 
 		RETURN_BOOL(xlSheetSetCol(sheet, s, e, width, f ? format : 0, h));
 }
+/* }}} */
 
 /* {{{ proto bool ExcelSheet::setRowHeight(int row, double height [, ExcelFormat format [, bool hidden]])
 	Set row height */
@@ -2478,6 +2491,7 @@ EXCEL_METHOD(Sheet, setRowHeight)
 
 		RETURN_BOOL(xlSheetSetRow(sheet, row, height, f ? format : 0, h));
 }
+/* }}} */
 
 /* {{{ proto array ExcelSheet::getMerge(int row, int column)
 	Get cell merge range */
@@ -2508,6 +2522,7 @@ EXCEL_METHOD(Sheet, getMerge)
 		add_assoc_long(return_value, "col_first", colFirst);
 		add_assoc_long(return_value, "col_last", colLast);
 }
+/* }}} */
 
 /* {{{ proto bool ExcelSheet::setMerge(int row_start, int row_end, int col_start, int col_end)
 	Set cell merge range */
@@ -2525,6 +2540,7 @@ EXCEL_METHOD(Sheet, setMerge)
 
 	RETURN_BOOL(xlSheetSetMerge(sheet, row_s, row_e, col_s, col_e));
 }
+/* }}} */
 
 /* {{{ proto bool ExcelSheet::deleteMerge(int row, int column)
 	Delete cell merge */
@@ -2542,6 +2558,7 @@ EXCEL_METHOD(Sheet, deleteMerge)
 
 	RETURN_BOOL(xlSheetDelMerge(sheet, row, col));
 }
+/* }}} */
 
 /* {{{ proto void ExcelSheet::addPictureScaled(int row, int column, int pic_id, double scale)
 	Insert picture into a cell with a set scale */
@@ -2560,9 +2577,10 @@ EXCEL_METHOD(Sheet, addPictureScaled)
 
 	xlSheetSetPicture(sheet, row, col, pic_id, scale);
 }
+/* }}} */
 
 /* {{{ proto void ExcelSheet::addPictureDim(int row, int column, int pic_id, int width, int height)
-	Insert picture into a cell with a set scale */
+	Insert picture into a cell with a given dimensions */
 EXCEL_METHOD(Sheet, addPictureDim)
 {
 	SheetHandle sheet;
@@ -2577,6 +2595,7 @@ EXCEL_METHOD(Sheet, addPictureDim)
 
 	xlSheetSetPicture2(sheet, row, col, pic_id, w, h);
 }
+/* }}} */
 
 #define PHP_EXCEL_SHEET_SET_BREAK(func_name)	\
 	{	\
@@ -2597,6 +2616,7 @@ EXCEL_METHOD(Sheet, horPageBreak)
 {
 	PHP_EXCEL_SHEET_SET_BREAK(SetHorPageBreak)
 }
+/* }}} */
 
 /* {{{ proto bool ExcelSheet::verPageBreak(int col, bool break)
 	Set/Remove vertical page break */
@@ -2604,6 +2624,7 @@ EXCEL_METHOD(Sheet, verPageBreak)
 {
 	PHP_EXCEL_SHEET_SET_BREAK(SetVerPageBreak)
 }
+/* }}} */
 
 /* {{{ proto void ExcelSheet::splitSheet(int row, int column)
 	Split sheet at indicated position */
@@ -2621,6 +2642,7 @@ EXCEL_METHOD(Sheet, splitSheet)
 
 	xlSheetSplit(sheet, row, col);
 }
+/* }}} */
 
 #define PHP_EXCEL_SHEET_GROUP(func_name)	\
 	{	\
@@ -2636,21 +2658,23 @@ EXCEL_METHOD(Sheet, splitSheet)
 	}
 
 /* {{{ proto bool ExcelSheet::groupRows(int start_row, int end_row [, bool collapse])
-	Groups rows from rowFirst to rowLast */
+	Group rows from rowFirst to rowLast */
 EXCEL_METHOD(Sheet, groupRows)
 {
 	PHP_EXCEL_SHEET_GROUP(GroupRows)
 }
+/* }}} */
 
 /* {{{ proto bool ExcelSheet::groupCols(int start_column, int end_column [, bool collapse])
-	Groups columns from colFirst to colLast */
+	Group columns from colFirst to colLast */
 EXCEL_METHOD(Sheet, groupCols)
 {
 	PHP_EXCEL_SHEET_GROUP(GroupCols)
 }
+/* }}} */
 
-/* {{{ proto void ExcelSheet::clear(int row_s, int row_e, int col_s, int col_s)
-	Clears cells in specified area. */
+/* {{{ proto void ExcelSheet::clear(int row_s, int row_e, int col_s, int col_e)
+	Clear cells in specified area. */
 EXCEL_METHOD(Sheet, clear)
 {
 	SheetHandle sheet;
@@ -2665,6 +2689,7 @@ EXCEL_METHOD(Sheet, clear)
 
 	xlSheetClear(sheet, row_s, row_e, col_s, col_e);
 }
+/* }}} */
 
 /* {{{ proto void ExcelSheet::copy(int row, int col, int to_row, int to_col)
 	Copy a cell */
@@ -2682,6 +2707,7 @@ EXCEL_METHOD(Sheet, copy)
 
 	RETURN_BOOL(xlSheetCopyCell(sheet, row, col, to_row, to_col));
 }
+/* }}} */
 
 #define PE_RETURN_IS_LONG RETURN_LONG
 #define PE_RETURN_IS_BOOL RETURN_BOOL
@@ -2735,33 +2761,37 @@ EXCEL_METHOD(Sheet, copy)
 		xlSheet ## func_name (sheet, val);	\
 	}
 
-/* {{{ proto bool ExcelSheet::firstRow()
+/* {{{ proto int ExcelSheet::firstRow()
 	Returns the first row in the sheet that contains a used cell. */
 EXCEL_METHOD(Sheet, firstRow)
 {
 	PHP_EXCEL_INFO(FirstRow, IS_LONG)
 }
+/* }}} */
 
-/* {{{ proto bool ExcelSheet::lastRow()
+/* {{{ proto int ExcelSheet::lastRow()
 	Returns the zero-based index of the row after the last row in the sheet that contains a used cell. */
 EXCEL_METHOD(Sheet, lastRow)
 {
 	PHP_EXCEL_INFO(LastRow, IS_LONG)
 }
+/* }}} */
 
-/* {{{ proto bool ExcelSheet::firstCol()
+/* {{{ proto int ExcelSheet::firstCol()
 	Returns the first column in the sheet that contains a used cell. */
 EXCEL_METHOD(Sheet, firstCol)
 {
 	PHP_EXCEL_INFO(FirstCol, IS_LONG)
 }
+/* }}} */
 
-/* {{{ proto bool ExcelSheet::lastCol()
+/* {{{ proto int ExcelSheet::lastCol()
 	Returns the zero-based index of the column after the last column in the sheet that contains a used cell. */
 EXCEL_METHOD(Sheet, lastCol)
 {
 	PHP_EXCEL_INFO(LastCol, IS_LONG)
 }
+/* }}} */
 
 /* {{{ proto bool ExcelSheet::displayGridlines()
 	Returns whether the gridlines are displayed */
@@ -2769,6 +2799,7 @@ EXCEL_METHOD(Sheet, displayGridlines)
 {
 	PHP_EXCEL_INFO(DisplayGridlines, IS_BOOL)
 }
+/* }}} */
 
 /* {{{ proto bool ExcelSheet::printGridlines()
 	Returns whether the gridlines are printed */
@@ -2776,20 +2807,23 @@ EXCEL_METHOD(Sheet, printGridlines)
 {
 	PHP_EXCEL_INFO(PrintGridlines, IS_BOOL)
 }
+/* }}} */
 
-/* {{{ proto bool ExcelSheet::setDisplayGridlines(bool value)
+/* {{{ proto void ExcelSheet::setDisplayGridlines(bool value)
 	Sets gridlines for displaying */
 EXCEL_METHOD(Sheet, setDisplayGridlines)
 {
 	PHP_EXCEL_SET_BOOL_VAL(SetDisplayGridlines)
 }
+/* }}} */
 
-/* {{{ proto bool ExcelSheet::setPrintGridlines(bool value)
+/* {{{ proto void ExcelSheet::setPrintGridlines(bool value)
 	Sets gridlines for printing */
 EXCEL_METHOD(Sheet, setPrintGridlines)
 {
 	PHP_EXCEL_SET_BOOL_VAL(SetPrintGridlines)
 }
+/* }}} */
 
 /* {{{ proto int ExcelSheet::zoom()
 	Returns the zoom level of the current view as a percentage. */
@@ -2797,6 +2831,7 @@ EXCEL_METHOD(Sheet, zoom)
 {
 	PHP_EXCEL_INFO(Zoom, IS_LONG)
 }
+/* }}} */
 
 /* {{{ proto int ExcelSheet::zoomPrint()
 	Returns the scaling factor for printing as a percentage. */
@@ -2804,6 +2839,7 @@ EXCEL_METHOD(Sheet, zoomPrint)
 {
 	PHP_EXCEL_INFO(PrintZoom, IS_LONG)
 }
+/* }}} */
 
 /* {{{ proto void ExcelSheet::setZoom(long value)
 	Sets the zoom level of the current view. 100 is a usual view. */
@@ -2811,6 +2847,7 @@ EXCEL_METHOD(Sheet, setZoom)
 {
 	PHP_EXCEL_SET_LONG_VAL(SetZoom)
 }
+/* }}} */
 
 /* {{{ proto void ExcelSheet::setZoomPrint(long value)
 	Sets the scaling factor for printing as a percentage. */
@@ -2818,6 +2855,7 @@ EXCEL_METHOD(Sheet, setZoomPrint)
 {
 	PHP_EXCEL_SET_LONG_VAL(SetPrintZoom)
 }
+/* }}} */
 
 /* {{{ proto void ExcelSheet::setLandscape(bool value)
 	Sets landscape or portrait mode for printing, 1 - pages are printed using landscape mode, 0 - pages are printed using portrait mode. */
@@ -2825,6 +2863,7 @@ EXCEL_METHOD(Sheet, setLandscape)
 {
 	PHP_EXCEL_SET_BOOL_VAL(SetLandscape)
 }
+/* }}} */
 
 /* {{{ proto bool ExcelSheet::landscape()
 	Returns a page orientation mode, 1 - landscape mode, 0 - portrait mode. */
@@ -2832,6 +2871,7 @@ EXCEL_METHOD(Sheet, landscape)
 {
 	PHP_EXCEL_INFO(Landscape, IS_BOOL)
 }
+/* }}} */
 
 /* {{{ proto int ExcelSheet::paper()
 	Returns the paper size. */
@@ -2839,6 +2879,7 @@ EXCEL_METHOD(Sheet, paper)
 {
 	PHP_EXCEL_INFO(Paper, IS_LONG)
 }
+/* }}} */
 
 /* {{{ proto void ExcelSheet::setPaper(long value)
 	Sets the paper size. */
@@ -2846,20 +2887,23 @@ EXCEL_METHOD(Sheet, setPaper)
 {
 	PHP_EXCEL_SET_LONG_VAL(SetPaper)
 }
+/* }}} */
 
-/* {{{ proto int ExcelSheet::header()
+/* {{{ proto string ExcelSheet::header()
 	Returns the header text of the sheet when printed. */
 EXCEL_METHOD(Sheet, header)
 {
 	PHP_EXCEL_INFO(Header, IS_STRING)
 }
+/* }}} */
 
-/* {{{ proto int ExcelSheet::footer()
+/* {{{ proto string ExcelSheet::footer()
 	Returns the footer text of the sheet when printed. */
 EXCEL_METHOD(Sheet, footer)
 {
 	PHP_EXCEL_INFO(Footer, IS_STRING)
 }
+/* }}} */
 
 #define PHP_EXCEL_SET_HF(func_name)	\
 	{	\
@@ -2875,19 +2919,21 @@ EXCEL_METHOD(Sheet, footer)
 		RETURN_BOOL(xlSheet ## func_name (sheet, val, margin));	\
 	}
 
-/* {{{ proto int ExcelSheet::setHeader()
+/* {{{ proto bool ExcelSheet::setHeader(string header, double margin)
 	Sets the header text of the sheet when printed. */
 EXCEL_METHOD(Sheet, setHeader)
 {
 	PHP_EXCEL_SET_HF(SetHeader)
 }
+/* }}} */
 
-/* {{{ proto int ExcelSheet::setFooter()
+/* {{{ proto bool ExcelSheet::setFooter(string footer, double margin)
 	Sets the footer text of the sheet when printed. */
 EXCEL_METHOD(Sheet, setFooter)
 {
 	PHP_EXCEL_SET_HF(SetFooter)
 }
+/* }}} */
 
 /* {{{ proto double ExcelSheet::headerMargin()
 	Returns the header margin in inches. */
@@ -2895,6 +2941,7 @@ EXCEL_METHOD(Sheet, headerMargin)
 {
 	PHP_EXCEL_INFO(HeaderMargin, IS_DOUBLE)
 }
+/* }}} */
 
 /* {{{ proto double ExcelSheet::footerMargin()
 	Returns the footer margin in inches. */
@@ -2902,6 +2949,7 @@ EXCEL_METHOD(Sheet, footerMargin)
 {
 	PHP_EXCEL_INFO(FooterMargin, IS_DOUBLE)
 }
+/* }}} */
 
 /* {{{ proto bool ExcelSheet::hcenter()
 	Returns whether the sheet is centered horizontally when printed: 1 - yes, 0 - no. */
@@ -2909,6 +2957,7 @@ EXCEL_METHOD(Sheet, hcenter)
 {
 	PHP_EXCEL_INFO(HCenter, IS_BOOL)
 }
+/* }}} */
 
 /* {{{ proto bool ExcelSheet::vcenter()
 	Returns whether the sheet is centered vertically when printed: 1 - yes, 0 - no. */
@@ -2916,6 +2965,7 @@ EXCEL_METHOD(Sheet, vcenter)
 {
 	PHP_EXCEL_INFO(VCenter, IS_BOOL)
 }
+/* }}} */
 
 /* {{{ proto bool ExcelSheet::setHCenter(bool value)
 	Sets a flag that the sheet is centered horizontally when printed: 1 - yes, 0 - no. */
@@ -2923,6 +2973,7 @@ EXCEL_METHOD(Sheet, setHCenter)
 {
 	PHP_EXCEL_SET_BOOL_VAL(SetHCenter)
 }
+/* }}} */
 
 /* {{{ proto bool ExcelSheet::setVCenter(bool value)
 	Sets a flag that the sheet is centered vertically when printed: 1 - yes, 0 - no. */
@@ -2930,6 +2981,7 @@ EXCEL_METHOD(Sheet, setVCenter)
 {
 	PHP_EXCEL_SET_BOOL_VAL(SetVCenter)
 }
+/* }}} */
 
 /* {{{ proto double ExcelSheet::marginLeft()
 	Returns the left margin of the sheet in inches. */
@@ -2937,6 +2989,7 @@ EXCEL_METHOD(Sheet, marginLeft)
 {
 	PHP_EXCEL_INFO(MarginLeft, IS_DOUBLE)
 }
+/* }}} */
 
 /* {{{ proto double ExcelSheet::marginRight()
 	Returns the right margin of the sheet in inches. */
@@ -2944,6 +2997,7 @@ EXCEL_METHOD(Sheet, marginRight)
 {
 	PHP_EXCEL_INFO(MarginRight, IS_DOUBLE)
 }
+/* }}} */
 
 /* {{{ proto double ExcelSheet::marginTop()
 	Returns the top margin of the sheet in inches. */
@@ -2951,6 +3005,7 @@ EXCEL_METHOD(Sheet, marginTop)
 {
 	PHP_EXCEL_INFO(MarginTop, IS_DOUBLE)
 }
+/* }}} */
 
 /* {{{ proto double ExcelSheet::marginBottom()
 	Returns the bottom margin of the sheet in inches. */
@@ -2958,6 +3013,7 @@ EXCEL_METHOD(Sheet, marginBottom)
 {
 	PHP_EXCEL_INFO(MarginBottom, IS_DOUBLE)
 }
+/* }}} */
 
 /* {{{ proto void ExcelSheet::setMarginLeft(double value)
 	Sets the left margin of the sheet in inches. */
@@ -2965,6 +3021,7 @@ EXCEL_METHOD(Sheet, setMarginLeft)
 {
 	PHP_EXCEL_SET_DOUBLE_VAL(SetMarginLeft)
 }
+/* }}} */
 
 /* {{{ proto void ExcelSheet::setMarginRight(double value)
 	Sets the right margin of the sheet in inches. */
@@ -2972,6 +3029,7 @@ EXCEL_METHOD(Sheet, setMarginRight)
 {
 	PHP_EXCEL_SET_DOUBLE_VAL(SetMarginRight)
 }
+/* }}} */
 
 /* {{{ proto void ExcelSheet::setMarginTop(double value)
 	Sets the top margin of the sheet in inches. */
@@ -2979,6 +3037,7 @@ EXCEL_METHOD(Sheet, setMarginTop)
 {
 	PHP_EXCEL_SET_DOUBLE_VAL(SetMarginTop)
 }
+/* }}} */
 
 /* {{{ proto void ExcelSheet::setMarginBottom(double value)
 	Sets the bottom margin of the sheet in inches. */
@@ -2986,6 +3045,7 @@ EXCEL_METHOD(Sheet, setMarginBottom)
 {
 	PHP_EXCEL_SET_DOUBLE_VAL(SetMarginBottom)
 }
+/* }}} */
 
 /* {{{ proto bool ExcelSheet::printHeaders()
 	Returns whether the row and column headers are printed: 1 - yes, 0 - no. */
@@ -2993,6 +3053,7 @@ EXCEL_METHOD(Sheet, printHeaders)
 {
 	PHP_EXCEL_INFO(PrintRowCol, IS_BOOL)
 }
+/* }}} */
 
 /* {{{ proto bool ExcelSheet::setPrintHeaders(bool value)
 	Sets a flag that the row and column headers are printed: 1 - yes, 0 - no. */
@@ -3000,6 +3061,7 @@ EXCEL_METHOD(Sheet, setPrintHeaders)
 {
 	PHP_EXCEL_SET_BOOL_VAL(SetPrintRowCol)
 }
+/* }}} */
 
 /* {{{ proto string ExcelSheet::name()
 	Returns the name of the sheet. */
@@ -3007,6 +3069,7 @@ EXCEL_METHOD(Sheet, name)
 {
 	PHP_EXCEL_INFO(Name, IS_STRING)
 }
+/* }}} */
 
 /* {{{ proto void ExcelSheet::setName()
 	Sets the name of the sheet. */
@@ -3025,9 +3088,10 @@ EXCEL_METHOD(Sheet, setName)
 
 	xlSheetSetName(sheet, val);
 }
+/* }}} */
 
 #if LIBXL_VERSION >= 0x03010000
-/* {{{ proto void ExcelSheet::setNamedRange(string name, int row, int col, int to_row, int to_col)
+/* {{{ proto bool ExcelSheet::setNamedRange(string name, int row, int col, int to_row, int to_col)
 	Create a named range */
 EXCEL_METHOD(Sheet, setNamedRange)
 {
@@ -3057,8 +3121,9 @@ EXCEL_METHOD(Sheet, setNamedRange)
 
 	RETURN_BOOL(xlSheetSetNamedRange(sheet, name, row, col, to_row, to_col));
 }
+/* }}} */
 
-/* {{{ proto void ExcelSheet::delNamedRange(string name)
+/* {{{ proto bool ExcelSheet::delNamedRange(string name)
 	Delete a named range. */
 EXCEL_METHOD(Sheet, delNamedRange)
 {
@@ -3080,6 +3145,7 @@ EXCEL_METHOD(Sheet, delNamedRange)
 
 	RETURN_BOOL(xlSheetDelNamedRange(sheet, val));
 }
+/* }}} */
 
 #define PHP_EXCEL_SHEET_PRINT_AREA(func_name)	\
 	{	\
@@ -3098,21 +3164,23 @@ EXCEL_METHOD(Sheet, delNamedRange)
 		RETURN_TRUE;	\
 	}
 
-/* {{{ proto void ExcelSheet::setPrintRepeatRows(int rowFirst, int rowLast)
+/* {{{ proto bool ExcelSheet::setPrintRepeatRows(int rowFirst, int rowLast)
 	Sets repeated rows on each page from rowFirst to rowLast. */
 EXCEL_METHOD(Sheet, setPrintRepeatRows)
 {
 	PHP_EXCEL_SHEET_PRINT_AREA(SetPrintRepeatRows)
 }
+/* }}} */
 
-/* {{{ proto void ExcelSheet::setPrintRepeatCols(int colFirst, int colLast)
+/* {{{ proto bool ExcelSheet::setPrintRepeatCols(int colFirst, int colLast)
 	Sets repeated columns on each page from colFirst to colLast. */
 EXCEL_METHOD(Sheet, setPrintRepeatCols)
 {
 	PHP_EXCEL_SHEET_PRINT_AREA(SetPrintRepeatCols)
 }
+/* }}} */
 
-/* {{{ proto void ExcelSheet::getGroupSummaryBelow()
+/* {{{ proto bool ExcelSheet::getGroupSummaryBelow()
 	Returns whether grouping rows summary is below. Returns 1 if summary is below and 0 if isn't. */
 EXCEL_METHOD(Sheet, getGroupSummaryBelow)
 {
@@ -3126,8 +3194,9 @@ EXCEL_METHOD(Sheet, getGroupSummaryBelow)
 	SHEET_FROM_OBJECT(sheet, object);
 	RETURN_BOOL(xlSheetGroupSummaryBelow(sheet));
 }
+/* }}} */
 
-/* {{{ proto void ExcelSheet::setGroupSummaryBelow(bool direction)
+/* {{{ proto bool ExcelSheet::setGroupSummaryBelow(bool direction)
 	Sets a flag of grouping rows summary: 1 - below, 0 - above. */
 EXCEL_METHOD(Sheet, setGroupSummaryBelow)
 {
@@ -3144,8 +3213,9 @@ EXCEL_METHOD(Sheet, setGroupSummaryBelow)
 
 	RETURN_TRUE;
 }
+/* }}} */
 
-/* {{{ proto void ExcelSheet::getGroupSummaryRight()
+/* {{{ proto bool ExcelSheet::getGroupSummaryRight()
 	Returns whether grouping columns summary is right. Returns 1 if summary is right and 0 if isn't. */
 EXCEL_METHOD(Sheet, getGroupSummaryRight)
 {
@@ -3159,8 +3229,9 @@ EXCEL_METHOD(Sheet, getGroupSummaryRight)
 	SHEET_FROM_OBJECT(sheet, object);
 	RETURN_BOOL(xlSheetGroupSummaryRight(sheet));
 }
+/* }}} */
 
-/* {{{ proto void ExcelSheet::setGroupSummaryRight(bool direction)
+/* {{{ proto bool ExcelSheet::setGroupSummaryRight(bool direction)
 	Sets a flag of grouping columns summary: 1 - right, 0 - left. */
 EXCEL_METHOD(Sheet, setGroupSummaryRight)
 {
@@ -3177,6 +3248,7 @@ EXCEL_METHOD(Sheet, setGroupSummaryRight)
 
 	RETURN_TRUE;
 }
+/* }}} */
 
 /* {{{ proto bool ExcelSheet::clearPrintRepeats()
 	Clears repeated rows and columns on each page. */
@@ -3194,6 +3266,7 @@ EXCEL_METHOD(Sheet, clearPrintRepeats)
 
 	RETURN_TRUE;
 }
+/* }}} */
 
 /* {{{ proto bool ExcelSheet::clearPrintArea()
 	Clears the print area. */
@@ -3211,7 +3284,7 @@ EXCEL_METHOD(Sheet, clearPrintArea)
 
 	RETURN_TRUE;
 }
-
+/* }}} */
 #endif
 
 /* {{{ proto bool ExcelSheet::protect()
@@ -3220,13 +3293,15 @@ EXCEL_METHOD(Sheet, protect)
 {
 	PHP_EXCEL_INFO(Protect, IS_BOOL)
 }
+/* }}} */
 
-/* {{{ proto bool ExcelSheet::setProtect(bool value)
+/* {{{ proto void ExcelSheet::setProtect(bool value)
 	Protects (protect = 1) or unprotects (protect = 0) the sheet. */
 EXCEL_METHOD(Sheet, setProtect)
 {
 	PHP_EXCEL_SET_BOOL_VAL(SetProtect)
 }
+/* }}} */
 
 #if PHP_MAJOR_VERSION > 5 || (PHP_MAJOR_VERSION == 5 && PHP_MINOR_VERSION >= 3)
 # define PHP_EXCEL_ARGINFO
