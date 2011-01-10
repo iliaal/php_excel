@@ -1974,7 +1974,7 @@ static zend_bool php_excel_read_cell(unsigned short row, unsigned short col, zva
 
 		case CELLTYPE_NUMBER: {
 			double d = xlSheetReadNum(sheet, row, col, format);
-			if (xlSheetIsDate(sheet, row, col)) {
+			if (xlSheetIsDate(sheet, row, col) && xlFormatNumFormat(*format) < 100) {
 				int dt = _php_excel_date_unpack(book, d);
 				if (dt == -1) {
 					return 0;
@@ -2364,7 +2364,24 @@ EXCEL_METHOD(Sheet, isFormula)
 	Determine if the cell contains a date */
 EXCEL_METHOD(Sheet, isDate)
 {
-	PHP_EXCEL_SHEET_GET_BOOL_STATE(IsDate)
+	zval *object = getThis();
+	long r, c;
+	double d;
+	FormatHandle format = NULL;
+	SheetHandle sheet;
+
+	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "ll", &r, &c) == FAILURE) {
+		RETURN_FALSE;
+	}
+
+	SHEET_FROM_OBJECT(sheet, object);
+
+	if (xlSheetCellType(sheet, r, c) != CELLTYPE_NUMBER) {
+		RETURN_FALSE;
+	}
+
+	d = xlSheetReadNum(sheet, r, c, &format);
+	RETURN_BOOL(xlSheetIsDate(sheet, r, c) && (!format || (xlFormatNumFormat(format) < 100)));
 }
 /* }}} */
 
