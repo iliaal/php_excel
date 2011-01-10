@@ -20,16 +20,14 @@ date.timezone=America/Toronto
 
 	var_dump($s->readCol(2), $x->getError());
 	var_dump($s->readCol(2, 4), $x->getError());	
-	var_dump($s->readCol(2, 5, 6), $x->getError());
+	var_dump($s->readCol(2, 5, 5), $x->getError());
 
 	var_dump($s->readCol(-2));
 	var_dump($s->readCol(22));
 	var_dump($s->readCol(2, -1));
 	var_dump($s->readCol(2, 55));
 	var_dump($s->readCol(2, 2, 1));
-	var_dump($s->readCol(2, 2, 40));
-
-
+	var_dump($s->readCol(2, 2, 39));
 	
 	echo "OK\n";
 ?>
@@ -93,6 +91,6 @@ bool(false)
 Warning: ExcelSheet::readCol(): Invalid ending row number '1' in %s on line %d
 bool(false)
 
-Warning: ExcelSheet::readCol(): Invalid ending row number '40' in %s on line %d
+Warning: ExcelSheet::readCol(): Invalid ending row number '39' in %s on line %d
 bool(false)
 OK

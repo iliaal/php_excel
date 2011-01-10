@@ -2045,7 +2045,7 @@ EXCEL_METHOD(Sheet, readRow)
 	}
 
 	if (col_end == -1) {
-		col_end = lc;
+		col_end = lc - 1;
 	}
 
 	if (col_end < col_start || col_end > lc) {
@@ -2056,7 +2056,7 @@ EXCEL_METHOD(Sheet, readRow)
 	lc = col_start;
 
 	array_init(return_value);
-	while (lc < col_end) {
+	while (lc < (col_end + 1)) {
 		zval *value;
 		FormatHandle format = NULL;
 
@@ -2104,7 +2104,7 @@ EXCEL_METHOD(Sheet, readCol)
 	}
 
 	if (row_end == -1) {
-		row_end = lc;
+		row_end = lc - 1;
 	}
 
 	if (row_end < row_start || row_end > lc) {
@@ -2115,7 +2115,7 @@ EXCEL_METHOD(Sheet, readCol)
 	lc = row_start;
 
 	array_init(return_value);
-	while (lc < row_end) {
+	while (lc < (row_end + 1)) {
 		zval *value;
 		FormatHandle format = NULL;
 
