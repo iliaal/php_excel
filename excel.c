@@ -502,6 +502,55 @@ EXCEL_METHOD(Book, getSheet)
 }
 /* }}} */
 
+/* {{{ proto ExcelSheet ExcelBook::getSheetByName(string name [, bool case_insensitive])
+   Get an excel sheet by name. */
+EXCEL_METHOD(Book, getSheetByName)
+{
+	BookHandle book;
+	zval *object = getThis();
+	char *sheet_name;
+	int sheet_name_len;
+	long sheet;
+	excel_sheet_object *fo;
+	long sheet_count;
+	zend_bool case_s = 0;
+	const char *s;
+
+	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "s|b", &sheet_name, &sheet_name_len, &case_s) == FAILURE) {
+		RETURN_FALSE;
+	}
+
+	if (sheet_name_len == 0) {
+		RETURN_FALSE;
+	}
+
+	BOOK_FROM_OBJECT(book, object);
+
+	sheet_count = xlBookSheetCount(book);
+	for(sheet = 0; sheet < sheet_count; sheet++) {
+		SheetHandle sh = xlBookGetSheet(book, sheet);
+		if (sh) {
+			s = xlSheetName(sh);
+			if (s) {
+				if ((case_s && !strcasecmp(s, sheet_name)) || (!case_s && !strcmp(s, sheet_name))) {
+					Z_TYPE_P(return_value) = IS_OBJECT;
+					object_init_ex(return_value, excel_ce_sheet);
+					Z_SET_REFCOUNT_P(return_value, 1);
+					Z_SET_ISREF_P(return_value);
+					fo = (excel_sheet_object *) zend_object_store_get_object(return_value TSRMLS_CC);
+					fo->sheet = sh;
+					fo->book = book;
+
+					return;
+				}
+			}
+		}
+	}
+
+	RETURN_FALSE;
+}
+/* }}} */
+
 /* {{{ proto bool ExcelBook::deleteSheet(int sheet)
    Delete an excel sheet. */
 EXCEL_METHOD(Book, deleteSheet)
@@ -3329,6 +3378,12 @@ ZEND_BEGIN_ARG_INFO_EX(arginfo_Book_getSheet, 0, 0, 0)
 ZEND_END_ARG_INFO()
 
 PHP_EXCEL_ARGINFO
+ZEND_BEGIN_ARG_INFO_EX(arginfo_Book_getSheetByName, 0, 0, 1)
+	ZEND_ARG_INFO(0, name)
+	ZEND_ARG_INFO(0, case_insensitive)
+ZEND_END_ARG_INFO()
+
+PHP_EXCEL_ARGINFO
 ZEND_BEGIN_ARG_INFO_EX(arginfo_Book_deleteSheet, 0, 0, 1)
 	ZEND_ARG_INFO(0, sheet)
 ZEND_END_ARG_INFO()
@@ -4108,6 +4163,7 @@ zend_function_entry excel_funcs_book[] = {
 	EXCEL_ME(Book, load, arginfo_Book_load, 0)
 	EXCEL_ME(Book, save, arginfo_Book_save, 0)
 	EXCEL_ME(Book, getSheet, arginfo_Book_getSheet, 0)
+	EXCEL_ME(Book, getSheetByName, arginfo_Book_getSheetByName, 0)
 	EXCEL_ME(Book, addSheet, arginfo_Book_addSheet, 0)
 	EXCEL_ME(Book, copySheet, arginfo_Book_copySheet, 0)
 	EXCEL_ME(Book, deleteSheet, arginfo_Book_deleteSheet, 0)
