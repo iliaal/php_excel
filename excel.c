@@ -347,6 +347,7 @@ static zend_object_value excel_format_object_clone(zval *this_ptr TSRMLS_DC)
 	return new_ov;
 }
 
+#if LIBXL_VERSION <= 0x03010000
 static wchar_t * _php_excel_to_wide(const char *string, size_t len, size_t *out_len)
 {
 	wchar_t *buf = safe_emalloc(len, sizeof(wchar_t), 0);
@@ -359,6 +360,7 @@ static wchar_t * _php_excel_to_wide(const char *string, size_t len, size_t *out_
 
 	return erealloc(buf, (*out_len + 1) * sizeof(wchar_t));
 }
+#endif
 
 #define EXCEL_METHOD(class_name, function_name) \
     PHP_METHOD(Excel ## class_name, function_name)
@@ -1137,7 +1139,7 @@ EXCEL_METHOD(Book, __construct)
 	if (!name_len || !key_len) {
 		RETURN_FALSE;
 	}
-
+#if LIBXL_VERSION <= 0x03010000
 	if (!(nw = _php_excel_to_wide(name, name_len + 1, &nw_l))) {
 		RETURN_FALSE;
 	}
@@ -1149,6 +1151,9 @@ EXCEL_METHOD(Book, __construct)
 	xlBookSetKey(book, nw, kw);
 	efree(nw);
 	efree(kw);
+#else
+	xlBookSetKey(book, name, key);
+#endif
 }
 /* }}} */
 
@@ -1973,8 +1978,12 @@ static zend_bool php_excel_read_cell(unsigned short row, unsigned short col, zva
 			}
 
 		case CELLTYPE_NUMBER: {
+#if LIBXL_VERSION <= 0x03010000
 			double d = xlSheetReadNum(sheet, row, col, format);
 			if (xlSheetIsDate(sheet, row, col) && xlFormatNumFormat(*format) < 100) {
+#else
+			if (xlSheetIsDate(sheet, row, col)) {
+#endif
 				int dt = _php_excel_date_unpack(book, d);
 				if (dt == -1) {
 					return 0;
@@ -2366,8 +2375,10 @@ EXCEL_METHOD(Sheet, isDate)
 {
 	zval *object = getThis();
 	long r, c;
+#if LIBXL_VERSION <= 0x03010000
 	double d;
 	FormatHandle format = NULL;
+#endif
 	SheetHandle sheet;
 
 	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "ll", &r, &c) == FAILURE) {
@@ -2379,9 +2390,12 @@ EXCEL_METHOD(Sheet, isDate)
 	if (xlSheetCellType(sheet, r, c) != CELLTYPE_NUMBER) {
 		RETURN_FALSE;
 	}
-
+#if LIBXL_VERSION <= 0x03010000
 	d = xlSheetReadNum(sheet, r, c, &format);
 	RETURN_BOOL(xlSheetIsDate(sheet, r, c) && (!format || (xlFormatNumFormat(format) < 100)));
+#else
+	RETURN_BOOL(xlSheetIsDate(sheet, r, c));
+#endif
 }
 /* }}} */
 
