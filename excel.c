@@ -1978,8 +1978,8 @@ static zend_bool php_excel_read_cell(unsigned short row, unsigned short col, zva
 			}
 
 		case CELLTYPE_NUMBER: {
-#if LIBXL_VERSION <= 0x03010000
 			double d = xlSheetReadNum(sheet, row, col, format);
+#if LIBXL_VERSION <= 0x03010000
 			if (xlSheetIsDate(sheet, row, col) && xlFormatNumFormat(*format) < 100) {
 #else
 			if (xlSheetIsDate(sheet, row, col)) {
