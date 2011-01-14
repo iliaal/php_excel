@@ -54,7 +54,7 @@ static long xlFormatBorderColor(FormatHandle f)
 #define PHP_EXCEL_FORMULA 2
 #define PHP_EXCEL_NUMERIC_STRING 3
 
-#define PHP_EXCEL_VERSION "0.9.0"
+#define PHP_EXCEL_VERSION "0.9.1"
 
 #ifdef COMPILE_DL_EXCEL
 ZEND_GET_MODULE(excel)
