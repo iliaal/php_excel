@@ -3784,7 +3784,7 @@ ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_writeCol, 0, 0, 2)
 	ZEND_ARG_INFO(0, row)
 	ZEND_ARG_INFO(0, data)
 	ZEND_ARG_INFO(0, start_row)
-	ZEND_ARG_OBJ_INFO(0, format, ExcelFoamt, 0)
+	ZEND_ARG_OBJ_INFO(0, format, ExcelFormat, 0)
 ZEND_END_ARG_INFO()
 
 PHP_EXCEL_ARGINFO
