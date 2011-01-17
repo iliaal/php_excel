@@ -3445,12 +3445,12 @@ ZEND_END_ARG_INFO()
 
 PHP_EXCEL_ARGINFO
 ZEND_BEGIN_ARG_INFO_EX(arginfo_Book_addFont, 0, 0, 0)
-	ZEND_ARG_INFO(0, font)
+	ZEND_ARG_OBJ_INFO(0, font, ExcelFont, 0)
 ZEND_END_ARG_INFO()
 
 PHP_EXCEL_ARGINFO
 ZEND_BEGIN_ARG_INFO_EX(arginfo_Book_addFormat, 0, 0, 0)
-	ZEND_ARG_INFO(0, format)
+	ZEND_ARG_OBJ_INFO(0, format, ExcelFormat, 0)
 ZEND_END_ARG_INFO()
 
 #ifdef HAVE_LIBXL_243_PLUS
@@ -3583,17 +3583,17 @@ ZEND_END_ARG_INFO()
 
 PHP_EXCEL_ARGINFO
 ZEND_BEGIN_ARG_INFO_EX(arginfo_Format___construct, 0, 0, 1)
-	ZEND_ARG_INFO(0, book)
+	ZEND_ARG_OBJ_INFO(0, book, ExcelBook, 0)
 ZEND_END_ARG_INFO()
 
 PHP_EXCEL_ARGINFO
 ZEND_BEGIN_ARG_INFO_EX(arginfo_Font___construct, 0, 0, 1)
-	ZEND_ARG_INFO(0, book)
+	ZEND_ARG_OBJ_INFO(0, book, ExcelBook, 0)
 ZEND_END_ARG_INFO()
 
 PHP_EXCEL_ARGINFO
 ZEND_BEGIN_ARG_INFO_EX(arginfo_Format_setFont, 0, 0, 1)
-	ZEND_ARG_INFO(0, font)
+	ZEND_ARG_OBJ_INFO(0, font, ExcelFont, 0)
 ZEND_END_ARG_INFO()
 
 PHP_EXCEL_ARGINFO
@@ -3737,7 +3737,7 @@ PHP_EXCEL_ARGINFO
 ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_setCellFormat, 0, 0, 3)
 	ZEND_ARG_INFO(0, row)
 	ZEND_ARG_INFO(0, column)
-	ZEND_ARG_INFO(0, format)
+	ZEND_ARG_OBJ_INFO(0, format, ExcelFormat, 0)
 ZEND_END_ARG_INFO()
 #endif
 
@@ -3767,7 +3767,7 @@ ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_write, 0, 0, 3)
 	ZEND_ARG_INFO(0, row)
 	ZEND_ARG_INFO(0, column)
 	ZEND_ARG_INFO(0, data)
-	ZEND_ARG_INFO(0, format)
+	ZEND_ARG_OBJ_INFO(0, format, ExcelFormat, 1)
 	ZEND_ARG_INFO(0, datatype)
 ZEND_END_ARG_INFO()
 
@@ -3776,7 +3776,7 @@ ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_writeRow, 0, 0, 2)
 	ZEND_ARG_INFO(0, row)
 	ZEND_ARG_INFO(0, data)
 	ZEND_ARG_INFO(0, start_column)
-	ZEND_ARG_INFO(0, format)
+	ZEND_ARG_OBJ_INFO(0, format, ExcelFormat, 0)
 ZEND_END_ARG_INFO()
 
 PHP_EXCEL_ARGINFO
@@ -3784,7 +3784,7 @@ ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_writeCol, 0, 0, 2)
 	ZEND_ARG_INFO(0, row)
 	ZEND_ARG_INFO(0, data)
 	ZEND_ARG_INFO(0, start_row)
-	ZEND_ARG_INFO(0, format)
+	ZEND_ARG_OBJ_INFO(0, format, ExcelFoamt, 0)
 ZEND_END_ARG_INFO()
 
 PHP_EXCEL_ARGINFO
@@ -3855,14 +3855,14 @@ ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_setColWidth, 0, 0, 3)
 	ZEND_ARG_INFO(0, column_end)
 	ZEND_ARG_INFO(0, width)
 	ZEND_ARG_INFO(0, hidden)
-	ZEND_ARG_INFO(0, format)
+	ZEND_ARG_OBJ_INFO(0, format, ExcelFormat, 0)
 ZEND_END_ARG_INFO()
 
 PHP_EXCEL_ARGINFO
 ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_setRowHeight, 0, 0, 2)
 	ZEND_ARG_INFO(0, row)
 	ZEND_ARG_INFO(0, height)
-	ZEND_ARG_INFO(0, format)
+	ZEND_ARG_OBJ_INFO(0, format, ExcelFormat, 1)
 	ZEND_ARG_INFO(0, hidden)
 ZEND_END_ARG_INFO()
 
