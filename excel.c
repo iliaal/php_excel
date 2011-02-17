@@ -1962,7 +1962,7 @@ EXCEL_METHOD(Sheet, setCellFormat)
 /* }}} */
 #endif
 
-static zend_bool php_excel_read_cell(unsigned short row, unsigned short col, zval *val, SheetHandle sheet, BookHandle book, FormatHandle *format)
+static zend_bool php_excel_read_cell(int row, int col, zval *val, SheetHandle sheet, BookHandle book, FormatHandle *format)
 {
 	switch (xlSheetCellType(sheet, row, col)) {
 		case CELLTYPE_EMPTY:
@@ -2179,7 +2179,7 @@ EXCEL_METHOD(Sheet, read)
 }
 /* }}} */
 
-static zend_bool php_excel_write_cell(SheetHandle sheet, BookHandle book, unsigned short row, unsigned short col, zval *data, FormatHandle format, long dtype)
+static zend_bool php_excel_write_cell(SheetHandle sheet, BookHandle book, int row, int col, zval *data, FormatHandle format, long dtype)
 {
 	switch (Z_TYPE_P(data)) {
 		case IS_NULL:
