@@ -1095,8 +1095,10 @@ EXCEL_METHOD(Book, __construct)
 	zval *object = getThis();
 	char *name = NULL, *key;
 	int name_len = 0, key_len = 0;
+#if LIBXL_VERSION <= 0x03010000
 	wchar_t *nw, *kw;
 	size_t nw_l, kw_l;
+#endif
 #ifdef LIBXL_VERSION
 	zend_bool new_excel = 0;
 
