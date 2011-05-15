@@ -1111,11 +1111,11 @@ EXCEL_METHOD(Book, __construct)
 	}
 #endif
 	if (!name) {
-		if (excel_globals.ini_license_name && excel_globals.ini_license_key) {
-			name = excel_globals.ini_license_name;
-			name_len = strlen(excel_globals.ini_license_name);
-			key = excel_globals.ini_license_key;
-			key_len = strlen(excel_globals.ini_license_key);
+		if (INI_STR("excel.ini_license_name") && INI_STR("ini_license_key")) {
+			name = INI_STR("excel.ini_license_name");
+			name_len = strlen(name);
+			key = INI_STR("ini_license_key");
+			key_len = strlen(key);
 		} else {
 #ifndef LIBXL_VERSION
 			return;
