@@ -260,8 +260,8 @@ class ExcelBook {
 	} // setDefaultFont
 
 	/**
-	* Set the locale
-	*
+	* Set the locale<br>
+	* possible values: '.1252' (Windows-1252 or Cp1252), '.OCP' (OEM CodePage), default: '.ACP' (ANSI CodePage) if empty
 	* @param string $locale
 	* @return void
 	*/
