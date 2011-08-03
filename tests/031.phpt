@@ -1,7 +1,5 @@
 --TEST--
 Sheet Page Breaks
---INI--
-date.timezone=America/Toronto
 --SKIPIF--
 <?php if (!extension_loaded("excel")) print "skip"; ?>
 --FILE--

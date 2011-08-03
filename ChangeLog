@@ -1,3 +1,24 @@
+[2011-08-03] - Version 0.9.1
+	* Added new methods (requires LibXL 3.2.0+):
+		- ExcelSheet::setPrintFit(int wPages, int hPages) that fits sheet width and sheet height to wPages and hPages respectively
+		- ExcelSheet::getPrintFit() that returns whether fit to page option is enabled, and if so to what width & height
+		- ExcelSheet::getNamedRange(string name) that gets the named range coordianates by name, returns false if range is not found
+		- ExcelSheet::getIndexRange(int index) that gets the named range coordianates by index, returns false if range is not found
+		- ExcelSheet::namedRangeSize() that returns the number of named ranges in the sheet
+		- ExcelSheet::getVerPageBreak(int index) that returns column with vertical page break at position index
+		- ExcelSheet::getVerPageBreakSize() that returns a number of vertical page breaks in the sheet
+		- ExcelSheet::getHorPageBreak(int index) that eturns column with horizontal page break at position index
+		- ExcelSheet::getHorPageBreakSize() that returns a number of horizontal page breaks in the sheet
+		- ExcelSheet::getPictureInfo(int index) that returns a information about a workbook picture at position index in worksheet
+		- ExcelSheet::getNumPictures() that returns a number of pictures in this worksheet
+		- ExcelBook::biffVersion() that returns BIFF version of binary file. (Used for xls format only)
+		- ExcelBook::getRefR1C1() that returns whether the R1C1 reference mode is active
+		- ExcelBook::setRefR1C1(bool active) that sets the R1C1 reference mode
+		- ExcelBook::getPicture(int picture_index) that returns a picture at position index
+		- ExcelBook::getNumPictures() that returns a number of pictures in this workbook
+		- ExcelSheet ExcelBook::insertSheet(int index, string name [, ExcelSheet sh]) that inserts a new sheet to this book at position index,
+		  returns the sheet handle. If ExcelSheet parameter is missing a new sheet will be created.
+
 [2011-01-14] - Version 0.9.1
     * Added support for LibXL 3.1.0+
 	* Added work-around for a bug inside xlSheetIsDate() that detects treats custom number formats as dates

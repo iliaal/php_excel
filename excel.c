@@ -50,11 +50,18 @@ static long xlFormatBorderColor(FormatHandle f)
 
 #endif
 
+#if LIBXL_VERSION >= 0x03020000
+#define xlBookSetRefR1C1 xlBookSetRefR1C1A
+#define xlBookRefR1C1 xlBookRefR1C1A
+
+enum libXLPictureType {PICTURETYPE_PNG, PICTURETYPE_JPEG, PICTURETYPE_WMF, PICTURETYPE_DIB, PICTURETYPE_EMF, PICTURETYPE_PICT, PICTURETYPE_TIFF, PICTURETYPE_ERROR = 0xFF};
+#endif
+
 #define PHP_EXCEL_DATE 1
 #define PHP_EXCEL_FORMULA 2
 #define PHP_EXCEL_NUMERIC_STRING 3
 
-#define PHP_EXCEL_VERSION "0.9.1"
+#define PHP_EXCEL_VERSION "0.9.5"
 
 #ifdef COMPILE_DL_EXCEL
 ZEND_GET_MODULE(excel)
@@ -3332,6 +3339,372 @@ EXCEL_METHOD(Sheet, setGroupSummaryRight)
 }
 /* }}} */
 
+#if LIBXL_VERSION >= 0x03020000
+/* {{{ proto bool ExcelSheet::setPrintFit(int wPages, int hPages)
+	Fits sheet width and sheet height to wPages and hPages respectively. */
+EXCEL_METHOD(Sheet, setPrintFit)
+{
+	SheetHandle sheet;
+	zval *object = getThis();
+	long wPages, hPages;
+
+	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "ll", &wPages, &hPages) == FAILURE) {
+		RETURN_FALSE;
+	}
+
+	SHEET_FROM_OBJECT(sheet, object);
+	xlSheetSetPrintFit(sheet, wPages, hPages);
+
+	RETURN_TRUE;
+}
+/* }}} */
+
+/* {{{ proto mixed ExcelSheet::getPrintFit()
+	Returns whether fit to page option is enabled, and if so to what width & height */
+EXCEL_METHOD(Sheet, getPrintFit)
+{
+	SheetHandle sheet;
+	zval *object = getThis();
+	int wPages, hPages;
+
+	if (ZEND_NUM_ARGS()) {
+		RETURN_FALSE;
+	}
+
+	SHEET_FROM_OBJECT(sheet, object);
+	if (xlSheetGetPrintFit(sheet, &wPages, &hPages)) {
+		array_init(return_value);
+		add_assoc_long(return_value, "width", wPages);
+		add_assoc_long(return_value, "height", hPages);
+	} else {
+		RETURN_FALSE;
+	}
+}
+/* }}} */
+
+/* {{{ proto array ExcelSheet::getNamedRange(string name)
+	Gets the named range coordianates by name, returns false if range is not found. */
+EXCEL_METHOD(Sheet, getNamedRange)
+{
+	SheetHandle sheet;
+	zval *object = getThis();
+	char *name;
+	int name_len;
+	int rf, rl, cf, cl;
+
+	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "s", &name, &name_len) == FAILURE) {
+		RETURN_FALSE;
+	}
+
+	SHEET_FROM_OBJECT(sheet, object);
+	if (xlSheetGetNamedRange(sheet, name, &rf, &rl, &cf, &cl)) {
+		array_init(return_value);
+		add_assoc_long(return_value, "row_first", rf);
+		add_assoc_long(return_value, "row_last", rl);
+		add_assoc_long(return_value, "col_first", cl);
+		add_assoc_long(return_value, "col_last", cf);
+	} else {
+		RETURN_FALSE;
+	}
+}
+
+/* {{{ proto array ExcelSheet::getIndexRange(int index)
+	Gets the named range coordianates by index, returns false if range is not found. */
+EXCEL_METHOD(Sheet, getIndexRange)
+{
+	SheetHandle sheet;
+	zval *object = getThis();
+	long index;
+	int rf, rl, cf, cl;
+
+	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "l", &index) == FAILURE) {
+		RETURN_FALSE;
+	}
+
+	SHEET_FROM_OBJECT(sheet, object);
+	if (xlSheetNamedRange(sheet, (int)index, &rf, &rl, &cf, &cl)) {
+		array_init(return_value);
+		add_assoc_long(return_value, "row_first", rf);
+		add_assoc_long(return_value, "row_last", rl);
+		add_assoc_long(return_value, "col_first", cl);
+		add_assoc_long(return_value, "col_last", cf);
+	} else {
+		RETURN_FALSE;
+	}
+}
+/* }}} */
+
+/* {{{ proto long ExcelSheet::namedRangeSize()
+	Returns the number of named ranges in the sheet. */
+EXCEL_METHOD(Sheet, namedRangeSize)
+{
+	SheetHandle sheet;
+	zval *object = getThis();
+
+	if (ZEND_NUM_ARGS()) {
+		RETURN_FALSE;
+	}
+
+	SHEET_FROM_OBJECT(sheet, object);
+	RETURN_LONG(xlSheetNamedRangeSize(sheet));
+}
+/* }}} */
+
+/* {{{ proto long ExcelSheet::getVerPageBreak(int index)
+	Returns column with vertical page break at position index. */
+EXCEL_METHOD(Sheet, getVerPageBreak)
+{
+	SheetHandle sheet;
+	zval *object = getThis();
+	long index;
+
+	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "l", &index) == FAILURE) {
+		RETURN_FALSE;
+	}
+
+	SHEET_FROM_OBJECT(sheet, object);
+	RETURN_LONG(xlSheetGetVerPageBreakSize(sheet));
+}
+/* }}} */
+
+/* {{{ proto long ExcelSheet::getVerPageBreakSize()
+	Returns a number of vertical page breaks in the sheet. */
+EXCEL_METHOD(Sheet, getVerPageBreakSize)
+{
+	SheetHandle sheet;
+	zval *object = getThis();
+
+	if (ZEND_NUM_ARGS()) {
+		RETURN_FALSE;
+	}
+
+	SHEET_FROM_OBJECT(sheet, object);
+	RETURN_LONG(xlSheetGetVerPageBreakSize(sheet));
+}
+/* }}} */
+
+/* {{{ proto long ExcelSheet::getHorPageBreak(int index)
+	Returns column with horizontal page break at position index. */
+EXCEL_METHOD(Sheet, getHorPageBreak)
+{
+	SheetHandle sheet;
+	zval *object = getThis();
+	long index;
+
+	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "l", &index) == FAILURE) {
+		RETURN_FALSE;
+	}
+
+	SHEET_FROM_OBJECT(sheet, object);
+	RETURN_LONG(xlSheetGetHorPageBreakSize(sheet));
+}
+/* }}} */
+
+/* {{{ proto long ExcelSheet::getHorPageBreakSize()
+	Returns a number of horizontal page breaks in the sheet. */
+EXCEL_METHOD(Sheet, getHorPageBreakSize)
+{
+	SheetHandle sheet;
+	zval *object = getThis();
+
+	if (ZEND_NUM_ARGS()) {
+		RETURN_FALSE;
+	}
+
+	SHEET_FROM_OBJECT(sheet, object);
+	RETURN_LONG(xlSheetGetHorPageBreakSize(sheet));
+}
+/* }}} */
+
+/* {{{ proto array ExcelSheet::getPictureInfo(int index)
+	Returns a information about a workbook picture at position index in worksheet. */
+EXCEL_METHOD(Sheet, getPictureInfo)
+{
+	SheetHandle sheet;
+	zval *object = getThis();
+	long index;
+	int rowTop, colLeft, rowBottom, colRight, width, height, offset_x, offset_y;
+	int pic_index;
+
+	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "l", &index) == FAILURE) {
+		RETURN_FALSE;
+	}
+
+	SHEET_FROM_OBJECT(sheet, object);
+
+	if ((pic_index = xlSheetGetPicture(sheet, (int)index, &rowTop, &colLeft, &rowBottom, &colRight, &width, &height, &offset_x, &offset_y)) == -1) {
+		RETURN_FALSE;
+	}
+
+	array_init(return_value);
+	add_assoc_long(return_value, "picture_index", pic_index);
+	add_assoc_long(return_value, "row_top", rowTop);
+	add_assoc_long(return_value, "col_left", colLeft);
+	add_assoc_long(return_value, "row_bottom", rowBottom);
+	add_assoc_long(return_value, "col_right", colRight);
+	add_assoc_long(return_value, "width", width);
+	add_assoc_long(return_value, "height", height);
+	add_assoc_long(return_value, "offset_x", offset_x);
+	add_assoc_long(return_value, "offset_y", offset_y);
+}
+/* }}} */
+
+/* {{{ proto long ExcelSheet::getNumPictures()
+	Returns a number of pictures in this worksheet. */
+EXCEL_METHOD(Sheet, getNumPictures)
+{
+	SheetHandle sheet;
+	zval *object = getThis();
+
+	if (ZEND_NUM_ARGS()) {
+		RETURN_FALSE;
+	}
+
+	SHEET_FROM_OBJECT(sheet, object);
+	RETURN_LONG(xlSheetPictureSize(sheet));
+}
+/* }}} */
+
+/* {{{ proto long ExcelBook::biffVersion()
+	Returns BIFF version of binary file. Used for xls format only. */
+EXCEL_METHOD(Book, biffVersion)
+{
+	BookHandle book;
+	zval *object = getThis();
+	int version;
+
+	if (ZEND_NUM_ARGS()) {
+		RETURN_FALSE;
+	}
+
+	BOOK_FROM_OBJECT(book, object);
+	if ((version = xlBookBiffVersion(book))) {
+		RETURN_LONG(version);
+	} else {
+		RETURN_FALSE;
+	}
+}
+/* }}} */
+
+/* {{{ proto bool ExcelBook::getRefR1C1()
+	Returns whether the R1C1 reference mode is active. */
+EXCEL_METHOD(Book, getRefR1C1)
+{
+	BookHandle book;
+	zval *object = getThis();
+
+	if (ZEND_NUM_ARGS()) {
+		RETURN_FALSE;
+	}
+
+	BOOK_FROM_OBJECT(book, object);
+	RETURN_BOOL(xlBookRefR1C1(book));
+}
+/* }}} */
+
+/* {{{ proto void ExcelBook::setRefR1C1(bool active)
+	Sets the R1C1 reference mode. */
+EXCEL_METHOD(Book, setRefR1C1)
+{
+	BookHandle book;
+	zval *object = getThis();
+	zend_bool active;
+
+	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "b", &active) == FAILURE) {
+		RETURN_FALSE;
+	}
+
+	BOOK_FROM_OBJECT(book, object);
+	xlBookSetRefR1C1(book, (int)active);
+}
+/* }}} */
+
+/* {{{ proto array ExcelBook::getPicture(int picture_index)
+	Returns a picture at position index. */
+EXCEL_METHOD(Book, getPicture)
+{
+	BookHandle book;
+	zval *object = getThis();
+	long index;
+	int type;
+	const char *buf;
+	unsigned int buf_len;
+
+	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "l", &index) == FAILURE) {
+		RETURN_FALSE;
+	}
+
+	BOOK_FROM_OBJECT(book, object);
+
+    enum PictureType {PICTURETYPE_PNG, PICTURETYPE_JPEG, PICTURETYPE_WMF, PICTURETYPE_DIB, PICTURETYPE_EMF, PICTURETYPE_PICT, PICTURETYPE_TIFF, PICTURETYPE_ERROR = 0xFF};
+
+	if ((type = xlBookGetPicture(book, (int)index, &buf, &buf_len)) == PICTURETYPE_ERROR) {
+		RETURN_FALSE;
+	}
+
+	array_init(return_value);
+	add_assoc_stringl(return_value, "data", (char *)buf, buf_len, 1);
+	add_assoc_long(return_value, "type", type);
+}
+/* }}} */
+
+/* {{{ proto long ExcelBook::getNumPictures()
+	Returns a number of pictures in this workbook. */
+EXCEL_METHOD(Book, getNumPictures)
+{
+	BookHandle book;
+	zval *object = getThis();
+
+	if (ZEND_NUM_ARGS()) {
+		RETURN_FALSE;
+	}
+
+	BOOK_FROM_OBJECT(book, object);
+	RETURN_LONG(xlBookPictureSize(book));
+}
+/* }}} */
+
+/* {{{ proto ExcelSheet ExcelBook::insertSheet(int index, string name [, ExcelSheet sh])
+   Inserts a new sheet to this book at position index, returns the sheet handle. Set initSheet to 0 if you wish to add a new empty sheet or use existing sheet's handle for copying. */
+EXCEL_METHOD(Book, insertSheet)
+{
+	BookHandle book;
+	zval *object = getThis();
+	zval *shz = NULL;
+	SheetHandle sh, sheet;
+	excel_sheet_object *fo;
+	char *name;
+	int name_len;
+	long index;
+
+	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "ls|o", &index, &name, &name_len, &shz) == FAILURE) {
+		RETURN_FALSE;
+	}
+
+	BOOK_FROM_OBJECT(book, object);
+	if (shz) {
+		SHEET_FROM_OBJECT(sheet, shz);
+		if (!(sh = xlBookInsertSheet(book, index, name, sheet))) {
+			RETURN_FALSE;
+		}
+	} else {
+		if (!(sh = xlBookInsertSheet(book, index, name, 0))) {
+			RETURN_FALSE;
+		}
+	}
+
+	Z_TYPE_P(return_value) = IS_OBJECT;
+	object_init_ex(return_value, excel_ce_sheet);
+	Z_SET_REFCOUNT_P(return_value, 1);
+	Z_SET_ISREF_P(return_value);
+	fo = (excel_sheet_object *) zend_object_store_get_object(return_value TSRMLS_CC);
+	fo->sheet = sh;
+	fo->book = book;
+}
+/* }}} */
+
+#endif
+
 /* {{{ proto bool ExcelSheet::clearPrintRepeats()
 	Clears repeated rows and columns on each page. */
 EXCEL_METHOD(Sheet, clearPrintRepeats)
@@ -3540,6 +3913,36 @@ ZEND_END_ARG_INFO()
 PHP_EXCEL_ARGINFO
 ZEND_BEGIN_ARG_INFO_EX(arginfo_Book_colorUnpack, 0, 0, 1)
 	ZEND_ARG_INFO(0, color)
+ZEND_END_ARG_INFO()
+#endif
+
+#if LIBXL_VERSION >= 0x03020000
+PHP_EXCEL_ARGINFO
+ZEND_BEGIN_ARG_INFO_EX(arginfo_Book_setRefR1C1, 0, 0, 1)
+	ZEND_ARG_INFO(0, active)
+ZEND_END_ARG_INFO()
+
+PHP_EXCEL_ARGINFO
+ZEND_BEGIN_ARG_INFO_EX(arginfo_Book_biffVersion, 0, 0, 0)
+ZEND_END_ARG_INFO()
+
+PHP_EXCEL_ARGINFO
+ZEND_BEGIN_ARG_INFO_EX(arginfo_Book_getRefR1C1, 0, 0, 0)
+ZEND_END_ARG_INFO()
+
+PHP_EXCEL_ARGINFO
+ZEND_BEGIN_ARG_INFO_EX(arginfo_Book_getPicture, 0, 0, 1)
+	ZEND_ARG_INFO(0, index)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_INFO_EX(arginfo_Book_getNumPictures, 0, 0, 0)
+ZEND_END_ARG_INFO()
+
+PHP_EXCEL_ARGINFO
+ZEND_BEGIN_ARG_INFO_EX(arginfo_Book_insertSheet, 0, 0, 2)
+	ZEND_ARG_INFO(0, index)
+	ZEND_ARG_INFO(0, name)
+	ZEND_ARG_INFO(0, sheet)
 ZEND_END_ARG_INFO()
 #endif
 
@@ -4179,7 +4582,54 @@ PHP_EXCEL_ARGINFO
 ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_setGroupSummaryRight, 0, 0, 1)
 	ZEND_ARG_INFO(0, direction)
 ZEND_END_ARG_INFO()
+#endif
 
+#if LIBXL_VERSION >= 0x03020000
+PHP_EXCEL_ARGINFO
+ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_setPrintFit, 0, 0, 2)
+	ZEND_ARG_INFO(0, wPages)
+	ZEND_ARG_INFO(0, hPages)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_getPrintFit, 0, 0, 0)
+ZEND_END_ARG_INFO()
+
+PHP_EXCEL_ARGINFO
+ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_getNamedRange, 0, 0, 1)
+	ZEND_ARG_INFO(0, name)
+ZEND_END_ARG_INFO()
+
+PHP_EXCEL_ARGINFO
+ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_getIndexRange, 0, 0, 1)
+	ZEND_ARG_INFO(0, index)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_namedRangeSize, 0, 0, 0)
+ZEND_END_ARG_INFO()
+
+PHP_EXCEL_ARGINFO
+ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_getVerPageBreak, 0, 0, 1)
+	ZEND_ARG_INFO(0, index)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_getVerPageBreakSize, 0, 0, 0)
+ZEND_END_ARG_INFO()
+
+PHP_EXCEL_ARGINFO
+ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_getHorPageBreak, 0, 0, 1)
+	ZEND_ARG_INFO(0, index)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_getHorPageBreakSize, 0, 0, 0)
+ZEND_END_ARG_INFO()
+
+PHP_EXCEL_ARGINFO
+ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_getPictureInfo, 0, 0, 1)
+	ZEND_ARG_INFO(0, index)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_getNumPictures, 0, 0, 0)
+ZEND_END_ARG_INFO()
 #endif
 
 #define EXCEL_ME(class_name, function_name, arg_info, flags) \
@@ -4220,6 +4670,14 @@ zend_function_entry excel_funcs_book[] = {
 	EXCEL_ME(Book, colorUnpack, arginfo_Book_colorUnpack, 0)
 #endif
 	EXCEL_ME(Book, __construct, arginfo_Book___construct, 0)
+#if LIBXL_VERSION >= 0x03020000
+	EXCEL_ME(Book, biffVersion, arginfo_Book_biffVersion, 0)
+	EXCEL_ME(Book, setRefR1C1, arginfo_Book_setRefR1C1, 0)
+	EXCEL_ME(Book, getRefR1C1, arginfo_Book_getRefR1C1, 0)
+	EXCEL_ME(Book, getPicture, arginfo_Book_getPicture, 0)
+	EXCEL_ME(Book, getNumPictures, arginfo_Book_getNumPictures, 0)
+	EXCEL_ME(Book, insertSheet, arginfo_Book_insertSheet, 0)
+#endif
 	{NULL, NULL, NULL}
 };
 
@@ -4310,6 +4768,19 @@ zend_function_entry excel_funcs_sheet[] = {
 	EXCEL_ME(Sheet, setGroupSummaryBelow, arginfo_Sheet_setGroupSummaryBelow, 0)
 	EXCEL_ME(Sheet, getGroupSummaryBelow, arginfo_Sheet_getGroupSummaryBelow, 0)
 	EXCEL_ME(Sheet, setGroupSummaryRight, arginfo_Sheet_setGroupSummaryRight, 0)
+#endif
+#if LIBXL_VERSION >= 0x03020000
+	EXCEL_ME(Sheet, setPrintFit, arginfo_Sheet_setPrintFit, 0)
+	EXCEL_ME(Sheet, getPrintFit, arginfo_Sheet_getPrintFit, 0)
+	EXCEL_ME(Sheet, getNamedRange, arginfo_Sheet_getNamedRange, 0)
+	EXCEL_ME(Sheet, getIndexRange, arginfo_Sheet_getIndexRange, 0)
+	EXCEL_ME(Sheet, namedRangeSize, arginfo_Sheet_namedRangeSize, 0)
+	EXCEL_ME(Sheet, getVerPageBreakSize, arginfo_Sheet_getVerPageBreakSize, 0)
+	EXCEL_ME(Sheet, getVerPageBreak, arginfo_Sheet_getVerPageBreak, 0)
+	EXCEL_ME(Sheet, getHorPageBreak, arginfo_Sheet_getHorPageBreak, 0)
+	EXCEL_ME(Sheet, getHorPageBreakSize, arginfo_Sheet_getHorPageBreakSize, 0)
+	EXCEL_ME(Sheet, getNumPictures, arginfo_Sheet_getNumPictures, 0)
+	EXCEL_ME(Sheet, getPictureInfo, arginfo_Sheet_getPictureInfo, 0)
 #endif
    {NULL, NULL, NULL}
 };
@@ -4593,7 +5064,15 @@ PHP_MINIT_FUNCTION(excel)
 	REGISTER_EXCEL_CLASS_CONST_LONG(sheet, "PAPER_FANFOLD", PAPER_FANFOLD);
 	REGISTER_EXCEL_CLASS_CONST_LONG(sheet, "PAPER_GERMAN_STD_FANFOLD", PAPER_GERMAN_STD_FANFOLD);
 	REGISTER_EXCEL_CLASS_CONST_LONG(sheet, "PAPER_GERMAN_LEGAL_FANFOLD", PAPER_GERMAN_LEGAL_FANFOLD);
-
+#if LIBXL_VERSION >= 0x03020000
+	REGISTER_EXCEL_CLASS_CONST_LONG(book, "PICTURETYPE_PNG", PICTURETYPE_PNG);
+	REGISTER_EXCEL_CLASS_CONST_LONG(book, "PICTURETYPE_JPEG", PICTURETYPE_JPEG);
+	REGISTER_EXCEL_CLASS_CONST_LONG(book, "PICTURETYPE_WMF", PICTURETYPE_WMF);
+	REGISTER_EXCEL_CLASS_CONST_LONG(book, "PICTURETYPE_DIB", PICTURETYPE_DIB);
+	REGISTER_EXCEL_CLASS_CONST_LONG(book, "PICTURETYPE_EMF", PICTURETYPE_EMF);
+	REGISTER_EXCEL_CLASS_CONST_LONG(book, "PICTURETYPE_PICT", PICTURETYPE_PICT);
+	REGISTER_EXCEL_CLASS_CONST_LONG(book, "PICTURETYPE_TIFF", PICTURETYPE_TIFF);
+#endif
 	return SUCCESS;
 }
 /* }}} */
