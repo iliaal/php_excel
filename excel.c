@@ -1118,10 +1118,10 @@ EXCEL_METHOD(Book, __construct)
 	}
 #endif
 	if (!name) {
-		if (INI_STR("excel.ini_license_name") && INI_STR("ini_license_key")) {
-			name = INI_STR("excel.ini_license_name");
+		if (INI_STR("excel.license_name") && INI_STR("excel.license_key")) {
+			name = INI_STR("excel.license_name");
 			name_len = strlen(name);
-			key = INI_STR("ini_license_key");
+			key = INI_STR("excel.license_key");
 			key_len = strlen(key);
 		} else {
 #ifndef LIBXL_VERSION
