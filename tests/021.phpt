@@ -19,10 +19,8 @@ date.timezone=America/Toronto
 	} catch (Exception $e) {
 		var_dump($e->getMessage());
 	}
-
-	echo "OK\n";
 ?>
---EXPECT--
+--EXPECTF--
 string(61) "ExcelFont::__construct() expects exactly 1 parameter, 0 given"
-string(74) "ExcelFont::__construct() expects parameter 1 to be ExcelBook, string given"
-OK
+
+Catchable fatal error: Argument 1 passed to ExcelFont::__construct() must be an instance of ExcelBook, string given in %s on line %d

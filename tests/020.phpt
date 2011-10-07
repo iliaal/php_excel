@@ -22,7 +22,7 @@ date.timezone=America/Toronto
 
 	echo "OK\n";
 ?>
---EXPECT--
+--EXPECTF--
 string(63) "ExcelFormat::__construct() expects exactly 1 parameter, 0 given"
-string(76) "ExcelFormat::__construct() expects parameter 1 to be ExcelBook, string given"
-OK
+
+Catchable fatal error: Argument 1 passed to ExcelFormat::__construct() must be an instance of ExcelBook, string given in %s on line %d

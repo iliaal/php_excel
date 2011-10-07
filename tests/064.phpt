@@ -73,7 +73,7 @@ int(6)
 int(2)
 array(9) {
   ["picture_index"]=>
-  int(1)
+  int(%d)
   ["row_top"]=>
   int(1)
   ["col_left"]=>
