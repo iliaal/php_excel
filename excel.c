@@ -1223,7 +1223,7 @@ static void php_excel_add_picture(INTERNAL_FUNCTION_PARAMETERS, int mode) /* {{{
 	if (ret == -1) {
 		RETURN_FALSE;
 	} else {
-#if LIBXL_VERSION >= 0x03020200
+#if LIBXL_VERSION >= 0x03020200 && LIBXL_VERSION < 0x03020300
 		/* work-around for a bug inside libxl 3.2.2 */
 		ret -= 1;
 #endif
