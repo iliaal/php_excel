@@ -61,7 +61,7 @@ enum libXLPictureType {PICTURETYPE_PNG, PICTURETYPE_JPEG, PICTURETYPE_WMF, PICTU
 #define PHP_EXCEL_FORMULA 2
 #define PHP_EXCEL_NUMERIC_STRING 3
 
-#define PHP_EXCEL_VERSION "0.9.5"
+#define PHP_EXCEL_VERSION "0.9.6"
 
 #ifdef COMPILE_DL_EXCEL
 ZEND_GET_MODULE(excel)
@@ -2910,6 +2910,43 @@ EXCEL_METHOD(Sheet, setDisplayGridlines)
 }
 /* }}} */
 
+#if LIBXL_VERSION >= 0x03020300
+/* {{{ proto bool ExcelSheet::setHidden(bool value)
+	Hides/unhides the sheet. */
+EXCEL_METHOD(Sheet, setHidden)
+{
+	SheetHandle sheet;
+	zval *object = getThis();
+	zend_bool val;
+
+	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "b", &val) == FAILURE) {
+		RETURN_FALSE;
+	}
+
+	SHEET_FROM_OBJECT(sheet, object);
+
+	RETURN_BOOL(xlSheetSetHidden(sheet, val));
+}
+/* }}} */
+
+/* {{{ proto bool ExcelSheet::isHidden()
+	Returns whether sheet is hidden. */
+EXCEL_METHOD(Sheet, isHidden)
+{
+	SheetHandle sheet;
+	zval *object = getThis();
+
+	if (zend_parse_parameters_none() == FAILURE) {
+		RETURN_FALSE;
+	}
+
+	SHEET_FROM_OBJECT(sheet, object);
+
+	RETURN_BOOL(xlSheetHidden(sheet));
+}
+/* }}} */
+#endif
+
 /* {{{ proto void ExcelSheet::setPrintGridlines(bool value)
 	Sets gridlines for printing */
 EXCEL_METHOD(Sheet, setPrintGridlines)
@@ -4398,6 +4435,17 @@ PHP_EXCEL_ARGINFO
 ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_zoom, 0, 0, 0)
 ZEND_END_ARG_INFO()
 
+#if LIBXL_VERSION >= 0x03020300
+PHP_EXCEL_ARGINFO
+ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_isHidden, 0, 0, 0)
+ZEND_END_ARG_INFO()
+
+PHP_EXCEL_ARGINFO
+ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_setHidden, 0, 0, 1)
+	ZEND_ARG_INFO(0, value)
+ZEND_END_ARG_INFO()
+#endif
+
 PHP_EXCEL_ARGINFO
 ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_zoomPrint, 0, 0, 0)
 ZEND_END_ARG_INFO()
@@ -4785,6 +4833,10 @@ zend_function_entry excel_funcs_sheet[] = {
 	EXCEL_ME(Sheet, getHorPageBreakSize, arginfo_Sheet_getHorPageBreakSize, 0)
 	EXCEL_ME(Sheet, getNumPictures, arginfo_Sheet_getNumPictures, 0)
 	EXCEL_ME(Sheet, getPictureInfo, arginfo_Sheet_getPictureInfo, 0)
+#endif
+#if LIBXL_VERSION >= 0x03020300
+	EXCEL_ME(Sheet, setHidden, arginfo_Sheet_setHidden, 0)
+	EXCEL_ME(Sheet, isHidden, arginfo_Sheet_isHidden, 0)
 #endif
    {NULL, NULL, NULL}
 };

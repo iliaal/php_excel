@@ -1,3 +1,10 @@
+[2011-10-12] - Version 0.9.6
+	* Added new methods (requires LibXL 3.2.3+):
+		- ExcelSheet::isHidden() that whether sheet is hidden.
+		- ExcelSheet::setHidden(bool flag) that hides/unhides the sheet.
+	* Allow compilation against LibXL 3.2.3/3.2.2
+	* Added a work-around for image index bug inside LibXL 3.2.2
+
 [2011-08-03] - Version 0.9.1
 	* Added new methods (requires LibXL 3.2.0+):
 		- ExcelSheet::setPrintFit(int wPages, int hPages) that fits sheet width and sheet height to wPages and hPages respectively
