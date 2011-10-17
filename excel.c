@@ -3670,14 +3670,13 @@ EXCEL_METHOD(Book, getPicture)
 	int type;
 	const char *buf;
 	unsigned int buf_len;
+	enum PictureType {PICTURETYPE_PNG, PICTURETYPE_JPEG, PICTURETYPE_WMF, PICTURETYPE_DIB, PICTURETYPE_EMF, PICTURETYPE_PICT, PICTURETYPE_TIFF, PICTURETYPE_ERROR = 0xFF};
 
 	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "l", &index) == FAILURE) {
 		RETURN_FALSE;
 	}
 
 	BOOK_FROM_OBJECT(book, object);
-
-    enum PictureType {PICTURETYPE_PNG, PICTURETYPE_JPEG, PICTURETYPE_WMF, PICTURETYPE_DIB, PICTURETYPE_EMF, PICTURETYPE_PICT, PICTURETYPE_TIFF, PICTURETYPE_ERROR = 0xFF};
 
 	if ((type = xlBookGetPicture(book, (int)index, &buf, &buf_len)) == PICTURETYPE_ERROR) {
 		RETURN_FALSE;
