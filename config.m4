@@ -40,7 +40,7 @@ if test "$PHP_EXCEL" != "no"; then
   if test -r $PHP_LIBXL_LIBDIR/$PHP_LIBDIR/$SEARCH_FOR; then
     EXCEL_LIBDIR=$PHP_LIBXL_LIBDIR/$PHP_LIBDIR
   elif test -r $PHP_LIBXL_LIBDIR/$SEARCH_FOR; then
-    EXCEL_LIBDIR=$PHP_LIBXL_LIBDIR/$SEARCH_FOR
+    EXCEL_LIBDIR=$PHP_LIBXL_LIBDIR
   elif test -z "$EXCEL_LIBDIR"; then
     for i in $SEARCH_PATH ; do
       if test -r $i/$PHP_LIBDIR/$SEARCH_FOR; then
