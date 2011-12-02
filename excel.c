@@ -179,7 +179,6 @@ static zend_object_value excel_object_new_book(zend_class_entry *class_type TSRM
 {
 	excel_book_object *intern;
 	zend_object_value retval;
-	zval *tmp;
 
 	intern = emalloc(sizeof(excel_book_object));
 	memset(intern, 0, sizeof(excel_book_object));
@@ -188,7 +187,10 @@ static zend_object_value excel_object_new_book(zend_class_entry *class_type TSRM
 #ifdef ZEND_ENGINE_2_4
 	object_properties_init(&intern->std, class_type);
 #else
+{
+	zval *tmp;
 	zend_hash_copy(intern->std.properties, &class_type->default_properties, (copy_ctor_func_t) zval_add_ref, (void *) &tmp, sizeof(zval *));
+}
 #endif
 	intern->book = xlCreateBook();
 
@@ -211,8 +213,6 @@ static zend_object_value excel_object_new_sheet(zend_class_entry *class_type TSR
 {
 	excel_sheet_object *intern;
 	zend_object_value retval;
-	zval *tmp;
-
 	intern = emalloc(sizeof(excel_sheet_object));
 	memset(intern, 0, sizeof(excel_sheet_object));
 
@@ -220,7 +220,10 @@ static zend_object_value excel_object_new_sheet(zend_class_entry *class_type TSR
 #ifdef ZEND_ENGINE_2_4
 	object_properties_init(&intern->std, class_type);
 #else
-	zend_hash_copy(intern->std.properties, &class_type->default_properties, (copy_ctor_func_t) zval_add_ref, (void *) &tmp, sizeof(zval *));
+	{
+		zval *tmp;
+		zend_hash_copy(intern->std.properties, &class_type->default_properties, (copy_ctor_func_t) zval_add_ref, (void *) &tmp, sizeof(zval *));
+	}
 #endif
 	(&retval)->handle = zend_objects_store_put(intern, (zend_objects_store_dtor_t)zend_objects_destroy_object, (zend_objects_free_object_storage_t) excel_sheet_object_free_storage, NULL TSRMLS_CC);
 	(&retval)->handlers = &excel_object_handlers_sheet;
@@ -244,7 +247,6 @@ static zend_object_value excel_object_new_font_ex(zend_class_entry *class_type, 
 {
 	excel_font_object *intern;
 	zend_object_value retval;
-	zval *tmp;
 
 	intern = emalloc(sizeof(excel_font_object));
 	memset(intern, 0, sizeof(excel_font_object));
@@ -256,7 +258,10 @@ static zend_object_value excel_object_new_font_ex(zend_class_entry *class_type, 
 #ifdef ZEND_ENGINE_2_4
 	object_properties_init(&intern->std, class_type);
 #else
-	zend_hash_copy(intern->std.properties, &class_type->default_properties, (copy_ctor_func_t) zval_add_ref, (void *) &tmp, sizeof(zval *));
+	{
+		zval *tmp;
+		zend_hash_copy(intern->std.properties, &class_type->default_properties, (copy_ctor_func_t) zval_add_ref, (void *) &tmp, sizeof(zval *));
+	}
 #endif
 	(&retval)->handle = zend_objects_store_put(intern, (zend_objects_store_dtor_t)zend_objects_destroy_object, (zend_objects_free_object_storage_t) excel_font_object_free_storage, NULL TSRMLS_CC);
 	(&retval)->handlers = &excel_object_handlers_font;
@@ -302,7 +307,6 @@ static zend_object_value excel_object_new_format_ex(zend_class_entry *class_type
 {
 	excel_format_object *intern;
 	zend_object_value retval;
-	zval *tmp;
 
 	intern = emalloc(sizeof(excel_format_object));
 	memset(intern, 0, sizeof(excel_format_object));
@@ -314,7 +318,10 @@ static zend_object_value excel_object_new_format_ex(zend_class_entry *class_type
 #ifdef ZEND_ENGINE_2_4
 	object_properties_init(&intern->std, class_type);
 #else
-	zend_hash_copy(intern->std.properties, &class_type->default_properties, (copy_ctor_func_t) zval_add_ref, (void *) &tmp, sizeof(zval *));
+	{
+		zval *tmp;
+		zend_hash_copy(intern->std.properties, &class_type->default_properties, (copy_ctor_func_t) zval_add_ref, (void *) &tmp, sizeof(zval *));
+	}
 #endif
 	(&retval)->handle = zend_objects_store_put(intern, (zend_objects_store_dtor_t)zend_objects_destroy_object, (zend_objects_free_object_storage_t) excel_format_object_free_storage, NULL TSRMLS_CC);
 	(&retval)->handlers = &excel_object_handlers_format;
