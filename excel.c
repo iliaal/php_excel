@@ -2052,7 +2052,7 @@ EXCEL_METHOD(Sheet, readRow)
 	long row;
 	long col_start = 0;
 	long col_end = -1;
-	unsigned short lc;
+	int lc;
 	SheetHandle sheet;
 	BookHandle book;
 
@@ -2111,7 +2111,7 @@ EXCEL_METHOD(Sheet, readCol)
 	long col;
 	long row_start = 0;
 	long row_end = -1;
-	unsigned short lc;
+	int lc;
 	SheetHandle sheet;
 	BookHandle book;
 
