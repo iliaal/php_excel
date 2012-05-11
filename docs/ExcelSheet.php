@@ -400,6 +400,24 @@ class ExcelSheet {
 	} // header
 
 	/**
+	* Hides/unhides the sheet
+	*
+	* @param bool $hide
+	* @return bool
+	*/
+	public function hidden($hide) {
+	} // hidden
+	
+	/**
+	* Returns whether sheet is hidden
+	*
+	* @see ExcelSheet::hidden()
+	* @return bool
+	*/
+	public function isHidden()
+	} //isHidden
+
+	/**
 	* Returns the header margin (in inches)
 	*
 	* @see ExcelSheet::footerMargin()
