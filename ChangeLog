@@ -1,6 +1,11 @@
 [??-??-??] - Version 0.9.7
 	* Updated INFO section of the extension to show libXL version
+	* Added new methods (requires LibXL 3.2.4+):
+		- added ExcelSheet::getTopLeftView() and ExcelSheet::setTopLeftView() methods for getting/setting a view position in the sheet
 
+TODO
+	 - added two auxiliary methods for converting cell reference to row and column and vice versa
+	                         
 
 [2011-10-12] - Version 0.9.6
 	* Added new methods (requires LibXL 3.2.3+):

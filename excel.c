@@ -2954,6 +2954,49 @@ EXCEL_METHOD(Sheet, isHidden)
 /* }}} */
 #endif
 
+#if LIBXL_VERSION >= 0x03020400
+/* {{{ proto array ExcelSheet::getTopLeftView()
+	Extracts the first visible row and the leftmost visible column of the sheet. */
+EXCEL_METHOD(Sheet, getTopLeftView)
+{
+	SheetHandle sheet;
+	zval *object = getThis();
+	int r = 0, c = 0;
+
+	if (zend_parse_parameters_none() == FAILURE) {
+		RETURN_FALSE;
+	}
+
+	SHEET_FROM_OBJECT(sheet, object);
+
+	xlSheetGetTopLeftView(sheet, &r, &c);
+
+	array_init(return_value);
+	add_assoc_long(return_value, "row", r);
+	add_assoc_long(return_value, "column", c);
+}
+/* }}} */
+
+/* {{{ proto bool ExcelSheet::setTopLeftView(int row, int column)
+	Sets the first visible row and the leftmost visible column of the sheet. */
+EXCEL_METHOD(Sheet, setTopLeftView)
+{
+	SheetHandle sheet;
+	zval *object = getThis();
+	long r,c;
+
+	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "ll", &r, &c) == FAILURE) {
+		RETURN_FALSE;
+	}
+
+	SHEET_FROM_OBJECT(sheet, object);
+
+	xlSheetSetTopLeftView(sheet, r, c);
+	RETURN_TRUE;
+}
+/* }}} */
+#endif
+
 /* {{{ proto void ExcelSheet::setPrintGridlines(bool value)
 	Sets gridlines for printing */
 EXCEL_METHOD(Sheet, setPrintGridlines)
@@ -4452,6 +4495,18 @@ ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_setHidden, 0, 0, 1)
 ZEND_END_ARG_INFO()
 #endif
 
+#if LIBXL_VERSION >= 0x03020400
+PHP_EXCEL_ARGINFO
+ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_getTopLeftView, 0, 0, 0)
+ZEND_END_ARG_INFO()
+
+PHP_EXCEL_ARGINFO
+ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_setTopLeftView, 0, 0, 2)
+	ZEND_ARG_INFO(0, row)
+	ZEND_ARG_INFO(0, column)
+ZEND_END_ARG_INFO()
+#endif
+
 PHP_EXCEL_ARGINFO
 ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_zoomPrint, 0, 0, 0)
 ZEND_END_ARG_INFO()
@@ -4843,6 +4898,10 @@ zend_function_entry excel_funcs_sheet[] = {
 #if LIBXL_VERSION >= 0x03020300
 	EXCEL_ME(Sheet, setHidden, arginfo_Sheet_setHidden, 0)
 	EXCEL_ME(Sheet, isHidden, arginfo_Sheet_isHidden, 0)
+#endif
+#if LIBXL_VERSION >= 0x03020400
+	EXCEL_ME(Sheet, setTopLeftView, arginfo_Sheet_setTopLeftView, 0)
+	EXCEL_ME(Sheet, getTopLeftView, arginfo_Sheet_getTopLeftView, 0)
 #endif
    {NULL, NULL, NULL}
 };
