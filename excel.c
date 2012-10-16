@@ -2995,6 +2995,60 @@ EXCEL_METHOD(Sheet, setTopLeftView)
 	RETURN_TRUE;
 }
 /* }}} */
+
+/* {{{ proto bool ExcelSheet::rowColToAddr(int row, int col, boolean row_relative, boolean col_relative)
+	Converts row and column to a cell reference. */
+EXCEL_METHOD(Sheet, rowColToAddr)
+{
+	SheetHandle sheet;
+	zval *object = getThis();
+	zend_bool row_relative = 1, col_relative = 1;
+	long row, col;
+	const char *cel_ref;
+
+	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "ll|bb", &row, &col, &row_relative, &col_relative) == FAILURE) {
+		RETURN_FALSE;
+	}
+
+	SHEET_FROM_OBJECT(sheet, object);
+
+	cel_ref = xlSheetRowColToAddr(sheet, row, col, row_relative, col_relative);
+	if (!cel_ref) {
+		RETURN_FALSE;
+	}
+	RETURN_STRING(cel_ref, 1);
+}
+/* }}} */
+
+/* {{{ proto bool ExcelSheet::addrToRowCol(string cell_reference)
+	Converts a cell reference to row and column. */
+EXCEL_METHOD(Sheet, addrToRowCol)
+{
+	SheetHandle sheet;
+	zval *object = getThis();
+	char *cell_reference;
+	int cell_reference_len;
+	int row = 0, col = 0, rowRelative = 0, colRelative = 0;
+
+	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "s", &cell_reference, &cell_reference_len) == FAILURE) {
+		RETURN_FALSE;
+	}
+
+	if (!cell_reference_len) {
+		php_error_docref(NULL TSRMLS_CC, E_WARNING, "Cell reference cannot be empty");
+		RETURN_FALSE;
+	}
+
+	SHEET_FROM_OBJECT(sheet, object);
+
+	xlSheetAddrToRowCol(sheet, cell_reference, &row, &col, &rowRelative, &colRelative);
+	array_init(return_value);
+	add_assoc_long(return_value, "row", row);
+	add_assoc_long(return_value, "column", col);
+	add_assoc_bool(return_value, "col_relative", colRelative);
+	add_assoc_bool(return_value, "row_relative", rowRelative);
+}
+/* }}} */
 #endif
 
 /* {{{ proto void ExcelSheet::setPrintGridlines(bool value)
@@ -4505,6 +4559,19 @@ ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_setTopLeftView, 0, 0, 2)
 	ZEND_ARG_INFO(0, row)
 	ZEND_ARG_INFO(0, column)
 ZEND_END_ARG_INFO()
+
+PHP_EXCEL_ARGINFO
+ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_rowColToAddr, 0, 0, 2)
+	ZEND_ARG_INFO(0, row)
+	ZEND_ARG_INFO(0, column)
+	ZEND_ARG_INFO(0, row_relative)
+	ZEND_ARG_INFO(0, col_relative)
+ZEND_END_ARG_INFO()
+
+PHP_EXCEL_ARGINFO
+ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_addrToRowCol, 0, 0, 1)
+	ZEND_ARG_INFO(0, cell_reference)
+ZEND_END_ARG_INFO()
 #endif
 
 PHP_EXCEL_ARGINFO
@@ -4902,6 +4969,8 @@ zend_function_entry excel_funcs_sheet[] = {
 #if LIBXL_VERSION >= 0x03020400
 	EXCEL_ME(Sheet, setTopLeftView, arginfo_Sheet_setTopLeftView, 0)
 	EXCEL_ME(Sheet, getTopLeftView, arginfo_Sheet_getTopLeftView, 0)
+	EXCEL_ME(Sheet, rowColToAddr, arginfo_Sheet_rowColToAddr, 0)
+	EXCEL_ME(Sheet, addrToRowCol, arginfo_Sheet_addrToRowCol, 0)
 #endif
    {NULL, NULL, NULL}
 };
