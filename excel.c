@@ -1124,7 +1124,7 @@ EXCEL_METHOD(Book, __construct)
 		RETURN_FALSE;
 	}
 #endif
-	if (!name) {
+	if (!name_len) {
 		if (INI_STR("excel.license_name") && INI_STR("excel.license_key")) {
 			name = INI_STR("excel.license_name");
 			name_len = strlen(name);
