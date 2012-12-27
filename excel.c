@@ -61,7 +61,7 @@ enum libXLPictureType {PICTURETYPE_PNG, PICTURETYPE_JPEG, PICTURETYPE_WMF, PICTU
 #define PHP_EXCEL_FORMULA 2
 #define PHP_EXCEL_NUMERIC_STRING 3
 
-#define PHP_EXCEL_VERSION "0.9.7"
+#define PHP_EXCEL_VERSION "0.9.8"
 
 #ifdef COMPILE_DL_EXCEL
 ZEND_GET_MODULE(excel)
@@ -2660,6 +2660,46 @@ EXCEL_METHOD(Sheet, deleteMerge)
 }
 /* }}} */
 
+#if LIBXL_VERSION >= 0x03040000
+/* {{{ proto void ExcelSheet::addPictureScaled(int row, int column, int pic_id, double scale [, int x_offset [, int y_offset]])
+	Insert picture into a cell with a set scale */
+EXCEL_METHOD(Sheet, addPictureScaled)
+{
+	SheetHandle sheet;
+	zval *object = getThis();
+	long row, col, pic_id;
+	long x_offset = 0, y_offset = 0;
+	double scale;
+
+	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "llld|ll", &row, &col, &pic_id, &scale, &x_offset, &y_offset) == FAILURE) {
+		RETURN_FALSE;
+	}
+
+	SHEET_FROM_OBJECT(sheet, object);
+
+	xlSheetSetPicture(sheet, row, col, pic_id, scale, x_offset, y_offset);
+}
+/* }}} */
+
+/* {{{ proto void ExcelSheet::addPictureDim(int row, int column, int pic_id, int width, int height [, int x_offset [, int y_offset]])
+	Insert picture into a cell with a given dimensions */
+EXCEL_METHOD(Sheet, addPictureDim)
+{
+	SheetHandle sheet;
+	zval *object = getThis();
+	long row, col, pic_id, w, h;
+	long x_offset = 0, y_offset = 0;
+
+	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "lllll", &row, &col, &pic_id, &w, &h, &x_offset, &y_offset) == FAILURE) {
+		RETURN_FALSE;
+	}
+
+	SHEET_FROM_OBJECT(sheet, object);
+
+	xlSheetSetPicture2(sheet, row, col, pic_id, w, h, x_offset, y_offset);
+}
+/* }}} */
+#else
 /* {{{ proto void ExcelSheet::addPictureScaled(int row, int column, int pic_id, double scale)
 	Insert picture into a cell with a set scale */
 EXCEL_METHOD(Sheet, addPictureScaled)
@@ -2696,6 +2736,7 @@ EXCEL_METHOD(Sheet, addPictureDim)
 	xlSheetSetPicture2(sheet, row, col, pic_id, w, h);
 }
 /* }}} */
+#endif
 
 #define PHP_EXCEL_SHEET_SET_BREAK(func_name)	\
 	{	\
@@ -4441,6 +4482,10 @@ ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_addPictureScaled, 0, 0, 4)
 	ZEND_ARG_INFO(0, column)
 	ZEND_ARG_INFO(0, pic_id)
 	ZEND_ARG_INFO(0, scale)
+#if LIBXL_VERSION >= 0x03040000
+	ZEND_ARG_INFO(0, x_offset)
+	ZEND_ARG_INFO(0, y_offset)
+#endif
 ZEND_END_ARG_INFO()
 
 PHP_EXCEL_ARGINFO
@@ -4450,6 +4495,10 @@ ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_addPictureDim, 0, 0, 5)
 	ZEND_ARG_INFO(0, pic_id)
 	ZEND_ARG_INFO(0, width)
 	ZEND_ARG_INFO(0, height)
+#if LIBXL_VERSION >= 0x03040000
+	ZEND_ARG_INFO(0, x_offset)
+	ZEND_ARG_INFO(0, y_offset)
+#endif
 ZEND_END_ARG_INFO()
 
 PHP_EXCEL_ARGINFO
