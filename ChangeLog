@@ -1,4 +1,4 @@
-[2012-12-27] - Version 0.9.8
+[2012-12-31] - Version 0.9.8
 	* Allow compilation against LibXL 3.4
 	* Updated addPictureScaled() and addPictureDim() to support optional x/y offset parameters
 
