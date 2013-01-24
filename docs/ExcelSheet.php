@@ -414,7 +414,7 @@ class ExcelSheet {
 	* @see ExcelSheet::hidden()
 	* @return bool
 	*/
-	public function isHidden()
+	public function isHidden() {
 	} //isHidden
 
 	/**
