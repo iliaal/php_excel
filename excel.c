@@ -3372,11 +3372,11 @@ EXCEL_METHOD(Sheet, setNamedRange)
 {
 	SheetHandle sheet;
 	zval *object = getThis();
-	long row, col, to_row, to_col;
+	long row, to_row, col, to_col;
 	char *name;
 	int name_len;
 
-	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "sllll", &name, &name_len, &row, &col, &to_row, &to_col) == FAILURE) {
+	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "sllll", &name, &name_len, &row, &to_row, &col, &to_col) == FAILURE) {
 		RETURN_FALSE;
 	}
 
@@ -3394,7 +3394,7 @@ EXCEL_METHOD(Sheet, setNamedRange)
 
 	SHEET_FROM_OBJECT(sheet, object);
 
-	RETURN_BOOL(xlSheetSetNamedRange(sheet, name, row, col, to_row, to_col));
+	RETURN_BOOL(xlSheetSetNamedRange(sheet, name, row, to_row, col, to_col));
 }
 /* }}} */
 
