@@ -1,3 +1,8 @@
+[2013-11-18] - Version 0.9.9
+	* Added ExcelBook::IsDate1904/ExcelBook::ISetDate1904 methods to set/retrieve base date format
+	* Allow compilation against LibXL 3.5.3
+	* Fixed bug with parameter order inside setNamedRange method (jacksonja)
+
 [2012-12-31] - Version 0.9.8
 	* Allow compilation against LibXL 3.4
 	* Updated addPictureScaled() and addPictureDim() to support optional x/y offset parameters

@@ -61,7 +61,7 @@ enum libXLPictureType {PICTURETYPE_PNG, PICTURETYPE_JPEG, PICTURETYPE_WMF, PICTU
 #define PHP_EXCEL_FORMULA 2
 #define PHP_EXCEL_NUMERIC_STRING 3
 
-#define PHP_EXCEL_VERSION "0.9.8"
+#define PHP_EXCEL_VERSION "0.9.9"
 
 #ifdef COMPILE_DL_EXCEL
 ZEND_GET_MODULE(excel)
@@ -1015,6 +1015,45 @@ EXCEL_METHOD(Book, unpackDate)
 	RETURN_LONG(t);
 }
 /* }}} */
+
+#if LIBXL_VERSION >= 0x03050300
+/* {{{ proto bool ExcelBook::isDate1904()
+   Returns whether the 1904 date system is active: true - 1904 date system, false - 1900 date system */
+EXCEL_METHOD(Book, isDate1904)
+{
+	BookHandle book;
+	zval *object = getThis();
+
+	if (ZEND_NUM_ARGS()) {
+		RETURN_FALSE;
+	}
+
+	BOOK_FROM_OBJECT(book, object);
+
+	RETURN_BOOL(xlBookIsDate1904(book));
+}
+/* }}} */
+
+/* {{{ proto bool ExcelBook::setDate1904(bool date_type)
+   Sets the date system mode: true - 1904 date system, false - 1900 date system (default) */
+EXCEL_METHOD(Book, setDate1904)
+{
+	BookHandle book;
+	zval *object = getThis();
+	zend_bool date_type;
+
+	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "b", &date_type) == FAILURE) {
+		RETURN_FALSE;
+	}
+
+	BOOK_FROM_OBJECT(book, object);
+
+	xlBookSetDate1904(book, (int)date_type);
+
+	RETURN_TRUE;
+}
+/* }}} */
+#endif
 
 /* {{{ proto int ExcelBook::getActiveSheet()
    Get the active sheet inside a file. */
@@ -4047,6 +4086,17 @@ PHP_EXCEL_ARGINFO
 ZEND_BEGIN_ARG_INFO_EX(arginfo_Book_getDefaultFont, 0, 0, 0)
 ZEND_END_ARG_INFO()
 
+#if LIBXL_VERSION >= 0x03050300
+PHP_EXCEL_ARGINFO
+ZEND_BEGIN_ARG_INFO_EX(arginfo_Book_isDate1904, 0, 0, 0)
+ZEND_END_ARG_INFO()
+
+PHP_EXCEL_ARGINFO
+ZEND_BEGIN_ARG_INFO_EX(arginfo_Book_setDate1904, 0, 0, 1)
+	ZEND_ARG_INFO(0, date_type)
+ZEND_END_ARG_INFO()
+#endif
+
 PHP_EXCEL_ARGINFO
 ZEND_BEGIN_ARG_INFO_EX(arginfo_Book_setDefaultFont, 0, 0, 2)
 	ZEND_ARG_INFO(0, font)
@@ -4897,6 +4947,10 @@ zend_function_entry excel_funcs_book[] = {
 	EXCEL_ME(Book, setRGBMode, arginfo_Book_setRGBMode, 0)
 	EXCEL_ME(Book, colorPack, arginfo_Book_colorPack, 0)
 	EXCEL_ME(Book, colorUnpack, arginfo_Book_colorUnpack, 0)
+#endif
+#if LIBXL_VERSION >= 0x03050300
+	EXCEL_ME(Book, isDate1904, arginfo_Book_isDate1904, 0)
+	EXCEL_ME(Book, setDate1904, arginfo_Book_setDate1904, 0)
 #endif
 	EXCEL_ME(Book, __construct, arginfo_Book___construct, 0)
 #if LIBXL_VERSION >= 0x03020000
