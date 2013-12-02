@@ -959,6 +959,57 @@ EXCEL_METHOD(Book, packDate)
 }
 /* }}} */
 
+static double _php_excel_date_pack_values(BookHandle book, int year, int month, int day, int hour, int min, int sec)
+{
+	return xlBookDatePack(book, year, month, day, hour, min, sec
+#ifdef HAVE_LIBXL_243_PLUS
+							, 0
+#endif
+	);
+}
+
+/* {{{ proto float ExcelBook::packDateValues(int year, int month, int day, int hour, int minute, int second)
+   Pack a date by single values into an Excel Double */
+EXCEL_METHOD(Book, packDateValues)
+{
+	BookHandle book;
+	zval *object = getThis();
+	long year, month, day, hour, min, sec;
+	double dt;
+
+	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "llllll", &year, &month, &day, &hour, &min, &sec) == FAILURE) {
+		RETURN_FALSE;
+	}
+	
+	if (year < 1) {
+		php_error_docref(NULL TSRMLS_CC, E_WARNING, "Invalid '%ld' value for year", year);
+		RETURN_FALSE;
+	} else if (month < 1 || month > 12) {
+		php_error_docref(NULL TSRMLS_CC, E_WARNING, "Invalid '%ld' value for month", month);
+		RETURN_FALSE;
+	} else if (day < 1 || day > 31) {
+		php_error_docref(NULL TSRMLS_CC, E_WARNING, "Invalid '%ld' value for day", day);
+		RETURN_FALSE;
+	} else if (hour < 0 || hour > 23) {
+		php_error_docref(NULL TSRMLS_CC, E_WARNING, "Invalid '%ld' value for hour", hour);
+		RETURN_FALSE;
+	} else if (min < 0 || min > 59) {
+		php_error_docref(NULL TSRMLS_CC, E_WARNING, "Invalid '%ld' value for minute", min);
+		RETURN_FALSE;
+	} else if (sec < 0 || sec > 59) {
+		php_error_docref(NULL TSRMLS_CC, E_WARNING, "Invalid '%ld' value for second", sec);
+		RETURN_FALSE;
+	}
+
+	BOOK_FROM_OBJECT(book, object);
+
+	if ((dt = _php_excel_date_pack_values(book, year, month, day, hour, min, sec)) == -1) {
+		RETURN_FALSE;
+	}
+	RETURN_DOUBLE(dt);
+}
+/* }}} */
+
 static int _php_excel_date_unpack(BookHandle book, double dt)
 {
 	struct tm tm = {0};
@@ -4074,6 +4125,16 @@ ZEND_BEGIN_ARG_INFO_EX(arginfo_Book_packDate, 0, 0, 1)
 ZEND_END_ARG_INFO()
 
 PHP_EXCEL_ARGINFO
+ZEND_BEGIN_ARG_INFO_EX(arginfo_Book_packDateValues, 0, 0, 1)
+	ZEND_ARG_INFO(0, year)
+	ZEND_ARG_INFO(0, month)
+	ZEND_ARG_INFO(0, day)
+	ZEND_ARG_INFO(0, hour)
+	ZEND_ARG_INFO(0, min)
+	ZEND_ARG_INFO(0, sec)
+ZEND_END_ARG_INFO()
+
+PHP_EXCEL_ARGINFO
 ZEND_BEGIN_ARG_INFO_EX(arginfo_Book_unpackDate, 0, 0, 1)
 	ZEND_ARG_INFO(0, date)
 ZEND_END_ARG_INFO()
@@ -4934,6 +4995,7 @@ zend_function_entry excel_funcs_book[] = {
 	EXCEL_ME(Book, getCustomFormat, arginfo_Book_getCustomFormat, 0)
 	EXCEL_ME(Book, addCustomFormat, arginfo_Book_addCustomFormat, 0)
 	EXCEL_ME(Book, packDate, arginfo_Book_packDate, 0)
+	EXCEL_ME(Book, packDateValues, arginfo_Book_packDateValues, 0)
 	EXCEL_ME(Book, unpackDate, arginfo_Book_unpackDate, 0)
 	EXCEL_ME(Book, getActiveSheet, arginfo_Book_getActiveSheet, 0)
 	EXCEL_ME(Book, setActiveSheet, arginfo_Book_setActiveSheet, 0)
