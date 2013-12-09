@@ -1278,7 +1278,7 @@ EXCEL_METHOD(Book, setActiveSheet)
 	BOOK_FROM_OBJECT(book, object);
 
 	xlBookSetActiveSheet(book, id);
-	RETURN_BOOL(id != xlBookActiveSheet(book));
+	RETURN_BOOL(id == xlBookActiveSheet(book));
 }
 /* }}} */
 
