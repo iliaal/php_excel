@@ -3739,7 +3739,7 @@ EXCEL_METHOD(Sheet, getVerPageBreak)
 	}
 
 	SHEET_FROM_OBJECT(sheet, object);
-	RETURN_LONG(xlSheetGetVerPageBreakSize(sheet));
+	RETURN_LONG(xlSheetGetVerPageBreak(sheet, index));
 }
 /* }}} */
 
@@ -3772,7 +3772,7 @@ EXCEL_METHOD(Sheet, getHorPageBreak)
 	}
 
 	SHEET_FROM_OBJECT(sheet, object);
-	RETURN_LONG(xlSheetGetHorPageBreakSize(sheet));
+	RETURN_LONG(xlSheetGetHorPageBreak(sheet, index));
 }
 /* }}} */
 
