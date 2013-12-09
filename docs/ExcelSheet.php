@@ -210,6 +210,18 @@ class ExcelSheet {
 	} // clear
 
 	/**
+	* Sets the print area.
+	*
+	* @param int $row_start 0-based row number
+	* @param int $row_end 0-based row number
+	* @param int $column_start 0-based column number
+	* @param int $column_end 0-based column number
+	* @return bool
+	*/
+	public function setPrintArea() {
+	} // setPrintArea
+
+	/**
 	* Clears the print area
 	*
 	* @return bool

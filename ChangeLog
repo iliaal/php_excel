@@ -1,5 +1,10 @@
 [2014-??-??] - Version 1.0
 	* Added ExcelBook::packDateValues() method for generating Excel date value
+	* Added ExcelBook::setPrintArea() method for setting print area
+	* Fixed parsing of non-numeric formulas inside read() method
+	* Fixed parameter processing inside ExcelSheet::getVerPageBreak()/getHorPageBreak() methods
+	* Fixed parameter order inside ExcelSheet::getNamedRange()/getIndexRange() methods
+	* Fixed return value processing inside ExcelBook::setActiveSheet() method
 
 [2013-11-18] - Version 0.9.9
 	* Added ExcelBook::IsDate1904/ExcelBook::ISetDate1904 methods to set/retrieve base date format

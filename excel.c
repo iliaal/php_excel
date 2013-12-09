@@ -3986,6 +3986,32 @@ EXCEL_METHOD(Book, insertSheet)
 
 #endif
 
+/* {{{ proto bool ExcelSheet::setPrintArea()
+	Sets the print area. */
+EXCEL_METHOD(Sheet, setPrintArea)
+{
+	zval *object = getThis();
+	SheetHandle sheet;
+	long row, col, to_row, to_col;
+
+	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "llll", &row, &to_row, &col, &to_col) == FAILURE) {
+		RETURN_FALSE;
+	}
+
+	if (row > to_row) {
+		php_error_docref(NULL TSRMLS_CC, E_WARNING, "The range row start cannot be greater than row end.");
+		RETURN_FALSE;
+	} else if (col > to_col) {
+		php_error_docref(NULL TSRMLS_CC, E_WARNING, "The range column start cannot be greater than column end.");
+		RETURN_FALSE;
+	}
+
+	SHEET_FROM_OBJECT(sheet, object);
+	xlSheetSetPrintArea(sheet, row, to_row, col, to_col);
+	RETURN_TRUE;
+}
+/* }}} */
+
 /* {{{ proto bool ExcelSheet::clearPrintRepeats()
 	Clears repeated rows and columns on each page. */
 EXCEL_METHOD(Sheet, clearPrintRepeats)
@@ -4904,6 +4930,14 @@ ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_setPrintRepeatCols, 0, 0, 2)
 ZEND_END_ARG_INFO()
 
 PHP_EXCEL_ARGINFO
+ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_setPrintArea, 0, 0, 4)
+	ZEND_ARG_INFO(0, row_first)
+	ZEND_ARG_INFO(0, row_last)
+	ZEND_ARG_INFO(0, col_first)
+	ZEND_ARG_INFO(0, col_last)
+ZEND_END_ARG_INFO()
+
+PHP_EXCEL_ARGINFO
 ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_clearPrintRepeats, 0, 0, 0)
 ZEND_END_ARG_INFO()
 
@@ -5113,6 +5147,7 @@ zend_function_entry excel_funcs_sheet[] = {
 	EXCEL_ME(Sheet, delNamedRange, arginfo_Sheet_delNamedRange, 0)
 	EXCEL_ME(Sheet, setPrintRepeatRows, arginfo_Sheet_setPrintRepeatRows, 0)
 	EXCEL_ME(Sheet, setPrintRepeatCols, arginfo_Sheet_setPrintRepeatCols, 0)
+	EXCEL_ME(Sheet, setPrintArea, arginfo_Sheet_setPrintArea, 0)
 	EXCEL_ME(Sheet, clearPrintRepeats, arginfo_Sheet_clearPrintRepeats, 0)
 	EXCEL_ME(Sheet, clearPrintArea, arginfo_Sheet_clearPrintArea, 0)
 	EXCEL_ME(Sheet, getGroupSummaryRight, arginfo_Sheet_getGroupSummaryRight, 0)
