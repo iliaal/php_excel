@@ -980,7 +980,7 @@ EXCEL_METHOD(Book, packDateValues)
 	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "llllll", &year, &month, &day, &hour, &min, &sec) == FAILURE) {
 		RETURN_FALSE;
 	}
-	
+
 	if (year < 1) {
 		php_error_docref(NULL TSRMLS_CC, E_WARNING, "Invalid '%ld' value for year", year);
 		RETURN_FALSE;
