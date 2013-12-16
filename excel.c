@@ -2072,19 +2072,8 @@ EXCEL_METHOD(Sheet, setCellFormat)
 /* }}} */
 #endif
 
-static zend_bool php_excel_read_cell(int row, int col, zval *val, SheetHandle sheet, BookHandle book, FormatHandle *format)
+static zend_bool php_excel_read_cell_calculated(int row, int col, zval *val, SheetHandle sheet, BookHandle book, FormatHandle *format)
 {
-	const char *s;
-	if (xlSheetIsFormula(sheet, row, col)) {
-		s = xlSheetReadFormula(sheet, row, col, format);
-		if (s) {
-			ZVAL_STRING(val, (char *)s, 1);
-			return 1;
-		} else {
-			return 0;
-		}
-	}
-
 	switch (xlSheetCellType(sheet, row, col)) {
 		case CELLTYPE_EMPTY:
 			ZVAL_EMPTY_STRING(val);
@@ -2140,6 +2129,22 @@ static zend_bool php_excel_read_cell(int row, int col, zval *val, SheetHandle sh
 	return 0;
 }
 
+static zend_bool php_excel_read_cell(int row, int col, zval *val, SheetHandle sheet, BookHandle book, FormatHandle *format)
+{
+	const char *s;
+	if (xlSheetIsFormula(sheet, row, col)) {
+		s = xlSheetReadFormula(sheet, row, col, format);
+		if (s) {
+			ZVAL_STRING(val, (char *)s, 1);
+			return 1;
+		} else {
+			return 0;
+		}
+	}
+
+	return php_excel_read_cell_calculated(row,col,val,sheet,book,&format)
+}
+
 /* {{{ proto array ExcelSheet::readRow(int row [, int start_col [, int end_column]])
 	Read an entire row worth of data */
 EXCEL_METHOD(Sheet, readRow)
@@ -2186,7 +2191,7 @@ EXCEL_METHOD(Sheet, readRow)
 		FormatHandle format = NULL;
 
 		MAKE_STD_ZVAL(value);
-		if (!php_excel_read_cell(row, lc, value, sheet, book, &format)) {
+		if (!php_excel_read_cell_calculated(row, lc, value, sheet, book, &format)) {
 			zval_ptr_dtor(&value);
 			zval_dtor(return_value);
 			RETURN_FALSE;
@@ -2245,7 +2250,7 @@ EXCEL_METHOD(Sheet, readCol)
 		FormatHandle format = NULL;
 
 		MAKE_STD_ZVAL(value);
-		if (!php_excel_read_cell(lc, col, value, sheet, book, &format)) {
+		if (!php_excel_read_cell_calculated(lc, col, value, sheet, book, &format)) {
 			zval_ptr_dtor(&value);
 			zval_dtor(return_value);
 			RETURN_FALSE;
@@ -2280,7 +2285,7 @@ EXCEL_METHOD(Sheet, read)
 		ZVAL_NULL(oformat);
 	}
 
-	if (!php_excel_read_cell(row, col, return_value, sheet, book, &format)) {
+	if (!php_excel_read_cell_calculated(row, col, return_value, sheet, book, &format)) {
 		RETURN_FALSE;
 	}
 
@@ -2294,6 +2299,43 @@ EXCEL_METHOD(Sheet, read)
 	}
 }
 /* }}} */
+
+/* {{{ proto mixed ExcelSheet::readFormula(int row, int column [, ExcelFormat &format])
+	Read data stored inside a cell */
+EXCEL_METHOD(Sheet, readFormula)
+{
+	zval *object = getThis();
+	SheetHandle sheet;
+	BookHandle book;
+	long row, col;
+	zval *oformat = NULL;
+	FormatHandle format = NULL;
+
+	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "ll|z/", &row, &col, &oformat) == FAILURE) {
+		RETURN_FALSE;
+	}
+
+	SHEET_AND_BOOK_FROM_OBJECT(sheet, book, object);
+
+	if (oformat) {
+		zval_dtor(oformat);
+		ZVAL_NULL(oformat);
+	}
+
+	if (!php_excel_read_cell(row, col, return_value, sheet, book, &format)) {
+		RETURN_FALSE;
+	}
+
+	if (oformat) {
+		excel_format_object *fo;
+
+		Z_TYPE_P(oformat) = IS_OBJECT;
+		object_init_ex(oformat, excel_ce_format);
+		fo = (excel_format_object *) zend_object_store_get_object(oformat TSRMLS_CC);
+		fo->format = format;
+	}
+}
+/* }}} *//
 
 static zend_bool php_excel_write_cell(SheetHandle sheet, BookHandle book, int row, int col, zval *data, FormatHandle format, long dtype)
 {
@@ -4486,7 +4528,7 @@ ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_readCol, 0, 0, 1)
 	ZEND_ARG_INFO(0, column)
 	ZEND_ARG_INFO(0, start_row)
 	ZEND_ARG_INFO(0, end_row)
-ZEND_END_ARG_INFO()
+ZEND_END_ARG_INFO(
 
 PHP_EXCEL_ARGINFO
 ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_read, 0, 0, 2)
@@ -4494,6 +4536,13 @@ ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_read, 0, 0, 2)
 	ZEND_ARG_INFO(0, column)
 	ZEND_ARG_INFO(1, format)
 ZEND_END_ARG_INFO()
+
+PHP_EXCEL_ARGINFO
+ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_readFormula, 0, 0, 2)
+	ZEND_ARG_INFO(0, row)
+	ZEND_ARG_INFO(0, column)
+	ZEND_ARG_INFO(1, format)
+ZEND_END_ARG_INFO())
 
 PHP_EXCEL_ARGINFO
 ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_write, 0, 0, 3)
@@ -5073,6 +5122,7 @@ zend_function_entry excel_funcs_sheet[] = {
 	EXCEL_ME(Sheet, setCellFormat, arginfo_Sheet_setCellFormat, 0)
 #endif
 	EXCEL_ME(Sheet, read, arginfo_Sheet_read, 0)
+	EXCEL_ME(Sheet, readFormula, arginfo_Sheet_readFormula, 0)
 	EXCEL_ME(Sheet, readRow, arginfo_Sheet_readRow, 0)
 	EXCEL_ME(Sheet, readCol, arginfo_Sheet_readCol, 0)
 	EXCEL_ME(Sheet, write, arginfo_Sheet_write, 0)
