@@ -2074,6 +2074,7 @@ EXCEL_METHOD(Sheet, setCellFormat)
 
 static zend_bool php_excel_read_cell_calculated(int row, int col, zval *val, SheetHandle sheet, BookHandle book, FormatHandle *format)
 {
+	const char *s;
 	switch (xlSheetCellType(sheet, row, col)) {
 		case CELLTYPE_EMPTY:
 			ZVAL_EMPTY_STRING(val);
