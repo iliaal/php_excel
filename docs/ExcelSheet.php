@@ -633,7 +633,7 @@ class ExcelSheet {
 	* @return
 	*/
 	public function readFormula($row, $column, $format = null) {
-	} // read
+	} // readFormula
 
 	/**
 	* Read an entire column worth of data
