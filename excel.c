@@ -2142,7 +2142,7 @@ static zend_bool php_excel_read_cell(int row, int col, zval *val, SheetHandle sh
 		}
 	}
 
-	return php_excel_read_cell_calculated(row,col,val,sheet,book,&format)
+	return php_excel_read_cell_calculated(row,col,val,sheet,book,&format);
 }
 
 /* {{{ proto array ExcelSheet::readRow(int row [, int start_col [, int end_column]])
@@ -2335,7 +2335,7 @@ EXCEL_METHOD(Sheet, readFormula)
 		fo->format = format;
 	}
 }
-/* }}} *//
+/* }}} */
 
 static zend_bool php_excel_write_cell(SheetHandle sheet, BookHandle book, int row, int col, zval *data, FormatHandle format, long dtype)
 {
@@ -4528,7 +4528,7 @@ ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_readCol, 0, 0, 1)
 	ZEND_ARG_INFO(0, column)
 	ZEND_ARG_INFO(0, start_row)
 	ZEND_ARG_INFO(0, end_row)
-ZEND_END_ARG_INFO(
+ZEND_END_ARG_INFO()
 
 PHP_EXCEL_ARGINFO
 ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_read, 0, 0, 2)
@@ -4542,7 +4542,7 @@ ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_readFormula, 0, 0, 2)
 	ZEND_ARG_INFO(0, row)
 	ZEND_ARG_INFO(0, column)
 	ZEND_ARG_INFO(1, format)
-ZEND_END_ARG_INFO())
+ZEND_END_ARG_INFO()
 
 PHP_EXCEL_ARGINFO
 ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_write, 0, 0, 3)
