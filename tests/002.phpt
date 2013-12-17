@@ -16,6 +16,25 @@ Excel date pack/unpack tests
 		}
 	}
 	echo "OK\n";
+	
+	for ($i = 0; $i < 1000; $i++) {
+		$tm = time(); //rand(10000000, $t);
+		
+		$ed = $x->packDateValues(
+		    date('Y', $tm),
+		    date('m', $tm),
+		    date('d', $tm),
+		    date('H', $tm),
+		    date('i', $tm),
+		    date('s', $tm)
+		);
+		$out = $x->unpackDate($ed);
+		if ($out != $tm) {
+			echo "source: {$tm} <> res: " . $out . " >> diff: ".($out - $tm)." packed: '".$ed."'\n";
+		}
+	}
+	echo "OK\n";
 ?>
 --EXPECT--
+OK
 OK
