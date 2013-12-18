@@ -218,6 +218,20 @@ class ExcelBook {
 	*/
 	public function packDate($timestamp) {
 	} // packDate
+	
+	/**
+	* Pack a date from single values into an Excel double
+	*
+	* @param int $year
+	* @param int $month
+	* @param int $day
+	* @param int $hour
+	* @param int $minute
+	* @param int $second
+	* @return float
+	*/
+	public function packDateValues($year, $month, $day, $hour, $minute, $second) {
+	} // packDateValues
 
 	/**
 	* Returns whether RGB mode is active
