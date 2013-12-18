@@ -625,6 +625,17 @@ class ExcelSheet {
 	} // read
 
 	/**
+	* Read data from a specific cell and return the formula instead of the value (if a formula exists)
+	*
+	* @param int $row 0-based row number
+	* @param int $column 0-based column number
+	* @param ExcelFormat $format (optional, default=null)
+	* @return
+	*/
+	public function readFormula($row, $column, $format = null) {
+	} // readFormula
+
+	/**
 	* Read an entire column worth of data
 	*
 	* @param int $column 0-based column number
