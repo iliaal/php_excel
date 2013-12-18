@@ -1,4 +1,5 @@
 [2014-??-??] - Version 1.0
+	* Added parameter to readRow/readCol/read methods that specifiy whether to parse formula or its value.
 	* Added ExcelBook::packDateValues() method for generating Excel date value
 	* Added ExcelBook::setPrintArea() method for setting print area
 	* Fixed parsing of non-numeric formulas inside read() method

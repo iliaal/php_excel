@@ -2072,10 +2072,10 @@ EXCEL_METHOD(Sheet, setCellFormat)
 /* }}} */
 #endif
 
-static zend_bool php_excel_read_cell(int row, int col, zval *val, SheetHandle sheet, BookHandle book, FormatHandle *format)
+static zend_bool php_excel_read_cell(int row, int col, zval *val, SheetHandle sheet, BookHandle book, FormatHandle *format, zend_bool read_formula)
 {
 	const char *s;
-	if (xlSheetIsFormula(sheet, row, col)) {
+	if (read_formula && xlSheetIsFormula(sheet, row, col)) {
 		s = xlSheetReadFormula(sheet, row, col, format);
 		if (s) {
 			ZVAL_STRING(val, (char *)s, 1);
@@ -2151,8 +2151,9 @@ EXCEL_METHOD(Sheet, readRow)
 	int lc;
 	SheetHandle sheet;
 	BookHandle book;
+	zend_bool read_formula = 1;
 
-	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "l|ll", &row, &col_start, &col_end) == FAILURE) {
+	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "l|llb", &row, &col_start, &col_end, &read_formula) == FAILURE) {
 		RETURN_FALSE;
 	}
 
@@ -2186,7 +2187,7 @@ EXCEL_METHOD(Sheet, readRow)
 		FormatHandle format = NULL;
 
 		MAKE_STD_ZVAL(value);
-		if (!php_excel_read_cell(row, lc, value, sheet, book, &format)) {
+		if (!php_excel_read_cell(row, lc, value, sheet, book, &format, read_formula)) {
 			zval_ptr_dtor(&value);
 			zval_dtor(return_value);
 			RETURN_FALSE;
@@ -2210,8 +2211,9 @@ EXCEL_METHOD(Sheet, readCol)
 	int lc;
 	SheetHandle sheet;
 	BookHandle book;
+	zend_bool read_formula = 1;
 
-	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "l|ll", &col, &row_start, &row_end) == FAILURE) {
+	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "l|ll", &col, &row_start, &row_end, &read_formula) == FAILURE) {
 		RETURN_FALSE;
 	}
 
@@ -2245,7 +2247,7 @@ EXCEL_METHOD(Sheet, readCol)
 		FormatHandle format = NULL;
 
 		MAKE_STD_ZVAL(value);
-		if (!php_excel_read_cell(lc, col, value, sheet, book, &format)) {
+		if (!php_excel_read_cell(lc, col, value, sheet, book, &format, read_formula)) {
 			zval_ptr_dtor(&value);
 			zval_dtor(return_value);
 			RETURN_FALSE;
@@ -2268,8 +2270,9 @@ EXCEL_METHOD(Sheet, read)
 	long row, col;
 	zval *oformat = NULL;
 	FormatHandle format = NULL;
+	zend_bool read_formula = 1;
 
-	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "ll|z/", &row, &col, &oformat) == FAILURE) {
+	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "ll|z/b", &row, &col, &oformat, &read_formula) == FAILURE) {
 		RETURN_FALSE;
 	}
 
@@ -2280,7 +2283,7 @@ EXCEL_METHOD(Sheet, read)
 		ZVAL_NULL(oformat);
 	}
 
-	if (!php_excel_read_cell(row, col, return_value, sheet, book, &format)) {
+	if (!php_excel_read_cell(row, col, return_value, sheet, book, &format, read_formula)) {
 		RETURN_FALSE;
 	}
 
