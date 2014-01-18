@@ -53,7 +53,9 @@ static long xlFormatBorderColor(FormatHandle f)
 #if LIBXL_VERSION >= 0x03020000
 #define xlBookSetRefR1C1 xlBookSetRefR1C1A
 #define xlBookRefR1C1 xlBookRefR1C1A
+#endif
 
+#if LIBXL_VERSION >= 0x03020000 && LIBXL_VERSION < 0x03050401
 enum libXLPictureType {PICTURETYPE_PNG, PICTURETYPE_JPEG, PICTURETYPE_WMF, PICTURETYPE_DIB, PICTURETYPE_EMF, PICTURETYPE_PICT, PICTURETYPE_TIFF, PICTURETYPE_ERROR = 0xFF};
 #endif
 
@@ -3474,8 +3476,13 @@ EXCEL_METHOD(Sheet, setNamedRange)
 	long row, to_row, col, to_col;
 	char *name;
 	int name_len;
+#if LIBXL_VERSION >= 0x03050401
+	long scope_id = SCOPE_WORKBOOK;
 
+	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "sllll|l", &name, &name_len, &row, &to_row, &col, &to_col, &scope_id) == FAILURE) {
+#else
 	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "sllll", &name, &name_len, &row, &to_row, &col, &to_col) == FAILURE) {
+#endif
 		RETURN_FALSE;
 	}
 
@@ -3493,7 +3500,11 @@ EXCEL_METHOD(Sheet, setNamedRange)
 
 	SHEET_FROM_OBJECT(sheet, object);
 
+#if LIBXL_VERSION >= 0x03050401
+	RETURN_BOOL(xlSheetSetNamedRange(sheet, name, row, to_row, col, to_col, scope_id));
+#else
 	RETURN_BOOL(xlSheetSetNamedRange(sheet, name, row, to_row, col, to_col));
+#endif
 }
 /* }}} */
 
@@ -3505,8 +3516,13 @@ EXCEL_METHOD(Sheet, delNamedRange)
 	zval *object = getThis();
 	char *val;
 	int val_len;
+#if LIBXL_VERSION >= 0x03050401
+	long scope_id = SCOPE_WORKBOOK;
 
+	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "s|", &val, &val_len, &scope_id) == FAILURE) {
+#else
 	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "s", &val, &val_len) == FAILURE) {
+#endif
 		RETURN_FALSE;
 	}
 
@@ -3517,7 +3533,11 @@ EXCEL_METHOD(Sheet, delNamedRange)
 
 	SHEET_FROM_OBJECT(sheet, object);
 
+#if LIBXL_VERSION >= 0x03050401
+	RETURN_BOOL(xlSheetDelNamedRange(sheet, val, scope_id));
+#else
 	RETURN_BOOL(xlSheetDelNamedRange(sheet, val));
+#endif
 }
 /* }}} */
 
@@ -3676,18 +3696,31 @@ EXCEL_METHOD(Sheet, getNamedRange)
 	char *name;
 	int name_len;
 	int rf, rl, cf, cl;
+#if LIBXL_VERSION >= 0x03050401
+	long scope_id = SCOPE_WORKBOOK;
+	int hidden = 0;
 
+	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "s|l", &name, &name_len, &scope_id) == FAILURE) {
+#else
 	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "s", &name, &name_len) == FAILURE) {
+#endif
 		RETURN_FALSE;
 	}
 
 	SHEET_FROM_OBJECT(sheet, object);
+#if LIBXL_VERSION >= 0x03050401
+	if (xlSheetGetNamedRange(sheet, name, &rf, &rl, &cf, &cl, scope_id, &hidden)) {
+#else
 	if (xlSheetGetNamedRange(sheet, name, &rf, &rl, &cf, &cl)) {
+#endif
 		array_init(return_value);
 		add_assoc_long(return_value, "row_first", rf);
 		add_assoc_long(return_value, "row_last", rl);
 		add_assoc_long(return_value, "col_first", cf);
 		add_assoc_long(return_value, "col_last", cl);
+#if LIBXL_VERSION >= 0x03050401
+		add_assoc_bool(return_value, "hidden", hidden);
+#endif
 	} else {
 		RETURN_FALSE;
 	}
@@ -3701,18 +3734,29 @@ EXCEL_METHOD(Sheet, getIndexRange)
 	zval *object = getThis();
 	long index;
 	int rf, rl, cf, cl;
+#if LIBXL_VERSION >= 0x03050401
+	int hidden = 0, scope_id;
+#endif
 
 	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "l", &index) == FAILURE) {
 		RETURN_FALSE;
 	}
 
 	SHEET_FROM_OBJECT(sheet, object);
+#if LIBXL_VERSION >= 0x03050401
+	if (xlSheetNamedRange(sheet, (int)index, &rf, &rl, &cf, &cl, &scope_id, &hidden)) {
+#else
 	if (xlSheetNamedRange(sheet, (int)index, &rf, &rl, &cf, &cl)) {
+#endif
 		array_init(return_value);
 		add_assoc_long(return_value, "row_first", rf);
 		add_assoc_long(return_value, "row_last", rl);
 		add_assoc_long(return_value, "col_first", cf);
 		add_assoc_long(return_value, "col_last", cl);
+#if LIBXL_VERSION >= 0x03050401
+		add_assoc_bool(return_value, "hidden", hidden);
+		add_assoc_long(return_value, "scope", scope_id);
+#endif
 	} else {
 		RETURN_FALSE;
 	}
@@ -4980,11 +5024,17 @@ ZEND_END_ARG_INFO()
 PHP_EXCEL_ARGINFO
 ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_getNamedRange, 0, 0, 1)
 	ZEND_ARG_INFO(0, name)
+#if LIBXL_VERSION >= 0x03050401
+	ZEND_ARG_INFO(0, scope_id)
+#endif
 ZEND_END_ARG_INFO()
 
 PHP_EXCEL_ARGINFO
 ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_getIndexRange, 0, 0, 1)
 	ZEND_ARG_INFO(0, index)
+#if LIBXL_VERSION >= 0x03050401
+	ZEND_ARG_INFO(0, scope_id)
+#endif
 ZEND_END_ARG_INFO()
 
 ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_namedRangeSize, 0, 0, 0)
@@ -5471,6 +5521,10 @@ PHP_MINIT_FUNCTION(excel)
 	REGISTER_EXCEL_CLASS_CONST_LONG(book, "PICTURETYPE_EMF", PICTURETYPE_EMF);
 	REGISTER_EXCEL_CLASS_CONST_LONG(book, "PICTURETYPE_PICT", PICTURETYPE_PICT);
 	REGISTER_EXCEL_CLASS_CONST_LONG(book, "PICTURETYPE_TIFF", PICTURETYPE_TIFF);
+#endif
+#if LIBXL_VERSION >= 0x03050401
+	REGISTER_EXCEL_CLASS_CONST_LONG(book, "SCOPE_UNDEFINED", SCOPE_UNDEFINED);
+	REGISTER_EXCEL_CLASS_CONST_LONG(book, "SCOPE_WORKBOOK", SCOPE_WORKBOOK);
 #endif
 	return SUCCESS;
 }

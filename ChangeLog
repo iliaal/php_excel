@@ -1,4 +1,7 @@
 [2014-??-??] - Version 1.0
+	* Fixed compilation with LibXL 3.5.4
+	* Added optional scope parameter to setNamedRange()/delNamedRange()/getNamedRange() methods
+	* Updated getNamedRange()/getIndexRange() methods to retrieve hidden state
 	* Added parameter to readRow/readCol/read methods that specifiy whether to parse formula or its value.
 	* Added ExcelBook::packDateValues() method for generating Excel date value
 	* Added ExcelBook::setPrintArea() method for setting print area
