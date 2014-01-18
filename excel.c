@@ -4033,6 +4033,74 @@ EXCEL_METHOD(Book, insertSheet)
 
 #endif
 
+#if LIBXL_VERSION >= 0x03050401
+/* {{{ proto bool ExcelBook::isTemplate()
+	Returns whether the workbook is template. */
+EXCEL_METHOD(Book, isTemplate)
+{
+	BookHandle book;
+	zval *object = getThis();
+
+	if (ZEND_NUM_ARGS()) {
+		RETURN_FALSE;
+	}
+
+	BOOK_FROM_OBJECT(book, object);
+	RETURN_BOOL(xlBookIsTemplate(book));
+}
+/* }}} */
+
+/* {{{ proto void ExcelBook::setTemplate(bool mode)
+	Sets the template flag, if the workbook is template. */
+EXCEL_METHOD(Book, setTemplate)
+{
+	BookHandle book;
+	zval *object = getThis();
+	zend_bool mode;
+
+	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "b", &mode) == FAILURE) {
+		RETURN_FALSE;
+	}
+
+	BOOK_FROM_OBJECT(book, object);
+	xlBookSetTemplate(book, (int)mode);
+}
+/* }}} */
+
+/* {{{ proto long ExcelSheet::getRightToLeft()
+	Returns whether the workbook is template. */
+EXCEL_METHOD(Sheet, getRightToLeft)
+{
+	SheetHandle sheet;
+	zval *object = getThis();
+
+	if (ZEND_NUM_ARGS()) {
+		RETURN_FALSE;
+	}
+
+	SHEET_FROM_OBJECT(sheet, object);
+	RETURN_LONG(xlSheetRightToLeft(sheet));
+}
+/* }}} */
+
+/* {{{ proto void ExcelBook::setRightToLeft(bool mode)
+	Sets the template flag, if the workbook is template. */
+EXCEL_METHOD(Sheet, setRightToLeft)
+{
+	SheetHandle sheet;
+	zval *object = getThis();
+	long mode;
+
+	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "l", &mode) == FAILURE) {
+		RETURN_FALSE;
+	}
+
+	SHEET_FROM_OBJECT(sheet, object);
+	xlSheetSetRightToLeft(sheet, (int)mode);
+}
+/* }}} */
+#endif
+
 /* {{{ proto bool ExcelSheet::setPrintArea()
 	Sets the print area. */
 EXCEL_METHOD(Sheet, setPrintArea)
@@ -4318,6 +4386,26 @@ ZEND_BEGIN_ARG_INFO_EX(arginfo_Book_insertSheet, 0, 0, 2)
 	ZEND_ARG_INFO(0, index)
 	ZEND_ARG_INFO(0, name)
 	ZEND_ARG_INFO(0, sheet)
+ZEND_END_ARG_INFO()
+#endif
+
+#if LIBXL_VERSION >= 0x03050401
+PHP_EXCEL_ARGINFO
+ZEND_BEGIN_ARG_INFO_EX(arginfo_Book_isTemplate, 0, 0, 0)
+ZEND_END_ARG_INFO()
+
+PHP_EXCEL_ARGINFO
+ZEND_BEGIN_ARG_INFO_EX(arginfo_Book_setTemplate, 0, 0, 1)
+	ZEND_ARG_INFO(0, mode)
+ZEND_END_ARG_INFO()
+
+PHP_EXCEL_ARGINFO
+ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_getRightToLeft, 0, 0, 0)
+ZEND_END_ARG_INFO()
+
+PHP_EXCEL_ARGINFO
+ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_setRightToLeft, 0, 0, 1)
+	ZEND_ARG_INFO(0, mode)
 ZEND_END_ARG_INFO()
 #endif
 
@@ -5116,6 +5204,10 @@ zend_function_entry excel_funcs_book[] = {
 	EXCEL_ME(Book, getNumPictures, arginfo_Book_getNumPictures, 0)
 	EXCEL_ME(Book, insertSheet, arginfo_Book_insertSheet, 0)
 #endif
+#if LIBXL_VERSION >= 0x03050401
+	EXCEL_ME(Book, isTemplate, arginfo_Book_isTemplate, 0)
+	EXCEL_ME(Book, setTemplate, arginfo_Book_setTemplate, 0)
+#endif
 	{NULL, NULL, NULL}
 };
 
@@ -5230,6 +5322,10 @@ zend_function_entry excel_funcs_sheet[] = {
 	EXCEL_ME(Sheet, getTopLeftView, arginfo_Sheet_getTopLeftView, 0)
 	EXCEL_ME(Sheet, rowColToAddr, arginfo_Sheet_rowColToAddr, 0)
 	EXCEL_ME(Sheet, addrToRowCol, arginfo_Sheet_addrToRowCol, 0)
+#endif
+#if LIBXL_VERSION >= 0x03050401
+	EXCEL_ME(Sheet, getRightToLeft, arginfo_Sheet_getRightToLeft, 0)
+	EXCEL_ME(Sheet, setRightToLeft, arginfo_Sheet_setRightToLeft, 0)
 #endif
    {NULL, NULL, NULL}
 };
@@ -5525,6 +5621,8 @@ PHP_MINIT_FUNCTION(excel)
 #if LIBXL_VERSION >= 0x03050401
 	REGISTER_EXCEL_CLASS_CONST_LONG(book, "SCOPE_UNDEFINED", SCOPE_UNDEFINED);
 	REGISTER_EXCEL_CLASS_CONST_LONG(book, "SCOPE_WORKBOOK", SCOPE_WORKBOOK);
+	REGISTER_EXCEL_CLASS_CONST_LONG(sheet, "RIGHT_TO_LEFT", 1);
+	REGISTER_EXCEL_CLASS_CONST_LONG(sheet, "LEFT_TO_RIGHT", 0);
 #endif
 	return SUCCESS;
 }

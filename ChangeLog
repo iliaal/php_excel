@@ -1,4 +1,6 @@
 [2014-??-??] - Version 1.0
+	* Added Sheet::setRightToLeft() and Sheet::setRightToLeft() methods that specifies whether the sheet in is "right to left" display mode
+	* Added Book::isTemplate() and Book::setTemplate() methods for detecting xltx files and converting from xlsx to xltx and vice versa
 	* Fixed compilation with LibXL 3.5.4
 	* Added optional scope parameter to setNamedRange()/delNamedRange()/getNamedRange() methods
 	* Updated getNamedRange()/getIndexRange() methods to retrieve hidden state
