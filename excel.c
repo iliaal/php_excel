@@ -1012,7 +1012,7 @@ EXCEL_METHOD(Book, packDateValues)
 }
 /* }}} */
 
-static int _php_excel_date_unpack(BookHandle book, double dt)
+static long _php_excel_date_unpack(BookHandle book, double dt)
 {
 	struct tm tm = {0};
 #ifdef HAVE_LIBXL_243_PLUS
