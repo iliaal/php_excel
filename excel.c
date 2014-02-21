@@ -2107,7 +2107,7 @@ static zend_bool php_excel_read_cell(int row, int col, zval *val, SheetHandle sh
 #else
 			if (xlSheetIsDate(sheet, row, col)) {
 #endif
-				int dt = _php_excel_date_unpack(book, d);
+				int long = _php_excel_date_unpack(book, d);
 				if (dt == -1) {
 					return 0;
 				} else {
