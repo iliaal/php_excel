@@ -25,6 +25,7 @@ extern zend_module_entry excel_module_entry;
 ZEND_BEGIN_MODULE_GLOBALS(excel)
 	char *ini_license_name;
 	char *ini_license_key;
+	int ini_skip_empty;
 ZEND_END_MODULE_GLOBALS(excel)
 
 

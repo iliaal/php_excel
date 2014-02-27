@@ -76,6 +76,7 @@ static PHP_GINIT_FUNCTION(excel);
 PHP_INI_BEGIN()
 	STD_PHP_INI_ENTRY("excel.license_name", NULL, PHP_INI_ALL, OnUpdateString, ini_license_name, zend_excel_globals, excel_globals)
 	STD_PHP_INI_ENTRY("excel.license_key", NULL, PHP_INI_ALL, OnUpdateString, ini_license_key, zend_excel_globals, excel_globals)
+	STD_PHP_INI_ENTRY("excel.skip_empty", "0", PHP_INI_ALL, OnUpdateLong, ini_skip_empty, zend_excel_globals, excel_globals)
 PHP_INI_END()
 
 /* {{{ OO init/structure stuff */
@@ -2300,10 +2301,13 @@ EXCEL_METHOD(Sheet, read)
 }
 /* }}} */
 
-static zend_bool php_excel_write_cell(SheetHandle sheet, BookHandle book, int row, int col, zval *data, FormatHandle format, long dtype)
+static zend_bool php_excel_write_cell(SheetHandle sheet, BookHandle book, int row, int col, zval *data, FormatHandle format, long dtype TSRMLS_DC)
 {
 	switch (Z_TYPE_P(data)) {
 		case IS_NULL:
+			if (INI_INT("excel.ini_skip_empty") > 0) {
+				return 1;
+			}
 			return xlSheetWriteBlank(sheet, row, col, format);
 
 		case IS_LONG:
@@ -2335,6 +2339,9 @@ static zend_bool php_excel_write_cell(SheetHandle sheet, BookHandle book, int ro
 						case IS_DOUBLE:
 							return xlSheetWriteNum(sheet, row, col, dval, format);
 					}
+				}
+				if (Z_STRLEN_P(data) == 0 && INI_INT("excel.ini_skip_empty") == 2) {
+					return 1;
 				}
 				return xlSheetWriteStr(sheet, row, col, Z_STRVAL_P(data), format);
 			}
@@ -2368,7 +2375,7 @@ EXCEL_METHOD(Sheet, write)
 		FORMAT_FROM_OBJECT(format, oformat);
 	}
 
-	RETURN_BOOL(php_excel_write_cell(sheet, book, row, col, data, oformat ? format : 0, dtype));
+	RETURN_BOOL(php_excel_write_cell(sheet, book, row, col, data, oformat ? format : 0, dtype TSRMLS_CC));
 }
 /* }}} */
 
@@ -2412,7 +2419,7 @@ EXCEL_METHOD(Sheet, writeRow)
 		zend_hash_get_current_data_ex(Z_ARRVAL_P(data), (void **) &element, &pos) == SUCCESS;
 		zend_hash_move_forward_ex(Z_ARRVAL_P(data), &pos)) {
 
-		if (!php_excel_write_cell(sheet, book, row, i++, *element, oformat ? format : 0, -1)) {
+		if (!php_excel_write_cell(sheet, book, row, i++, *element, oformat ? format : 0, -1 TSRMLS_CC)) {
 			RETURN_FALSE;
 		}
 	}
@@ -2461,7 +2468,7 @@ EXCEL_METHOD(Sheet, writeCol)
 		zend_hash_get_current_data_ex(Z_ARRVAL_P(data), (void **) &element, &pos) == SUCCESS;
 		zend_hash_move_forward_ex(Z_ARRVAL_P(data), &pos)) {
 
-		if (!php_excel_write_cell(sheet, book, i++, col, *element, oformat ? format : 0, -1)) {
+		if (!php_excel_write_cell(sheet, book, i++, col, *element, oformat ? format : 0, -1 TSRMLS_CC)) {
 			RETURN_FALSE;
 		}
 	}

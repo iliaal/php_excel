@@ -1,4 +1,5 @@
 [2014-??-??] - Version 1.0
+	* Added excel.skip_empty INI setting that allows null values to be skipped, if set to 2 the empty strings will be skipped as well
 	* Added Sheet::setRightToLeft() and Sheet::setRightToLeft() methods that specifies whether the sheet in is "right to left" display mode
 	* Added Book::isTemplate() and Book::setTemplate() methods for detecting xltx files and converting from xlsx to xltx and vice versa
 	* Fixed compilation with LibXL 3.5.4
