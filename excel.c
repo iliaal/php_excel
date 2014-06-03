@@ -2308,7 +2308,12 @@ static zend_bool php_excel_write_cell(SheetHandle sheet, BookHandle book, int ro
 			if (INI_INT("excel.ini_skip_empty") > 0) {
 				return 1;
 			}
-			return xlSheetWriteBlank(sheet, row, col, format);
+			if (!format) {
+				FormatHandle fmt = xlBookAddFormat(book, NULL);
+				return xlSheetWriteBlank(sheet, row, col, fmt);
+			} else {
+				return xlSheetWriteBlank(sheet, row, col, format);
+			}
 
 		case IS_LONG:
 			if (dtype == PHP_EXCEL_DATE) {
