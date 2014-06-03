@@ -34,7 +34,7 @@ float(434324)
 string(6) "string"
 string(8) "fsdfasDF"
 string(4) "NULL"
-string(0) ""
+NULL
 string(6) "string"
 string(0) ""
 OK
