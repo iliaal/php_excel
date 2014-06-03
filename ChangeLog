@@ -1,4 +1,4 @@
-[2014-??-??] - Version 1.0
+[2014-06-03] - Version 1.0
 	* Fixed issue #63 writing for NULL values using writeRow()
 	* Added excel.skip_empty INI setting that allows null values to be skipped, if set to 2 the empty strings will be skipped as well
 	* Added Sheet::setRightToLeft() and Sheet::setRightToLeft() methods that specifies whether the sheet in is "right to left" display mode
