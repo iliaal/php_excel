@@ -3150,7 +3150,7 @@ EXCEL_METHOD(Sheet, setTopLeftView)
 }
 /* }}} */
 
-/* {{{ proto bool ExcelSheet::rowColToAddr(int row, int col, boolean row_relative, boolean col_relative)
+/* {{{ proto string ExcelSheet::rowColToAddr(int row, int col, boolean row_relative, boolean col_relative)
 	Converts row and column to a cell reference. */
 EXCEL_METHOD(Sheet, rowColToAddr)
 {
@@ -3174,7 +3174,7 @@ EXCEL_METHOD(Sheet, rowColToAddr)
 }
 /* }}} */
 
-/* {{{ proto bool ExcelSheet::addrToRowCol(string cell_reference)
+/* {{{ proto array ExcelSheet::addrToRowCol(string cell_reference)
 	Converts a cell reference to row and column. */
 EXCEL_METHOD(Sheet, addrToRowCol)
 {
@@ -3459,7 +3459,7 @@ EXCEL_METHOD(Sheet, name)
 }
 /* }}} */
 
-/* {{{ proto void ExcelSheet::setName()
+/* {{{ proto void ExcelSheet::setName(string name)
 	Sets the name of the sheet. */
 EXCEL_METHOD(Sheet, setName)
 {
@@ -4080,7 +4080,7 @@ EXCEL_METHOD(Book, setTemplate)
 /* }}} */
 
 /* {{{ proto long ExcelSheet::getRightToLeft()
-	Returns whether the workbook is template. */
+	Returns whether the text is displayed in right-to-left mode: 1 - yes, 0 - no. */
 EXCEL_METHOD(Sheet, getRightToLeft)
 {
 	SheetHandle sheet;
@@ -4096,7 +4096,7 @@ EXCEL_METHOD(Sheet, getRightToLeft)
 /* }}} */
 
 /* {{{ proto void ExcelBook::setRightToLeft(bool mode)
-	Sets the template flag, if the workbook is template. */
+	Sets the right-to-left mode: 1 - the text is displayed in right-to-left mode, 0 - the text is displayed in left-to-right mode. */
 EXCEL_METHOD(Sheet, setRightToLeft)
 {
 	SheetHandle sheet;
@@ -4259,7 +4259,7 @@ ZEND_END_ARG_INFO()
 
 PHP_EXCEL_ARGINFO
 ZEND_BEGIN_ARG_INFO_EX(arginfo_Book_addFormat, 0, 0, 0)
-	ZEND_ARG_OBJ_INFO(0, format, ExcelFormat, 0)
+	ZEND_ARG_OBJ_INFO(0, format, ExcelFormat, 1)
 ZEND_END_ARG_INFO()
 
 #ifdef HAVE_LIBXL_243_PLUS
@@ -4642,7 +4642,7 @@ PHP_EXCEL_ARGINFO
 ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_read, 0, 0, 2)
 	ZEND_ARG_INFO(0, row)
 	ZEND_ARG_INFO(0, column)
-	ZEND_ARG_INFO(1, format)
+	ZEND_ARG_OBJ_INFO(0, format, ExcelFormat, 1)
 	ZEND_ARG_INFO(0, read_formula)
 ZEND_END_ARG_INFO()
 
@@ -4660,7 +4660,7 @@ ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_writeRow, 0, 0, 2)
 	ZEND_ARG_INFO(0, row)
 	ZEND_ARG_INFO(0, data)
 	ZEND_ARG_INFO(0, start_column)
-	ZEND_ARG_OBJ_INFO(0, format, ExcelFormat, 0)
+	ZEND_ARG_OBJ_INFO(0, format, ExcelFormat, 1)
 ZEND_END_ARG_INFO()
 
 PHP_EXCEL_ARGINFO
@@ -4668,7 +4668,7 @@ ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_writeCol, 0, 0, 2)
 	ZEND_ARG_INFO(0, row)
 	ZEND_ARG_INFO(0, data)
 	ZEND_ARG_INFO(0, start_row)
-	ZEND_ARG_OBJ_INFO(0, format, ExcelFormat, 0)
+	ZEND_ARG_OBJ_INFO(0, format, ExcelFormat, 1)
 ZEND_END_ARG_INFO()
 
 PHP_EXCEL_ARGINFO
@@ -4739,7 +4739,7 @@ ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_setColWidth, 0, 0, 3)
 	ZEND_ARG_INFO(0, column_end)
 	ZEND_ARG_INFO(0, width)
 	ZEND_ARG_INFO(0, hidden)
-	ZEND_ARG_OBJ_INFO(0, format, ExcelFormat, 0)
+	ZEND_ARG_OBJ_INFO(0, format, ExcelFormat, 1)
 ZEND_END_ARG_INFO()
 
 PHP_EXCEL_ARGINFO
@@ -4958,11 +4958,15 @@ ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_footer, 0, 0, 0)
 ZEND_END_ARG_INFO()
 
 PHP_EXCEL_ARGINFO
-ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_setHeader, 0, 0, 0)
+ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_setHeader, 0, 0, 2)
+	ZEND_ARG_INFO(0, header)
+	ZEND_ARG_INFO(0, margin)
 ZEND_END_ARG_INFO()
 
 PHP_EXCEL_ARGINFO
-ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_setFooter, 0, 0, 0)
+ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_setFooter, 0, 0, 2)
+	ZEND_ARG_INFO(0, footer)
+	ZEND_ARG_INFO(0, margin)
 ZEND_END_ARG_INFO()
 
 PHP_EXCEL_ARGINFO
@@ -5041,7 +5045,8 @@ ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_name, 0, 0, 0)
 ZEND_END_ARG_INFO()
 
 PHP_EXCEL_ARGINFO
-ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_setName, 0, 0, 0)
+ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_setName, 0, 0, 1)
+	ZEND_ARG_INFO(0, name)
 ZEND_END_ARG_INFO()
 
 PHP_EXCEL_ARGINFO
