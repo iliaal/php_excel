@@ -1195,7 +1195,7 @@ EXCEL_METHOD(Book, setLocale)
 /* }}} */
 
 /* {{{ proto ExcelBook ExcelBook::__construct([string license_name, string license_key [, bool excel_2007 = false]])
-	Book Contructor. */
+	Book Constructor. */
 EXCEL_METHOD(Book, __construct)
 {
 	BookHandle book;
@@ -1624,7 +1624,7 @@ EXCEL_METHOD(Font, name)
 /* }}} */
 
 /* {{{ proto ExcelFormat ExcelFormat::__construct(ExcelBook book)
-	Format Contructor. */
+	Format Constructor. */
 EXCEL_METHOD(Format, __construct)
 {
 	BookHandle book;
@@ -1655,7 +1655,7 @@ EXCEL_METHOD(Format, __construct)
 /* }}} */
 
 /* {{{ proto ExcelFont ExcelFont::__construct(ExcelBook book)
-	Font Contructor. */
+	Font Constructor. */
 EXCEL_METHOD(Font, __construct)
 {
 	BookHandle book;
