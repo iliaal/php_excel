@@ -380,7 +380,7 @@ static wchar_t * _php_excel_to_wide(const char *string, size_t len, size_t *out_
 #endif
 
 #define EXCEL_METHOD(class_name, function_name) \
-    PHP_METHOD(Excel ## class_name, function_name)
+	PHP_METHOD(Excel ## class_name, function_name)
 
 /* {{{ proto bool ExcelBook::load(string data)
    Load Excel data string. */
@@ -1156,7 +1156,7 @@ EXCEL_METHOD(Book, getDefaultFont)
 /* }}} */
 
 /* {{{ proto void ExcelBook::setDefaultFont(string font, int font_size)
-    Set the default font, and size. */
+	Set the default font, and size. */
 EXCEL_METHOD(Book, setDefaultFont)
 {
 	BookHandle book;
@@ -1176,7 +1176,7 @@ EXCEL_METHOD(Book, setDefaultFont)
 /* }}} */
 
 /* {{{ proto void ExcelBook::setLocale(string locale)
-    Set the locale. */
+	Set the locale. */
 EXCEL_METHOD(Book, setLocale)
 {
 	BookHandle book;
@@ -1195,7 +1195,7 @@ EXCEL_METHOD(Book, setLocale)
 /* }}} */
 
 /* {{{ proto ExcelBook ExcelBook::__construct([string license_name, string license_key [, bool excel_2007 = false]])
-    Book Contructor. */
+	Book Constructor. */
 EXCEL_METHOD(Book, __construct)
 {
 	BookHandle book;
@@ -1624,7 +1624,7 @@ EXCEL_METHOD(Font, name)
 /* }}} */
 
 /* {{{ proto ExcelFormat ExcelFormat::__construct(ExcelBook book)
-    Format Contructor. */
+	Format Constructor. */
 EXCEL_METHOD(Format, __construct)
 {
 	BookHandle book;
@@ -1655,7 +1655,7 @@ EXCEL_METHOD(Format, __construct)
 /* }}} */
 
 /* {{{ proto ExcelFont ExcelFont::__construct(ExcelBook book)
-    Font Contructor. */
+	Font Constructor. */
 EXCEL_METHOD(Font, __construct)
 {
 	BookHandle book;
@@ -2143,7 +2143,7 @@ static zend_bool php_excel_read_cell(int row, int col, zval *val, SheetHandle sh
 	return 0;
 }
 
-/* {{{ proto array ExcelSheet::readRow(int row [, int start_col [, int end_column]])
+/* {{{ proto array ExcelSheet::readRow(int row [, int start_col [, int end_column [, bool read_formula]]])
 	Read an entire row worth of data */
 EXCEL_METHOD(Sheet, readRow)
 {
@@ -2203,7 +2203,7 @@ EXCEL_METHOD(Sheet, readRow)
 }
 /* }}} */
 
-/* {{{ proto array ExcelSheet::readCol(int column [, int start_row [, int end_row]])
+/* {{{ proto array ExcelSheet::readCol(int column [, int start_row [, int end_row [, bool read_formula]]])
 	Read an entire column worth of data */
 EXCEL_METHOD(Sheet, readCol)
 {
@@ -2263,7 +2263,7 @@ EXCEL_METHOD(Sheet, readCol)
 }
 /* }}} */
 
-/* {{{ proto mixed ExcelSheet::read(int row, int column [, ExcelFormat &format])
+/* {{{ proto mixed ExcelSheet::read(int row, int column [, ExcelFormat &format [, bool read_formula]])
 	Read data stored inside a cell */
 EXCEL_METHOD(Sheet, read)
 {
@@ -4324,7 +4324,8 @@ ZEND_BEGIN_ARG_INFO_EX(arginfo_Book_setDefaultFont, 0, 0, 2)
 ZEND_END_ARG_INFO()
 
 PHP_EXCEL_ARGINFO
-ZEND_BEGIN_ARG_INFO_EX(arginfo_Book_setLocale, 0, 0, 0)
+ZEND_BEGIN_ARG_INFO_EX(arginfo_Book_setLocale, 0, 0, 1)
+	ZEND_ARG_INFO(0, locale)
 ZEND_END_ARG_INFO()
 
 PHP_EXCEL_ARGINFO
@@ -4626,6 +4627,7 @@ ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_readRow, 0, 0, 1)
 	ZEND_ARG_INFO(0, row)
 	ZEND_ARG_INFO(0, start_col)
 	ZEND_ARG_INFO(0, end_column)
+	ZEND_ARG_INFO(0, read_formula)
 ZEND_END_ARG_INFO()
 
 PHP_EXCEL_ARGINFO
@@ -4633,6 +4635,7 @@ ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_readCol, 0, 0, 1)
 	ZEND_ARG_INFO(0, column)
 	ZEND_ARG_INFO(0, start_row)
 	ZEND_ARG_INFO(0, end_row)
+	ZEND_ARG_INFO(0, read_formula)
 ZEND_END_ARG_INFO()
 
 PHP_EXCEL_ARGINFO
@@ -4640,6 +4643,7 @@ ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_read, 0, 0, 2)
 	ZEND_ARG_INFO(0, row)
 	ZEND_ARG_INFO(0, column)
 	ZEND_ARG_INFO(1, format)
+	ZEND_ARG_INFO(0, read_formula)
 ZEND_END_ARG_INFO()
 
 PHP_EXCEL_ARGINFO
@@ -5166,7 +5170,7 @@ ZEND_END_ARG_INFO()
 #endif
 
 #define EXCEL_ME(class_name, function_name, arg_info, flags) \
-    PHP_ME( Excel ## class_name, function_name, arg_info, flags)
+	PHP_ME( Excel ## class_name, function_name, arg_info, flags)
 
 zend_function_entry excel_funcs_book[] = {
 	EXCEL_ME(Book, addFont, arginfo_Book_addFont, 0)
