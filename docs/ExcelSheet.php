@@ -619,9 +619,10 @@ class ExcelSheet {
 	* @param int $row 0-based row number
 	* @param int $column 0-based column number
 	* @param ExcelFormat $format (optional, default=null)
+    * @param bool $read_formula (optional, default=true)
 	* @return
 	*/
-	public function read($row, $column, $format = null) {
+	public function read($row, $column, $format = null, $read_formula = true) {
 	} // read
 
 	/**
@@ -630,9 +631,10 @@ class ExcelSheet {
 	* @param int $column 0-based column number
 	* @param int $row_start (optional, default=0)
 	* @param int $row_end (optional, default=null)
+    * @param bool $read_formula (optional, default=true)
 	* @return array or false if invalid row/column positions
 	*/
-	public function readCol($column, $row_start = 0, $row_end = null) {
+	public function readCol($column, $row_start = 0, $row_end = null, $read_formula = true) {
 	} // readCol
 
 	/**
@@ -651,9 +653,10 @@ class ExcelSheet {
 	* @param int $row 0-based row number
 	* @param int $column_start (optional, default=0)
 	* @param int $column_end (optional, default=null)
+    * @param bool $read_formula (optional, default=true)
 	* @return array or false if invalid row/column positions
 	*/
-	public function readRow($row, $column_start = 0, $column_end = null) {
+	public function readRow($row, $column_start = 0, $column_end = null, $read_formula = true) {
 	} // readRow
 
 	/**
