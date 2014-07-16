@@ -2143,7 +2143,7 @@ static zend_bool php_excel_read_cell(int row, int col, zval *val, SheetHandle sh
 	return 0;
 }
 
-/* {{{ proto array ExcelSheet::readRow(int row [, int start_col [, int end_column]])
+/* {{{ proto array ExcelSheet::readRow(int row [, int start_col [, int end_column [, bool read_formula]]])
 	Read an entire row worth of data */
 EXCEL_METHOD(Sheet, readRow)
 {
@@ -2203,7 +2203,7 @@ EXCEL_METHOD(Sheet, readRow)
 }
 /* }}} */
 
-/* {{{ proto array ExcelSheet::readCol(int column [, int start_row [, int end_row]])
+/* {{{ proto array ExcelSheet::readCol(int column [, int start_row [, int end_row [, bool read_formula]]])
 	Read an entire column worth of data */
 EXCEL_METHOD(Sheet, readCol)
 {
@@ -2263,7 +2263,7 @@ EXCEL_METHOD(Sheet, readCol)
 }
 /* }}} */
 
-/* {{{ proto mixed ExcelSheet::read(int row, int column [, ExcelFormat &format])
+/* {{{ proto mixed ExcelSheet::read(int row, int column [, ExcelFormat &format [, bool read_formula]])
 	Read data stored inside a cell */
 EXCEL_METHOD(Sheet, read)
 {
@@ -4626,6 +4626,7 @@ ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_readRow, 0, 0, 1)
 	ZEND_ARG_INFO(0, row)
 	ZEND_ARG_INFO(0, start_col)
 	ZEND_ARG_INFO(0, end_column)
+    ZEND_ARG_INFO(0, read_formula)
 ZEND_END_ARG_INFO()
 
 PHP_EXCEL_ARGINFO
@@ -4633,6 +4634,7 @@ ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_readCol, 0, 0, 1)
 	ZEND_ARG_INFO(0, column)
 	ZEND_ARG_INFO(0, start_row)
 	ZEND_ARG_INFO(0, end_row)
+    ZEND_ARG_INFO(0, read_formula)
 ZEND_END_ARG_INFO()
 
 PHP_EXCEL_ARGINFO
@@ -4640,6 +4642,7 @@ ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_read, 0, 0, 2)
 	ZEND_ARG_INFO(0, row)
 	ZEND_ARG_INFO(0, column)
 	ZEND_ARG_INFO(1, format)
+    ZEND_ARG_INFO(0, read_formula)
 ZEND_END_ARG_INFO()
 
 PHP_EXCEL_ARGINFO
