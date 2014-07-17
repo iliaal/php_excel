@@ -4218,30 +4218,30 @@ EXCEL_METHOD(Sheet, hyperlinkSize)
 	Gets the hyperlink and its coordinates by index. */
 EXCEL_METHOD(Sheet, hyperlink)
 {
-		SheetHandle sheet;
-		zval *object = getThis();
-		long index;
-		int rowFirst, rowLast, colFirst, colLast;
-		const char *s;
+	SheetHandle sheet;
+	zval *object = getThis();
+	long index;
+	int rowFirst, rowLast, colFirst, colLast;
+	const char *s;
 
-		if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "l", &index) == FAILURE) {
-			RETURN_FALSE;
-		}
+	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "l", &index) == FAILURE) {
+		RETURN_FALSE;
+	}
 
-		SHEET_FROM_OBJECT(sheet, object);
+	SHEET_FROM_OBJECT(sheet, object);
 
-		s = xlSheetHyperlink(sheet, index, &rowFirst, &rowLast, &colFirst, &colLast);
-		
-		if (!s) {
-			RETURN_FALSE;
-		}
+	s = xlSheetHyperlink(sheet, index, &rowFirst, &rowLast, &colFirst, &colLast);
+	
+	if (!s) {
+		RETURN_FALSE;
+	}
 
-		array_init(return_value);
-		add_assoc_string(return_value, "hyperlink", (char *)s, 1);
-		add_assoc_long(return_value, "row_first", rowFirst);
-		add_assoc_long(return_value, "row_last", rowLast);
-		add_assoc_long(return_value, "col_first", colFirst);
-		add_assoc_long(return_value, "col_last", colLast);
+	array_init(return_value);
+	add_assoc_string(return_value, "hyperlink", (char *)s, 1);
+	add_assoc_long(return_value, "row_first", rowFirst);
+	add_assoc_long(return_value, "row_last", rowLast);
+	add_assoc_long(return_value, "col_first", colFirst);
+	add_assoc_long(return_value, "col_last", colLast);
 }
 /* }}} */
 
@@ -4306,26 +4306,26 @@ EXCEL_METHOD(Sheet, mergeSize)
 	Gets the merged cells by index. */
 EXCEL_METHOD(Sheet, merge)
 {
-		SheetHandle sheet;
-		zval *object = getThis();
-		long index;
-		int rowFirst, rowLast, colFirst, colLast;
+	SheetHandle sheet;
+	zval *object = getThis();
+	long index;
+	int rowFirst, rowLast, colFirst, colLast;
 
-		if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "l", &index) == FAILURE) {
-			RETURN_FALSE;
-		}
+	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "l", &index) == FAILURE) {
+		RETURN_FALSE;
+	}
 
-		SHEET_FROM_OBJECT(sheet, object);
+	SHEET_FROM_OBJECT(sheet, object);
 
-		if (!xlSheetMerge(sheet, index, &rowFirst, &rowLast, &colFirst, &colLast)) {
-			RETURN_FALSE;
-		}
+	if (!xlSheetMerge(sheet, index, &rowFirst, &rowLast, &colFirst, &colLast)) {
+		RETURN_FALSE;
+	}
 
-		array_init(return_value);
-		add_assoc_long(return_value, "row_first", rowFirst);
-		add_assoc_long(return_value, "row_last", rowLast);
-		add_assoc_long(return_value, "col_first", colFirst);
-		add_assoc_long(return_value, "col_last", colLast);
+	array_init(return_value);
+	add_assoc_long(return_value, "row_first", rowFirst);
+	add_assoc_long(return_value, "row_last", rowLast);
+	add_assoc_long(return_value, "col_first", colFirst);
+	add_assoc_long(return_value, "col_last", colLast);
 }
 /* }}} */
 
@@ -4354,19 +4354,19 @@ EXCEL_METHOD(Sheet, delMergeByIndex)
 	Gets the split information (position of frozen pane) in the sheet: row - vertical position of the split; col - horizontal position of the split. */
 EXCEL_METHOD(Sheet, splitInfo)
 {
-		SheetHandle sheet;
-		zval *object = getThis();
-		int row, col;
+	SheetHandle sheet;
+	zval *object = getThis();
+	int row, col;
 
-		SHEET_FROM_OBJECT(sheet, object);
+	SHEET_FROM_OBJECT(sheet, object);
 
-		if (!xlSheetSplitInfo(sheet, &row, &col)) {
-			RETURN_FALSE;
-		}
+	if (!xlSheetSplitInfo(sheet, &row, &col)) {
+		RETURN_FALSE;
+	}
 
-		array_init(return_value);
-		add_assoc_long(return_value, "row", row);
-		add_assoc_long(return_value, "col", col);
+	array_init(return_value);
+	add_assoc_long(return_value, "row", row);
+	add_assoc_long(return_value, "col", col);
 }
 /* }}} */
 #endif
@@ -4821,7 +4821,7 @@ PHP_EXCEL_ARGINFO
 ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_read, 0, 0, 2)
 	ZEND_ARG_INFO(0, row)
 	ZEND_ARG_INFO(0, column)
-	ZEND_ARG_OBJ_INFO(0, format, ExcelFormat, 1)
+	ZEND_ARG_INFO(1, format)
 	ZEND_ARG_INFO(0, read_formula)
 ZEND_END_ARG_INFO()
 
