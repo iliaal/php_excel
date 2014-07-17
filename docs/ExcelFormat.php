@@ -348,7 +348,7 @@ class ExcelFormat {
 	* @param int $number_format Number format identifier.  One of ExcelFormat::NUMFORMAT_* constants
 	* @return int
 	*/
-	public function numberFormat($number_format) {
+	public function numberFormat($number_format = null) {
 	} // numberFormat
 
 	/**

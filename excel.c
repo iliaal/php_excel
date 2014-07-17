@@ -3700,7 +3700,7 @@ EXCEL_METHOD(Sheet, getPrintFit)
 /* }}} */
 
 /* {{{ proto array ExcelSheet::getNamedRange(string name [, int scope_id])
-	Gets the named range coordianates by name, returns false if range is not found. */
+	Gets the named range coordinates by name, returns false if range is not found. */
 EXCEL_METHOD(Sheet, getNamedRange)
 {
 	SheetHandle sheet;
@@ -3739,7 +3739,7 @@ EXCEL_METHOD(Sheet, getNamedRange)
 }
 
 /* {{{ proto array ExcelSheet::getIndexRange(int index [, int scope_id])
-	Gets the named range coordianates by index, returns false if range is not found. */
+	Gets the named range coordinates by index, returns false if range is not found. */
 EXCEL_METHOD(Sheet, getIndexRange)
 {
 	SheetHandle sheet;
@@ -3747,14 +3747,14 @@ EXCEL_METHOD(Sheet, getIndexRange)
 	long index;
 	int rf, rl, cf, cl;
 #if LIBXL_VERSION >= 0x03050401
-    int hidden;
+	int hidden;
 	int scope_id = SCOPE_WORKBOOK;
-    
-    if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "l|l", &index, &scope_id) == FAILURE) {
+	
+	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "l|l", &index, &scope_id) == FAILURE) {
 		RETURN_FALSE;
 	}
 #else
-    if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "l", &index) == FAILURE) {
+	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "l", &index) == FAILURE) {
 		RETURN_FALSE;
 	}
 #endif
@@ -4196,6 +4196,180 @@ EXCEL_METHOD(Sheet, setProtect)
 	PHP_EXCEL_SET_BOOL_VAL(SetProtect)
 }
 /* }}} */
+
+#if LIBXL_VERSION >= 0x03060000
+/* {{{ proto long ExcelSheet::hyperlinkSize()
+	Returns the number of hyperlinks in the sheet. */
+EXCEL_METHOD(Sheet, hyperlinkSize)
+{
+	zval *object = getThis();
+	SheetHandle sheet;
+
+	if (ZEND_NUM_ARGS()) {
+		RETURN_FALSE;
+	}
+
+	SHEET_FROM_OBJECT(sheet, object);
+	RETURN_LONG(xlSheetHyperlinkSize(sheet));
+}
+/* }}} */
+
+/* {{{ proto array ExcelSheet::hyperlink(int index)
+	Gets the hyperlink and its coordinates by index. */
+EXCEL_METHOD(Sheet, hyperlink)
+{
+		SheetHandle sheet;
+		zval *object = getThis();
+		long index;
+		int rowFirst, rowLast, colFirst, colLast;
+		const char *s;
+
+		if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "l", &index) == FAILURE) {
+			RETURN_FALSE;
+		}
+
+		SHEET_FROM_OBJECT(sheet, object);
+
+		s = xlSheetHyperlink(sheet, index, &rowFirst, &rowLast, &colFirst, &colLast);
+		
+		if (!s) {
+			RETURN_FALSE;
+		}
+
+		array_init(return_value);
+		add_assoc_string(return_value, "hyperlink", (char *)s, 1);
+		add_assoc_long(return_value, "row_first", rowFirst);
+		add_assoc_long(return_value, "row_last", rowLast);
+		add_assoc_long(return_value, "col_first", colFirst);
+		add_assoc_long(return_value, "col_last", colLast);
+}
+/* }}} */
+
+/* {{{ proto bool ExcelSheet::delHyperlink(int index)
+	Removes hyperlink by index. */
+EXCEL_METHOD(Sheet, delHyperlink)
+{
+	zval *object = getThis();
+	SheetHandle sheet;
+	long index;
+
+	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "l", &index) == FAILURE) {
+		RETURN_FALSE;
+	}
+
+	if (index < 0) {
+		RETURN_FALSE;
+	}
+
+	SHEET_FROM_OBJECT(sheet, object);
+	RETURN_BOOL(xlSheetDelHyperlink(sheet, index));
+}
+/* }}} */
+
+/* {{{ proto void ExcelSheet::addHyperlink(string hyperlink, int row_first, int row_last, int col_first, int col_last)
+	Adds the new hyperlink. */
+EXCEL_METHOD(Sheet, addHyperlink)
+{
+	SheetHandle sheet;
+	zval *object = getThis();
+	char *val;
+	int val_len;
+	long row_first, row_last, col_first, col_last;
+
+	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "sllll", &val, &val_len, &row_first, &row_last, &col_first, &col_last) == FAILURE) {
+		RETURN_FALSE;
+	}
+
+	SHEET_FROM_OBJECT(sheet, object);
+	
+	xlSheetAddHyperlink(sheet, val, row_first, row_last, col_first, col_last);
+}
+/* }}} */
+
+/* {{{ proto long ExcelSheet::mergeSize()
+	Returns a number of merged cells in this worksheet. */
+EXCEL_METHOD(Sheet, mergeSize)
+{
+	zval *object = getThis();
+	SheetHandle sheet;
+
+	if (ZEND_NUM_ARGS()) {
+		RETURN_FALSE;
+	}
+
+	SHEET_FROM_OBJECT(sheet, object);
+	RETURN_LONG(xlSheetMergeSize(sheet));
+}
+/* }}} */
+
+/* {{{ proto array ExcelSheet::merge(int index)
+	Gets the merged cells by index. */
+EXCEL_METHOD(Sheet, merge)
+{
+		SheetHandle sheet;
+		zval *object = getThis();
+		long index;
+		int rowFirst, rowLast, colFirst, colLast;
+
+		if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "l", &index) == FAILURE) {
+			RETURN_FALSE;
+		}
+
+		SHEET_FROM_OBJECT(sheet, object);
+
+		if (!xlSheetMerge(sheet, index, &rowFirst, &rowLast, &colFirst, &colLast)) {
+			RETURN_FALSE;
+		}
+
+		array_init(return_value);
+		add_assoc_long(return_value, "row_first", rowFirst);
+		add_assoc_long(return_value, "row_last", rowLast);
+		add_assoc_long(return_value, "col_first", colFirst);
+		add_assoc_long(return_value, "col_last", colLast);
+}
+/* }}} */
+
+/* {{{ proto bool ExcelSheet::delMergeByIndex(int index)
+	Removes merged cells by index. */
+EXCEL_METHOD(Sheet, delMergeByIndex)
+{
+	zval *object = getThis();
+	SheetHandle sheet;
+	long index;
+
+	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "l", &index) == FAILURE) {
+		RETURN_FALSE;
+	}
+
+	if (index < 0) {
+		RETURN_FALSE;
+	}
+
+	SHEET_FROM_OBJECT(sheet, object);
+	RETURN_BOOL(xlSheetDelMergeByIndex(sheet, index));
+}
+/* }}} */
+
+/* {{{ proto bool ExcelSheet::splitInfo()
+	Gets the split information (position of frozen pane) in the sheet: row - vertical position of the split; col - horizontal position of the split. */
+EXCEL_METHOD(Sheet, splitInfo)
+{
+		SheetHandle sheet;
+		zval *object = getThis();
+		int row, col;
+
+		SHEET_FROM_OBJECT(sheet, object);
+
+		if (!xlSheetSplitInfo(sheet, &row, &col)) {
+			RETURN_FALSE;
+		}
+
+		array_init(return_value);
+		add_assoc_long(return_value, "row", row);
+		add_assoc_long(return_value, "col", col);
+}
+/* }}} */
+#endif
 
 #if PHP_MAJOR_VERSION > 5 || (PHP_MAJOR_VERSION == 5 && PHP_MINOR_VERSION >= 3)
 # define PHP_EXCEL_ARGINFO
@@ -5185,6 +5359,41 @@ ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_getNumPictures, 0, 0, 0)
 ZEND_END_ARG_INFO()
 #endif
 
+#if LIBXL_VERSION >= 0x03060000
+ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_hyperlinkSize, 0, 0, 0)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_hyperlink, 0, 0, 1)
+	ZEND_ARG_INFO(0, index)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_delHyperlink, 0, 0, 1)
+	ZEND_ARG_INFO(0, index)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_addHyperlink, 0, 0, 5)
+	ZEND_ARG_INFO(0, hyperlink)
+	ZEND_ARG_INFO(0, row_first)
+	ZEND_ARG_INFO(0, row_last)
+	ZEND_ARG_INFO(0, col_first)
+	ZEND_ARG_INFO(0, col_last)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_mergeSize, 0, 0, 0)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_merge, 0, 0, 1)
+	ZEND_ARG_INFO(0, index)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_delMergeByIndex, 0, 0, 1)
+	ZEND_ARG_INFO(0, index)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_splitInfo, 0, 0, 0)
+ZEND_END_ARG_INFO()
+#endif
+
 #define EXCEL_ME(class_name, function_name, arg_info, flags) \
 	PHP_ME( Excel ## class_name, function_name, arg_info, flags)
 
@@ -5358,6 +5567,16 @@ zend_function_entry excel_funcs_sheet[] = {
 #if LIBXL_VERSION >= 0x03050401
 	EXCEL_ME(Sheet, getRightToLeft, arginfo_Sheet_getRightToLeft, 0)
 	EXCEL_ME(Sheet, setRightToLeft, arginfo_Sheet_setRightToLeft, 0)
+#endif
+#if LIBXL_VERSION >= 0x03060000
+	EXCEL_ME(Sheet, hyperlinkSize, arginfo_Sheet_hyperlinkSize, 0)
+	EXCEL_ME(Sheet, hyperlink, arginfo_Sheet_hyperlink, 0)
+	EXCEL_ME(Sheet, delHyperlink, arginfo_Sheet_delHyperlink, 0)
+	EXCEL_ME(Sheet, addHyperlink, arginfo_Sheet_addHyperlink, 0)
+	EXCEL_ME(Sheet, mergeSize, arginfo_Sheet_mergeSize, 0)
+	EXCEL_ME(Sheet, merge, arginfo_Sheet_merge, 0)
+	EXCEL_ME(Sheet, delMergeByIndex, arginfo_Sheet_delMergeByIndex, 0)
+	EXCEL_ME(Sheet, splitInfo, arginfo_Sheet_splitInfo, 0)
 #endif
    {NULL, NULL, NULL}
 };
