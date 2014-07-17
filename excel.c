@@ -3479,7 +3479,7 @@ EXCEL_METHOD(Sheet, setName)
 /* }}} */
 
 #if LIBXL_VERSION >= 0x03010000
-/* {{{ proto bool ExcelSheet::setNamedRange(string name, int row, int col, int to_row, int to_col)
+/* {{{ proto bool ExcelSheet::setNamedRange(string name, int row, int col, int to_row, int to_col [, int scope_id])
 	Create a named range */
 EXCEL_METHOD(Sheet, setNamedRange)
 {
@@ -3531,7 +3531,7 @@ EXCEL_METHOD(Sheet, delNamedRange)
 #if LIBXL_VERSION >= 0x03050401
 	long scope_id = SCOPE_WORKBOOK;
 
-	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "s|", &val, &val_len, &scope_id) == FAILURE) {
+	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "s|l", &val, &val_len, &scope_id) == FAILURE) {
 #else
 	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "s", &val, &val_len) == FAILURE) {
 #endif
@@ -3699,7 +3699,7 @@ EXCEL_METHOD(Sheet, getPrintFit)
 }
 /* }}} */
 
-/* {{{ proto array ExcelSheet::getNamedRange(string name)
+/* {{{ proto array ExcelSheet::getNamedRange(string name [, int scope_id])
 	Gets the named range coordianates by name, returns false if range is not found. */
 EXCEL_METHOD(Sheet, getNamedRange)
 {
@@ -3738,7 +3738,7 @@ EXCEL_METHOD(Sheet, getNamedRange)
 	}
 }
 
-/* {{{ proto array ExcelSheet::getIndexRange(int index)
+/* {{{ proto array ExcelSheet::getIndexRange(int index [, int scope_id])
 	Gets the named range coordianates by index, returns false if range is not found. */
 EXCEL_METHOD(Sheet, getIndexRange)
 {
@@ -3747,12 +3747,17 @@ EXCEL_METHOD(Sheet, getIndexRange)
 	long index;
 	int rf, rl, cf, cl;
 #if LIBXL_VERSION >= 0x03050401
-	int hidden = 0, scope_id;
-#endif
-
-	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "l", &index) == FAILURE) {
+    int hidden;
+	int scope_id = SCOPE_WORKBOOK;
+    
+    if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "l|l", &index, &scope_id) == FAILURE) {
 		RETURN_FALSE;
 	}
+#else
+    if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "l", &index) == FAILURE) {
+		RETURN_FALSE;
+	}
+#endif
 
 	SHEET_FROM_OBJECT(sheet, object);
 #if LIBXL_VERSION >= 0x03050401
@@ -4284,7 +4289,7 @@ ZEND_BEGIN_ARG_INFO_EX(arginfo_Book_packDate, 0, 0, 1)
 ZEND_END_ARG_INFO()
 
 PHP_EXCEL_ARGINFO
-ZEND_BEGIN_ARG_INFO_EX(arginfo_Book_packDateValues, 0, 0, 1)
+ZEND_BEGIN_ARG_INFO_EX(arginfo_Book_packDateValues, 0, 0, 6)
 	ZEND_ARG_INFO(0, year)
 	ZEND_ARG_INFO(0, month)
 	ZEND_ARG_INFO(0, day)
@@ -5066,11 +5071,17 @@ ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_setNamedRange, 0, 0, 5)
 	ZEND_ARG_INFO(0, col)
 	ZEND_ARG_INFO(0, to_row)
 	ZEND_ARG_INFO(0, to_col)
+#if LIBXL_VERSION >= 0x03050401
+	ZEND_ARG_INFO(0, scope_id)
+#endif
 ZEND_END_ARG_INFO()
 
 PHP_EXCEL_ARGINFO
 ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_delNamedRange, 0, 0, 1)
 	ZEND_ARG_INFO(0, name)
+#if LIBXL_VERSION >= 0x03050401
+	ZEND_ARG_INFO(0, scope_id)
+#endif
 ZEND_END_ARG_INFO()
 
 PHP_EXCEL_ARGINFO
