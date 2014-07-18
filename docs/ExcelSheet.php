@@ -147,6 +147,19 @@ class ExcelSheet {
 	const ERRORTYPE_NA = 42;
 
 	/**
+	* Adds the new hyperlink.
+	*
+	* @param string $hyperlink
+	* @param int $row_first 0-based
+	* @param int $row_last 0-based
+	* @param int $col_first 0-based
+	* @param int $col_last 0-based
+	* @return void
+	*/
+	public function addHyperlink($hyperlink, $row_first, $row_last, $col_first, $col_last) {
+	} // addHyperlink
+
+	/**
 	* Insert a picture into a cell with given dimensions
 	*
 	* @see ExcelBook::addPictureFromString()
@@ -277,13 +290,23 @@ class ExcelSheet {
 	} // copy
 
 	/**
+	* Removes hyperlink by index.
+	*
+	* @param int $index
+	* @return bool
+	*/
+	public function delHyperlink($index) {
+	} // delHyperlink
+
+	/**
 	* Delete a named range
 	*
 	* @see ExcelSheet::setNamedRange()
 	* @param string $name
+	* @param int $scope_id
 	* @return bool
 	*/
-	public function delNamedRange($name) {
+	public function delNamedRange($name, $scope_id = null) {
 	} // delNamedRange
 
 	/**
@@ -295,6 +318,15 @@ class ExcelSheet {
 	*/
 	public function deleteMerge($row, $column) {
 	} // deleteMerge
+
+	/**
+	* Removes merged cells by index.
+	*
+	* @param int $index
+	* @return bool
+	*/
+	public function delMergeByIndex($index) {
+	} // delMergeByIndex
 
 	/**
 	* Returns whether the gridlines are displayed
@@ -388,13 +420,13 @@ class ExcelSheet {
 	} // getHorPageBreakSize
 
 	/**
-	* Gets the named range coordinates by index, returns false if range is not found.
+	* Gets the named range coordinates by index.
 	*
 	* @param int $index
-	* @param int $scope_id
+	* @param int $scope_id (optional, default = null) index of sheet or -1 for Workbook
 	* @return array with keys "row_first"(int), "row_last"(int), "col_first"(int), "col_last"(int), "hidden"(bool), "scope"(int)
 	*/
-	public function getIndexRange($index, $scope_id) {
+	public function getIndexRange($index, $scope_id = null) {
 	} // getIndexRange
 
 	/**
@@ -528,7 +560,24 @@ class ExcelSheet {
 	*/
 	public function hidden($hide) {
 	} // hidden
-	
+
+	/**
+	* Gets the hyperlink and its coordinates by index.
+	*
+	* @param int $index
+	* @return array
+	*/
+	public function hyperlink($index) {
+	} // hyperlink
+
+	/**
+	* Returns the number of hyperlinks in the sheet.
+	*
+	* @return int
+	*/
+	public function hyperlinkSize() {
+	} // hyperlinkSize
+
 	/**
 	* Returns whether sheet is hidden
 	*
@@ -678,6 +727,23 @@ class ExcelSheet {
 	} // marginTop
 
 	/**
+	* Gets the merged cells by index.
+	*
+	* @param int $index
+	* @return array
+	*/
+	public function merge($index) {
+	} // merge
+
+	/**
+	* Returns a number of merged cells in this worksheet.
+	*
+	* @return int
+	*/
+	public function mergeSize() {
+	} // mergeSize
+
+	/**
 	* Returns the name of the worksheet
 	*
 	* @see ExcelSheet::setName()
@@ -739,7 +805,7 @@ class ExcelSheet {
 	* @param bool $read_formula (optional, default=true)
 	* @return mixed
 	*/
-	public function read($row, $column, $format = null, $read_formula = true) {
+	public function read($row, $column, &$format = null, $read_formula = true) {
 	} // read
 
 	/**
@@ -801,11 +867,11 @@ class ExcelSheet {
 	*
 	* @param int $row
 	* @param int $column
-	* @param bool $row_relative
-	* @param bool $col_relative
+	* @param bool $row_relative (optional, default=true)
+	* @param bool $col_relative (optional, default=true)
 	* @return string
 	*/
-	public function rowColToAddr($row, $column, $row_relative, $col_relative) {
+	public function rowColToAddr($row, $column, $row_relative = true, $col_relative = true) {
 	} // rowColToAddr
 
 	/**
@@ -1015,9 +1081,10 @@ class ExcelSheet {
 	* @param int $column_from 0-based column number
 	* @param int $row_to 0-based row number
 	* @param int $column_to 0-based column number
+	* @param int $scope_id
 	* @return bool
 	*/
-	public function setNamedRange($name, $row_from, $column_from, $row_to, $column_to) {
+	public function setNamedRange($name, $row_from, $column_from, $row_to, $column_to, $scope_id = null) {
 	} // setNamedRange
 
 	/**
@@ -1157,6 +1224,16 @@ class ExcelSheet {
 	*/
 	public function setZoomPrint($value) {
 	} // setZoomPrint
+
+	/**
+	* Gets the split information (position of frozen pane) in the sheet:
+	* row - vertical position of the split;
+	* col - horizontal position of the split.
+	*
+	* @return array
+	*/
+	public function splitInfo() {
+	} // splitInfo
 
 	/**
 	* Split sheet at indicated position
