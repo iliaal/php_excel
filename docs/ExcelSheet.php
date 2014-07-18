@@ -805,7 +805,7 @@ class ExcelSheet {
 	* @param bool $read_formula (optional, default=true)
 	* @return mixed
 	*/
-	public function read($row, $column, $format = null, $read_formula = true) {
+	public function read($row, $column, &$format = null, $read_formula = true) {
 	} // read
 
 	/**
