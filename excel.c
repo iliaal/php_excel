@@ -4283,6 +4283,7 @@ EXCEL_METHOD(Sheet, addHyperlink)
 	SHEET_FROM_OBJECT(sheet, object);
 	
 	xlSheetAddHyperlink(sheet, val, row_first, row_last, col_first, col_last);
+	RETURN_TRUE;
 }
 /* }}} */
 
@@ -4312,6 +4313,10 @@ EXCEL_METHOD(Sheet, merge)
 	int rowFirst, rowLast, colFirst, colLast;
 
 	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "l", &index) == FAILURE) {
+		RETURN_FALSE;
+	}
+
+	if (index < 0) {
 		RETURN_FALSE;
 	}
 

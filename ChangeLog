@@ -1,3 +1,14 @@
+[2014-??-??] - Version 1.0.1
+	* Added new methods for LibXL 3.6.0
+		- ExcelSheet::hyperlinkSize()
+		- ExcelSheet::hyperlink()
+		- ExcelSheet::delHyperlink()
+		- ExcelSheet::addHyperlink()
+		- ExcelSheet::mergeSize()
+		- ExcelSheet::merge()
+		- ExcelSheet::delMergeByIndex()
+		- ExcelSheet::splitInfo()
+
 [2014-06-03] - Version 1.0
 	* Fixed issue #63 writing for NULL values using writeRow()
 	* Added excel.skip_empty INI setting that allows null values to be skipped, if set to 2 the empty strings will be skipped as well

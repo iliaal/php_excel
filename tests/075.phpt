@@ -22,7 +22,7 @@ var_dump(
 ?>
 --EXPECT--
 int(0)
-NULL
+bool(true)
 int(1)
 array(5) {
   ["hyperlink"]=>
