@@ -1,4 +1,9 @@
 [2014-??-??] - Version 1.0.1
+	* Added methods
+		- ExcelSheet::colHidden()
+		- ExcelSheet::rowHidden()
+		- ExcelSheet::setColHidden()
+		- ExcelSheet::setRowHidden()
 	* Added new methods for LibXL 3.6.0
 		- ExcelSheet::hyperlinkSize()
 		- ExcelSheet::hyperlink()
