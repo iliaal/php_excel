@@ -13,6 +13,21 @@
   +---------------------------------------------------------------------------+
 */
 class ExcelBook {
+	const PICTURETYPE_DIB = 3;
+	const PICTURETYPE_EMF = 4;
+	const PICTURETYPE_JPEG = 1;
+	const PICTURETYPE_PICT = 5;
+	const PICTURETYPE_PNG = 0;
+	const PICTURETYPE_TIFF = 6;
+	const PICTURETYPE_WMF = 2;
+
+	const SCOPE_UNDEFINED = -2;
+	const SCOPE_WORKBOOK = -1;
+
+	const SHEETTYPE_CHART = 1;
+	const SHEETTYPE_SHEET = 0;
+	const SHEETTYPE_UNKNOWN = 2;
+
 	/**
 	* Create a new Excel workbook
 	*
@@ -402,6 +417,18 @@ class ExcelBook {
 	*/
 	public function sheetCount() {
 	} // sheetCount
+
+	/**
+	* Returns type of sheet with specified index:
+	* 0 - sheet
+	* 1 - chart
+	* 2 - unknown
+	*
+	* @param int $sheet
+	* @return int 
+	*/
+	public function sheetType($sheet) {
+	} // sheetType
 
 	/**
 	* Unpack an Excel double into a unix timestamp

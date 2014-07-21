@@ -146,6 +146,9 @@ class ExcelSheet {
 	const ERRORTYPE_NUM = 36;
 	const ERRORTYPE_NA = 42;
 
+	const LEFT_TO_RIGHT = 0;
+	const RIGHT_TO_LEFT = 1;
+
 	/**
 	* Adds the new hyperlink.
 	*

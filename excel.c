@@ -3748,7 +3748,7 @@ EXCEL_METHOD(Sheet, getIndexRange)
 	int rf, rl, cf, cl;
 #if LIBXL_VERSION >= 0x03050401
 	int hidden;
-	int scope_id = SCOPE_WORKBOOK;
+	long scope_id = SCOPE_WORKBOOK;
 	
 	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "l|l", &index, &scope_id) == FAILURE) {
 		RETURN_FALSE;
@@ -4375,7 +4375,6 @@ EXCEL_METHOD(Sheet, splitInfo)
 }
 /* }}} */
 
-/** @todo START */
 /* {{{ proto bool ExcelSheet::rowHidden(int row)
 	Returns whether row is hidden. */
 EXCEL_METHOD(Sheet, rowHidden)
@@ -4461,7 +4460,27 @@ EXCEL_METHOD(Sheet, setColHidden)
 	RETURN_BOOL(xlSheetSetColHidden(sheet, col, hidden));
 }
 /* }}} */
-/** @todo END */
+
+/* {{{ proto long ExcelBook::sheetType(int sheet)
+	Returns type of sheet with specified index. */
+EXCEL_METHOD(Book, sheetType)
+{
+	zval *object = getThis();
+    BookHandle book;
+    long index;
+
+    if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "l", &index) == FAILURE) {
+		RETURN_FALSE;
+	}
+    
+    if (index < 0) {
+		RETURN_FALSE;
+	}
+    
+	BOOK_FROM_OBJECT(book, object);
+	RETURN_LONG(xlBookSheetType(book, index));
+}
+/* }}} */
 #endif
 
 #if PHP_MAJOR_VERSION > 5 || (PHP_MAJOR_VERSION == 5 && PHP_MINOR_VERSION >= 3)
@@ -4663,6 +4682,7 @@ ZEND_BEGIN_ARG_INFO_EX(arginfo_Book_getPicture, 0, 0, 1)
 	ZEND_ARG_INFO(0, index)
 ZEND_END_ARG_INFO()
 
+PHP_EXCEL_ARGINFO
 ZEND_BEGIN_ARG_INFO_EX(arginfo_Book_getNumPictures, 0, 0, 0)
 ZEND_END_ARG_INFO()
 
@@ -4691,6 +4711,13 @@ ZEND_END_ARG_INFO()
 PHP_EXCEL_ARGINFO
 ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_setRightToLeft, 0, 0, 1)
 	ZEND_ARG_INFO(0, mode)
+ZEND_END_ARG_INFO()
+#endif
+
+#if LIBXL_VERSION >= 0x03060000
+PHP_EXCEL_ARGINFO
+ZEND_BEGIN_ARG_INFO_EX(arginfo_Book_sheetType, 0, 0, 1)
+	ZEND_ARG_INFO(0, sheet)
 ZEND_END_ARG_INFO()
 #endif
 
@@ -5405,6 +5432,7 @@ ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_setPrintFit, 0, 0, 2)
 	ZEND_ARG_INFO(0, hPages)
 ZEND_END_ARG_INFO()
 
+PHP_EXCEL_ARGINFO
 ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_getPrintFit, 0, 0, 0)
 ZEND_END_ARG_INFO()
 
@@ -5424,6 +5452,7 @@ ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_getIndexRange, 0, 0, 1)
 #endif
 ZEND_END_ARG_INFO()
 
+PHP_EXCEL_ARGINFO
 ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_namedRangeSize, 0, 0, 0)
 ZEND_END_ARG_INFO()
 
@@ -5432,6 +5461,7 @@ ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_getVerPageBreak, 0, 0, 1)
 	ZEND_ARG_INFO(0, index)
 ZEND_END_ARG_INFO()
 
+PHP_EXCEL_ARGINFO
 ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_getVerPageBreakSize, 0, 0, 0)
 ZEND_END_ARG_INFO()
 
@@ -5440,6 +5470,7 @@ ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_getHorPageBreak, 0, 0, 1)
 	ZEND_ARG_INFO(0, index)
 ZEND_END_ARG_INFO()
 
+PHP_EXCEL_ARGINFO
 ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_getHorPageBreakSize, 0, 0, 0)
 ZEND_END_ARG_INFO()
 
@@ -5448,22 +5479,27 @@ ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_getPictureInfo, 0, 0, 1)
 	ZEND_ARG_INFO(0, index)
 ZEND_END_ARG_INFO()
 
+PHP_EXCEL_ARGINFO
 ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_getNumPictures, 0, 0, 0)
 ZEND_END_ARG_INFO()
 #endif
 
 #if LIBXL_VERSION >= 0x03060000
+PHP_EXCEL_ARGINFO
 ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_hyperlinkSize, 0, 0, 0)
 ZEND_END_ARG_INFO()
 
+PHP_EXCEL_ARGINFO
 ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_hyperlink, 0, 0, 1)
 	ZEND_ARG_INFO(0, index)
 ZEND_END_ARG_INFO()
 
+PHP_EXCEL_ARGINFO
 ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_delHyperlink, 0, 0, 1)
 	ZEND_ARG_INFO(0, index)
 ZEND_END_ARG_INFO()
 
+PHP_EXCEL_ARGINFO
 ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_addHyperlink, 0, 0, 5)
 	ZEND_ARG_INFO(0, hyperlink)
 	ZEND_ARG_INFO(0, row_first)
@@ -5472,33 +5508,41 @@ ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_addHyperlink, 0, 0, 5)
 	ZEND_ARG_INFO(0, col_last)
 ZEND_END_ARG_INFO()
 
+PHP_EXCEL_ARGINFO
 ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_mergeSize, 0, 0, 0)
 ZEND_END_ARG_INFO()
 
+PHP_EXCEL_ARGINFO
 ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_merge, 0, 0, 1)
 	ZEND_ARG_INFO(0, index)
 ZEND_END_ARG_INFO()
 
+PHP_EXCEL_ARGINFO
 ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_delMergeByIndex, 0, 0, 1)
 	ZEND_ARG_INFO(0, index)
 ZEND_END_ARG_INFO()
 
+PHP_EXCEL_ARGINFO
 ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_splitInfo, 0, 0, 0)
 ZEND_END_ARG_INFO()
 
+PHP_EXCEL_ARGINFO
 ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_colHidden, 0, 0, 1)
 	ZEND_ARG_INFO(0, col)
 ZEND_END_ARG_INFO()
 
+PHP_EXCEL_ARGINFO
 ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_rowHidden, 0, 0, 1)
 	ZEND_ARG_INFO(0, row)
 ZEND_END_ARG_INFO()
 
+PHP_EXCEL_ARGINFO
 ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_setColHidden, 0, 0, 2)
 	ZEND_ARG_INFO(0, col)
 	ZEND_ARG_INFO(0, hidden)
 ZEND_END_ARG_INFO()
 
+PHP_EXCEL_ARGINFO
 ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_setRowHidden, 0, 0, 2)
 	ZEND_ARG_INFO(0, row)
 	ZEND_ARG_INFO(0, hidden)
@@ -5559,6 +5603,9 @@ zend_function_entry excel_funcs_book[] = {
 #if LIBXL_VERSION >= 0x03050401
 	EXCEL_ME(Book, isTemplate, arginfo_Book_isTemplate, 0)
 	EXCEL_ME(Book, setTemplate, arginfo_Book_setTemplate, 0)
+#endif
+#if LIBXL_VERSION >= 0x03060000
+    EXCEL_ME(Book, sheetType, arginfo_Book_sheetType, 0)
 #endif
 	{NULL, NULL, NULL}
 };
@@ -5991,6 +6038,11 @@ PHP_MINIT_FUNCTION(excel)
 	REGISTER_EXCEL_CLASS_CONST_LONG(book, "SCOPE_WORKBOOK", SCOPE_WORKBOOK);
 	REGISTER_EXCEL_CLASS_CONST_LONG(sheet, "RIGHT_TO_LEFT", 1);
 	REGISTER_EXCEL_CLASS_CONST_LONG(sheet, "LEFT_TO_RIGHT", 0);
+#endif
+#if LIBXL_VERSION >= 0x03060000
+    REGISTER_EXCEL_CLASS_CONST_LONG(book, "SHEETTYPE_SHEET", SHEETTYPE_SHEET);
+    REGISTER_EXCEL_CLASS_CONST_LONG(book, "SHEETTYPE_CHART", SHEETTYPE_CHART);
+    REGISTER_EXCEL_CLASS_CONST_LONG(book, "SHEETTYPE_UNKNOWN", SHEETTYPE_UNKNOWN);
 #endif
 	return SUCCESS;
 }
