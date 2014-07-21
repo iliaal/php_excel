@@ -4369,6 +4369,94 @@ EXCEL_METHOD(Sheet, splitInfo)
 	add_assoc_long(return_value, "col", col);
 }
 /* }}} */
+
+/** @todo START */
+/* {{{ proto bool ExcelSheet::rowHidden(int row)
+	Returns whether row is hidden. */
+EXCEL_METHOD(Sheet, rowHidden)
+{
+	zval *object = getThis();
+	SheetHandle sheet;
+	long row;
+
+	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "l", &row) == FAILURE) {
+		RETURN_FALSE;
+	}
+
+	if (row < 0) {
+		RETURN_FALSE;
+	}
+
+	SHEET_FROM_OBJECT(sheet, object);
+	RETURN_BOOL(xlSheetRowHidden(sheet, row));
+}
+/* }}} */
+
+/* {{{ proto bool ExcelSheet::setRowHidden(int row, bool hidden)
+	Hides row. */
+EXCEL_METHOD(Sheet, setRowHidden)
+{
+	zval *object = getThis();
+	SheetHandle sheet;
+	long row;
+	zend_bool hidden;
+
+	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "lb", &row, &hidden) == FAILURE) {
+		RETURN_FALSE;
+	}
+
+	if (row < 0) {
+		RETURN_FALSE;
+	}
+
+	SHEET_FROM_OBJECT(sheet, object);
+	RETURN_BOOL(xlSheetSetRowHidden(sheet, row, hidden));
+}
+/* }}} */
+
+/* {{{ proto bool ExcelSheet::colHidden(int col)
+	Returns whether column is hidden. */
+EXCEL_METHOD(Sheet, colHidden)
+{
+	zval *object = getThis();
+	SheetHandle sheet;
+	long col;
+
+	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "l", &col) == FAILURE) {
+		RETURN_FALSE;
+	}
+
+	if (col < 0) {
+		RETURN_FALSE;
+	}
+
+	SHEET_FROM_OBJECT(sheet, object);
+	RETURN_BOOL(xlSheetColHidden(sheet, col));
+}
+/* }}} */
+
+/* {{{ proto bool ExcelSheet::setColHidden(int col, bool hidden)
+	Hides column. */
+EXCEL_METHOD(Sheet, setColHidden)
+{
+	zval *object = getThis();
+	SheetHandle sheet;
+	long col;
+	zend_bool hidden;
+
+	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "lb", &col, &hidden) == FAILURE) {
+		RETURN_FALSE;
+	}
+
+	if (col < 0) {
+		RETURN_FALSE;
+	}
+
+	SHEET_FROM_OBJECT(sheet, object);
+	RETURN_BOOL(xlSheetSetColHidden(sheet, col, hidden));
+}
+/* }}} */
+/** @todo END */
 #endif
 
 #if PHP_MAJOR_VERSION > 5 || (PHP_MAJOR_VERSION == 5 && PHP_MINOR_VERSION >= 3)
@@ -5392,6 +5480,24 @@ ZEND_END_ARG_INFO()
 
 ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_splitInfo, 0, 0, 0)
 ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_colHidden, 0, 0, 1)
+	ZEND_ARG_INFO(0, col)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_rowHidden, 0, 0, 1)
+	ZEND_ARG_INFO(0, row)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_setColHidden, 0, 0, 2)
+	ZEND_ARG_INFO(0, col)
+	ZEND_ARG_INFO(0, hidden)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_setRowHidden, 0, 0, 2)
+	ZEND_ARG_INFO(0, row)
+	ZEND_ARG_INFO(0, hidden)
+ZEND_END_ARG_INFO()
 #endif
 
 #define EXCEL_ME(class_name, function_name, arg_info, flags) \
@@ -5577,8 +5683,13 @@ zend_function_entry excel_funcs_sheet[] = {
 	EXCEL_ME(Sheet, merge, arginfo_Sheet_merge, 0)
 	EXCEL_ME(Sheet, delMergeByIndex, arginfo_Sheet_delMergeByIndex, 0)
 	EXCEL_ME(Sheet, splitInfo, arginfo_Sheet_splitInfo, 0)
+
+	EXCEL_ME(Sheet, colHidden, arginfo_Sheet_colHidden, 0)
+	EXCEL_ME(Sheet, rowHidden, arginfo_Sheet_rowHidden, 0)
+	EXCEL_ME(Sheet, setColHidden, arginfo_Sheet_setColHidden, 0)
+	EXCEL_ME(Sheet, setRowHidden, arginfo_Sheet_setRowHidden, 0)
 #endif
-   {NULL, NULL, NULL}
+	{NULL, NULL, NULL}
 };
 
 zend_function_entry excel_funcs_font[] = {
@@ -5774,6 +5885,7 @@ PHP_MINIT_FUNCTION(excel)
 	REGISTER_EXCEL_CLASS_CONST_LONG(format, "BORDERSTYLE_DASHDOTDOT", BORDERSTYLE_DASHDOTDOT);
 	REGISTER_EXCEL_CLASS_CONST_LONG(format, "BORDERSTYLE_MEDIUMDASHDOTDOT", BORDERSTYLE_MEDIUMDASHDOTDOT);
 	REGISTER_EXCEL_CLASS_CONST_LONG(format, "BORDERSTYLE_SLANTDASHDOT", BORDERSTYLE_SLANTDASHDOT);
+
 	REGISTER_EXCEL_CLASS_CONST_LONG(format, "BORDERDIAGONAL_NONE", BORDERDIAGONAL_NONE);
 	REGISTER_EXCEL_CLASS_CONST_LONG(format, "BORDERDIAGONAL_DOWN", BORDERDIAGONAL_DOWN);
 	REGISTER_EXCEL_CLASS_CONST_LONG(format, "BORDERDIAGONAL_UP", BORDERDIAGONAL_UP);

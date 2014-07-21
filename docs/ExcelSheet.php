@@ -266,6 +266,15 @@ class ExcelSheet {
 	} // clearPrintRepeats
 
 	/**
+	* Returns whether column is hidden.
+	*
+	* @param int $column 0-based column number
+	* @return bool
+	*/
+	public function colHidden($column) {
+	} // colHidden
+
+	/**
 	* Returns the cell width
 	*
 	* @see ExcelSheet::rowHeight()
@@ -887,6 +896,15 @@ class ExcelSheet {
 	} // rowHeight
 
 	/**
+	* Returns whether row is hidden.
+	*
+	* @param int $row 0-based row number
+	* @return bool
+	*/
+	public function rowHidden($row) {
+	} // rowHidden
+
+	/**
 	* Set cell format
 	*
 	* @param int $row 0-based row number
@@ -896,6 +914,16 @@ class ExcelSheet {
 	*/
 	public function setCellFormat($row, $column, $format) {
 	} // setCellFormat
+
+	/**
+	* Hides column.
+	*
+	* @param int $column 0-based column number
+	* @param bool $hidden
+	* @return bool
+	*/
+	public function setColHidden($column, $hidden) {
+	} // setColHidden
 
 	/**
 	* Set the width of cells in a column
@@ -1186,6 +1214,16 @@ class ExcelSheet {
 	*/
 	public function setRowHeight($row, $height, $format = null, $hidden = false) {
 	} // setRowHeight
+
+	/**
+	* Hides row.
+	*
+	* @param int $row 0-based row number
+	* @param bool $hidden
+	* @return bool
+	*/
+	public function setRowHidden($row, $hidden) {
+	} // setRowHidden
 
 	/**
 	* Sets the first visible row and the leftmost visible column of the sheet.
