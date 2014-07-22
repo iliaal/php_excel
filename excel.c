@@ -2433,7 +2433,7 @@ EXCEL_METHOD(Sheet, writeRow)
 }
 /* }}} */
 
-/* {{{ proto bool ExcelSheet::writeCol(int row, array data [, int start_row [, ExcelFormat format]])
+/* {{{ proto bool ExcelSheet::writeCol(int row, array data [, int start_row [, ExcelFormat format [, int datatype]]])
 	Write an array of values into a column */
 EXCEL_METHOD(Sheet, writeCol)
 {
@@ -2447,8 +2447,9 @@ EXCEL_METHOD(Sheet, writeCol)
 	HashPosition pos;
 	zval **element;
 	long i;
+    long dtype = -1;
 
-	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "la|lO", &col, &data, &row, &oformat, excel_ce_format) == FAILURE) {
+	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "la|lO!l", &col, &data, &row, &oformat, excel_ce_format, &dtype) == FAILURE) {
 		RETURN_FALSE;
 	}
 
@@ -2473,7 +2474,7 @@ EXCEL_METHOD(Sheet, writeCol)
 		zend_hash_get_current_data_ex(Z_ARRVAL_P(data), (void **) &element, &pos) == SUCCESS;
 		zend_hash_move_forward_ex(Z_ARRVAL_P(data), &pos)) {
 
-		if (!php_excel_write_cell(sheet, book, i++, col, *element, oformat ? format : 0, -1 TSRMLS_CC)) {
+		if (!php_excel_write_cell(sheet, book, i++, col, *element, oformat ? format : 0, dtype TSRMLS_CC)) {
 			RETURN_FALSE;
 		}
 	}
@@ -4968,6 +4969,7 @@ ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_writeCol, 0, 0, 2)
 	ZEND_ARG_INFO(0, data)
 	ZEND_ARG_INFO(0, start_row)
 	ZEND_ARG_OBJ_INFO(0, format, ExcelFormat, 1)
+    ZEND_ARG_INFO(0, data_type)
 ZEND_END_ARG_INFO()
 
 PHP_EXCEL_ARGINFO
