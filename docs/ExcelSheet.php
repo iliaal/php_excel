@@ -1252,9 +1252,10 @@ class ExcelSheet {
 	* @param array $data
 	* @param int $row_start (optional, default=0)
 	* @param ExcelFormat $format (optional, default=null)
+	* @param int $data_type (optional, default=-1) One of ExcelFormat::AS_* constants
 	* @return bool
 	*/
-	public function writeCol($column, $data, $row_start = 0, $format = null) {
+	public function writeCol($column, $data, $row_start = 0, $format = null, $data_type = -1) {
 	} // writeCol
 
 	/**
