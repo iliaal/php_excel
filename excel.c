@@ -2447,7 +2447,7 @@ EXCEL_METHOD(Sheet, writeCol)
 	HashPosition pos;
 	zval **element;
 	long i;
-    long dtype = -1;
+	long dtype = -1;
 
 	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "la|lO!l", &col, &data, &row, &oformat, excel_ce_format, &dtype) == FAILURE) {
 		RETURN_FALSE;
@@ -4467,17 +4467,17 @@ EXCEL_METHOD(Sheet, setColHidden)
 EXCEL_METHOD(Book, sheetType)
 {
 	zval *object = getThis();
-    BookHandle book;
-    long index;
+	BookHandle book;
+	long index;
 
-    if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "l", &index) == FAILURE) {
+	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "l", &index) == FAILURE) {
 		RETURN_FALSE;
 	}
     
-    if (index < 0) {
+	if (index < 0) {
 		RETURN_FALSE;
 	}
-    
+
 	BOOK_FROM_OBJECT(book, object);
 	RETURN_LONG(xlBookSheetType(book, index));
 }
@@ -4969,7 +4969,7 @@ ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_writeCol, 0, 0, 2)
 	ZEND_ARG_INFO(0, data)
 	ZEND_ARG_INFO(0, start_row)
 	ZEND_ARG_OBJ_INFO(0, format, ExcelFormat, 1)
-    ZEND_ARG_INFO(0, data_type)
+	ZEND_ARG_INFO(0, data_type)
 ZEND_END_ARG_INFO()
 
 PHP_EXCEL_ARGINFO
@@ -5607,7 +5607,7 @@ zend_function_entry excel_funcs_book[] = {
 	EXCEL_ME(Book, setTemplate, arginfo_Book_setTemplate, 0)
 #endif
 #if LIBXL_VERSION >= 0x03060000
-    EXCEL_ME(Book, sheetType, arginfo_Book_sheetType, 0)
+	EXCEL_ME(Book, sheetType, arginfo_Book_sheetType, 0)
 #endif
 	{NULL, NULL, NULL}
 };
@@ -6042,9 +6042,9 @@ PHP_MINIT_FUNCTION(excel)
 	REGISTER_EXCEL_CLASS_CONST_LONG(sheet, "LEFT_TO_RIGHT", 0);
 #endif
 #if LIBXL_VERSION >= 0x03060000
-    REGISTER_EXCEL_CLASS_CONST_LONG(book, "SHEETTYPE_SHEET", SHEETTYPE_SHEET);
-    REGISTER_EXCEL_CLASS_CONST_LONG(book, "SHEETTYPE_CHART", SHEETTYPE_CHART);
-    REGISTER_EXCEL_CLASS_CONST_LONG(book, "SHEETTYPE_UNKNOWN", SHEETTYPE_UNKNOWN);
+	REGISTER_EXCEL_CLASS_CONST_LONG(book, "SHEETTYPE_SHEET", SHEETTYPE_SHEET);
+	REGISTER_EXCEL_CLASS_CONST_LONG(book, "SHEETTYPE_CHART", SHEETTYPE_CHART);
+	REGISTER_EXCEL_CLASS_CONST_LONG(book, "SHEETTYPE_UNKNOWN", SHEETTYPE_UNKNOWN);
 #endif
 	return SUCCESS;
 }
