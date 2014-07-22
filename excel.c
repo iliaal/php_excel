@@ -4466,17 +4466,17 @@ EXCEL_METHOD(Sheet, setColHidden)
 EXCEL_METHOD(Book, sheetType)
 {
 	zval *object = getThis();
-    BookHandle book;
-    long index;
+	BookHandle book;
+	long index;
 
-    if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "l", &index) == FAILURE) {
+	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "l", &index) == FAILURE) {
 		RETURN_FALSE;
 	}
     
-    if (index < 0) {
+	if (index < 0) {
 		RETURN_FALSE;
 	}
-    
+
 	BOOK_FROM_OBJECT(book, object);
 	RETURN_LONG(xlBookSheetType(book, index));
 }
@@ -5605,7 +5605,7 @@ zend_function_entry excel_funcs_book[] = {
 	EXCEL_ME(Book, setTemplate, arginfo_Book_setTemplate, 0)
 #endif
 #if LIBXL_VERSION >= 0x03060000
-    EXCEL_ME(Book, sheetType, arginfo_Book_sheetType, 0)
+	EXCEL_ME(Book, sheetType, arginfo_Book_sheetType, 0)
 #endif
 	{NULL, NULL, NULL}
 };

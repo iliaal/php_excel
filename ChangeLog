@@ -13,6 +13,7 @@
 		- ExcelSheet::merge()
 		- ExcelSheet::delMergeByIndex()
 		- ExcelSheet::splitInfo()
+		- ExcelBook::sheetType()
 
 [2014-06-03] - Version 1.0
 	* Fixed issue #63 writing for NULL values using writeRow()
