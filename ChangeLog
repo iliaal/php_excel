@@ -1,5 +1,6 @@
 [2014-??-??] - Version 1.0.1
 	* Added methods
+		- ExcelBook::sheetType()
 		- ExcelSheet::colHidden()
 		- ExcelSheet::rowHidden()
 		- ExcelSheet::setColHidden()
@@ -13,6 +14,7 @@
 		- ExcelSheet::merge()
 		- ExcelSheet::delMergeByIndex()
 		- ExcelSheet::splitInfo()
+	* Updated documentation
 
 [2014-06-03] - Version 1.0
 	* Fixed issue #63 writing for NULL values using writeRow()
