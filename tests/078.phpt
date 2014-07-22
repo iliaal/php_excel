@@ -22,7 +22,13 @@ var_dump(
     $sheet->setColHidden(-1, true),
     $sheet->setColHidden(null, true),
     $sheet->rowHidden(1),
-    $sheet->colHidden(1)
+    $sheet->colHidden(1),
+    $sheet->rowHidden(0),
+    $sheet->colHidden(0),
+    $sheet->setRowHidden(null, false),
+    $sheet->setColHidden(null, false),
+    $sheet->rowHidden(0),
+    $sheet->colHidden(0)
 );
 ?>
 --EXPECTF--
@@ -43,3 +49,9 @@ bool(false)
 bool(true)
 bool(true)
 bool(true)
+bool(true)
+bool(true)
+bool(true)
+bool(true)
+bool(false)
+bool(false)

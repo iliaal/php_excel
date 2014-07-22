@@ -71,8 +71,6 @@ class ExcelFormat {
 	const COLOR_GRAY80 = 63;
 	const COLOR_DEFAULT_FOREGROUND = 64;
 	const COLOR_DEFAULT_BACKGROUND = 65;
-	const COLOR_TOOLTIP = 81;
-	const COLOR_AUTO = 32767;
 
 	const AS_DATE = 1;
 	const AS_FORMULA = 2;
