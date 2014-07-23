@@ -1163,7 +1163,7 @@ EXCEL_METHOD(Book, setDefaultFont)
 	zval *object = getThis();
 	char *font;
 	int font_len;
-	int font_size;
+	long font_size;
 
 	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "sl", &font, &font_len, &font_size) == FAILURE || font_size < 1) {
 		RETURN_FALSE;
@@ -1171,7 +1171,7 @@ EXCEL_METHOD(Book, setDefaultFont)
 
 	BOOK_FROM_OBJECT(book, object);
 
-	xlBookSetDefaultFont(book, font, font_size);
+	xlBookSetDefaultFont(book, font, (int)font_size);
 }
 /* }}} */
 
