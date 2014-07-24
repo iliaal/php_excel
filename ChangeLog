@@ -15,6 +15,7 @@
 		- ExcelSheet::delMergeByIndex()
 		- ExcelSheet::splitInfo()
 	* Added data type argument for ExcelSheet::writeCol() (see issue #29)
+    * Fixed bug in ExcelBook::setDefaultFont() (see issue #66)
 	* Updated documentation
 
 [2014-06-03] - Version 1.0
