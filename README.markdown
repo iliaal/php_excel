@@ -18,12 +18,23 @@ Resources
 Installation
 ------------
 **Linux**
-    // please replace <PATH> with the file path where you have extracted libxl
-    // 32-bit
-    ./configure --with-excel=<PATH>/libxl-3.6.0.1/ --with-libxl-incdir=<PATH>/libxl-3.6.0.1/include_c --with-libxl-libdir=<PATH>/libxl-3.6.0.1/lib
+  
+    // change into php source files directory
+    cd php-5.x.x
     
-    // 64-bit
-    ./configure --with-excel=<PATH>/libxl-3.6.0.1/ --with-libxl-incdir=<PATH>/libxl-3.6.0.1/include_c --with-libxl-libdir=<PATH>/libxl-3.6.0.1/lib64
+    // clone repository into php extension dir
+    git clone https://github.com/iliaal/php_excel.git ext/excel
+    
+    // rebuild configure
+    ./buildconf --force
+    
+    // replace <PATH> with the file path to the extracted libxl files
+    // on a 32-bit platform use
+    ./configure --with-excel --with-libxl-incdir=<PATH>/libxl-3.6.0.1/include_c --with-libxl-libdir=<PATH>/libxl-3.6.0.1/lib
+    
+    // on a 64-bit platform use
+    ./configure --with-excel --with-libxl-incdir=<PATH>/libxl-3.6.0.1/include_c --with-libxl-libdir=<PATH>/libxl-3.6.0.1/lib64
 
 **Windows**
+  
 Pre-build packages for Windows can be downloaded [here](http://windows.php.net/downloads/pecl/snaps/excel).
