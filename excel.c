@@ -2637,7 +2637,7 @@ EXCEL_METHOD(Sheet, writeComment)
 /* }}} */
 
 /* {{{ proto void ExcelSheet::setColWidth(int column_start, int column_end, double width [, bool hidden [, ExcelFormat format]])
-	Set width of cells within column(s) */
+	Set width of cells within column(s); Value -1 is used for autofit column widths in LibXL 3.6+ */
 EXCEL_METHOD(Sheet, setColWidth)
 {
 		SheetHandle sheet;
@@ -2664,8 +2664,8 @@ EXCEL_METHOD(Sheet, setColWidth)
 		} else if (s < 0) {
 			php_error_docref(NULL TSRMLS_CC, E_WARNING, "Start cell cannot be less then 0");
 			RETURN_FALSE;
-		} else if (width < 0) {
-			php_error_docref(NULL TSRMLS_CC, E_WARNING, "Width cannot be less then 0");
+		} else if (width < -1) {
+			php_error_docref(NULL TSRMLS_CC, E_WARNING, "Width cannot be less then -1");
 			RETURN_FALSE;
 		}
 
