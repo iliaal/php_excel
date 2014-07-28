@@ -9,12 +9,21 @@ Numbers, etc...
 
 Documentation
 -------------
-Please see the docs directory.
+Please see the ```docs/``` and the ```tests/``` directory.
 
 Resources
 ---------
 * [libxl](http://www.libxl.com/)
 
-Windows
--------
-Pre-build packages for Windows can be found [here](http://windows.php.net/downloads/pecl/snaps/excel).
+Installation
+------------
+**Linux**
+    // please replace <PATH> with the file path where you have extracted libxl
+    // 32-bit
+    ./configure --with-excel=<PATH>/libxl-3.6.0.1/ --with-libxl-incdir=<PATH>/libxl-3.6.0.1/include_c --with-libxl-libdir=<PATH>/libxl-3.6.0.1/lib
+    
+    // 64-bit
+    ./configure --with-excel=<PATH>/libxl-3.6.0.1/ --with-libxl-incdir=<PATH>/libxl-3.6.0.1/include_c --with-libxl-libdir=<PATH>/libxl-3.6.0.1/lib64
+
+**Windows**
+Pre-build packages for Windows can be downloaded [here](http://windows.php.net/downloads/pecl/snaps/excel).

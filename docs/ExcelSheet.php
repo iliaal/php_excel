@@ -861,7 +861,7 @@ class ExcelSheet {
 	* @see ExcelSheet::setRowHeight()
 	* @param int $column_start 0-based column number
 	* @param int $column_end 0-based column number
-	* @param float $width
+	* @param float $width (-1: autofit)
 	* @param bool $hidden (optional, default=false)
 	* @param ExcelFormat $format (optional, default=null)
 	* @return bool
