@@ -15,6 +15,8 @@
 		- ExcelSheet::delMergeByIndex()
 		- ExcelSheet::splitInfo()
 	* Added data type argument for ExcelSheet::writeCol() (see issue #29)
+	* Fixed bug in ExcelBook::setDefaultFont() (see issue #66)
+	* Added autofit handling for ExcelBook::setColWidth()
 	* Updated documentation
 
 [2014-06-03] - Version 1.0
@@ -77,11 +79,11 @@
 		  returns the sheet handle. If ExcelSheet parameter is missing a new sheet will be created.
 
 [2011-01-14] - Version 0.9.1
-    * Added support for LibXL 3.1.0+
+	* Added support for LibXL 3.1.0+
 	* Added work-around for a bug inside xlSheetIsDate() that detects treats custom number formats as dates
-    * Added getSheetByName() method to retrieve sheet by name (original patch by Rob Gagnon)
-    * Added basic documentation
-    * Fixed a bug with readRow()/readCol() when end parameter is specified
+	* Added getSheetByName() method to retrieve sheet by name (original patch by Rob Gagnon)
+	* Added basic documentation
+	* Fixed a bug with readRow()/readCol() when end parameter is specified
 
 [2010-08-27] - Version 0.9.0
 	* Added support for LibXL 3.1.0
