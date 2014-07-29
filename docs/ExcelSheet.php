@@ -4,7 +4,7 @@
   | ExcelSheet                                                                |
   |                                                                           |
   | Reference file for NuSphere PHPEd (and possibly other IDE's) for use with |
-  | php_excel interface to libxl by Ilia Alshanetsky <ilia@ilia.ws>          |
+  | php_excel interface to libxl by Ilia Alshanetsky <ilia@ilia.ws>           |
   |                                                                           |
   | php_excel "PECL" style module (http://github.com/iliaal/php_excel)        |
   | libxl library (http://www.libxl.com)                                      |
@@ -55,81 +55,6 @@ class ExcelSheet {
 	const PAPER_FANFOLD = 39;
 	const PAPER_GERMAN_STD_FANFOLD = 40;
 	const PAPER_GERMAN_LEGAL_FANFOLD = 41;
-	const PAPER_B4_ISO = 42;
-	const PAPER_JAPANESE_POSTCARD = 43;
-	const PAPER_9x11 = 44;
-	const PAPER_10x11 = 45;
-	const PAPER_15x11 = 46;
-	const PAPER_ENVELOPE_INVITE = 47;
-	const PAPER_US_LETTER_EXTRA = 50;
-	const PAPER_US_LEGAL_EXTRA = 51;
-	const PAPER_US_TABLOID_EXTRA = 52;
-	const PAPER_A4_EXTRA = 53;
-	const PAPER_LETTER_TRANSVERSE = 54;
-	const PAPER_A4_TRANSVERSE = 55;
-	const PAPER_LETTER_EXTRA_TRANSVERSE = 56;
-	const PAPER_SUPERA = 57;
-	const PAPER_SUPERB = 58;
-	const PAPER_US_LETTER_PLUS = 59;
-	const PAPER_A4_PLUS = 60;
-	const PAPER_A5_TRANSVERSE = 61;
-	const PAPER_B5_TRANSVERSE = 62;
-	const PAPER_A3_EXTRA = 63;
-	const PAPER_A5_EXTRA = 64;
-	const PAPER_B5_EXTRA = 65;
-	const PAPER_A2 = 66;
-	const PAPER_A3_TRANSVERSE = 67;
-	const PAPER_A3_EXTRA_TRANSVERSE = 68;
-	const PAPER_JAPANESE_DOUBLE_POSTCARD = 69;
-	const PAPER_A6 = 70;
-	const PAPER_JAPANESE_ENVELOPE_KAKU2 = 71;
-	const PAPER_JAPANESE_ENVELOPE_KAKU3 = 72;
-	const PAPER_JAPANESE_ENVELOPE_CHOU3 = 73;
-	const PAPER_JAPANESE_ENVELOPE_CHOU4 = 74;
-	const PAPER_LETTER_ROTATED = 75;
-	const PAPER_A3_ROTATED = 76;
-	const PAPER_A4_ROTATED = 77;
-	const PAPER_A5_ROTATED = 78;
-	const PAPER_B4_ROTATED = 79;
-	const PAPER_B5_ROTATED = 80;
-	const PAPER_JAPANESE_POSTCARD_ROTATED = 81;
-	const PAPER_DOUBLE_JAPANESE_POSTCARD_ROTATED = 82;
-	const PAPER_A6_ROTATED = 83;
-	const PAPER_JAPANESE_ENVELOPE_KAKU2_ROTATED = 84;
-	const PAPER_JAPANESE_ENVELOPE_KAKU3_ROTATED = 85;
-	const PAPER_JAPANESE_ENVELOPE_CHOU3_ROTATED = 86;
-	const PAPER_JAPANESE_ENVELOPE_CHOU4_ROTATED = 87;
-	const PAPER_B6 = 88;
-	const PAPER_B6_ROTATED = 89;
-	const PAPER_12x11 = 90;
-	const PAPER_JAPANESE_ENVELOPE_YOU4 = 91;
-	const PAPER_JAPANESE_ENVELOPE_YOU4_ROTATED = 92;
-	const PAPER_PRC16K = 93;
-	const PAPER_PRC32K = 94;
-	const PAPER_PRC32K_BIG = 95;
-	const PAPER_PRC_ENVELOPE1 = 96;
-	const PAPER_PRC_ENVELOPE2 = 97;
-	const PAPER_PRC_ENVELOPE3 = 98;
-	const PAPER_PRC_ENVELOPE4 = 99;
-	const PAPER_PRC_ENVELOPE5 = 100;
-	const PAPER_PRC_ENVELOPE6 = 101;
-	const PAPER_PRC_ENVELOPE7 = 102;
-	const PAPER_PRC_ENVELOPE8 = 103;
-	const PAPER_PRC_ENVELOPE9 = 104;
-	const PAPER_PRC_ENVELOPE10 = 105;
-	const PAPER_PRC16K_ROTATED = 106;
-	const PAPER_PRC32K_ROTATED = 107;
-	const PAPER_PRC32KBIG_ROTATED = 108;
-	const PAPER_PRC_ENVELOPE1_ROTATED = 109;
-	const PAPER_PRC_ENVELOPE2_ROTATED = 110;
-	const PAPER_PRC_ENVELOPE3_ROTATED = 111;
-	const PAPER_PRC_ENVELOPE4_ROTATED = 112;
-	const PAPER_PRC_ENVELOPE5_ROTATED = 113;
-	const PAPER_PRC_ENVELOPE6_ROTATED = 114;
-	const PAPER_PRC_ENVELOPE7_ROTATED = 115;
-	const PAPER_PRC_ENVELOPE8_ROTATED = 116;
-	const PAPER_PRC_ENVELOPE9_ROTATED = 117;
-	const PAPER_PRC_ENVELOPE10_ROTATED = 118;
 
 	const CELLTYPE_EMPTY = 0;
 	const CELLTYPE_NUMBER = 1;
@@ -146,6 +71,22 @@ class ExcelSheet {
 	const ERRORTYPE_NUM = 36;
 	const ERRORTYPE_NA = 42;
 
+	const LEFT_TO_RIGHT = 0;
+	const RIGHT_TO_LEFT = 1;
+
+	/**
+	* Adds the new hyperlink.
+	*
+	* @param string $hyperlink
+	* @param int $row_first 0-based
+	* @param int $row_last 0-based
+	* @param int $col_first 0-based
+	* @param int $col_last 0-based
+	* @return void
+	*/
+	public function addHyperlink($hyperlink, $row_first, $row_last, $col_first, $col_last) {
+	} // addHyperlink
+
 	/**
 	* Insert a picture into a cell with given dimensions
 	*
@@ -157,9 +98,11 @@ class ExcelSheet {
 	* @param int $picture_id Value returned by ExcelBook::addPictureFrom*() methods
 	* @param int $width
 	* @param int $height
+	* @param int $x_offset (optional, default=0)
+	* @param int $y_offset (optional, default=0)
 	* @return void
 	*/
-	public function addPictureDim($row, $column, $picture_id, $width, $height) {
+	public function addPictureDim($row, $column, $picture_id, $width, $height, $x_offset = 0, $y_offset = 0) {
 	} // addPictureDim
 
 	/**
@@ -172,10 +115,21 @@ class ExcelSheet {
 	* @param int $column 0-based column number
 	* @param int $picture_id Value returned by ExcelBook::addPictureFrom*() methods
 	* @param float $scale
+	* @param int $x_offset (optional, default = 0)
+	* @param int $y_offset (optional, default = 0)
 	* @return void
 	*/
-	public function addPictureScaled($row, $column, $picture_id, $scale) {
+	public function addPictureScaled($row, $column, $picture_id, $scale, $x_offset = 0, $y_offset = 0) {
 	} // addPictureScaled
+
+	/**
+	* Converts a cell reference to row and column.
+	*
+	* @param string $cell_reference
+	* @return array with keys "row"(int), "column"(int), "col_relative"(bool), "row_relative"(bool)
+	*/
+	public function addrToRowCol($cell_reference) {
+	} // addrToRowCol
 
 	/**
 	* Get the cell format
@@ -206,8 +160,20 @@ class ExcelSheet {
 	* @param int $column_end 0-based column number
 	* @return void
 	*/
-	public function clear() {
+	public function clear($row_start, $row_end, $column_start, $column_end) {
 	} // clear
+
+	/**
+	* Sets the print area.
+	*
+	* @param int $row_start 0-based row number
+	* @param int $row_end 0-based row number
+	* @param int $column_start 0-based column number
+	* @param int $column_end 0-based column number
+	* @return bool
+	*/
+	public function setPrintArea($row_start, $row_end, $column_start, $column_end) {
+	} // setPrintArea
 
 	/**
 	* Clears the print area
@@ -226,6 +192,15 @@ class ExcelSheet {
 	*/
 	public function clearPrintRepeats() {
 	} // clearPrintRepeats
+
+	/**
+	* Returns whether column is hidden.
+	*
+	* @param int $column 0-based column number
+	* @return bool
+	*/
+	public function colHidden($column) {
+	} // colHidden
 
 	/**
 	* Returns the cell width
@@ -252,13 +227,23 @@ class ExcelSheet {
 	} // copy
 
 	/**
+	* Removes hyperlink by index.
+	*
+	* @param int $index
+	* @return bool
+	*/
+	public function delHyperlink($index) {
+	} // delHyperlink
+
+	/**
 	* Delete a named range
 	*
 	* @see ExcelSheet::setNamedRange()
 	* @param string $name
+	* @param int $scope_id
 	* @return bool
 	*/
-	public function delNamedRange($name) {
+	public function delNamedRange($name, $scope_id = null) {
 	} // delNamedRange
 
 	/**
@@ -270,6 +255,15 @@ class ExcelSheet {
 	*/
 	public function deleteMerge($row, $column) {
 	} // deleteMerge
+
+	/**
+	* Removes merged cells by index.
+	*
+	* @param int $index
+	* @return bool
+	*/
+	public function delMergeByIndex($index) {
+	} // delMergeByIndex
 
 	/**
 	* Returns whether the gridlines are displayed
@@ -346,6 +340,33 @@ class ExcelSheet {
 	} // getGroupSummaryRight
 
 	/**
+	* Returns column with horizontal page break at position index.
+	*
+	* @param int $index
+	* @return int
+	*/
+	public function getHorPageBreak($index) {
+	} // getHorPageBreak
+
+	/**
+	* Returns a number of horizontal page breaks in the sheet.
+	*
+	* @return int
+	*/
+	public function getHorPageBreakSize() {
+	} // getHorPageBreakSize
+
+	/**
+	* Gets the named range coordinates by index.
+	*
+	* @param int $index
+	* @param int $scope_id (optional, default = null) index of sheet or -1 for Workbook
+	* @return array with keys "row_first"(int), "row_last"(int), "col_first"(int), "col_last"(int), "hidden"(bool), "scope"(int)
+	*/
+	public function getIndexRange($index, $scope_id = null) {
+	} // getIndexRange
+
+	/**
 	* Get cell merge range
 	*
 	* @param int $row 0-based row number
@@ -354,6 +375,74 @@ class ExcelSheet {
 	*/
 	public function getMerge($row, $column) {
 	} // getMerge
+
+	/**
+	* Gets the named range coordinates by name, returns false if range is not found.
+	*
+	* @param string $name
+	* @param int $scope_id (optional, default=null)
+	* @return array with keys "row_first"(int), "row_last"(int), "col_first"(int), "col_last"(int), "hidden"(bool)
+	*/
+	public function getNamedRange($name, $scope_id = null) {
+	} // getNamedRange
+
+	/**
+	* Returns a number of pictures in this worksheet.
+	*
+	* @return int
+	*/
+	public function getNumPictures() {
+	} // getNumPictures
+
+	/**
+	* Returns a information about a workbook picture at position index in worksheet.
+	*
+	* @param int $index
+	* @return array with keys "picture_index"(int), "row_top"(int), "col_left"(int), "row_bottom"(int), "col_right"(int), "width"(int), "height"(int), "offset_x"(int), "offset_y"(int)
+	*/
+	public function getPictureInfo($index) {
+	} // getPictureInfo
+
+	/**
+	* Returns whether fit to page option is enabled, and if so to what width & height
+	*
+	* @return array with keys "width"(int), "height"(int)
+	*/
+	public function getPrintFit() {
+	} // getPrintFit
+
+	/**
+	* Returns whether the text is displayed in right-to-left mode: 1 - yes, 0 - no.
+	*
+	* @return int
+	*/
+	public function getRightToLeft() {
+	} // getRightToLeft
+
+	/**
+	* Extracts the first visible row and the leftmost visible column of the sheet.
+	*
+	* @return array with keys "row"(int), "column"(int)
+	*/
+	public function getTopLeftView() {
+	} // getTopLeftView
+
+	/**
+	* Returns column with vertical page break at position index.
+	*
+	* @param int $index
+	* @return int
+	*/
+	public function getVerPageBreak($index) {
+	} // getVerPageBreak
+
+	/**
+	* Returns a number of vertical page breaks in the sheet.
+	*
+	* @return int
+	*/
+	public function getVerPageBreakSize() {
+	} // getVerPageBreakSize
 
 	/**
 	* Group columns from $column_start to $column_end
@@ -402,12 +491,30 @@ class ExcelSheet {
 	/**
 	* Hides/unhides the sheet
 	*
+	* @deprecated
 	* @param bool $hide
 	* @return bool
 	*/
 	public function hidden($hide) {
 	} // hidden
-	
+
+	/**
+	* Gets the hyperlink and its coordinates by index.
+	*
+	* @param int $index
+	* @return array
+	*/
+	public function hyperlink($index) {
+	} // hyperlink
+
+	/**
+	* Returns the number of hyperlinks in the sheet.
+	*
+	* @return int
+	*/
+	public function hyperlinkSize() {
+	} // hyperlinkSize
+
 	/**
 	* Returns whether sheet is hidden
 	*
@@ -557,6 +664,23 @@ class ExcelSheet {
 	} // marginTop
 
 	/**
+	* Gets the merged cells by index.
+	*
+	* @param int $index
+	* @return array
+	*/
+	public function merge($index) {
+	} // merge
+
+	/**
+	* Returns a number of merged cells in this worksheet.
+	*
+	* @return int
+	*/
+	public function mergeSize() {
+	} // mergeSize
+
+	/**
 	* Returns the name of the worksheet
 	*
 	* @see ExcelSheet::setName()
@@ -564,6 +688,14 @@ class ExcelSheet {
 	*/
 	public function name() {
 	} // name
+
+	/**
+	* Returns the number of named ranges in the sheet.
+	*
+	* @return int
+	*/
+	public function namedRangeSize() {
+	} // namedRangeSize
 
 	/**
 	* Returns the paper size
@@ -607,9 +739,10 @@ class ExcelSheet {
 	* @param int $row 0-based row number
 	* @param int $column 0-based column number
 	* @param ExcelFormat $format (optional, default=null)
-	* @return
+	* @param bool $read_formula (optional, default=true)
+	* @return mixed
 	*/
-	public function read($row, $column, $format = null) {
+	public function read($row, $column, &$format = null, $read_formula = true) {
 	} // read
 
 	/**
@@ -618,9 +751,10 @@ class ExcelSheet {
 	* @param int $column 0-based column number
 	* @param int $row_start (optional, default=0)
 	* @param int $row_end (optional, default=null)
+	* @param bool $read_formula (optional, default=true)
 	* @return array or false if invalid row/column positions
 	*/
-	public function readCol($column, $row_start = 0, $row_end = null) {
+	public function readCol($column, $row_start = 0, $row_end = null, $read_formula = true) {
 	} // readCol
 
 	/**
@@ -639,9 +773,10 @@ class ExcelSheet {
 	* @param int $row 0-based row number
 	* @param int $column_start (optional, default=0)
 	* @param int $column_end (optional, default=null)
+	* @param bool $read_formula (optional, default=true)
 	* @return array or false if invalid row/column positions
 	*/
-	public function readRow($row, $column_start = 0, $column_end = null) {
+	public function readRow($row, $column_start = 0, $column_end = null, $read_formula = true) {
 	} // readRow
 
 	/**
@@ -665,6 +800,18 @@ class ExcelSheet {
 	} // removeRow
 
 	/**
+	* Converts row and column to a cell reference.
+	*
+	* @param int $row
+	* @param int $column
+	* @param bool $row_relative (optional, default=true)
+	* @param bool $col_relative (optional, default=true)
+	* @return string
+	*/
+	public function rowColToAddr($row, $column, $row_relative = true, $col_relative = true) {
+	} // rowColToAddr
+
+	/**
 	* Returns the row height
 	*
 	* @see ExcelSheet::colWidth()
@@ -675,6 +822,15 @@ class ExcelSheet {
 	*/
 	public function rowHeight($row) {
 	} // rowHeight
+
+	/**
+	* Returns whether row is hidden.
+	*
+	* @param int $row 0-based row number
+	* @return bool
+	*/
+	public function rowHidden($row) {
+	} // rowHidden
 
 	/**
 	* Set cell format
@@ -688,6 +844,16 @@ class ExcelSheet {
 	} // setCellFormat
 
 	/**
+	* Hides column.
+	*
+	* @param int $column 0-based column number
+	* @param bool $hidden
+	* @return bool
+	*/
+	public function setColHidden($column, $hidden) {
+	} // setColHidden
+
+	/**
 	* Set the width of cells in a column
 	*
 	* @see ExcelSheet::colWidth()
@@ -698,7 +864,7 @@ class ExcelSheet {
 	* @param float $width
 	* @param bool $hidden (optional, default=false)
 	* @param ExcelFormat $format (optional, default=null)
-	* @return
+	* @return bool
 	*/
 	public function setColWidth($column_start, $column_end, $width, $hidden = false, $format = null) {
 	} // setColWidth
@@ -759,6 +925,15 @@ class ExcelSheet {
 	*/
 	public function setHCenter($value) {
 	} // setHCenter
+
+	/**
+	* Hides/unhides the sheet.
+	*
+	* @param bool $value
+	* @return bool
+	*/
+	public function setHidden($value) {
+	} // setHidden
 
 	/**
 	* Set the header text of the sheet when printed
@@ -862,9 +1037,10 @@ class ExcelSheet {
 	* @param int $column_from 0-based column number
 	* @param int $row_to 0-based row number
 	* @param int $column_to 0-based column number
+	* @param int $scope_id
 	* @return bool
 	*/
-	public function setNamedRange($name, $row_from, $column_from, $row_to, $column_to) {
+	public function setNamedRange($name, $row_from, $column_from, $row_to, $column_to, $scope_id = null) {
 	} // setNamedRange
 
 	/**
@@ -876,6 +1052,16 @@ class ExcelSheet {
 	*/
 	public function setPaper($paper) {
 	} // setPaper
+
+	/**
+	* Fits sheet width and sheet height to wPages and hPages respectively.
+	*
+	* @param int $wPages
+	* @param int $hPages
+	* @return bool
+	*/
+	public function setPrintFit($wPages, $hPages) {
+	} // setPrintFit
 
 	/**
 	* Sets gridlines for printing
@@ -932,6 +1118,17 @@ class ExcelSheet {
 	} // setProtect
 
 	/**
+	* Sets the right-to-left mode:
+	* 1 - the text is displayed in right-to-left mode,
+	* 0 - the text is displayed in left-to-right mode.
+	*
+	* @param int $mode
+	* @return void
+	*/
+	public function setRightToLeft($mode) {
+	} // setRightToLeft
+
+	/**
 	* Set the height of cells in a row
 	*
 	* @see ExcelSheet::rowHeight()
@@ -941,10 +1138,30 @@ class ExcelSheet {
 	* @param float $height
 	* @param ExcelFormat $format (optional, default=null)
 	* @param bool $hidden (optional, default=false)
-	* @return
+	* @return bool
 	*/
 	public function setRowHeight($row, $height, $format = null, $hidden = false) {
 	} // setRowHeight
+
+	/**
+	* Hides row.
+	*
+	* @param int $row 0-based row number
+	* @param bool $hidden
+	* @return bool
+	*/
+	public function setRowHidden($row, $hidden) {
+	} // setRowHidden
+
+	/**
+	* Sets the first visible row and the leftmost visible column of the sheet.
+	*
+	* @param int $row
+	* @param int $column
+	* @return bool
+	*/
+	public function setTopLeftView($row, $column) {
+	} // setTopLeftView
 
 	/**
 	* Sets a flag that the sheet is centered vertically when printed
@@ -973,6 +1190,16 @@ class ExcelSheet {
 	*/
 	public function setZoomPrint($value) {
 	} // setZoomPrint
+
+	/**
+	* Gets the split information (position of frozen pane) in the sheet:
+	* row - vertical position of the split;
+	* col - horizontal position of the split.
+	*
+	* @return array
+	*/
+	public function splitInfo() {
+	} // splitInfo
 
 	/**
 	* Split sheet at indicated position
@@ -1025,9 +1252,10 @@ class ExcelSheet {
 	* @param array $data
 	* @param int $row_start (optional, default=0)
 	* @param ExcelFormat $format (optional, default=null)
+	* @param int $data_type (optional, default=-1) One of ExcelFormat::AS_* constants
 	* @return bool
 	*/
-	public function writeCol($column, $data, $row_start = 0, $format = null) {
+	public function writeCol($column, $data, $row_start = 0, $format = null, $data_type = -1) {
 	} // writeCol
 
 	/**
@@ -1039,7 +1267,7 @@ class ExcelSheet {
 	* @param string $author
 	* @param int $width
 	* @param int $height
-	* @return
+	* @return void
 	*/
 	public function writeComment($row, $column, $comment, $author, $width, $height) {
 	} // writeComment

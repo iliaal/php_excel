@@ -2,7 +2,7 @@
   +----------------------------------------------------------------------+
   | PHP Version 5                                                        |
   +----------------------------------------------------------------------+
-  | Copyright (c) 1997-2010 The PHP Group                                |
+  | Copyright (c) 1997-2014 The PHP Group                                |
   +----------------------------------------------------------------------+
   | This source file is subject to version 3.01 of the PHP license,      |
   | that is bundled with this package in the file LICENSE, and is        |
@@ -53,7 +53,9 @@ static long xlFormatBorderColor(FormatHandle f)
 #if LIBXL_VERSION >= 0x03020000
 #define xlBookSetRefR1C1 xlBookSetRefR1C1A
 #define xlBookRefR1C1 xlBookRefR1C1A
+#endif
 
+#if LIBXL_VERSION >= 0x03020000 && LIBXL_VERSION < 0x03050401
 enum libXLPictureType {PICTURETYPE_PNG, PICTURETYPE_JPEG, PICTURETYPE_WMF, PICTURETYPE_DIB, PICTURETYPE_EMF, PICTURETYPE_PICT, PICTURETYPE_TIFF, PICTURETYPE_ERROR = 0xFF};
 #endif
 
@@ -61,7 +63,7 @@ enum libXLPictureType {PICTURETYPE_PNG, PICTURETYPE_JPEG, PICTURETYPE_WMF, PICTU
 #define PHP_EXCEL_FORMULA 2
 #define PHP_EXCEL_NUMERIC_STRING 3
 
-#define PHP_EXCEL_VERSION "0.9.9"
+#define PHP_EXCEL_VERSION "1.0.0"
 
 #ifdef COMPILE_DL_EXCEL
 ZEND_GET_MODULE(excel)
@@ -74,6 +76,7 @@ static PHP_GINIT_FUNCTION(excel);
 PHP_INI_BEGIN()
 	STD_PHP_INI_ENTRY("excel.license_name", NULL, PHP_INI_ALL, OnUpdateString, ini_license_name, zend_excel_globals, excel_globals)
 	STD_PHP_INI_ENTRY("excel.license_key", NULL, PHP_INI_ALL, OnUpdateString, ini_license_key, zend_excel_globals, excel_globals)
+	STD_PHP_INI_ENTRY("excel.skip_empty", "0", PHP_INI_ALL, OnUpdateLong, ini_skip_empty, zend_excel_globals, excel_globals)
 PHP_INI_END()
 
 /* {{{ OO init/structure stuff */
@@ -377,7 +380,7 @@ static wchar_t * _php_excel_to_wide(const char *string, size_t len, size_t *out_
 #endif
 
 #define EXCEL_METHOD(class_name, function_name) \
-    PHP_METHOD(Excel ## class_name, function_name)
+	PHP_METHOD(Excel ## class_name, function_name)
 
 /* {{{ proto bool ExcelBook::load(string data)
    Load Excel data string. */
@@ -980,7 +983,7 @@ EXCEL_METHOD(Book, packDateValues)
 	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "llllll", &year, &month, &day, &hour, &min, &sec) == FAILURE) {
 		RETURN_FALSE;
 	}
-	
+
 	if (year < 1) {
 		php_error_docref(NULL TSRMLS_CC, E_WARNING, "Invalid '%ld' value for year", year);
 		RETURN_FALSE;
@@ -1010,7 +1013,7 @@ EXCEL_METHOD(Book, packDateValues)
 }
 /* }}} */
 
-static int _php_excel_date_unpack(BookHandle book, double dt)
+static long _php_excel_date_unpack(BookHandle book, double dt)
 {
 	struct tm tm = {0};
 #ifdef HAVE_LIBXL_243_PLUS
@@ -1153,14 +1156,14 @@ EXCEL_METHOD(Book, getDefaultFont)
 /* }}} */
 
 /* {{{ proto void ExcelBook::setDefaultFont(string font, int font_size)
-    Set the default font, and size. */
+	Set the default font, and size. */
 EXCEL_METHOD(Book, setDefaultFont)
 {
 	BookHandle book;
 	zval *object = getThis();
 	char *font;
 	int font_len;
-	int font_size;
+	long font_size;
 
 	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "sl", &font, &font_len, &font_size) == FAILURE || font_size < 1) {
 		RETURN_FALSE;
@@ -1168,12 +1171,12 @@ EXCEL_METHOD(Book, setDefaultFont)
 
 	BOOK_FROM_OBJECT(book, object);
 
-	xlBookSetDefaultFont(book, font, font_size);
+	xlBookSetDefaultFont(book, font, (int)font_size);
 }
 /* }}} */
 
 /* {{{ proto void ExcelBook::setLocale(string locale)
-    Set the locale. */
+	Set the locale. */
 EXCEL_METHOD(Book, setLocale)
 {
 	BookHandle book;
@@ -1192,7 +1195,7 @@ EXCEL_METHOD(Book, setLocale)
 /* }}} */
 
 /* {{{ proto ExcelBook ExcelBook::__construct([string license_name, string license_key [, bool excel_2007 = false]])
-    Book Contructor. */
+	Book Constructor. */
 EXCEL_METHOD(Book, __construct)
 {
 	BookHandle book;
@@ -1278,7 +1281,7 @@ EXCEL_METHOD(Book, setActiveSheet)
 	BOOK_FROM_OBJECT(book, object);
 
 	xlBookSetActiveSheet(book, id);
-	RETURN_BOOL(id != xlBookActiveSheet(book));
+	RETURN_BOOL(id == xlBookActiveSheet(book));
 }
 /* }}} */
 
@@ -1621,7 +1624,7 @@ EXCEL_METHOD(Font, name)
 /* }}} */
 
 /* {{{ proto ExcelFormat ExcelFormat::__construct(ExcelBook book)
-    Format Contructor. */
+	Format Constructor. */
 EXCEL_METHOD(Format, __construct)
 {
 	BookHandle book;
@@ -1652,7 +1655,7 @@ EXCEL_METHOD(Format, __construct)
 /* }}} */
 
 /* {{{ proto ExcelFont ExcelFont::__construct(ExcelBook book)
-    Font Contructor. */
+	Font Constructor. */
 EXCEL_METHOD(Font, __construct)
 {
 	BookHandle book;
@@ -2072,8 +2075,19 @@ EXCEL_METHOD(Sheet, setCellFormat)
 /* }}} */
 #endif
 
-static zend_bool php_excel_read_cell(int row, int col, zval *val, SheetHandle sheet, BookHandle book, FormatHandle *format)
+static zend_bool php_excel_read_cell(int row, int col, zval *val, SheetHandle sheet, BookHandle book, FormatHandle *format, zend_bool read_formula)
 {
+	const char *s;
+	if (read_formula && xlSheetIsFormula(sheet, row, col)) {
+		s = xlSheetReadFormula(sheet, row, col, format);
+		if (s) {
+			ZVAL_STRING(val, (char *)s, 1);
+			return 1;
+		} else {
+			return 0;
+		}
+	}
+
 	switch (xlSheetCellType(sheet, row, col)) {
 		case CELLTYPE_EMPTY:
 			ZVAL_EMPTY_STRING(val);
@@ -2094,7 +2108,7 @@ static zend_bool php_excel_read_cell(int row, int col, zval *val, SheetHandle sh
 #else
 			if (xlSheetIsDate(sheet, row, col)) {
 #endif
-				int dt = _php_excel_date_unpack(book, d);
+				long dt = _php_excel_date_unpack(book, d);
 				if (dt == -1) {
 					return 0;
 				} else {
@@ -2108,12 +2122,7 @@ static zend_bool php_excel_read_cell(int row, int col, zval *val, SheetHandle sh
 		}
 
 		case CELLTYPE_STRING: {
-			const char *s;
-			if (xlSheetIsFormula(sheet, row, col)) {
-				s = xlSheetReadFormula(sheet, row, col, format);
-			} else {
-				s = xlSheetReadStr(sheet, row, col, format);
-			}
+			s = xlSheetReadStr(sheet, row, col, format);
 			if (s) {
 				ZVAL_STRING(val, (char *)s, 1);
 				return 1;
@@ -2134,7 +2143,7 @@ static zend_bool php_excel_read_cell(int row, int col, zval *val, SheetHandle sh
 	return 0;
 }
 
-/* {{{ proto array ExcelSheet::readRow(int row [, int start_col [, int end_column]])
+/* {{{ proto array ExcelSheet::readRow(int row [, int start_col [, int end_column [, bool read_formula]]])
 	Read an entire row worth of data */
 EXCEL_METHOD(Sheet, readRow)
 {
@@ -2145,8 +2154,9 @@ EXCEL_METHOD(Sheet, readRow)
 	int lc;
 	SheetHandle sheet;
 	BookHandle book;
+	zend_bool read_formula = 1;
 
-	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "l|ll", &row, &col_start, &col_end) == FAILURE) {
+	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "l|llb", &row, &col_start, &col_end, &read_formula) == FAILURE) {
 		RETURN_FALSE;
 	}
 
@@ -2180,7 +2190,7 @@ EXCEL_METHOD(Sheet, readRow)
 		FormatHandle format = NULL;
 
 		MAKE_STD_ZVAL(value);
-		if (!php_excel_read_cell(row, lc, value, sheet, book, &format)) {
+		if (!php_excel_read_cell(row, lc, value, sheet, book, &format, read_formula)) {
 			zval_ptr_dtor(&value);
 			zval_dtor(return_value);
 			RETURN_FALSE;
@@ -2193,7 +2203,7 @@ EXCEL_METHOD(Sheet, readRow)
 }
 /* }}} */
 
-/* {{{ proto array ExcelSheet::readCol(int column [, int start_row [, int end_row]])
+/* {{{ proto array ExcelSheet::readCol(int column [, int start_row [, int end_row [, bool read_formula]]])
 	Read an entire column worth of data */
 EXCEL_METHOD(Sheet, readCol)
 {
@@ -2204,8 +2214,9 @@ EXCEL_METHOD(Sheet, readCol)
 	int lc;
 	SheetHandle sheet;
 	BookHandle book;
+	zend_bool read_formula = 1;
 
-	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "l|ll", &col, &row_start, &row_end) == FAILURE) {
+	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "l|ll", &col, &row_start, &row_end, &read_formula) == FAILURE) {
 		RETURN_FALSE;
 	}
 
@@ -2239,7 +2250,7 @@ EXCEL_METHOD(Sheet, readCol)
 		FormatHandle format = NULL;
 
 		MAKE_STD_ZVAL(value);
-		if (!php_excel_read_cell(lc, col, value, sheet, book, &format)) {
+		if (!php_excel_read_cell(lc, col, value, sheet, book, &format, read_formula)) {
 			zval_ptr_dtor(&value);
 			zval_dtor(return_value);
 			RETURN_FALSE;
@@ -2252,7 +2263,7 @@ EXCEL_METHOD(Sheet, readCol)
 }
 /* }}} */
 
-/* {{{ proto mixed ExcelSheet::read(int row, int column [, ExcelFormat &format])
+/* {{{ proto mixed ExcelSheet::read(int row, int column [, ExcelFormat &format [, bool read_formula]])
 	Read data stored inside a cell */
 EXCEL_METHOD(Sheet, read)
 {
@@ -2262,8 +2273,9 @@ EXCEL_METHOD(Sheet, read)
 	long row, col;
 	zval *oformat = NULL;
 	FormatHandle format = NULL;
+	zend_bool read_formula = 1;
 
-	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "ll|z/", &row, &col, &oformat) == FAILURE) {
+	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "ll|z/b", &row, &col, &oformat, &read_formula) == FAILURE) {
 		RETURN_FALSE;
 	}
 
@@ -2274,7 +2286,7 @@ EXCEL_METHOD(Sheet, read)
 		ZVAL_NULL(oformat);
 	}
 
-	if (!php_excel_read_cell(row, col, return_value, sheet, book, &format)) {
+	if (!php_excel_read_cell(row, col, return_value, sheet, book, &format, read_formula)) {
 		RETURN_FALSE;
 	}
 
@@ -2289,11 +2301,19 @@ EXCEL_METHOD(Sheet, read)
 }
 /* }}} */
 
-static zend_bool php_excel_write_cell(SheetHandle sheet, BookHandle book, int row, int col, zval *data, FormatHandle format, long dtype)
+static zend_bool php_excel_write_cell(SheetHandle sheet, BookHandle book, int row, int col, zval *data, FormatHandle format, long dtype TSRMLS_DC)
 {
 	switch (Z_TYPE_P(data)) {
 		case IS_NULL:
-			return xlSheetWriteBlank(sheet, row, col, format);
+			if (INI_INT("excel.ini_skip_empty") > 0) {
+				return 1;
+			}
+			if (!format) {
+				FormatHandle fmt = xlBookAddFormat(book, NULL);
+				return xlSheetWriteBlank(sheet, row, col, fmt);
+			} else {
+				return xlSheetWriteBlank(sheet, row, col, format);
+			}
 
 		case IS_LONG:
 			if (dtype == PHP_EXCEL_DATE) {
@@ -2324,6 +2344,9 @@ static zend_bool php_excel_write_cell(SheetHandle sheet, BookHandle book, int ro
 						case IS_DOUBLE:
 							return xlSheetWriteNum(sheet, row, col, dval, format);
 					}
+				}
+				if (Z_STRLEN_P(data) == 0 && INI_INT("excel.ini_skip_empty") == 2) {
+					return 1;
 				}
 				return xlSheetWriteStr(sheet, row, col, Z_STRVAL_P(data), format);
 			}
@@ -2357,7 +2380,7 @@ EXCEL_METHOD(Sheet, write)
 		FORMAT_FROM_OBJECT(format, oformat);
 	}
 
-	RETURN_BOOL(php_excel_write_cell(sheet, book, row, col, data, oformat ? format : 0, dtype));
+	RETURN_BOOL(php_excel_write_cell(sheet, book, row, col, data, oformat ? format : 0, dtype TSRMLS_CC));
 }
 /* }}} */
 
@@ -2401,7 +2424,7 @@ EXCEL_METHOD(Sheet, writeRow)
 		zend_hash_get_current_data_ex(Z_ARRVAL_P(data), (void **) &element, &pos) == SUCCESS;
 		zend_hash_move_forward_ex(Z_ARRVAL_P(data), &pos)) {
 
-		if (!php_excel_write_cell(sheet, book, row, i++, *element, oformat ? format : 0, -1)) {
+		if (!php_excel_write_cell(sheet, book, row, i++, *element, oformat ? format : 0, -1 TSRMLS_CC)) {
 			RETURN_FALSE;
 		}
 	}
@@ -2410,7 +2433,7 @@ EXCEL_METHOD(Sheet, writeRow)
 }
 /* }}} */
 
-/* {{{ proto bool ExcelSheet::writeCol(int row, array data [, int start_row [, ExcelFormat format]])
+/* {{{ proto bool ExcelSheet::writeCol(int row, array data [, int start_row [, ExcelFormat format [, int datatype]]])
 	Write an array of values into a column */
 EXCEL_METHOD(Sheet, writeCol)
 {
@@ -2424,8 +2447,9 @@ EXCEL_METHOD(Sheet, writeCol)
 	HashPosition pos;
 	zval **element;
 	long i;
+	long dtype = -1;
 
-	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "la|lO", &col, &data, &row, &oformat, excel_ce_format) == FAILURE) {
+	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "la|lO!l", &col, &data, &row, &oformat, excel_ce_format, &dtype) == FAILURE) {
 		RETURN_FALSE;
 	}
 
@@ -2450,7 +2474,7 @@ EXCEL_METHOD(Sheet, writeCol)
 		zend_hash_get_current_data_ex(Z_ARRVAL_P(data), (void **) &element, &pos) == SUCCESS;
 		zend_hash_move_forward_ex(Z_ARRVAL_P(data), &pos)) {
 
-		if (!php_excel_write_cell(sheet, book, i++, col, *element, oformat ? format : 0, -1)) {
+		if (!php_excel_write_cell(sheet, book, i++, col, *element, oformat ? format : 0, dtype TSRMLS_CC)) {
 			RETURN_FALSE;
 		}
 	}
@@ -2613,7 +2637,7 @@ EXCEL_METHOD(Sheet, writeComment)
 /* }}} */
 
 /* {{{ proto void ExcelSheet::setColWidth(int column_start, int column_end, double width [, bool hidden [, ExcelFormat format]])
-	Set width of cells within column(s) */
+	Set width of cells within column(s); Value -1 is used for autofit column widths in LibXL 3.6+ */
 EXCEL_METHOD(Sheet, setColWidth)
 {
 		SheetHandle sheet;
@@ -2640,8 +2664,8 @@ EXCEL_METHOD(Sheet, setColWidth)
 		} else if (s < 0) {
 			php_error_docref(NULL TSRMLS_CC, E_WARNING, "Start cell cannot be less then 0");
 			RETURN_FALSE;
-		} else if (width < 0) {
-			php_error_docref(NULL TSRMLS_CC, E_WARNING, "Width cannot be less then 0");
+		} else if (width < -1) {
+			php_error_docref(NULL TSRMLS_CC, E_WARNING, "Width cannot be less then -1");
 			RETURN_FALSE;
 		}
 
@@ -3127,7 +3151,7 @@ EXCEL_METHOD(Sheet, setTopLeftView)
 }
 /* }}} */
 
-/* {{{ proto bool ExcelSheet::rowColToAddr(int row, int col, boolean row_relative, boolean col_relative)
+/* {{{ proto string ExcelSheet::rowColToAddr(int row, int col, boolean row_relative, boolean col_relative)
 	Converts row and column to a cell reference. */
 EXCEL_METHOD(Sheet, rowColToAddr)
 {
@@ -3151,7 +3175,7 @@ EXCEL_METHOD(Sheet, rowColToAddr)
 }
 /* }}} */
 
-/* {{{ proto bool ExcelSheet::addrToRowCol(string cell_reference)
+/* {{{ proto array ExcelSheet::addrToRowCol(string cell_reference)
 	Converts a cell reference to row and column. */
 EXCEL_METHOD(Sheet, addrToRowCol)
 {
@@ -3436,7 +3460,7 @@ EXCEL_METHOD(Sheet, name)
 }
 /* }}} */
 
-/* {{{ proto void ExcelSheet::setName()
+/* {{{ proto void ExcelSheet::setName(string name)
 	Sets the name of the sheet. */
 EXCEL_METHOD(Sheet, setName)
 {
@@ -3456,7 +3480,7 @@ EXCEL_METHOD(Sheet, setName)
 /* }}} */
 
 #if LIBXL_VERSION >= 0x03010000
-/* {{{ proto bool ExcelSheet::setNamedRange(string name, int row, int col, int to_row, int to_col)
+/* {{{ proto bool ExcelSheet::setNamedRange(string name, int row, int col, int to_row, int to_col [, int scope_id])
 	Create a named range */
 EXCEL_METHOD(Sheet, setNamedRange)
 {
@@ -3465,8 +3489,13 @@ EXCEL_METHOD(Sheet, setNamedRange)
 	long row, to_row, col, to_col;
 	char *name;
 	int name_len;
+#if LIBXL_VERSION >= 0x03050401
+	long scope_id = SCOPE_WORKBOOK;
 
+	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "sllll|l", &name, &name_len, &row, &to_row, &col, &to_col, &scope_id) == FAILURE) {
+#else
 	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "sllll", &name, &name_len, &row, &to_row, &col, &to_col) == FAILURE) {
+#endif
 		RETURN_FALSE;
 	}
 
@@ -3484,7 +3513,11 @@ EXCEL_METHOD(Sheet, setNamedRange)
 
 	SHEET_FROM_OBJECT(sheet, object);
 
+#if LIBXL_VERSION >= 0x03050401
+	RETURN_BOOL(xlSheetSetNamedRange(sheet, name, row, to_row, col, to_col, scope_id));
+#else
 	RETURN_BOOL(xlSheetSetNamedRange(sheet, name, row, to_row, col, to_col));
+#endif
 }
 /* }}} */
 
@@ -3496,8 +3529,13 @@ EXCEL_METHOD(Sheet, delNamedRange)
 	zval *object = getThis();
 	char *val;
 	int val_len;
+#if LIBXL_VERSION >= 0x03050401
+	long scope_id = SCOPE_WORKBOOK;
 
+	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "s|l", &val, &val_len, &scope_id) == FAILURE) {
+#else
 	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "s", &val, &val_len) == FAILURE) {
+#endif
 		RETURN_FALSE;
 	}
 
@@ -3508,7 +3546,11 @@ EXCEL_METHOD(Sheet, delNamedRange)
 
 	SHEET_FROM_OBJECT(sheet, object);
 
+#if LIBXL_VERSION >= 0x03050401
+	RETURN_BOOL(xlSheetDelNamedRange(sheet, val, scope_id));
+#else
 	RETURN_BOOL(xlSheetDelNamedRange(sheet, val));
+#endif
 }
 /* }}} */
 
@@ -3658,8 +3700,8 @@ EXCEL_METHOD(Sheet, getPrintFit)
 }
 /* }}} */
 
-/* {{{ proto array ExcelSheet::getNamedRange(string name)
-	Gets the named range coordianates by name, returns false if range is not found. */
+/* {{{ proto array ExcelSheet::getNamedRange(string name [, int scope_id])
+	Gets the named range coordinates by name, returns false if range is not found. */
 EXCEL_METHOD(Sheet, getNamedRange)
 {
 	SheetHandle sheet;
@@ -3667,43 +3709,72 @@ EXCEL_METHOD(Sheet, getNamedRange)
 	char *name;
 	int name_len;
 	int rf, rl, cf, cl;
+#if LIBXL_VERSION >= 0x03050401
+	long scope_id = SCOPE_WORKBOOK;
+	int hidden = 0;
 
+	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "s|l", &name, &name_len, &scope_id) == FAILURE) {
+#else
 	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "s", &name, &name_len) == FAILURE) {
+#endif
 		RETURN_FALSE;
 	}
 
 	SHEET_FROM_OBJECT(sheet, object);
+#if LIBXL_VERSION >= 0x03050401
+	if (xlSheetGetNamedRange(sheet, name, &rf, &rl, &cf, &cl, scope_id, &hidden)) {
+#else
 	if (xlSheetGetNamedRange(sheet, name, &rf, &rl, &cf, &cl)) {
+#endif
 		array_init(return_value);
 		add_assoc_long(return_value, "row_first", rf);
 		add_assoc_long(return_value, "row_last", rl);
-		add_assoc_long(return_value, "col_first", cl);
-		add_assoc_long(return_value, "col_last", cf);
+		add_assoc_long(return_value, "col_first", cf);
+		add_assoc_long(return_value, "col_last", cl);
+#if LIBXL_VERSION >= 0x03050401
+		add_assoc_bool(return_value, "hidden", hidden);
+#endif
 	} else {
 		RETURN_FALSE;
 	}
 }
 
-/* {{{ proto array ExcelSheet::getIndexRange(int index)
-	Gets the named range coordianates by index, returns false if range is not found. */
+/* {{{ proto array ExcelSheet::getIndexRange(int index [, int scope_id])
+	Gets the named range coordinates by index, returns false if range is not found. */
 EXCEL_METHOD(Sheet, getIndexRange)
 {
 	SheetHandle sheet;
 	zval *object = getThis();
 	long index;
 	int rf, rl, cf, cl;
-
+#if LIBXL_VERSION >= 0x03050401
+	int hidden;
+	long scope_id = SCOPE_WORKBOOK;
+	
+	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "l|l", &index, &scope_id) == FAILURE) {
+		RETURN_FALSE;
+	}
+#else
 	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "l", &index) == FAILURE) {
 		RETURN_FALSE;
 	}
+#endif
 
 	SHEET_FROM_OBJECT(sheet, object);
+#if LIBXL_VERSION >= 0x03050401
+	if (xlSheetNamedRange(sheet, (int)index, &rf, &rl, &cf, &cl, &scope_id, &hidden)) {
+#else
 	if (xlSheetNamedRange(sheet, (int)index, &rf, &rl, &cf, &cl)) {
+#endif
 		array_init(return_value);
 		add_assoc_long(return_value, "row_first", rf);
 		add_assoc_long(return_value, "row_last", rl);
-		add_assoc_long(return_value, "col_first", cl);
-		add_assoc_long(return_value, "col_last", cf);
+		add_assoc_long(return_value, "col_first", cf);
+		add_assoc_long(return_value, "col_last", cl);
+#if LIBXL_VERSION >= 0x03050401
+		add_assoc_bool(return_value, "hidden", hidden);
+		add_assoc_long(return_value, "scope", scope_id);
+#endif
 	} else {
 		RETURN_FALSE;
 	}
@@ -3739,7 +3810,7 @@ EXCEL_METHOD(Sheet, getVerPageBreak)
 	}
 
 	SHEET_FROM_OBJECT(sheet, object);
-	RETURN_LONG(xlSheetGetVerPageBreakSize(sheet));
+	RETURN_LONG(xlSheetGetVerPageBreak(sheet, index));
 }
 /* }}} */
 
@@ -3772,7 +3843,7 @@ EXCEL_METHOD(Sheet, getHorPageBreak)
 	}
 
 	SHEET_FROM_OBJECT(sheet, object);
-	RETURN_LONG(xlSheetGetHorPageBreakSize(sheet));
+	RETURN_LONG(xlSheetGetHorPageBreak(sheet, index));
 }
 /* }}} */
 
@@ -3980,6 +4051,100 @@ EXCEL_METHOD(Book, insertSheet)
 
 #endif
 
+#if LIBXL_VERSION >= 0x03050401
+/* {{{ proto bool ExcelBook::isTemplate()
+	Returns whether the workbook is template. */
+EXCEL_METHOD(Book, isTemplate)
+{
+	BookHandle book;
+	zval *object = getThis();
+
+	if (ZEND_NUM_ARGS()) {
+		RETURN_FALSE;
+	}
+
+	BOOK_FROM_OBJECT(book, object);
+	RETURN_BOOL(xlBookIsTemplate(book));
+}
+/* }}} */
+
+/* {{{ proto void ExcelBook::setTemplate(bool mode)
+	Sets the template flag, if the workbook is template. */
+EXCEL_METHOD(Book, setTemplate)
+{
+	BookHandle book;
+	zval *object = getThis();
+	zend_bool mode;
+
+	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "b", &mode) == FAILURE) {
+		RETURN_FALSE;
+	}
+
+	BOOK_FROM_OBJECT(book, object);
+	xlBookSetTemplate(book, (int)mode);
+}
+/* }}} */
+
+/* {{{ proto long ExcelSheet::getRightToLeft()
+	Returns whether the text is displayed in right-to-left mode: 1 - yes, 0 - no. */
+EXCEL_METHOD(Sheet, getRightToLeft)
+{
+	SheetHandle sheet;
+	zval *object = getThis();
+
+	if (ZEND_NUM_ARGS()) {
+		RETURN_FALSE;
+	}
+
+	SHEET_FROM_OBJECT(sheet, object);
+	RETURN_LONG(xlSheetRightToLeft(sheet));
+}
+/* }}} */
+
+/* {{{ proto void ExcelBook::setRightToLeft(bool mode)
+	Sets the right-to-left mode: 1 - the text is displayed in right-to-left mode, 0 - the text is displayed in left-to-right mode. */
+EXCEL_METHOD(Sheet, setRightToLeft)
+{
+	SheetHandle sheet;
+	zval *object = getThis();
+	long mode;
+
+	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "l", &mode) == FAILURE) {
+		RETURN_FALSE;
+	}
+
+	SHEET_FROM_OBJECT(sheet, object);
+	xlSheetSetRightToLeft(sheet, (int)mode);
+}
+/* }}} */
+#endif
+
+/* {{{ proto bool ExcelSheet::setPrintArea()
+	Sets the print area. */
+EXCEL_METHOD(Sheet, setPrintArea)
+{
+	zval *object = getThis();
+	SheetHandle sheet;
+	long row, col, to_row, to_col;
+
+	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "llll", &row, &to_row, &col, &to_col) == FAILURE) {
+		RETURN_FALSE;
+	}
+
+	if (row > to_row) {
+		php_error_docref(NULL TSRMLS_CC, E_WARNING, "The range row start cannot be greater than row end.");
+		RETURN_FALSE;
+	} else if (col > to_col) {
+		php_error_docref(NULL TSRMLS_CC, E_WARNING, "The range column start cannot be greater than column end.");
+		RETURN_FALSE;
+	}
+
+	SHEET_FROM_OBJECT(sheet, object);
+	xlSheetSetPrintArea(sheet, row, to_row, col, to_col);
+	RETURN_TRUE;
+}
+/* }}} */
+
 /* {{{ proto bool ExcelSheet::clearPrintRepeats()
 	Clears repeated rows and columns on each page. */
 EXCEL_METHOD(Sheet, clearPrintRepeats)
@@ -4032,6 +4197,292 @@ EXCEL_METHOD(Sheet, setProtect)
 	PHP_EXCEL_SET_BOOL_VAL(SetProtect)
 }
 /* }}} */
+
+#if LIBXL_VERSION >= 0x03060000
+/* {{{ proto long ExcelSheet::hyperlinkSize()
+	Returns the number of hyperlinks in the sheet. */
+EXCEL_METHOD(Sheet, hyperlinkSize)
+{
+	zval *object = getThis();
+	SheetHandle sheet;
+
+	if (ZEND_NUM_ARGS()) {
+		RETURN_FALSE;
+	}
+
+	SHEET_FROM_OBJECT(sheet, object);
+	RETURN_LONG(xlSheetHyperlinkSize(sheet));
+}
+/* }}} */
+
+/* {{{ proto array ExcelSheet::hyperlink(int index)
+	Gets the hyperlink and its coordinates by index. */
+EXCEL_METHOD(Sheet, hyperlink)
+{
+	SheetHandle sheet;
+	zval *object = getThis();
+	long index;
+	int rowFirst, rowLast, colFirst, colLast;
+	const char *s;
+
+	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "l", &index) == FAILURE) {
+		RETURN_FALSE;
+	}
+
+	SHEET_FROM_OBJECT(sheet, object);
+
+	s = xlSheetHyperlink(sheet, index, &rowFirst, &rowLast, &colFirst, &colLast);
+	
+	if (!s) {
+		RETURN_FALSE;
+	}
+
+	array_init(return_value);
+	add_assoc_string(return_value, "hyperlink", (char *)s, 1);
+	add_assoc_long(return_value, "row_first", rowFirst);
+	add_assoc_long(return_value, "row_last", rowLast);
+	add_assoc_long(return_value, "col_first", colFirst);
+	add_assoc_long(return_value, "col_last", colLast);
+}
+/* }}} */
+
+/* {{{ proto bool ExcelSheet::delHyperlink(int index)
+	Removes hyperlink by index. */
+EXCEL_METHOD(Sheet, delHyperlink)
+{
+	zval *object = getThis();
+	SheetHandle sheet;
+	long index;
+
+	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "l", &index) == FAILURE) {
+		RETURN_FALSE;
+	}
+
+	if (index < 0) {
+		RETURN_FALSE;
+	}
+
+	SHEET_FROM_OBJECT(sheet, object);
+	RETURN_BOOL(xlSheetDelHyperlink(sheet, index));
+}
+/* }}} */
+
+/* {{{ proto void ExcelSheet::addHyperlink(string hyperlink, int row_first, int row_last, int col_first, int col_last)
+	Adds the new hyperlink. */
+EXCEL_METHOD(Sheet, addHyperlink)
+{
+	SheetHandle sheet;
+	zval *object = getThis();
+	char *val;
+	int val_len;
+	long row_first, row_last, col_first, col_last;
+
+	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "sllll", &val, &val_len, &row_first, &row_last, &col_first, &col_last) == FAILURE) {
+		RETURN_FALSE;
+	}
+
+	SHEET_FROM_OBJECT(sheet, object);
+	
+	xlSheetAddHyperlink(sheet, val, row_first, row_last, col_first, col_last);
+	RETURN_TRUE;
+}
+/* }}} */
+
+/* {{{ proto long ExcelSheet::mergeSize()
+	Returns a number of merged cells in this worksheet. */
+EXCEL_METHOD(Sheet, mergeSize)
+{
+	zval *object = getThis();
+	SheetHandle sheet;
+
+	if (ZEND_NUM_ARGS()) {
+		RETURN_FALSE;
+	}
+
+	SHEET_FROM_OBJECT(sheet, object);
+	RETURN_LONG(xlSheetMergeSize(sheet));
+}
+/* }}} */
+
+/* {{{ proto array ExcelSheet::merge(int index)
+	Gets the merged cells by index. */
+EXCEL_METHOD(Sheet, merge)
+{
+	SheetHandle sheet;
+	zval *object = getThis();
+	long index;
+	int rowFirst, rowLast, colFirst, colLast;
+
+	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "l", &index) == FAILURE) {
+		RETURN_FALSE;
+	}
+
+	if (index < 0) {
+		RETURN_FALSE;
+	}
+
+	SHEET_FROM_OBJECT(sheet, object);
+
+	if (!xlSheetMerge(sheet, index, &rowFirst, &rowLast, &colFirst, &colLast)) {
+		RETURN_FALSE;
+	}
+
+	array_init(return_value);
+	add_assoc_long(return_value, "row_first", rowFirst);
+	add_assoc_long(return_value, "row_last", rowLast);
+	add_assoc_long(return_value, "col_first", colFirst);
+	add_assoc_long(return_value, "col_last", colLast);
+}
+/* }}} */
+
+/* {{{ proto bool ExcelSheet::delMergeByIndex(int index)
+	Removes merged cells by index. */
+EXCEL_METHOD(Sheet, delMergeByIndex)
+{
+	zval *object = getThis();
+	SheetHandle sheet;
+	long index;
+
+	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "l", &index) == FAILURE) {
+		RETURN_FALSE;
+	}
+
+	if (index < 0) {
+		RETURN_FALSE;
+	}
+
+	SHEET_FROM_OBJECT(sheet, object);
+	RETURN_BOOL(xlSheetDelMergeByIndex(sheet, index));
+}
+/* }}} */
+
+/* {{{ proto bool ExcelSheet::splitInfo()
+	Gets the split information (position of frozen pane) in the sheet: row - vertical position of the split; col - horizontal position of the split. */
+EXCEL_METHOD(Sheet, splitInfo)
+{
+	SheetHandle sheet;
+	zval *object = getThis();
+	int row, col;
+
+	SHEET_FROM_OBJECT(sheet, object);
+
+	if (!xlSheetSplitInfo(sheet, &row, &col)) {
+		RETURN_FALSE;
+	}
+
+	array_init(return_value);
+	add_assoc_long(return_value, "row", row);
+	add_assoc_long(return_value, "col", col);
+}
+/* }}} */
+
+/* {{{ proto bool ExcelSheet::rowHidden(int row)
+	Returns whether row is hidden. */
+EXCEL_METHOD(Sheet, rowHidden)
+{
+	zval *object = getThis();
+	SheetHandle sheet;
+	long row;
+
+	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "l", &row) == FAILURE) {
+		RETURN_FALSE;
+	}
+
+	if (row < 0) {
+		RETURN_FALSE;
+	}
+
+	SHEET_FROM_OBJECT(sheet, object);
+	RETURN_BOOL(xlSheetRowHidden(sheet, row));
+}
+/* }}} */
+
+/* {{{ proto bool ExcelSheet::setRowHidden(int row, bool hidden)
+	Hides row. */
+EXCEL_METHOD(Sheet, setRowHidden)
+{
+	zval *object = getThis();
+	SheetHandle sheet;
+	long row;
+	zend_bool hidden;
+
+	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "lb", &row, &hidden) == FAILURE) {
+		RETURN_FALSE;
+	}
+
+	if (row < 0) {
+		RETURN_FALSE;
+	}
+
+	SHEET_FROM_OBJECT(sheet, object);
+	RETURN_BOOL(xlSheetSetRowHidden(sheet, row, hidden));
+}
+/* }}} */
+
+/* {{{ proto bool ExcelSheet::colHidden(int col)
+	Returns whether column is hidden. */
+EXCEL_METHOD(Sheet, colHidden)
+{
+	zval *object = getThis();
+	SheetHandle sheet;
+	long col;
+
+	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "l", &col) == FAILURE) {
+		RETURN_FALSE;
+	}
+
+	if (col < 0) {
+		RETURN_FALSE;
+	}
+
+	SHEET_FROM_OBJECT(sheet, object);
+	RETURN_BOOL(xlSheetColHidden(sheet, col));
+}
+/* }}} */
+
+/* {{{ proto bool ExcelSheet::setColHidden(int col, bool hidden)
+	Hides column. */
+EXCEL_METHOD(Sheet, setColHidden)
+{
+	zval *object = getThis();
+	SheetHandle sheet;
+	long col;
+	zend_bool hidden;
+
+	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "lb", &col, &hidden) == FAILURE) {
+		RETURN_FALSE;
+	}
+
+	if (col < 0) {
+		RETURN_FALSE;
+	}
+
+	SHEET_FROM_OBJECT(sheet, object);
+	RETURN_BOOL(xlSheetSetColHidden(sheet, col, hidden));
+}
+/* }}} */
+
+/* {{{ proto long ExcelBook::sheetType(int sheet)
+	Returns type of sheet with specified index. */
+EXCEL_METHOD(Book, sheetType)
+{
+	zval *object = getThis();
+	BookHandle book;
+	long index;
+
+	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "l", &index) == FAILURE) {
+		RETURN_FALSE;
+	}
+    
+	if (index < 0) {
+		RETURN_FALSE;
+	}
+
+	BOOK_FROM_OBJECT(book, object);
+	RETURN_LONG(xlBookSheetType(book, index));
+}
+/* }}} */
+#endif
 
 #if PHP_MAJOR_VERSION > 5 || (PHP_MAJOR_VERSION == 5 && PHP_MINOR_VERSION >= 3)
 # define PHP_EXCEL_ARGINFO
@@ -4100,7 +4551,7 @@ ZEND_END_ARG_INFO()
 
 PHP_EXCEL_ARGINFO
 ZEND_BEGIN_ARG_INFO_EX(arginfo_Book_addFormat, 0, 0, 0)
-	ZEND_ARG_OBJ_INFO(0, format, ExcelFormat, 0)
+	ZEND_ARG_OBJ_INFO(0, format, ExcelFormat, 1)
 ZEND_END_ARG_INFO()
 
 #ifdef HAVE_LIBXL_243_PLUS
@@ -4125,7 +4576,7 @@ ZEND_BEGIN_ARG_INFO_EX(arginfo_Book_packDate, 0, 0, 1)
 ZEND_END_ARG_INFO()
 
 PHP_EXCEL_ARGINFO
-ZEND_BEGIN_ARG_INFO_EX(arginfo_Book_packDateValues, 0, 0, 1)
+ZEND_BEGIN_ARG_INFO_EX(arginfo_Book_packDateValues, 0, 0, 6)
 	ZEND_ARG_INFO(0, year)
 	ZEND_ARG_INFO(0, month)
 	ZEND_ARG_INFO(0, day)
@@ -4165,7 +4616,8 @@ ZEND_BEGIN_ARG_INFO_EX(arginfo_Book_setDefaultFont, 0, 0, 2)
 ZEND_END_ARG_INFO()
 
 PHP_EXCEL_ARGINFO
-ZEND_BEGIN_ARG_INFO_EX(arginfo_Book_setLocale, 0, 0, 0)
+ZEND_BEGIN_ARG_INFO_EX(arginfo_Book_setLocale, 0, 0, 1)
+	ZEND_ARG_INFO(0, locale)
 ZEND_END_ARG_INFO()
 
 PHP_EXCEL_ARGINFO
@@ -4231,6 +4683,7 @@ ZEND_BEGIN_ARG_INFO_EX(arginfo_Book_getPicture, 0, 0, 1)
 	ZEND_ARG_INFO(0, index)
 ZEND_END_ARG_INFO()
 
+PHP_EXCEL_ARGINFO
 ZEND_BEGIN_ARG_INFO_EX(arginfo_Book_getNumPictures, 0, 0, 0)
 ZEND_END_ARG_INFO()
 
@@ -4238,6 +4691,33 @@ PHP_EXCEL_ARGINFO
 ZEND_BEGIN_ARG_INFO_EX(arginfo_Book_insertSheet, 0, 0, 2)
 	ZEND_ARG_INFO(0, index)
 	ZEND_ARG_INFO(0, name)
+	ZEND_ARG_INFO(0, sheet)
+ZEND_END_ARG_INFO()
+#endif
+
+#if LIBXL_VERSION >= 0x03050401
+PHP_EXCEL_ARGINFO
+ZEND_BEGIN_ARG_INFO_EX(arginfo_Book_isTemplate, 0, 0, 0)
+ZEND_END_ARG_INFO()
+
+PHP_EXCEL_ARGINFO
+ZEND_BEGIN_ARG_INFO_EX(arginfo_Book_setTemplate, 0, 0, 1)
+	ZEND_ARG_INFO(0, mode)
+ZEND_END_ARG_INFO()
+
+PHP_EXCEL_ARGINFO
+ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_getRightToLeft, 0, 0, 0)
+ZEND_END_ARG_INFO()
+
+PHP_EXCEL_ARGINFO
+ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_setRightToLeft, 0, 0, 1)
+	ZEND_ARG_INFO(0, mode)
+ZEND_END_ARG_INFO()
+#endif
+
+#if LIBXL_VERSION >= 0x03060000
+PHP_EXCEL_ARGINFO
+ZEND_BEGIN_ARG_INFO_EX(arginfo_Book_sheetType, 0, 0, 1)
 	ZEND_ARG_INFO(0, sheet)
 ZEND_END_ARG_INFO()
 #endif
@@ -4447,6 +4927,7 @@ ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_readRow, 0, 0, 1)
 	ZEND_ARG_INFO(0, row)
 	ZEND_ARG_INFO(0, start_col)
 	ZEND_ARG_INFO(0, end_column)
+	ZEND_ARG_INFO(0, read_formula)
 ZEND_END_ARG_INFO()
 
 PHP_EXCEL_ARGINFO
@@ -4454,6 +4935,7 @@ ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_readCol, 0, 0, 1)
 	ZEND_ARG_INFO(0, column)
 	ZEND_ARG_INFO(0, start_row)
 	ZEND_ARG_INFO(0, end_row)
+	ZEND_ARG_INFO(0, read_formula)
 ZEND_END_ARG_INFO()
 
 PHP_EXCEL_ARGINFO
@@ -4461,6 +4943,7 @@ ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_read, 0, 0, 2)
 	ZEND_ARG_INFO(0, row)
 	ZEND_ARG_INFO(0, column)
 	ZEND_ARG_INFO(1, format)
+	ZEND_ARG_INFO(0, read_formula)
 ZEND_END_ARG_INFO()
 
 PHP_EXCEL_ARGINFO
@@ -4477,7 +4960,7 @@ ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_writeRow, 0, 0, 2)
 	ZEND_ARG_INFO(0, row)
 	ZEND_ARG_INFO(0, data)
 	ZEND_ARG_INFO(0, start_column)
-	ZEND_ARG_OBJ_INFO(0, format, ExcelFormat, 0)
+	ZEND_ARG_OBJ_INFO(0, format, ExcelFormat, 1)
 ZEND_END_ARG_INFO()
 
 PHP_EXCEL_ARGINFO
@@ -4485,7 +4968,8 @@ ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_writeCol, 0, 0, 2)
 	ZEND_ARG_INFO(0, row)
 	ZEND_ARG_INFO(0, data)
 	ZEND_ARG_INFO(0, start_row)
-	ZEND_ARG_OBJ_INFO(0, format, ExcelFormat, 0)
+	ZEND_ARG_OBJ_INFO(0, format, ExcelFormat, 1)
+	ZEND_ARG_INFO(0, data_type)
 ZEND_END_ARG_INFO()
 
 PHP_EXCEL_ARGINFO
@@ -4556,7 +5040,7 @@ ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_setColWidth, 0, 0, 3)
 	ZEND_ARG_INFO(0, column_end)
 	ZEND_ARG_INFO(0, width)
 	ZEND_ARG_INFO(0, hidden)
-	ZEND_ARG_OBJ_INFO(0, format, ExcelFormat, 0)
+	ZEND_ARG_OBJ_INFO(0, format, ExcelFormat, 1)
 ZEND_END_ARG_INFO()
 
 PHP_EXCEL_ARGINFO
@@ -4775,11 +5259,15 @@ ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_footer, 0, 0, 0)
 ZEND_END_ARG_INFO()
 
 PHP_EXCEL_ARGINFO
-ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_setHeader, 0, 0, 0)
+ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_setHeader, 0, 0, 2)
+	ZEND_ARG_INFO(0, header)
+	ZEND_ARG_INFO(0, margin)
 ZEND_END_ARG_INFO()
 
 PHP_EXCEL_ARGINFO
-ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_setFooter, 0, 0, 0)
+ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_setFooter, 0, 0, 2)
+	ZEND_ARG_INFO(0, footer)
+	ZEND_ARG_INFO(0, margin)
 ZEND_END_ARG_INFO()
 
 PHP_EXCEL_ARGINFO
@@ -4858,7 +5346,8 @@ ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_name, 0, 0, 0)
 ZEND_END_ARG_INFO()
 
 PHP_EXCEL_ARGINFO
-ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_setName, 0, 0, 0)
+ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_setName, 0, 0, 1)
+	ZEND_ARG_INFO(0, name)
 ZEND_END_ARG_INFO()
 
 PHP_EXCEL_ARGINFO
@@ -4878,11 +5367,17 @@ ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_setNamedRange, 0, 0, 5)
 	ZEND_ARG_INFO(0, col)
 	ZEND_ARG_INFO(0, to_row)
 	ZEND_ARG_INFO(0, to_col)
+#if LIBXL_VERSION >= 0x03050401
+	ZEND_ARG_INFO(0, scope_id)
+#endif
 ZEND_END_ARG_INFO()
 
 PHP_EXCEL_ARGINFO
 ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_delNamedRange, 0, 0, 1)
 	ZEND_ARG_INFO(0, name)
+#if LIBXL_VERSION >= 0x03050401
+	ZEND_ARG_INFO(0, scope_id)
+#endif
 ZEND_END_ARG_INFO()
 
 PHP_EXCEL_ARGINFO
@@ -4895,6 +5390,14 @@ PHP_EXCEL_ARGINFO
 ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_setPrintRepeatCols, 0, 0, 2)
 	ZEND_ARG_INFO(0, col_start)
 	ZEND_ARG_INFO(0, col_end)
+ZEND_END_ARG_INFO()
+
+PHP_EXCEL_ARGINFO
+ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_setPrintArea, 0, 0, 4)
+	ZEND_ARG_INFO(0, row_first)
+	ZEND_ARG_INFO(0, row_last)
+	ZEND_ARG_INFO(0, col_first)
+	ZEND_ARG_INFO(0, col_last)
 ZEND_END_ARG_INFO()
 
 PHP_EXCEL_ARGINFO
@@ -4931,19 +5434,27 @@ ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_setPrintFit, 0, 0, 2)
 	ZEND_ARG_INFO(0, hPages)
 ZEND_END_ARG_INFO()
 
+PHP_EXCEL_ARGINFO
 ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_getPrintFit, 0, 0, 0)
 ZEND_END_ARG_INFO()
 
 PHP_EXCEL_ARGINFO
 ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_getNamedRange, 0, 0, 1)
 	ZEND_ARG_INFO(0, name)
+#if LIBXL_VERSION >= 0x03050401
+	ZEND_ARG_INFO(0, scope_id)
+#endif
 ZEND_END_ARG_INFO()
 
 PHP_EXCEL_ARGINFO
 ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_getIndexRange, 0, 0, 1)
 	ZEND_ARG_INFO(0, index)
+#if LIBXL_VERSION >= 0x03050401
+	ZEND_ARG_INFO(0, scope_id)
+#endif
 ZEND_END_ARG_INFO()
 
+PHP_EXCEL_ARGINFO
 ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_namedRangeSize, 0, 0, 0)
 ZEND_END_ARG_INFO()
 
@@ -4952,6 +5463,7 @@ ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_getVerPageBreak, 0, 0, 1)
 	ZEND_ARG_INFO(0, index)
 ZEND_END_ARG_INFO()
 
+PHP_EXCEL_ARGINFO
 ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_getVerPageBreakSize, 0, 0, 0)
 ZEND_END_ARG_INFO()
 
@@ -4960,6 +5472,7 @@ ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_getHorPageBreak, 0, 0, 1)
 	ZEND_ARG_INFO(0, index)
 ZEND_END_ARG_INFO()
 
+PHP_EXCEL_ARGINFO
 ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_getHorPageBreakSize, 0, 0, 0)
 ZEND_END_ARG_INFO()
 
@@ -4968,12 +5481,78 @@ ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_getPictureInfo, 0, 0, 1)
 	ZEND_ARG_INFO(0, index)
 ZEND_END_ARG_INFO()
 
+PHP_EXCEL_ARGINFO
 ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_getNumPictures, 0, 0, 0)
 ZEND_END_ARG_INFO()
 #endif
 
+#if LIBXL_VERSION >= 0x03060000
+PHP_EXCEL_ARGINFO
+ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_hyperlinkSize, 0, 0, 0)
+ZEND_END_ARG_INFO()
+
+PHP_EXCEL_ARGINFO
+ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_hyperlink, 0, 0, 1)
+	ZEND_ARG_INFO(0, index)
+ZEND_END_ARG_INFO()
+
+PHP_EXCEL_ARGINFO
+ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_delHyperlink, 0, 0, 1)
+	ZEND_ARG_INFO(0, index)
+ZEND_END_ARG_INFO()
+
+PHP_EXCEL_ARGINFO
+ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_addHyperlink, 0, 0, 5)
+	ZEND_ARG_INFO(0, hyperlink)
+	ZEND_ARG_INFO(0, row_first)
+	ZEND_ARG_INFO(0, row_last)
+	ZEND_ARG_INFO(0, col_first)
+	ZEND_ARG_INFO(0, col_last)
+ZEND_END_ARG_INFO()
+
+PHP_EXCEL_ARGINFO
+ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_mergeSize, 0, 0, 0)
+ZEND_END_ARG_INFO()
+
+PHP_EXCEL_ARGINFO
+ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_merge, 0, 0, 1)
+	ZEND_ARG_INFO(0, index)
+ZEND_END_ARG_INFO()
+
+PHP_EXCEL_ARGINFO
+ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_delMergeByIndex, 0, 0, 1)
+	ZEND_ARG_INFO(0, index)
+ZEND_END_ARG_INFO()
+
+PHP_EXCEL_ARGINFO
+ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_splitInfo, 0, 0, 0)
+ZEND_END_ARG_INFO()
+
+PHP_EXCEL_ARGINFO
+ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_colHidden, 0, 0, 1)
+	ZEND_ARG_INFO(0, col)
+ZEND_END_ARG_INFO()
+
+PHP_EXCEL_ARGINFO
+ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_rowHidden, 0, 0, 1)
+	ZEND_ARG_INFO(0, row)
+ZEND_END_ARG_INFO()
+
+PHP_EXCEL_ARGINFO
+ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_setColHidden, 0, 0, 2)
+	ZEND_ARG_INFO(0, col)
+	ZEND_ARG_INFO(0, hidden)
+ZEND_END_ARG_INFO()
+
+PHP_EXCEL_ARGINFO
+ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_setRowHidden, 0, 0, 2)
+	ZEND_ARG_INFO(0, row)
+	ZEND_ARG_INFO(0, hidden)
+ZEND_END_ARG_INFO()
+#endif
+
 #define EXCEL_ME(class_name, function_name, arg_info, flags) \
-    PHP_ME( Excel ## class_name, function_name, arg_info, flags)
+	PHP_ME( Excel ## class_name, function_name, arg_info, flags)
 
 zend_function_entry excel_funcs_book[] = {
 	EXCEL_ME(Book, addFont, arginfo_Book_addFont, 0)
@@ -5022,6 +5601,13 @@ zend_function_entry excel_funcs_book[] = {
 	EXCEL_ME(Book, getPicture, arginfo_Book_getPicture, 0)
 	EXCEL_ME(Book, getNumPictures, arginfo_Book_getNumPictures, 0)
 	EXCEL_ME(Book, insertSheet, arginfo_Book_insertSheet, 0)
+#endif
+#if LIBXL_VERSION >= 0x03050401
+	EXCEL_ME(Book, isTemplate, arginfo_Book_isTemplate, 0)
+	EXCEL_ME(Book, setTemplate, arginfo_Book_setTemplate, 0)
+#endif
+#if LIBXL_VERSION >= 0x03060000
+	EXCEL_ME(Book, sheetType, arginfo_Book_sheetType, 0)
 #endif
 	{NULL, NULL, NULL}
 };
@@ -5107,6 +5693,7 @@ zend_function_entry excel_funcs_sheet[] = {
 	EXCEL_ME(Sheet, delNamedRange, arginfo_Sheet_delNamedRange, 0)
 	EXCEL_ME(Sheet, setPrintRepeatRows, arginfo_Sheet_setPrintRepeatRows, 0)
 	EXCEL_ME(Sheet, setPrintRepeatCols, arginfo_Sheet_setPrintRepeatCols, 0)
+	EXCEL_ME(Sheet, setPrintArea, arginfo_Sheet_setPrintArea, 0)
 	EXCEL_ME(Sheet, clearPrintRepeats, arginfo_Sheet_clearPrintRepeats, 0)
 	EXCEL_ME(Sheet, clearPrintArea, arginfo_Sheet_clearPrintArea, 0)
 	EXCEL_ME(Sheet, getGroupSummaryRight, arginfo_Sheet_getGroupSummaryRight, 0)
@@ -5137,7 +5724,26 @@ zend_function_entry excel_funcs_sheet[] = {
 	EXCEL_ME(Sheet, rowColToAddr, arginfo_Sheet_rowColToAddr, 0)
 	EXCEL_ME(Sheet, addrToRowCol, arginfo_Sheet_addrToRowCol, 0)
 #endif
-   {NULL, NULL, NULL}
+#if LIBXL_VERSION >= 0x03050401
+	EXCEL_ME(Sheet, getRightToLeft, arginfo_Sheet_getRightToLeft, 0)
+	EXCEL_ME(Sheet, setRightToLeft, arginfo_Sheet_setRightToLeft, 0)
+#endif
+#if LIBXL_VERSION >= 0x03060000
+	EXCEL_ME(Sheet, hyperlinkSize, arginfo_Sheet_hyperlinkSize, 0)
+	EXCEL_ME(Sheet, hyperlink, arginfo_Sheet_hyperlink, 0)
+	EXCEL_ME(Sheet, delHyperlink, arginfo_Sheet_delHyperlink, 0)
+	EXCEL_ME(Sheet, addHyperlink, arginfo_Sheet_addHyperlink, 0)
+	EXCEL_ME(Sheet, mergeSize, arginfo_Sheet_mergeSize, 0)
+	EXCEL_ME(Sheet, merge, arginfo_Sheet_merge, 0)
+	EXCEL_ME(Sheet, delMergeByIndex, arginfo_Sheet_delMergeByIndex, 0)
+	EXCEL_ME(Sheet, splitInfo, arginfo_Sheet_splitInfo, 0)
+
+	EXCEL_ME(Sheet, colHidden, arginfo_Sheet_colHidden, 0)
+	EXCEL_ME(Sheet, rowHidden, arginfo_Sheet_rowHidden, 0)
+	EXCEL_ME(Sheet, setColHidden, arginfo_Sheet_setColHidden, 0)
+	EXCEL_ME(Sheet, setRowHidden, arginfo_Sheet_setRowHidden, 0)
+#endif
+	{NULL, NULL, NULL}
 };
 
 zend_function_entry excel_funcs_font[] = {
@@ -5333,6 +5939,7 @@ PHP_MINIT_FUNCTION(excel)
 	REGISTER_EXCEL_CLASS_CONST_LONG(format, "BORDERSTYLE_DASHDOTDOT", BORDERSTYLE_DASHDOTDOT);
 	REGISTER_EXCEL_CLASS_CONST_LONG(format, "BORDERSTYLE_MEDIUMDASHDOTDOT", BORDERSTYLE_MEDIUMDASHDOTDOT);
 	REGISTER_EXCEL_CLASS_CONST_LONG(format, "BORDERSTYLE_SLANTDASHDOT", BORDERSTYLE_SLANTDASHDOT);
+
 	REGISTER_EXCEL_CLASS_CONST_LONG(format, "BORDERDIAGONAL_NONE", BORDERDIAGONAL_NONE);
 	REGISTER_EXCEL_CLASS_CONST_LONG(format, "BORDERDIAGONAL_DOWN", BORDERDIAGONAL_DOWN);
 	REGISTER_EXCEL_CLASS_CONST_LONG(format, "BORDERDIAGONAL_UP", BORDERDIAGONAL_UP);
@@ -5427,6 +6034,17 @@ PHP_MINIT_FUNCTION(excel)
 	REGISTER_EXCEL_CLASS_CONST_LONG(book, "PICTURETYPE_EMF", PICTURETYPE_EMF);
 	REGISTER_EXCEL_CLASS_CONST_LONG(book, "PICTURETYPE_PICT", PICTURETYPE_PICT);
 	REGISTER_EXCEL_CLASS_CONST_LONG(book, "PICTURETYPE_TIFF", PICTURETYPE_TIFF);
+#endif
+#if LIBXL_VERSION >= 0x03050401
+	REGISTER_EXCEL_CLASS_CONST_LONG(book, "SCOPE_UNDEFINED", SCOPE_UNDEFINED);
+	REGISTER_EXCEL_CLASS_CONST_LONG(book, "SCOPE_WORKBOOK", SCOPE_WORKBOOK);
+	REGISTER_EXCEL_CLASS_CONST_LONG(sheet, "RIGHT_TO_LEFT", 1);
+	REGISTER_EXCEL_CLASS_CONST_LONG(sheet, "LEFT_TO_RIGHT", 0);
+#endif
+#if LIBXL_VERSION >= 0x03060000
+	REGISTER_EXCEL_CLASS_CONST_LONG(book, "SHEETTYPE_SHEET", SHEETTYPE_SHEET);
+	REGISTER_EXCEL_CLASS_CONST_LONG(book, "SHEETTYPE_CHART", SHEETTYPE_CHART);
+	REGISTER_EXCEL_CLASS_CONST_LONG(book, "SHEETTYPE_UNKNOWN", SHEETTYPE_UNKNOWN);
 #endif
 	return SUCCESS;
 }

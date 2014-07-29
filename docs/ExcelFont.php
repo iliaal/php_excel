@@ -4,7 +4,7 @@
   | ExcelFont                                                                 |
   |                                                                           |
   | Reference file for NuSphere PHPEd (and possibly other IDE's) for use with |
-  | php_excel interface to libxl by Ilia Alshanetsky <ilia@ilia.ws>          |
+  | php_excel interface to libxl by Ilia Alshanetsky <ilia@ilia.ws>           |
   |                                                                           |
   | php_excel "PECL" style module (http://github.com/iliaal/php_excel)        |
   | libxl library (http://www.libxl.com)                                      |

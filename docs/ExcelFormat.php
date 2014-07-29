@@ -4,7 +4,7 @@
   | ExcelFormat                                                               |
   |                                                                           |
   | Reference file for NuSphere PHPEd (and possibly other IDE's) for use with |
-  | php_excel interface to libxl by Ilia Alshanetsky <ilia@ilia.ws>          |
+  | php_excel interface to libxl by Ilia Alshanetsky <ilia@ilia.ws>           |
   |                                                                           |
   | php_excel "PECL" style module (http://github.com/iliaal/php_excel)        |
   | libxl library (http://www.libxl.com)                                      |
@@ -71,8 +71,6 @@ class ExcelFormat {
 	const COLOR_GRAY80 = 63;
 	const COLOR_DEFAULT_FOREGROUND = 64;
 	const COLOR_DEFAULT_BACKGROUND = 65;
-	const COLOR_TOOLTIP = 81;
-	const COLOR_AUTO = 32767;
 
 	const AS_DATE = 1;
 	const AS_FORMULA = 2;
@@ -348,7 +346,7 @@ class ExcelFormat {
 	* @param int $number_format Number format identifier.  One of ExcelFormat::NUMFORMAT_* constants
 	* @return int
 	*/
-	public function numberFormat($number_format) {
+	public function numberFormat($number_format = null) {
 	} // numberFormat
 
 	/**

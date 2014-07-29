@@ -4,7 +4,7 @@
   | ExcelBook                                                                 |
   |                                                                           |
   | Reference file for NuSphere PHPEd (and possibly other IDE's) for use with |
-  | php_excel interface to libxl by Ilia Alshanetsky <ilia@ilia.ws>          |
+  | php_excel interface to libxl by Ilia Alshanetsky <ilia@ilia.ws>           |
   |                                                                           |
   | php_excel "PECL" style module (http://github.com/iliaal/php_excel)        |
   | libxl library (http://www.libxl.com)                                      |
@@ -13,6 +13,21 @@
   +---------------------------------------------------------------------------+
 */
 class ExcelBook {
+	const PICTURETYPE_DIB = 3;
+	const PICTURETYPE_EMF = 4;
+	const PICTURETYPE_JPEG = 1;
+	const PICTURETYPE_PICT = 5;
+	const PICTURETYPE_PNG = 0;
+	const PICTURETYPE_TIFF = 6;
+	const PICTURETYPE_WMF = 2;
+
+	const SCOPE_UNDEFINED = -2;
+	const SCOPE_WORKBOOK = -1;
+
+	const SHEETTYPE_CHART = 1;
+	const SHEETTYPE_SHEET = 0;
+	const SHEETTYPE_UNKNOWN = 2;
+
 	/**
 	* Create a new Excel workbook
 	*
@@ -97,6 +112,14 @@ class ExcelBook {
 	} // addSheet
 
 	/**
+	* Returns BIFF version of binary file. Used for xls format only.
+	*
+	* @return int BIFF version
+	*/
+	public function biffVersion() {
+	} // biffVersion
+
+	/**
 	* Packs red, green, and blue components in color value.  Used for xlsx format only.
 	*
 	* @see ExcelBook::colorUnpack()
@@ -169,7 +192,7 @@ class ExcelBook {
 	* Get the default font
 	*
 	* @see ExcelBook::setDefaultFont()
-	* @return array with keys "font"(string), and "font_size"(int)
+	* @return array with keys "font"(string) and "font_size"(int)
 	*/
 	public function getDefaultFont() {
 	} // getDefaultFont
@@ -183,6 +206,31 @@ class ExcelBook {
 	} // getError
 
 	/**
+	* Returns a number of pictures in this workbook.
+	*
+	* @return int Number of pictures in Workbook
+	*/
+	public function getNumPictures() {
+	} // getNumPictures
+
+	/**
+	* Returns a picture at position index.
+	*
+	* @param int $index
+	* @return array with keys "data"(string) and "type"(int)
+	*/
+	public function getPicture($index) {
+	} // getPicture
+
+	/**
+	* Returns whether the R1C1 reference mode is active.
+	*
+	* @return bool
+	*/
+	public function getRefR1C1() {
+	} // getRefR1C1
+
+	/**
 	* Get an Excel worksheet
 	*
 	* @param int $sheet_number (optional, default=0) 0-based worksheet number
@@ -190,6 +238,46 @@ class ExcelBook {
 	*/
 	public function getSheet($sheet_number = 0) {
 	} // getSheet
+
+	/**
+	* Get an excel sheet by name.
+	*
+	* @param string $name
+	* @param bool $case_insensitive (optional, default=false)
+	* @return ExcelSheet
+	*/
+	public function getSheetByName($name, $case_insensitive = false) {
+	} // getSheetByName
+
+	/**
+	* Inserts a new sheet to this book at position index, returns the sheet handle. Set initSheet
+	* to 0 if you wish to add a new empty sheet or use existing sheet's handle for copying.
+	*
+	* @param int $index
+	* @param string $name
+	* @param ExcelSheet $sheet (optional)
+	* @return ExcelSheet
+	*/
+	public function insertSheet($index, $name, $sheet = null) {
+	} // insertSheet
+
+	/**
+	* Returns whether the 1904 date system is active:
+	* true - 1904 date system,
+	* false - 1900 date system
+	*
+	* @return bool
+	*/
+	public function isDate1904() {
+	} // isDate1904
+
+	/**
+	* Returns whether the workbook is a template.
+	*
+	* @return bool
+	*/
+	public function isTemplate() {
+	} // isTemplate
 
 	/**
 	* Load Excel data string
@@ -263,6 +351,17 @@ class ExcelBook {
 	} // setActiveSheet
 
 	/**
+	* Sets the date system mode:
+	* true - 1904 date system,
+	* false - 1900 date system (default)
+	*
+	* @param bool $date_type
+	* @return bool
+	*/
+	public function setDate1904($date_type) {
+	} // setDate1904
+
+	/**
 	* Set the default font and size
 	*
 	* @see ExcelBook::getDefaultFont()
@@ -276,11 +375,21 @@ class ExcelBook {
 	/**
 	* Set the locale<br>
 	* possible values: '.1252' (Windows-1252 or Cp1252), '.OCP' (OEM CodePage), default: '.ACP' (ANSI CodePage) if empty
+	*
 	* @param string $locale
 	* @return void
 	*/
 	public function setLocale($locale) {
 	} // setLocale
+
+	/**
+	* Sets the R1C1 reference mode.
+	*
+	* @param bool $active
+	* @return void
+	*/
+	public function setRefR1C1($active) {
+	} // setRefR1C1
 
 	/**
 	* Sets RGB mode on or off
@@ -293,12 +402,33 @@ class ExcelBook {
 	} // setRGBMode
 
 	/**
+	* Sets the template flag, if the workbook is template.
+	*
+	* @param bool $mode
+	* @return void
+	*/
+	public function setTemplate($mode) {
+	} // setTemplate
+
+	/**
 	* Get the number of worksheets inside a workbook
 	*
 	* @return int
 	*/
 	public function sheetCount() {
 	} // sheetCount
+
+	/**
+	* Returns type of sheet with specified index:
+	* 0 - sheet
+	* 1 - chart
+	* 2 - unknown
+	*
+	* @param int $sheet
+	* @return int 
+	*/
+	public function sheetType($sheet) {
+	} // sheetType
 
 	/**
 	* Unpack an Excel double into a unix timestamp

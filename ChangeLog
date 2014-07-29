@@ -1,3 +1,38 @@
+[2014-??-??] - Version 1.0.1
+	* Added methods
+		- ExcelBook::sheetType()
+		- ExcelSheet::colHidden()
+		- ExcelSheet::rowHidden()
+		- ExcelSheet::setColHidden()
+		- ExcelSheet::setRowHidden()
+	* Added new methods for LibXL 3.6.0
+		- ExcelSheet::hyperlinkSize()
+		- ExcelSheet::hyperlink()
+		- ExcelSheet::delHyperlink()
+		- ExcelSheet::addHyperlink()
+		- ExcelSheet::mergeSize()
+		- ExcelSheet::merge()
+		- ExcelSheet::delMergeByIndex()
+		- ExcelSheet::splitInfo()
+	* Added data type argument for ExcelSheet::writeCol() (see issue #29)
+	* Updated documentation
+
+[2014-06-03] - Version 1.0
+	* Fixed issue #63 writing for NULL values using writeRow()
+	* Added excel.skip_empty INI setting that allows null values to be skipped, if set to 2 the empty strings will be skipped as well
+	* Added Sheet::setRightToLeft() and Sheet::setRightToLeft() methods that specifies whether the sheet in is "right to left" display mode
+	* Added Book::isTemplate() and Book::setTemplate() methods for detecting xltx files and converting from xlsx to xltx and vice versa
+	* Fixed compilation with LibXL 3.5.4
+	* Added optional scope parameter to setNamedRange()/delNamedRange()/getNamedRange() methods
+	* Updated getNamedRange()/getIndexRange() methods to retrieve hidden state
+	* Added parameter to readRow/readCol/read methods that specifiy whether to parse formula or its value.
+	* Added ExcelBook::packDateValues() method for generating Excel date value
+	* Added ExcelBook::setPrintArea() method for setting print area
+	* Fixed parsing of non-numeric formulas inside read() method
+	* Fixed parameter processing inside ExcelSheet::getVerPageBreak()/getHorPageBreak() methods
+	* Fixed parameter order inside ExcelSheet::getNamedRange()/getIndexRange() methods
+	* Fixed return value processing inside ExcelBook::setActiveSheet() method
+
 [2013-11-18] - Version 0.9.9
 	* Added ExcelBook::IsDate1904/ExcelBook::ISetDate1904 methods to set/retrieve base date format
 	* Allow compilation against LibXL 3.5.3

@@ -26,7 +26,7 @@ New range related functions
 --EXPECT--
 bool(true)
 bool(true)
-array(4) {
+array(5) {
   ["row_first"]=>
   int(1)
   ["row_last"]=>
@@ -35,9 +35,11 @@ array(4) {
   int(10)
   ["col_last"]=>
   int(10)
+  ["hidden"]=>
+  bool(false)
 }
 bool(false)
-array(4) {
+array(6) {
   ["row_first"]=>
   int(20)
   ["row_last"]=>
@@ -46,6 +48,10 @@ array(4) {
   int(30)
   ["col_last"]=>
   int(30)
+  ["hidden"]=>
+  bool(false)
+  ["scope"]=>
+  int(-1)
 }
 bool(false)
 int(2)
