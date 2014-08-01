@@ -43,7 +43,7 @@ Pre-build packages for Windows can be downloaded [here](http://windows.php.net/d
 
 You can save your libxl credentials in the php.ini to prevent unvealing them in your code. 
 
-    [php_excel]
-    excel.license_name="<YOUR_LICENSE_NAME>"
-    excel.license_key="<YOUR_LICENSE_KEY>"
-    excel.skip_empty=0
+    [excel]
+    license_name="<YOUR_LICENSE_NAME>"
+    license_key="<YOUR_LICENSE_KEY>"
+    skip_empty=0
