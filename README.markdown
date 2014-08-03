@@ -13,7 +13,7 @@ Please see the ```docs/``` and the ```tests/``` directory.
 
 ## Resources
 
-* [required libxl library](http://www.libxl.com/)
+* [required libxl library (commercial)](http://www.libxl.com/)
 * [slides of confoo talk about php_excel](http://ilia.ws/files/confoo_phpexcel.pdf)
 
 ## Installation
