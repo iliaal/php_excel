@@ -17,7 +17,7 @@
 	* Added data type argument for ExcelSheet::writeCol() (see issue #29)
 	* Fixed bug in ExcelBook::setDefaultFont() (see issue #66)
 	* Added autofit handling for ExcelBook::setColWidth()
-    * Added implicit formula recognition on write() operations (prefix formula with '=')
+	* Added implicit formula recognition on write() operations (prefix formula with '=')
 	* Updated documentation
 
 [2014-06-03] - Version 1.0
