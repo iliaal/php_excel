@@ -2303,8 +2303,6 @@ EXCEL_METHOD(Sheet, read)
 
 static zend_bool php_excel_write_cell(SheetHandle sheet, BookHandle book, int row, int col, zval *data, FormatHandle format, long dtype TSRMLS_DC)
 {
-	const char *data_str;
-
 	switch (Z_TYPE_P(data)) {
 		case IS_NULL:
 			if (INI_INT("excel.ini_skip_empty") > 0) {
@@ -2332,8 +2330,7 @@ static zend_bool php_excel_write_cell(SheetHandle sheet, BookHandle book, int ro
 			return xlSheetWriteNum(sheet, row, col, Z_DVAL_P(data), format);
 
 		case IS_STRING:
-			data_str = Z_STRVAL_P(data);
-			if (Z_STRLEN_P(data) > 0 && '=' == data_str[0]) {
+			if (Z_STRLEN_P(data) > 0 && '=' == Z_STRVAL_P(data)[0]) {
 				dtype = PHP_EXCEL_FORMULA;
 			}
 			if (dtype == PHP_EXCEL_FORMULA) {
