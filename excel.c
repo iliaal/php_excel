@@ -27,6 +27,11 @@
 #include "php_ini.h"
 #include "ext/standard/info.h"
 #include "ext/date/php_date.h"
+
+#ifdef HAVE_XML
+#include "ext/xml/php_xml.h"
+#endif
+
 #include "php_excel.h"
 #include "zend_exceptions.h"
 
@@ -1201,6 +1206,9 @@ EXCEL_METHOD(Book, __construct)
 	BookHandle book;
 	zval *object = getThis();
 	char *name = NULL, *key;
+#ifdef HAVE_XML
+	char *encoding = "ISO-8859-1";
+#endif
 	int name_len = 0, key_len = 0;
 #if LIBXL_VERSION <= 0x03010000
 	wchar_t *nw, *kw;
@@ -1223,12 +1231,20 @@ EXCEL_METHOD(Book, __construct)
 			name_len = strlen(name);
 			key = INI_STR("excel.license_key");
 			key_len = strlen(key);
+#ifdef HAVE_XML
+			name = xml_utf8_decode((const XML_Char *) name, name_len, &name_len, (const XML_Char *) encoding);
+			key = xml_utf8_decode((const XML_Char *) key, key_len, &key_len, (const XML_Char *) encoding);
+#endif
 		} else {
 #ifndef LIBXL_VERSION
 			return;
 #endif
 		}
 	}
+
+	// if (!name_len || !key_len) {
+		// php_error_docref(NULL TSRMLS_CC, E_NOTICE, "No license credentials given. Using limited trial version of libXL.");
+	// }
 
 	BOOK_FROM_OBJECT(book, object);
 #ifdef LIBXL_VERSION
