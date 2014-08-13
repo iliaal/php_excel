@@ -1231,6 +1231,10 @@ EXCEL_METHOD(Book, __construct)
 			name_len = strlen(name);
 			key = INI_STR("excel.license_key");
 			key_len = strlen(key);
+#ifdef HAVE_XML
+			name = xml_utf8_decode((const XML_Char *) name, name_len, &name_len, (const XML_Char *) encoding);
+			key = xml_utf8_decode((const XML_Char *) key, key_len, &key_len, (const XML_Char *) encoding);
+#endif
 		} else {
 #ifndef LIBXL_VERSION
 			return;
@@ -1252,10 +1256,6 @@ EXCEL_METHOD(Book, __construct)
 			return;
 		}
 	}
-#endif
-#ifdef HAVE_XML
-	name = xml_utf8_decode((const XML_Char *) name, name_len, &name_len, (const XML_Char *) encoding);
-	key = xml_utf8_decode((const XML_Char *) key, key_len, &key_len, (const XML_Char *) encoding);
 #endif
 	if (!name_len || !key_len) {
 		RETURN_FALSE;
