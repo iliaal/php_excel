@@ -107,7 +107,7 @@ your credentials ```new \ExcelBook(null, null, $useXlsxFormat)```.
 if you create an Excel sheet with php_excel and write a formula like ```=SUM(A1:B1)``` in cell ```C1``` you can't
 read the value of the calculation by reading cell ```C1``` in a later step. There has been observations that
 this can also affect the OS pre-view of Excel files. You can circumvent this by opening and saving the file directly
-in Excel (Excel required) or using the COM classes to open and saving the Excel file via PHP.
+in Excel or using the COM classes to open and save the Excel file via PHP. (**In both cases Excel is required!**)
 
 ### credentials not working due to multibyte characters (utf-8)
 
