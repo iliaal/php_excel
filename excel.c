@@ -1206,14 +1206,16 @@ EXCEL_METHOD(Book, __construct)
 	BookHandle book;
 	zval *object = getThis();
 	char *name = NULL, *key;
-#ifdef HAVE_XML
-	char *encoding = "ISO-8859-1";
-#endif
 	int name_len = 0, key_len = 0;
 #if LIBXL_VERSION <= 0x03010000
 	wchar_t *nw, *kw;
 	size_t nw_l, kw_l;
 #endif
+#if HAVE_XML
+	char *namep, *keyp;
+	int plen;
+#endif
+
 #ifdef LIBXL_VERSION
 	zend_bool new_excel = 0;
 
@@ -1231,10 +1233,6 @@ EXCEL_METHOD(Book, __construct)
 			name_len = strlen(name);
 			key = INI_STR("excel.license_key");
 			key_len = strlen(key);
-#ifdef HAVE_XML
-			name = xml_utf8_decode((const XML_Char *) name, name_len, &name_len, (const XML_Char *) encoding);
-			key = xml_utf8_decode((const XML_Char *) key, key_len, &key_len, (const XML_Char *) encoding);
-#endif
 		} else {
 #ifndef LIBXL_VERSION
 			return;
@@ -1273,7 +1271,16 @@ EXCEL_METHOD(Book, __construct)
 	efree(nw);
 	efree(kw);
 #else
+
+#if HAVE_XML
+	namep = xml_utf8_decode((const XML_Char *) name, name_len, &plen, "ISO-8859-1");
+	keyp = xml_utf8_decode((const XML_Char *) key, key_len, &plen, "ISO-8859-1");
+	xlBookSetKey(book, namep, keyp);
+	efree(namep);
+	efree(keyp);
+#else
 	xlBookSetKey(book, name, key);
+#endif
 #endif
 }
 /* }}} */
