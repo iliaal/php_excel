@@ -67,7 +67,7 @@ Pre-build packages for Windows can be downloaded [here](http://windows.php.net/d
 
     // write sum formula under data set
     $col = 1;
-    $xlSheet1->write($row, $col, '=SUM(B1:B3)', null, \ExcelFormat::AS_FORMULA);
+    $xlSheet1->write($row, $col, '=SUM(B1:B3)');
 
     // add second sheet to work book
     $xlSheet2 = $xlBook->addSheet('Sheet2');
@@ -98,3 +98,19 @@ your credentials ```new \ExcelBook(null, null, $useXlsxFormat)```.
     excel.license_name="<YOUR_LICENSE_NAME>"
     excel.license_key="<YOUR_LICENSE_KEY>"
     excel.skip_empty=0
+
+## Known Problems
+
+### Formulas written but no values readable
+
+**Excel stores value and formula** for each cell while **libxl only stores the formula**. This means
+if you create an Excel sheet with php_excel and write a formula like ```=SUM(A1:B1)``` in cell ```C1``` you can't
+read the value of the calculation by reading cell ```C1``` in a later step. There has been observations that
+this can also affect the OS pre-view of Excel files. You can circumvent this by opening and saving the file directly
+in Excel or using the COM classes to open and save the Excel file via PHP. (**In both cases Excel is required!**)
+
+### credentials not working due to multibyte characters (utf-8)
+
+If your credentials does not work properly because of multibyte characters you can compile php_excel with
+```--with-xml --with-libxml --with-iconv``` and your credentials will be automatically utf8_decoded()
+before using with libxl.
