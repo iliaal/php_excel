@@ -31,7 +31,8 @@ date.timezone=America/Toronto
 float(55)
 float(50)
 float(8)
-float(18.43)
+float(20)
 
 Warning: ExcelSheet::setColWidth(): Width cannot be less then -1 in %s on line %d
 OK
+	
