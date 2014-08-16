@@ -2340,7 +2340,13 @@ static zend_bool php_excel_write_cell(SheetHandle sheet, BookHandle book, int ro
 				if ((dt = _php_excel_date_pack(book, Z_LVAL_P(data))) == -1) {
 					return 0;
 				}
-				return xlSheetWriteNum(sheet, row, col, dt, format);
+                if(!format){
+                    FormatHandle fmt = xlBookAddFormat(book, NULL);
+                    xlFormatSetNumFormat(fmt, NUMFORMAT_DATE);
+                    return xlSheetWriteNum(sheet, row, col, dt, fmt);
+                } else {
+                    return xlSheetWriteNum(sheet, row, col, dt, format);
+                }
 			} else {
 				return xlSheetWriteNum(sheet, row, col, (double) Z_LVAL_P(data), format);
 			}
