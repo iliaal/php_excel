@@ -19,6 +19,7 @@
 	* Added autofit handling for ExcelBook::setColWidth()
 	* Added implicit formula recognition on write() operations (prefix formula with '=')
 	* Added multibyte support for license name and license key (see issue #60 and README)
+	* Added default date format when writing dates
 	* Updated documentation
 
 [2014-06-03] - Version 1.0
