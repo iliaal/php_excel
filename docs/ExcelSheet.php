@@ -82,7 +82,7 @@ class ExcelSheet {
 	* @return ExcelSheet The worksheet created
 	*/
 	public function __construct(ExcelBook $book, $name) {
-	} // addHyperlink
+	} // __construct
 
 	/**
 	* Adds the new hyperlink.
