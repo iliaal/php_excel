@@ -26,6 +26,25 @@ var_dump(
     $book->sheetCount()
 );
 
+class MyExcelSheet extends ExcelSheet
+{
+    // nothing
+}
+
+$sheet4 = new MyExcelSheet($book, 'Table3');
+
+// due to the internal call of xlBookGetSheet()
+// you will receive type ExcelSheet instead of type MyExcelSheet
+$sheet5 = $book->getSheetByName('Table3');
+
+var_dump(
+    get_class($sheet1),
+    get_class($sheet2),
+    get_class($sheet3),
+    get_class($sheet4),
+    get_class($sheet5)
+);
+
 ?>
 --EXPECT--
 bool(true)
@@ -33,3 +52,8 @@ string(25) "ExcelSheet::__construct()"
 bool(true)
 string(4) "Test"
 int(2)
+string(10) "ExcelSheet"
+string(10) "ExcelSheet"
+string(10) "ExcelSheet"
+string(12) "MyExcelSheet"
+string(10) "ExcelSheet"
