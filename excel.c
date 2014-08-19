@@ -4756,7 +4756,7 @@ PHP_EXCEL_ARGINFO
 ZEND_BEGIN_ARG_INFO_EX(arginfo_Book_insertSheet, 0, 0, 2)
 	ZEND_ARG_INFO(0, index)
 	ZEND_ARG_INFO(0, name)
-	ZEND_ARG_INFO(0, sheet)
+	ZEND_ARG_OBJ_INFO(0, sheet, ExcelSheet, 0)
 ZEND_END_ARG_INFO()
 #endif
 
