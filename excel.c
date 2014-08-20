@@ -4689,7 +4689,7 @@ PHP_EXCEL_ARGINFO
 ZEND_BEGIN_ARG_INFO_EX(arginfo_Book___construct, 0, 0, 0)
 	ZEND_ARG_INFO(0, license_name)
 	ZEND_ARG_INFO(0, license_key)
-    ZEND_ARG_INFO(0, excel_2007)
+	ZEND_ARG_INFO(0, excel_2007)
 ZEND_END_ARG_INFO()
 
 PHP_EXCEL_ARGINFO
