@@ -31,12 +31,12 @@ class ExcelBook {
 	/**
 	* Create a new Excel workbook
 	*
-	* @param string $license_name
-	* @param string $license_key
+	* @param string $license_name (optional, default=null)
+	* @param string $license_key (optional, default=null)
 	* @param bool $excel_2007 (optional, default=false)
 	* @return ExcelBook
 	*/
-	public function __construct($license_name, $license_key, $excel_2007 = false) {
+	public function __construct($license_name = null, $license_key = null, $excel_2007 = false) {
 	} // __construct
 
 	/**

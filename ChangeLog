@@ -5,7 +5,7 @@
 		- ExcelSheet::rowHidden()
 		- ExcelSheet::setColHidden()
 		- ExcelSheet::setRowHidden()
-	* Added new methods for LibXL 3.6.0
+	* Added new methods (requires LibXL 3.6.0)
 		- ExcelSheet::hyperlinkSize()
 		- ExcelSheet::hyperlink()
 		- ExcelSheet::delHyperlink()
@@ -17,7 +17,7 @@
 	* Added data type argument for ExcelSheet::writeCol() (see issue #29)
 	* Fixed bug in ExcelBook::setDefaultFont() (see issue #66)
 	* Added autofit handling for ExcelBook::setColWidth()
-	* Added implicit formula recognition on write() operations (prefix formula with '=')
+	* Added implicit formula recognition on ExcelSheet::write() operations (prefix formula with '=')
 	* Added multibyte support for license name and license key (see issue #60 and README)
 	* Added default date format when writing dates
 	* Added ExcelSheet::__construct(ExcelBook $book, $name) for customized ExcelSheets
@@ -25,7 +25,7 @@
 
 [2014-06-03] - Version 1.0
 	* Fixed issue #63 writing for NULL values using writeRow()
-	* Added excel.skip_empty INI setting that allows null values to be skipped, if set to 2 the empty strings will be skipped as well
+	* Added excel.ini_skip_empty INI setting that allows null values to be skipped, if set to 2 the empty strings will be skipped as well
 	* Added Sheet::setRightToLeft() and Sheet::setRightToLeft() methods that specifies whether the sheet in is "right to left" display mode
 	* Added Book::isTemplate() and Book::setTemplate() methods for detecting xltx files and converting from xlsx to xltx and vice versa
 	* Fixed compilation with LibXL 3.5.4
@@ -40,13 +40,13 @@
 	* Fixed return value processing inside ExcelBook::setActiveSheet() method
 
 [2013-11-18] - Version 0.9.9
-	* Added ExcelBook::IsDate1904/ExcelBook::ISetDate1904 methods to set/retrieve base date format
+	* Added ExcelBook::isDate1904()/ExcelBook::setDate1904() methods to set/retrieve base date format
 	* Allow compilation against LibXL 3.5.3
 	* Fixed bug with parameter order inside setNamedRange method (jacksonja)
 
 [2012-12-31] - Version 0.9.8
 	* Allow compilation against LibXL 3.4
-	* Updated addPictureScaled() and addPictureDim() to support optional x/y offset parameters
+	* Updated ExcelSheet::addPictureScaled() and ExcelSheet::addPictureDim() to support optional x/y offset parameters
 
 [2012-10-16] - Version 0.9.7
 	* Updated INFO section of the extension to show libXL version
@@ -85,9 +85,9 @@
 [2011-01-14] - Version 0.9.1
 	* Added support for LibXL 3.1.0+
 	* Added work-around for a bug inside xlSheetIsDate() that detects treats custom number formats as dates
-	* Added getSheetByName() method to retrieve sheet by name (original patch by Rob Gagnon)
+	* Added ExcelBook::getSheetByName() method to retrieve sheet by name (original patch by Rob Gagnon)
 	* Added basic documentation
-	* Fixed a bug with readRow()/readCol() when end parameter is specified
+	* Fixed a bug with ExcelSheet::readRow()/ExcelSheet::readCol() when end parameter is specified
 
 [2010-08-27] - Version 0.9.0
 	* Added support for LibXL 3.1.0
@@ -104,23 +104,20 @@
 		- ExcelSheet::clearPrintArea()
 
 [2010-08-27] - Version 0.8.6
-
 	* Added support for LibXL 3.0.0
 	* Added support for generating Excel 2007/2010 (xlsx files)
 		- the ExcelBook() method now has a constructor parameter that can be used to toggle xlsx mode
-	* Added Book methods for xlsx color
+	* Added ExcelBook methods for xlsx color
 		- colorUnpack, colorPack, setRGBMode, rgbMode
 	* Added missing validation checks and fixed on-error memory leak
 
 [2010-08-11] - Version 0.8.5
-
 	* Fixed build on 5.4 (patch from Felipe Pena)
 
 [2010-08-01] - Version 0.8.2
 	* Fixed shared build
 
 [2010-08-01] - Version 0.8.1
-
 	* Fixed build on 5.3 (patch from Felipe Pena)
 	* Allow compilation against LibXL 2.4.3k
 	* Added ExcelSheet::setProtect(), ExcelSheet::protect() to set/get sheet protection
@@ -129,5 +126,4 @@
 	* Added ExcelBook::getAllFormats() method (LibXL 2.4.3k+) to get a list of all document formats
 
 [2010-08-01] - Version 0.8
-
 	* Initial Release
