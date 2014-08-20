@@ -75,6 +75,16 @@ class ExcelSheet {
 	const RIGHT_TO_LEFT = 1;
 
 	/**
+	* Create an ExcelSheet in given Workbook
+	*
+	* @param ExcelBook $book
+	* @param string $name The name for the new worksheet
+	* @return ExcelSheet The worksheet created
+	*/
+	public function __construct(ExcelBook $book, $name) {
+	} // __construct
+
+	/**
 	* Adds the new hyperlink.
 	*
 	* @param string $hyperlink

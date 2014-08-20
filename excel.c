@@ -2026,6 +2026,43 @@ EXCEL_METHOD(Format, hidden)
 }
 /* }}} */
 
+/* {{{ proto ExcelSheet ExcelSheet::__construct(ExcelBook book, string name)
+	Sheet Constructor. */
+EXCEL_METHOD(Sheet, __construct)
+{
+	BookHandle book;
+	SheetHandle sh;
+	zval *object = getThis();
+	excel_sheet_object *obj;
+	zval *zbook;
+	char *name;
+	int name_len;
+
+	PHP_EXCEL_ERROR_HANDLING();
+	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "Os", &zbook, excel_ce_book, &name, &name_len) == FAILURE) {
+		PHP_EXCEL_RESTORE_ERRORS();
+		return;
+	}
+	PHP_EXCEL_RESTORE_ERRORS();
+
+	BOOK_FROM_OBJECT(book, zbook);
+
+	obj = (excel_sheet_object*) zend_object_store_get_object(object TSRMLS_CC);
+
+#ifdef LIBXL_VERSION
+	sh = xlBookAddSheet(book, name, 0);
+#else
+	sh = xlBookAddSheet(book, name);
+#endif
+	if (!sh) {
+		RETURN_FALSE;
+	}
+
+	obj->sheet = sh;
+	obj->book = book;
+}
+/* }}} */
+
 /* {{{ proto int ExcelSheet::cellType(int row, int column)
 	Get cell type */
 EXCEL_METHOD(Sheet, cellType)
@@ -4719,7 +4756,7 @@ PHP_EXCEL_ARGINFO
 ZEND_BEGIN_ARG_INFO_EX(arginfo_Book_insertSheet, 0, 0, 2)
 	ZEND_ARG_INFO(0, index)
 	ZEND_ARG_INFO(0, name)
-	ZEND_ARG_INFO(0, sheet)
+	ZEND_ARG_OBJ_INFO(0, sheet, ExcelSheet, 0)
 ZEND_END_ARG_INFO()
 #endif
 
@@ -4927,6 +4964,12 @@ ZEND_END_ARG_INFO()
 PHP_EXCEL_ARGINFO
 ZEND_BEGIN_ARG_INFO_EX(arginfo_Format_hidden, 0, 0, 0)
 	ZEND_ARG_INFO(0, hidden)
+ZEND_END_ARG_INFO()
+
+PHP_EXCEL_ARGINFO
+ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet___construct, 0, 0, 2)
+	ZEND_ARG_OBJ_INFO(0, book, ExcelBook, 0)
+	ZEND_ARG_INFO(0, name)
 ZEND_END_ARG_INFO()
 
 PHP_EXCEL_ARGINFO
@@ -5641,6 +5684,7 @@ zend_function_entry excel_funcs_book[] = {
 };
 
 zend_function_entry excel_funcs_sheet[] = {
+	EXCEL_ME(Sheet, __construct, arginfo_Sheet___construct, 0)
 	EXCEL_ME(Sheet, cellType, arginfo_Sheet_cellType, 0)
 	EXCEL_ME(Sheet, cellFormat, arginfo_Sheet_cellFormat, 0)
 #ifdef HAVE_LIBXL_243_PLUS
