@@ -1273,8 +1273,8 @@ EXCEL_METHOD(Book, __construct)
 #else
 
 #if HAVE_XML
-	namep = xml_utf8_decode((const XML_Char *) name, name_len, &plen, "ISO-8859-1");
-	keyp = xml_utf8_decode((const XML_Char *) key, key_len, &plen, "ISO-8859-1");
+	namep = xml_utf8_decode((const XML_Char *) name, name_len, &plen, (const XML_Char *)"ISO-8859-1");
+	keyp = xml_utf8_decode((const XML_Char *) key, key_len, &plen, (const XML_Char *)"ISO-8859-1");
 	xlBookSetKey(book, namep, keyp);
 	efree(namep);
 	efree(keyp);
@@ -3827,7 +3827,7 @@ EXCEL_METHOD(Sheet, getIndexRange)
 
 	SHEET_FROM_OBJECT(sheet, object);
 #if LIBXL_VERSION >= 0x03050401
-	if (xlSheetNamedRange(sheet, (int)index, &rf, &rl, &cf, &cl, &scope_id, &hidden)) {
+	if (xlSheetNamedRange(sheet, (int)index, &rf, &rl, &cf, &cl, (int *)&scope_id, &hidden)) {
 #else
 	if (xlSheetNamedRange(sheet, (int)index, &rf, &rl, &cf, &cl)) {
 #endif
