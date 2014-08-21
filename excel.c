@@ -2054,6 +2054,7 @@ EXCEL_METHOD(Sheet, __construct)
 #else
 	sh = xlBookAddSheet(book, name);
 #endif
+
 	if (!sh) {
 		RETURN_FALSE;
 	}
@@ -5859,7 +5860,7 @@ zend_function_entry excel_funcs_format[] = {
 	EXCEL_ME(Format, patternBackgroundColor, arginfo_Format_patternBackgroundColor, 0)
 	EXCEL_ME(Format, locked, arginfo_Format_locked, 0)
 	EXCEL_ME(Format, hidden, arginfo_Format_hidden, 0)
-	EXCEL_ME(Format, __construct, arginfo_Format___construct, ZEND_ACC_PUBLIC|ZEND_ACC_FINAL)
+	EXCEL_ME(Format, __construct, arginfo_Format___construct, 0)
 	{NULL, NULL, NULL}
 };
 

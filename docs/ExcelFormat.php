@@ -174,7 +174,7 @@ class ExcelFormat {
 	* @param ExcelBook $book
 	* @return ExcelFormat
 	*/
-	public function __construct($book) {
+	public function __construct(ExcelBook $book) {
 	} // __construct
 
 	/**
