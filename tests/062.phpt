@@ -49,7 +49,7 @@ array(6) {
   ["col_last"]=>
   int(30)
   ["hidden"]=>
-  bool(true)
+  bool(false)
   ["scope"]=>
   int(-1)
 }
