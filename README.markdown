@@ -13,7 +13,7 @@ Please see the ```docs/``` and the ```tests/``` directory.
 
 ## Resources
 
-* [required libxl library (commercial)](http://www.libxl.com/)
+* [required LibXL library (commercial)](http://www.libxl.com/)
 * [slides of confoo talk about php_excel](http://ilia.ws/files/confoo_phpexcel.pdf)
 
 ## Installation
@@ -43,8 +43,8 @@ Pre-build packages for Windows can be downloaded [here](http://windows.php.net/d
 ## Getting started
 
     <?php
-    
-    // init excel work book
+        
+    // init excel work book as xlsx
     $useXlsxFormat = true;
     $xlBook = new \ExcelBook('<YOUR_LICENSE_NAME>', '<YOUR_LICENSE_KEY>', $useXlsxFormat);
     $xlBook->setLocale('UTF-8');
@@ -72,17 +72,12 @@ Pre-build packages for Windows can be downloaded [here](http://windows.php.net/d
     // add second sheet to work book
     $xlSheet2 = $xlBook->addSheet('Sheet2');
 
-    // add a date with date format to sheet 2
-    $row = 1;
-    $col = 0;
-    // convert date to excel date (=number of days since 01.01.1900)
+    // add a date with specific date format to second sheet
+    $row = 1; $col = 0;
     $date = new \DateTime('2014-08-02');
-    $date = $xlBook->packDate($date->getTimestamp());
-    // create date format otherwise you will see the number of days instead of a date in the cell
-    $format = new \ExcelFormat($xlBook);
-    $format->numberFormat(\ExcelFormat::NUMFORMAT_DATE);
-    // write date to second sheet
-    $xlSheet2->write($row, $col, $date, $format, \ExcelFormat::AS_DATE);
+    $dateFormat = new \ExcelFormat($xlBook);
+    $dateFormat->numberFormat(\ExcelFormat::NUMFORMAT_DATE);
+    $xlSheet2->write($row, $col, $date->getTimestamp(), $dateFormat, \ExcelFormat::AS_DATE);
 
     // save workbook
     $xlBook->save('test.xlsx');
@@ -99,18 +94,18 @@ your credentials ```new \ExcelBook(null, null, $useXlsxFormat)```.
     excel.license_key="<YOUR_LICENSE_KEY>"
     excel.ini_skip_empty=0
 
-## Known Problems
+## Known Issues
 
 ### Formulas written but no values readable
 
-**Excel stores value and formula** for each cell while **libxl only stores the formula**. This means
+**Excel stores value and formula** for each cell while **LibXL stores only the formula**. This means
 if you create an Excel sheet with php_excel and write a formula like ```=SUM(A1:B1)``` in cell ```C1``` you can't
 read the value of the calculation by reading cell ```C1``` in a later step. There has been observations that
 this can also affect the OS pre-view of Excel files. You can circumvent this by opening and saving the file directly
 in Excel or using the COM classes to open and save the Excel file via PHP. (**In both cases Excel is required!**)
 
-### credentials not working due to multibyte characters (utf-8)
+### multibyte characters in credentials
 
 If your credentials does not work properly because of multibyte characters you can compile php_excel with
 ```--with-xml --with-libxml --with-iconv``` and your credentials will be automatically utf8_decoded()
-before using with libxl.
+before using with LibXL.
