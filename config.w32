@@ -5,7 +5,7 @@ if (PHP_EXCEL != "no") {
 		EXTENSION("excel", "excel.c");
 		AC_DEFINE('HAVE_EXCELLIB', 1, 'Have LibXL library');
 		AC_DEFINE('HAVE_LIBXL_243_PLUS', 1, 'Have LibXL version 2.4.3 or later');
-        AC_DEFINE("EXCEL_WITH_LIBXML", 1, "libxml support");
+		AC_DEFINE("EXCEL_WITH_LIBXML", 1, "libxml support");
 	} else {
 		WARNING("excel not enabled; libraries and headers not found");
 		PHP_EXCEL = "no";
