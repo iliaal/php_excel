@@ -28,7 +28,7 @@
 #include "ext/standard/info.h"
 #include "ext/date/php_date.h"
 
-#ifdef HAVE_XML
+#if defined(HAVE_XML) && defined(EXCEL_WITH_LIBXML)
 #include "ext/xml/php_xml.h"
 #endif
 
@@ -1211,7 +1211,7 @@ EXCEL_METHOD(Book, __construct)
 	wchar_t *nw, *kw;
 	size_t nw_l, kw_l;
 #endif
-#if HAVE_XML
+#if defined(HAVE_XML) && defined(EXCEL_WITH_LIBXML)
 	char *namep, *keyp;
 	int plen;
 #endif
@@ -1272,7 +1272,7 @@ EXCEL_METHOD(Book, __construct)
 	efree(kw);
 #else
 
-#if HAVE_XML
+#if defined(HAVE_XML) && defined(EXCEL_WITH_LIBXML)
 	namep = xml_utf8_decode((const XML_Char *) name, name_len, &plen, (const XML_Char *)"ISO-8859-1");
 	keyp = xml_utf8_decode((const XML_Char *) key, key_len, &plen, (const XML_Char *)"ISO-8859-1");
 	xlBookSetKey(book, namep, keyp);
