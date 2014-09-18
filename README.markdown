@@ -107,5 +107,8 @@ in Excel or using the COM classes to open and save the Excel file via PHP. (**In
 ### multibyte characters in credentials
 
 If your credentials does not work properly because of multibyte characters you can compile php_excel with
-```--with-xml --with-libxml --with-iconv``` and your credentials will be automatically utf8_decoded()
+```--with-xml --with-libxml --with-iconv``` and your credentials will be automatically ```utf8_decoded()```
 before using with LibXL.
+
+If you compile php_excel as a shared extension on Linux you need to provide the path to the libxml directory.
+e.g. on Ubuntu you need to compile with ```--with-libxml-dir=/usr/include/libxml2```.
