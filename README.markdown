@@ -92,7 +92,7 @@ your credentials ```new \ExcelBook(null, null, $useXlsxFormat)```.
     [excel]
     excel.license_name="<YOUR_LICENSE_NAME>"
     excel.license_key="<YOUR_LICENSE_KEY>"
-    excel.ini_skip_empty=0
+    excel.skip_empty=0
 
 ## Known Issues
 

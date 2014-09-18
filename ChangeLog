@@ -22,6 +22,7 @@
 	* Added default date format when writing dates
 	* Added ExcelSheet::__construct(ExcelBook $book, $name) for customized ExcelSheets
 	* Updated documentation
+	* Fixed typo -> changed excel.ini_skip_empty to excel.skip_emtpy
 
 [2014-06-03] - Version 1.0
 	* Fixed issue #63 writing for NULL values using writeRow()

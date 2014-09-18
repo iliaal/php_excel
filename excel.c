@@ -2362,7 +2362,7 @@ static zend_bool php_excel_write_cell(SheetHandle sheet, BookHandle book, int ro
 {
 	switch (Z_TYPE_P(data)) {
 		case IS_NULL:
-			if (INI_INT("excel.ini_skip_empty") > 0) {
+			if (INI_INT("excel.skip_empty") > 0) {
 				return 1;
 			}
 			if (!format) {
@@ -2411,7 +2411,7 @@ static zend_bool php_excel_write_cell(SheetHandle sheet, BookHandle book, int ro
 							return xlSheetWriteNum(sheet, row, col, dval, format);
 					}
 				}
-				if (Z_STRLEN_P(data) == 0 && INI_INT("excel.ini_skip_empty") == 2) {
+				if (Z_STRLEN_P(data) == 0 && INI_INT("excel.skip_empty") == 2) {
 					return 1;
 				}
 				return xlSheetWriteStr(sheet, row, col, Z_STRVAL_P(data), format);
