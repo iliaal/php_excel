@@ -852,11 +852,11 @@ class ExcelSheet
 	*
 	* @param int $row 0-based row number
 	* @param int $column_start (optional, default=0)
-	* @param int $column_end (optional, default=null)
+	* @param int $column_end (optional, default=-1)
 	* @param bool $read_formula (optional, default=true)
 	* @return array or false if invalid row/column positions
 	*/
-	public function readRow($row, $column_start = 0, $column_end = null, $read_formula = true)
+	public function readRow($row, $column_start = 0, $column_end = -1, $read_formula = true)
 	{
 	} // readRow
 
