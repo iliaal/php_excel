@@ -112,3 +112,7 @@ before using with LibXL.
 
 If you compile php_excel as a shared extension on Linux you need to provide the path to the libxml directory.
 e.g. on Ubuntu you need to compile with ```--with-libxml-dir=/usr/include/libxml2```.
+
+### Further reading
+
+* [Performant-Handling-Excel-Files-PHP](http://blog.mayflower.de/4922-Performant-Handling-Excel-Files-PHP.html)
