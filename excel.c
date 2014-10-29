@@ -2320,7 +2320,7 @@ EXCEL_METHOD(Sheet, readCol)
 }
 /* }}} */
 
-/* {{{ proto mixed ExcelSheet::read(int row, int column [, ExcelFormat &format [, bool read_formula]])
+/* {{{ proto mixed ExcelSheet::read(int row, int column [, mixed &format [, bool read_formula]])
 	Read data stored inside a cell */
 EXCEL_METHOD(Sheet, read)
 {
