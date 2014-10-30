@@ -2353,6 +2353,11 @@ EXCEL_METHOD(Sheet, read)
 		Z_TYPE_P(oformat) = IS_OBJECT;
 		object_init_ex(oformat, excel_ce_format);
 		fo = (excel_format_object *) zend_object_store_get_object(oformat TSRMLS_CC);
+
+		if (!format) {
+			format = xlSheetCellFormat(sheet, row, col);
+		}
+
 		fo->format = format;
 	}
 }
