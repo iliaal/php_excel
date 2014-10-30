@@ -2147,6 +2147,7 @@ static zend_bool php_excel_read_cell(int row, int col, zval *val, SheetHandle sh
 
 	switch (xlSheetCellType(sheet, row, col)) {
 		case CELLTYPE_EMPTY:
+			format = xlSheetCellFormat(sheet, row, col);
 			ZVAL_EMPTY_STRING(val);
 			return 1;
 
