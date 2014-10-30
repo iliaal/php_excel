@@ -812,10 +812,11 @@ class ExcelSheet
 
 	/**
 	* Read data from a specific cell
+	* An ExcelFormat object will be assigned to $format if passed
 	*
 	* @param int $row 0-based row number
 	* @param int $column 0-based column number
-	* @param mixed &$format (optional, default=null)
+	* @param &$format (optional, default=null)
 	* @param bool $read_formula (optional, default=true)
 	* @return mixed
 	*/
