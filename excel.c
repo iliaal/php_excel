@@ -255,7 +255,7 @@ static void excel_font_object_free_storage(void *object TSRMLS_DC)
 	efree(object);
 }
 
-#define REGISTER_EXCEL_CLASS_CONST_LONG(class_name, const_name, value)                                        \
+#define REGISTER_EXCEL_CLASS_CONST_LONG(class_name, const_name, value) \
 	zend_declare_class_constant_long(excel_ce_ ## class_name, const_name, sizeof(const_name)-1, (long)value TSRMLS_CC);
 
 static zend_object_value excel_object_new_font_ex(zend_class_entry *class_type, excel_font_object **ptr TSRMLS_DC)
@@ -388,7 +388,7 @@ static wchar_t * _php_excel_to_wide(const char *string, size_t len, size_t *out_
 	PHP_METHOD(Excel ## class_name, function_name)
 
 /* {{{ proto bool ExcelBook::load(string data)
-   Load Excel data string. */
+	Load Excel data string. */
 EXCEL_METHOD(Book, load)
 {
 	BookHandle book;
@@ -411,7 +411,7 @@ EXCEL_METHOD(Book, load)
 /* }}} */
 
 /* {{{ proto bool ExcelBook::loadFile(string filename)
-   Load Excel from file. */
+	Load Excel from file. */
 EXCEL_METHOD(Book, loadFile)
 {
 	BookHandle book;
@@ -450,7 +450,7 @@ EXCEL_METHOD(Book, loadFile)
 /* }}} */
 
 /* {{{ proto mixed ExcelBook::save([string filename])
-   Save Excel file. */
+	Save Excel file. */
 EXCEL_METHOD(Book, save)
 {
 	BookHandle book;
@@ -493,7 +493,7 @@ EXCEL_METHOD(Book, save)
 /* }}} */
 
 /* {{{ proto ExcelSheet ExcelBook::getSheet([int sheet])
-   Get an excel sheet. */
+	Get an excel sheet. */
 EXCEL_METHOD(Book, getSheet)
 {
 	BookHandle book;
@@ -527,7 +527,7 @@ EXCEL_METHOD(Book, getSheet)
 /* }}} */
 
 /* {{{ proto ExcelSheet ExcelBook::getSheetByName(string name [, bool case_insensitive])
-   Get an excel sheet by name. */
+	Get an excel sheet by name. */
 EXCEL_METHOD(Book, getSheetByName)
 {
 	BookHandle book;
@@ -576,7 +576,7 @@ EXCEL_METHOD(Book, getSheetByName)
 /* }}} */
 
 /* {{{ proto bool ExcelBook::deleteSheet(int sheet)
-   Delete an excel sheet. */
+	Delete an excel sheet. */
 EXCEL_METHOD(Book, deleteSheet)
 {
 	BookHandle book;
@@ -598,7 +598,7 @@ EXCEL_METHOD(Book, deleteSheet)
 /* }}} */
 
 /* {{{ proto int ExcelBook::activeSheet([int sheet])
-   Get or set an active excel sheet. */
+	Get or set an active excel sheet. */
 EXCEL_METHOD(Book, activeSheet)
 {
 	BookHandle book;
@@ -626,7 +626,7 @@ EXCEL_METHOD(Book, activeSheet)
 /* }}} */
 
 /* {{{ proto ExcelSheet ExcelBook::addSheet(string name)
-   Add an excel sheet. */
+	Add an excel sheet. */
 EXCEL_METHOD(Book, addSheet)
 {
 	BookHandle book;
@@ -663,7 +663,7 @@ EXCEL_METHOD(Book, addSheet)
 /* }}} */
 
 /* {{{ proto ExcelSheet ExcelBook::copySheet(string name, int sheet_number)
-   Copy an excel sheet. */
+	Copy an excel sheet. */
 EXCEL_METHOD(Book, copySheet)
 {
 	BookHandle book;
@@ -711,7 +711,7 @@ EXCEL_METHOD(Book, copySheet)
 /* }}} */
 
 /* {{{ proto int ExcelBook::sheetCount()
-   Get the number of sheets inside a file. */
+	Get the number of sheets inside a file. */
 EXCEL_METHOD(Book, sheetCount)
 {
 	BookHandle book;
@@ -728,7 +728,7 @@ EXCEL_METHOD(Book, sheetCount)
 /* }}} */
 
 /* {{{ proto string ExcelBook::getError()
-   Get Excel error string. */
+	Get Excel error string. */
 EXCEL_METHOD(Book, getError)
 {
 	BookHandle book;
@@ -755,7 +755,7 @@ EXCEL_METHOD(Book, getError)
 /* }}} */
 
 /* {{{ proto ExcelFont ExcelBook::addFont([ExcelFont font])
-   Add or Copy ExcelFont object. */
+	Add or Copy ExcelFont object. */
 EXCEL_METHOD(Book, addFont)
 {
 	BookHandle book;
@@ -790,7 +790,7 @@ EXCEL_METHOD(Book, addFont)
 /* }}} */
 
 /* {{{ proto ExcelFormat ExcelBook::addFormat([ExcelFormat format])
-   Add or Copy ExcelFormat object. */
+	Add or Copy ExcelFormat object. */
 EXCEL_METHOD(Book, addFormat)
 {
 	BookHandle book;
@@ -826,7 +826,7 @@ EXCEL_METHOD(Book, addFormat)
 
 #ifdef HAVE_LIBXL_243_PLUS
 /* {{{ proto array ExcelBook::getAllFormats()
-   Get an array of all ExcelFormat objects used inside a document. */
+	Get an array of all ExcelFormat objects used inside a document. */
 EXCEL_METHOD(Book, getAllFormats)
 {
 	BookHandle book;
@@ -871,7 +871,7 @@ EXCEL_METHOD(Book, getAllFormats)
 #endif
 
 /* {{{ proto int ExcelBook::addCustomFormat(string format)
-   Create a custom cell format */
+	Create a custom cell format */
 EXCEL_METHOD(Book, addCustomFormat)
 {
 	BookHandle book;
@@ -898,7 +898,7 @@ EXCEL_METHOD(Book, addCustomFormat)
 /* }}} */
 
 /* {{{ proto string ExcelBook::getCustomFormat(int id)
-   Get a custom cell format */
+	Get a custom cell format */
 EXCEL_METHOD(Book, getCustomFormat)
 {
 	BookHandle book;
@@ -942,7 +942,7 @@ static double _php_excel_date_pack(BookHandle book, long ts)
 }
 
 /* {{{ proto float ExcelBook::packDate(int timestamp)
-   Pack a unix timestamp into an Excel Double */
+	Pack a unix timestamp into an Excel Double */
 EXCEL_METHOD(Book, packDate)
 {
 	BookHandle book;
@@ -977,7 +977,7 @@ static double _php_excel_date_pack_values(BookHandle book, int year, int month, 
 }
 
 /* {{{ proto float ExcelBook::packDateValues(int year, int month, int day, int hour, int minute, int second)
-   Pack a date by single values into an Excel Double */
+	Pack a date by single values into an Excel Double */
 EXCEL_METHOD(Book, packDateValues)
 {
 	BookHandle book;
@@ -1050,7 +1050,7 @@ static long _php_excel_date_unpack(BookHandle book, double dt)
 }
 
 /* {{{ proto int ExcelBook::unpackDate(double date)
-   Unpack a unix timestamp from an Excel Double */
+	Unpack a unix timestamp from an Excel Double */
 EXCEL_METHOD(Book, unpackDate)
 {
 	BookHandle book;
@@ -1077,7 +1077,7 @@ EXCEL_METHOD(Book, unpackDate)
 
 #if LIBXL_VERSION >= 0x03050300
 /* {{{ proto bool ExcelBook::isDate1904()
-   Returns whether the 1904 date system is active: true - 1904 date system, false - 1900 date system */
+	Returns whether the 1904 date system is active: true - 1904 date system, false - 1900 date system */
 EXCEL_METHOD(Book, isDate1904)
 {
 	BookHandle book;
@@ -1094,7 +1094,7 @@ EXCEL_METHOD(Book, isDate1904)
 /* }}} */
 
 /* {{{ proto bool ExcelBook::setDate1904(bool date_type)
-   Sets the date system mode: true - 1904 date system, false - 1900 date system (default) */
+	Sets the date system mode: true - 1904 date system, false - 1900 date system (default) */
 EXCEL_METHOD(Book, setDate1904)
 {
 	BookHandle book;
@@ -1115,7 +1115,7 @@ EXCEL_METHOD(Book, setDate1904)
 #endif
 
 /* {{{ proto int ExcelBook::getActiveSheet()
-   Get the active sheet inside a file. */
+	Get the active sheet inside a file. */
 EXCEL_METHOD(Book, getActiveSheet)
 {
 	BookHandle book;
@@ -1132,7 +1132,7 @@ EXCEL_METHOD(Book, getActiveSheet)
 /* }}} */
 
 /* {{{ proto array ExcelBook::getDefaultFont()
-   Get the default font. */
+	Get the default font. */
 EXCEL_METHOD(Book, getDefaultFont)
 {
 	BookHandle book;
@@ -1286,7 +1286,7 @@ EXCEL_METHOD(Book, __construct)
 /* }}} */
 
 /* {{{ proto bool ExcelBook::setActiveSheet(int sheet)
-   Set the sheet active. */
+	Set the sheet active. */
 EXCEL_METHOD(Book, setActiveSheet)
 {
 	BookHandle book;
@@ -1351,7 +1351,7 @@ static void php_excel_add_picture(INTERNAL_FUNCTION_PARAMETERS, int mode) /* {{{
 }
 
 /* {{{ proto int ExcelBook::addPictureFromFile(string filename)
-   Add picture from file. */
+	Add picture from file. */
 EXCEL_METHOD(Book, addPictureFromFile)
 {
 	php_excel_add_picture(INTERNAL_FUNCTION_PARAM_PASSTHRU, 0);
@@ -1359,7 +1359,7 @@ EXCEL_METHOD(Book, addPictureFromFile)
 /* }}} */
 
 /* {{{ proto int ExcelBook::addPictureFromString(string data)
-   Add picture from string. */
+	Add picture from string. */
 EXCEL_METHOD(Book, addPictureFromString)
 {
 	php_excel_add_picture(INTERNAL_FUNCTION_PARAM_PASSTHRU, 1);
@@ -1368,7 +1368,7 @@ EXCEL_METHOD(Book, addPictureFromString)
 
 #ifdef LIBXL_VERSION
 /* {{{ proto bool ExcelBook::rgbMode()
-   Returns whether the RGB mode is active. */
+	Returns whether the RGB mode is active. */
 EXCEL_METHOD(Book, rgbMode)
 {
 	BookHandle book;
@@ -1385,7 +1385,7 @@ EXCEL_METHOD(Book, rgbMode)
 /* }}} */
 
 /* {{{ proto void ExcelBook::setRGBMode(bool mode)
-   Sets a RGB mode on or off. */
+	Sets a RGB mode on or off. */
 EXCEL_METHOD(Book, setRGBMode)
 {
 	BookHandle book;
@@ -1403,7 +1403,7 @@ EXCEL_METHOD(Book, setRGBMode)
 /* }}} */
 
 /* {{{ proto int ExcelBook::colorPack(int r, int g, int b)
-   Packs red, green and blue components in color value. Used for xlsx format only. */
+	Packs red, green and blue components in color value. Used for xlsx format only. */
 EXCEL_METHOD(Book, colorPack)
 {
 	BookHandle book;
@@ -1432,7 +1432,7 @@ EXCEL_METHOD(Book, colorPack)
 /* }}} */
 
 /* {{{ proto array ExcelBook::colorUnpack(int color)
-   Unpacks color value to red, green and blue components. Used for xlsx format only. */
+	Unpacks color value to red, green and blue components. Used for xlsx format only. */
 EXCEL_METHOD(Book, colorUnpack)
 {
 	BookHandle book;
@@ -1705,7 +1705,7 @@ EXCEL_METHOD(Font, __construct)
 /* }}} */
 
 /* {{{ proto bool ExcelFormat::setFont(ExcelFont font)
-   Set the font for a format. */
+	Set the font for a format. */
 EXCEL_METHOD(Format, setFont)
 {
 	FormatHandle format;
@@ -1728,7 +1728,7 @@ EXCEL_METHOD(Format, setFont)
 /* }}} */
 
 /* {{{ proto ExcelFont ExcelFormat::getFont()
-   Get the font for this format. */
+	Get the font for this format. */
 EXCEL_METHOD(Format, getFont)
 {
 	FormatHandle format;
@@ -2054,6 +2054,7 @@ EXCEL_METHOD(Sheet, __construct)
 #else
 	sh = xlBookAddSheet(book, name);
 #endif
+
 	if (!sh) {
 		RETURN_FALSE;
 	}
@@ -2320,7 +2321,7 @@ EXCEL_METHOD(Sheet, readCol)
 }
 /* }}} */
 
-/* {{{ proto mixed ExcelSheet::read(int row, int column [, ExcelFormat &format [, bool read_formula]])
+/* {{{ proto mixed ExcelSheet::read(int row, int column [, mixed &format [, bool read_formula]])
 	Read data stored inside a cell */
 EXCEL_METHOD(Sheet, read)
 {
@@ -2362,7 +2363,7 @@ static zend_bool php_excel_write_cell(SheetHandle sheet, BookHandle book, int ro
 {
 	switch (Z_TYPE_P(data)) {
 		case IS_NULL:
-			if (INI_INT("excel.ini_skip_empty") > 0) {
+			if (INI_INT("excel.skip_empty") > 0) {
 				return 1;
 			}
 			if (!format) {
@@ -2411,7 +2412,7 @@ static zend_bool php_excel_write_cell(SheetHandle sheet, BookHandle book, int ro
 							return xlSheetWriteNum(sheet, row, col, dval, format);
 					}
 				}
-				if (Z_STRLEN_P(data) == 0 && INI_INT("excel.ini_skip_empty") == 2) {
+				if (Z_STRLEN_P(data) == 0 && INI_INT("excel.skip_empty") == 2) {
 					return 1;
 				}
 				return xlSheetWriteStr(sheet, row, col, Z_STRVAL_P(data), format);
@@ -4077,7 +4078,7 @@ EXCEL_METHOD(Book, getNumPictures)
 /* }}} */
 
 /* {{{ proto ExcelSheet ExcelBook::insertSheet(int index, string name [, ExcelSheet sh])
-   Inserts a new sheet to this book at position index, returns the sheet handle. Set initSheet to 0 if you wish to add a new empty sheet or use existing sheet's handle for copying. */
+	Inserts a new sheet to this book at position index, returns the sheet handle. Set initSheet to 0 if you wish to add a new empty sheet or use existing sheet's handle for copying. */
 EXCEL_METHOD(Book, insertSheet)
 {
 	BookHandle book;
@@ -4687,9 +4688,10 @@ ZEND_BEGIN_ARG_INFO_EX(arginfo_Book_setLocale, 0, 0, 1)
 ZEND_END_ARG_INFO()
 
 PHP_EXCEL_ARGINFO
-ZEND_BEGIN_ARG_INFO_EX(arginfo_Book___construct, 0, 0, 2)
+ZEND_BEGIN_ARG_INFO_EX(arginfo_Book___construct, 0, 0, 0)
 	ZEND_ARG_INFO(0, license_name)
 	ZEND_ARG_INFO(0, license_key)
+	ZEND_ARG_INFO(0, excel_2007)
 ZEND_END_ARG_INFO()
 
 PHP_EXCEL_ARGINFO
@@ -5829,7 +5831,7 @@ zend_function_entry excel_funcs_font[] = {
 	EXCEL_ME(Font, strike, arginfo_Font_strike, 0)
 	EXCEL_ME(Font, italics, arginfo_Font_italics, 0)
 	EXCEL_ME(Font, __construct, arginfo_Font___construct, ZEND_ACC_PUBLIC|ZEND_ACC_FINAL)
-   {NULL, NULL, NULL}
+	{NULL, NULL, NULL}
 };
 
 zend_function_entry excel_funcs_format[] = {
@@ -5859,7 +5861,7 @@ zend_function_entry excel_funcs_format[] = {
 	EXCEL_ME(Format, patternBackgroundColor, arginfo_Format_patternBackgroundColor, 0)
 	EXCEL_ME(Format, locked, arginfo_Format_locked, 0)
 	EXCEL_ME(Format, hidden, arginfo_Format_hidden, 0)
-	EXCEL_ME(Format, __construct, arginfo_Format___construct, ZEND_ACC_PUBLIC|ZEND_ACC_FINAL)
+	EXCEL_ME(Format, __construct, arginfo_Format___construct, 0)
 	{NULL, NULL, NULL}
 };
 
