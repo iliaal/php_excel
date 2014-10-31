@@ -15,6 +15,7 @@
 		- ExcelSheet::delMergeByIndex()
 		- ExcelSheet::splitInfo()
 	* Added data type argument for ExcelSheet::writeCol() (see issue #29)
+	* Fixed bug in ExcelSheet::read() (see issue #86)
 	* Fixed bug in ExcelBook::setDefaultFont() (see issue #66)
 	* Added autofit handling for ExcelBook::setColWidth()
 	* Added implicit formula recognition on ExcelSheet::write() operations (prefix formula with '=')
