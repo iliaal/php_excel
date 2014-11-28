@@ -2460,7 +2460,7 @@ EXCEL_METHOD(Sheet, write)
 		char exception_message[1024];
 		snprintf(exception_message, 1024, "Failed to write cell in row %d, column %d with error '%s'", row, col, xlBookErrorMessage(book));
 		zend_throw_exception(NULL, exception_message, 0 TSRMLS_CC);
-        RETURN_FALSE;
+		RETURN_FALSE;
 	}
 	
 	RETURN_TRUE;
