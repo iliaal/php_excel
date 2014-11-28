@@ -22,6 +22,7 @@
 	* Added multibyte support for license name and license key (see issue #60 and README)
 	* Added default date format when writing dates
 	* Added ExcelSheet::__construct(ExcelBook $book, $name) for customized ExcelSheets
+	* Added exceptions on read/write errors
 	* Updated documentation
 	* Fixed typo -> changed excel.ini_skip_empty to excel.skip_emtpy
 
