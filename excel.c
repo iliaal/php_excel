@@ -2249,8 +2249,11 @@ EXCEL_METHOD(Sheet, readRow)
 
 		MAKE_STD_ZVAL(value);
 		if (!php_excel_read_cell(row, lc, value, sheet, book, &format, read_formula)) {
+			char exception_message[1024];
 			zval_ptr_dtor(&value);
 			zval_dtor(return_value);
+			snprintf(exception_message, 1024, "Failed to read cell in row %d, column %d with error '%s'", row, lc, xlBookErrorMessage(book));
+			zend_throw_exception(NULL, exception_message, 0 TSRMLS_CC);
 			RETURN_FALSE;
 		} else {
 			add_next_index_zval(return_value, value);
@@ -2309,8 +2312,11 @@ EXCEL_METHOD(Sheet, readCol)
 
 		MAKE_STD_ZVAL(value);
 		if (!php_excel_read_cell(lc, col, value, sheet, book, &format, read_formula)) {
+			char exception_message[1024];
 			zval_ptr_dtor(&value);
 			zval_dtor(return_value);
+			snprintf(exception_message, 1024, "Failed to read cell in row %d, column %d with error '%s'", lc, col, xlBookErrorMessage(book));
+			zend_throw_exception(NULL, exception_message, 0 TSRMLS_CC);
 			RETURN_FALSE;
 		} else {
 			add_next_index_zval(return_value, value);
@@ -2345,6 +2351,9 @@ EXCEL_METHOD(Sheet, read)
 	}
 
 	if (!php_excel_read_cell(row, col, return_value, sheet, book, &format, read_formula)) {
+		char exception_message[1024];
+		snprintf(exception_message, 1024, "Failed to read cell in row %d, column %d with error '%s'", row, col, xlBookErrorMessage(book));
+		zend_throw_exception(NULL, exception_message, 0 TSRMLS_CC);
 		RETURN_FALSE;
 	}
 
@@ -2492,6 +2501,9 @@ EXCEL_METHOD(Sheet, writeRow)
 		zend_hash_move_forward_ex(Z_ARRVAL_P(data), &pos)) {
 
 		if (!php_excel_write_cell(sheet, book, row, i++, *element, oformat ? format : 0, -1 TSRMLS_CC)) {
+			char exception_message[1024];
+			snprintf(exception_message, 1024, "Failed to write cell in row %d, column %d with error '%s'", row, i-1, xlBookErrorMessage(book));
+			zend_throw_exception(NULL, exception_message, 0 TSRMLS_CC);
 			RETURN_FALSE;
 		}
 	}
@@ -2542,6 +2554,9 @@ EXCEL_METHOD(Sheet, writeCol)
 		zend_hash_move_forward_ex(Z_ARRVAL_P(data), &pos)) {
 
 		if (!php_excel_write_cell(sheet, book, i++, col, *element, oformat ? format : 0, dtype TSRMLS_CC)) {
+			char exception_message[1024];
+			snprintf(exception_message, 1024, "Failed to write cell in row %d, column %d with error '%s'", i-1, col, xlBookErrorMessage(book));
+			zend_throw_exception(NULL, exception_message, 0 TSRMLS_CC);
 			RETURN_FALSE;
 		}
 	}
