@@ -819,6 +819,7 @@ class ExcelSheet
 	* @param &$format (optional, default=null)
 	* @param bool $read_formula (optional, default=true)
 	* @return mixed
+	* @throws Exception on error
 	*/
 	public function read($row, $column, &$format = null, $read_formula = true)
 	{
@@ -832,6 +833,7 @@ class ExcelSheet
 	* @param int $row_end (optional, default=null)
 	* @param bool $read_formula (optional, default=true)
 	* @return array or false if invalid row/column positions
+	* @throws Exception on error
 	*/
 	public function readCol($column, $row_start = 0, $row_end = null, $read_formula = true)
 	{
@@ -856,6 +858,7 @@ class ExcelSheet
 	* @param int $column_end (optional, default=-1)
 	* @param bool $read_formula (optional, default=true)
 	* @return array or false if invalid row/column positions
+	* @throws Exception on error
 	*/
 	public function readRow($row, $column_start = 0, $column_end = -1, $read_formula = true)
 	{
@@ -1364,6 +1367,7 @@ class ExcelSheet
 	* @param ExcelFormat $format (optional, default=null)
 	* @param int $data_type (optional, default=-1) One of ExcelFormat::AS_* constants
 	* @return bool
+	* @throws Exception on error
 	*/
 	public function write($row, $column, $data, $format = null, $data_type = -1)
 	{
@@ -1378,6 +1382,7 @@ class ExcelSheet
 	* @param ExcelFormat $format (optional, default=null)
 	* @param int $data_type (optional, default=-1) One of ExcelFormat::AS_* constants
 	* @return bool
+	* @throws Exception on error
 	*/
 	public function writeCol($column, $data, $row_start = 0, $format = null, $data_type = -1)
 	{
@@ -1406,6 +1411,7 @@ class ExcelSheet
 	* @param int $column_start (optional, default=0)
 	* @param ExcelFormat $format (optional, default=null)
 	* @return bool
+	* @throws Exception on error
 	*/
 	public function writeRow($row, $data, $column_start = 0, $format = null)
 	{

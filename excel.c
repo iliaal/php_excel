@@ -2456,7 +2456,14 @@ EXCEL_METHOD(Sheet, write)
 		FORMAT_FROM_OBJECT(format, oformat);
 	}
 
-	RETURN_BOOL(php_excel_write_cell(sheet, book, row, col, data, oformat ? format : 0, dtype TSRMLS_CC));
+	if (!php_excel_write_cell(sheet, book, row, col, data, oformat ? format : 0, dtype TSRMLS_CC)) {
+		char exception_message[1024];
+		snprintf(exception_message, 1024, "Failed to write cell in row %d, column %d with error '%s'", row, col, xlBookErrorMessage(book));
+		zend_throw_exception(NULL, exception_message, 0 TSRMLS_CC);
+        RETURN_FALSE;
+	}
+	
+	RETURN_TRUE;
 }
 /* }}} */
 
