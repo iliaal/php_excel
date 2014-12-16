@@ -4897,11 +4897,13 @@ ZEND_END_ARG_INFO()
 #endif
 
 PHP_EXCEL_ARGINFO
-ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_colNameFromIndex, 0, 0, 0)
+ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_colNameFromIndex, 0, 0, 1)
+	ZEND_ARG_INFO(0, index)
 ZEND_END_ARG_INFO()
 
 PHP_EXCEL_ARGINFO
-ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_indexFromColName, 0, 0, 0)
+ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_indexFromColName, 0, 0, 1)
+	ZEND_ARG_INFO(0, col_name)
 ZEND_END_ARG_INFO()
 
 #if LIBXL_VERSION >= 0x03060000
