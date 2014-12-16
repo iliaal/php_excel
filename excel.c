@@ -4574,9 +4574,9 @@ static int _php_excel_getIndexFromColName(char *name, int name_len, long *index)
 	
 	// iterate over chars
 	for (i=0; i < name_len; i++) {
-        if ((int) name[i] < 65 || (int) name[i] > 90) {
-            return 0;
-        }
+		if ((int) name[i] < 65 || (int) name[i] > 90) {
+			return 0;
+		}
 		*index += (((int) name[i]) - 64) * (long) pow(26, (name_len - 1 - i));
 	}
 	
