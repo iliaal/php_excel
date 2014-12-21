@@ -1,35 +1,35 @@
 --TEST--
-test Sheet::colNameFromIndex() and Sheet::indexFromColName()
+test Sheet::indexToColName() and Sheet::colNameToIndex()
 --SKIPIF--
 <?php if (!extension_loaded("excel")) print "skip"; ?>
 --FILE--
 <?php
 
 var_dump(
-    ExcelSheet::colNameFromIndex(0),
-    ExcelSheet::colNameFromIndex(1),
-    ExcelSheet::colNameFromIndex(25),
-    ExcelSheet::colNameFromIndex(26),
-    ExcelSheet::colNameFromIndex(27),
-    ExcelSheet::colNameFromIndex(700),
-    ExcelSheet::colNameFromIndex(701),
-    ExcelSheet::colNameFromIndex(702),
-    ExcelSheet::colNameFromIndex(16383),
+    ExcelSheet::indexToColName(0),
+    ExcelSheet::indexToColName(1),
+    ExcelSheet::indexToColName(25),
+    ExcelSheet::indexToColName(26),
+    ExcelSheet::indexToColName(27),
+    ExcelSheet::indexToColName(700),
+    ExcelSheet::indexToColName(701),
+    ExcelSheet::indexToColName(702),
+    ExcelSheet::indexToColName(16383),
     
-    ExcelSheet::indexFromColName("A"),
-    ExcelSheet::indexFromColName("B"),
-    ExcelSheet::indexFromColName("Z"),
-    ExcelSheet::indexFromColName("AA"),
-    ExcelSheet::indexFromColName("AB"),
-    ExcelSheet::indexFromColName("ZY"),
-    ExcelSheet::indexFromColName("ZZ"),
-    ExcelSheet::indexFromColName("AAA"),
-    ExcelSheet::indexFromColName("XFD"),
+    ExcelSheet::colNameToIndex("A"),
+    ExcelSheet::colNameToIndex("B"),
+    ExcelSheet::colNameToIndex("Z"),
+    ExcelSheet::colNameToIndex("AA"),
+    ExcelSheet::colNameToIndex("AB"),
+    ExcelSheet::colNameToIndex("ZY"),
+    ExcelSheet::colNameToIndex("ZZ"),
+    ExcelSheet::colNameToIndex("AAA"),
+    ExcelSheet::colNameToIndex("XFD"),
     
-    ExcelSheet::colNameFromIndex(-1),
-    ExcelSheet::colNameFromIndex(16384),
-    ExcelSheet::indexFromColName("XFE"),
-    ExcelSheet::indexFromColName("a")
+    ExcelSheet::indexToColName(-1),
+    ExcelSheet::indexToColName(16384),
+    ExcelSheet::colNameToIndex("XFE"),
+    ExcelSheet::colNameToIndex("a")
 );
 
 ?>

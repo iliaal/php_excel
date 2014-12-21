@@ -4529,7 +4529,7 @@ EXCEL_METHOD(Sheet, setColHidden)
 }
 /* }}} */
 
-static int _php_excel_getColNameFromIndex(long index, char *name)
+static int _php_excel_indexToColName(long index, char *name)
 {
 	long remainder;
 	long i = 2;
@@ -4549,22 +4549,29 @@ static int _php_excel_getColNameFromIndex(long index, char *name)
 	}
 	
 	while (index > 0) {
+        // security check to prevent memory corruption name[-1]
+        if (i < 0) {
+            return 0;
+        }
+        
 		remainder = index % 26;
 		
 		if (remainder == 0) {
-			name[i--] = 'Z';
+			name[i] = 'Z';
+            i--;
 			index = (index / 26) - 1;
 			continue;
 		}
 		
-		name[i--] = (char) (remainder + 64);
+		name[i] = (char) (remainder + 64);
+        i--;
 		index = index / 26;
 	}
 	
 	return 1;
 }
 
-static int _php_excel_getIndexFromColName(char *name, int name_len, long *index)
+static int _php_excel_colNameToIndex(char *name, int name_len, long *index)
 {
 	int i;
 	
@@ -4572,6 +4579,8 @@ static int _php_excel_getIndexFromColName(char *name, int name_len, long *index)
 		return 0;
 	}
 	
+    *index = 0;
+    
 	// iterate over chars
 	for (i=0; i < name_len; i++) {
 		if ((int) name[i] < 65 || (int) name[i] > 90) {
@@ -4591,9 +4600,9 @@ static int _php_excel_getIndexFromColName(char *name, int name_len, long *index)
 	return 1;
 }
 
-/* {{{ proto string ExcelSheet::colNameFromIndex(int column_index)
+/* {{{ proto string ExcelSheet::indexToColName(int column_index)
 	Returns the excel column name by 0-based index. */
-EXCEL_METHOD(Sheet, colNameFromIndex)
+EXCEL_METHOD(Sheet, indexToColName)
 {
 	char name[4];
 	long index;
@@ -4610,7 +4619,7 @@ EXCEL_METHOD(Sheet, colNameFromIndex)
 	memset(name, 0, sizeof(name));
 	
 	// use 1-based column index
-	if (!_php_excel_getColNameFromIndex(index, name)) {
+	if (!_php_excel_indexToColName(index, name)) {
 		RETURN_FALSE;
 	}
 	
@@ -4618,9 +4627,9 @@ EXCEL_METHOD(Sheet, colNameFromIndex)
 }
 /* }}} */
 
-/* {{{ proto int ExcelSheet::indexFromColName(string column_name)
+/* {{{ proto int ExcelSheet::colNameToIndex(string column_name)
 	Returns the excel 0-based index by column name. */
-EXCEL_METHOD(Sheet, indexFromColName)
+EXCEL_METHOD(Sheet, colNameToIndex)
 {
 	char *name;
 	int name_len;
@@ -4634,7 +4643,7 @@ EXCEL_METHOD(Sheet, indexFromColName)
 		RETURN_FALSE;
 	}
 	
-	if (!_php_excel_getIndexFromColName(name, name_len, &index)) {
+	if (!_php_excel_colNameToIndex(name, name_len, &index)) {
 		RETURN_FALSE;
 	}
 	
@@ -4897,12 +4906,12 @@ ZEND_END_ARG_INFO()
 #endif
 
 PHP_EXCEL_ARGINFO
-ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_colNameFromIndex, 0, 0, 1)
+ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_indexToColName, 0, 0, 1)
 	ZEND_ARG_INFO(0, index)
 ZEND_END_ARG_INFO()
 
 PHP_EXCEL_ARGINFO
-ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_indexFromColName, 0, 0, 1)
+ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_colNameToIndex, 0, 0, 1)
 	ZEND_ARG_INFO(0, col_name)
 ZEND_END_ARG_INFO()
 
@@ -5941,8 +5950,8 @@ zend_function_entry excel_funcs_sheet[] = {
 	EXCEL_ME(Sheet, setColHidden, arginfo_Sheet_setColHidden, 0)
 	EXCEL_ME(Sheet, setRowHidden, arginfo_Sheet_setRowHidden, 0)
 #endif
-	EXCEL_ME(Sheet, colNameFromIndex, arginfo_Sheet_colNameFromIndex, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
-	EXCEL_ME(Sheet, indexFromColName, arginfo_Sheet_indexFromColName, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
+	EXCEL_ME(Sheet, indexToColName, arginfo_Sheet_indexToColName, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
+	EXCEL_ME(Sheet, colNameToIndex, arginfo_Sheet_colNameToIndex, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
 	{NULL, NULL, NULL}
 };
 
