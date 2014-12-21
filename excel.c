@@ -4547,24 +4547,24 @@ static int _php_excel_indexToColName(long index, char *name)
 	if (index < 27) {
 		i = 0;
 	}
-	
+
 	while (index > 0) {
-        // security check to prevent memory corruption name[-1]
-        if (i < 0) {
-            return 0;
-        }
-        
+		// security check to prevent memory corruption name[-1]
+		if (i < 0) {
+			return 0;
+		}
+
 		remainder = index % 26;
 		
 		if (remainder == 0) {
 			name[i] = 'Z';
-            i--;
+			i--;
 			index = (index / 26) - 1;
 			continue;
 		}
 		
 		name[i] = (char) (remainder + 64);
-        i--;
+		i--;
 		index = index / 26;
 	}
 	
@@ -4578,9 +4578,9 @@ static int _php_excel_colNameToIndex(char *name, int name_len, long *index)
 	if (name_len > 3) {
 		return 0;
 	}
-	
-    *index = 0;
-    
+
+	*index = 0;
+
 	// iterate over chars
 	for (i=0; i < name_len; i++) {
 		if ((int) name[i] < 65 || (int) name[i] > 90) {
