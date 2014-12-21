@@ -188,9 +188,9 @@ class ExcelSheet
 	* @param int $index 0-based column number
 	* @return string
 	*/
-	public static function colNameFromIndex($index)
+	public static function indexToColName($index)
 	{
-	} // colNameFromIndex
+	} // indexToColName
 
 	/**
 	* Sets the print area.
@@ -618,9 +618,9 @@ class ExcelSheet
 	* @param string $col_name uppercase column name eg. "AF"
 	* @return int
 	*/
-	public static function indexFromColName($col_name)
+	public static function colNameToIndex($col_name)
 	{
-	} // indexFromColName
+	} // colNameToIndex
 
 	/**
 	* Insert columns from column_start to column_end
