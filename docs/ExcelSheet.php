@@ -581,6 +581,15 @@ class ExcelSheet
 	} //isHidden
 
 	/**
+	* Returns whether LibXL runs in trial or licensed mode
+	*
+	* @return bool
+	*/
+	public function isLicensed()
+	{
+	} //isLicensed
+
+	/**
 	* Returns the header margin (in inches)
 	*
 	* @see ExcelSheet::footerMargin()

@@ -4529,6 +4529,34 @@ EXCEL_METHOD(Sheet, setColHidden)
 }
 /* }}} */
 
+/* {{{ proto bool ExcelSheet::isLicensed()
+	Get license status */
+EXCEL_METHOD(Sheet, isLicensed)
+{
+	char *err;
+	zval *object = getThis();
+	SheetHandle sheet;
+	BookHandle book;
+
+	SHEET_AND_BOOK_FROM_OBJECT(sheet, book, object);
+
+	xlSheetCellFormat(sheet, 0, 0);
+	err = (char *)xlBookErrorMessage(book);
+	if (err) {
+		// on Linux
+		if (!strcmp(err, "can't get access to format in row 0 in trial version")) {
+			RETURN_FALSE;
+		}
+		// on Win
+		if (!strcmp(err, "can't access row 0 in trial version")) {
+			RETURN_FALSE;
+		}
+	}
+
+	RETURN_TRUE;
+}
+/* }}} */
+
 /* {{{ proto long ExcelBook::sheetType(int sheet)
 	Returns type of sheet with specified index. */
 EXCEL_METHOD(Book, sheetType)
@@ -5625,6 +5653,10 @@ ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_setRowHidden, 0, 0, 2)
 ZEND_END_ARG_INFO()
 #endif
 
+PHP_EXCEL_ARGINFO
+ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_isLicensed, 0, 0, 0)
+ZEND_END_ARG_INFO()
+
 #define EXCEL_ME(class_name, function_name, arg_info, flags) \
 	PHP_ME( Excel ## class_name, function_name, arg_info, flags)
 
@@ -5818,6 +5850,7 @@ zend_function_entry excel_funcs_sheet[] = {
 	EXCEL_ME(Sheet, setColHidden, arginfo_Sheet_setColHidden, 0)
 	EXCEL_ME(Sheet, setRowHidden, arginfo_Sheet_setRowHidden, 0)
 #endif
+	EXCEL_ME(Sheet, isLicensed, arginfo_Sheet_isLicensed, 0)
 	{NULL, NULL, NULL}
 };
 
