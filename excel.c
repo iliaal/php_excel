@@ -4574,29 +4574,35 @@ static int _php_excel_indexToColName(long index, char *name)
 static int _php_excel_colNameToIndex(char *name, int name_len, long *index)
 {
 	int i;
-	
+	long pow = 1;
+
+	// support only column names with a max of three chars
 	if (name_len > 3) {
 		return 0;
 	}
 
+	// security set
 	*index = 0;
 
 	// iterate over chars
-	for (i=0; i < name_len; i++) {
+	for (i=(name_len-1); i >= 0; i--) {
+		// support only valid chars [A..Z]
 		if ((int) name[i] < 65 || (int) name[i] > 90) {
 			return 0;
 		}
-		*index += (((int) name[i]) - 64) * (long) pow(26, (name_len - 1 - i));
+
+		*index += ((int) name[i] - 64) * pow;
+		pow *= 26;
 	}
-	
+
 	// create 0-based column index
 	*index -= 1;
-	
+
 	// out of bounds
 	if (*index < 0 || *index > 16383) {
 		return 0;
 	}
-	
+
 	return 1;
 }
 
