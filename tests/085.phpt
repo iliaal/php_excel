@@ -6,7 +6,6 @@ test Sheet::indexToColName() and Sheet::colNameToIndex()
 <?php
 
 // check all valid columns [0..16383]
-// and produce no output in
 $out = 'OK';
 for($i=0; $i < 16384; $i++){
     $colName = ExcelSheet::indexToColName($i);
