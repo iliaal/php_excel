@@ -21,20 +21,20 @@ Please see the ```docs/``` and the ```tests/``` directory.
 ### Linux
 
 ``` shell
-// change into php source files directory
+# change into php source files directory
 cd php-5.x.x
 
-// clone repository into php extension dir
+# clone repository into php extension dir
 git clone https://github.com/iliaal/php_excel.git ext/excel
 
-// rebuild configure
+# rebuild configure
 ./buildconf --force
 
-// replace <PATH> with the file path to the extracted libxl files
-// on a 32-bit platform use
+# replace <PATH> with the file path to the extracted libxl files
+# on a 32-bit platform use
 ./configure --with-excel --with-libxl-incdir=<PATH>/libxl-3.6.0.1/include_c --with-libxl-libdir=<PATH>/libxl-3.6.0.1/lib
 
-// on a 64-bit platform use
+# on a 64-bit platform use
 ./configure --with-excel --with-libxl-incdir=<PATH>/libxl-3.6.0.1/include_c --with-libxl-libdir=<PATH>/libxl-3.6.0.1/lib64
 ```
  
