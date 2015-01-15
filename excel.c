@@ -4529,6 +4529,134 @@ EXCEL_METHOD(Sheet, setColHidden)
 }
 /* }}} */
 
+static int _php_excel_indexToColName(long index, char *name)
+{
+	long remainder;
+	long i = 2;
+	
+	index += 1;
+	
+	if (index < 1 || index > 16384) {
+		return 0;
+	}
+	
+	if (index < 703) {
+		i = 1;
+	}
+	
+	if (index < 27) {
+		i = 0;
+	}
+
+	while (index > 0) {
+		// security check to prevent memory corruption name[-1]
+		if (i < 0) {
+			return 0;
+		}
+
+		remainder = index % 26;
+		
+		if (remainder == 0) {
+			name[i] = 'Z';
+			i--;
+			index = (index / 26) - 1;
+			continue;
+		}
+		
+		name[i] = (char) (remainder + 64);
+		i--;
+		index = index / 26;
+	}
+	
+	return 1;
+}
+
+static int _php_excel_colNameToIndex(char *name, int name_len, long *index)
+{
+	int i;
+	long pow = 1;
+
+	// support only column names with a max of three chars
+	if (name_len > 3) {
+		return 0;
+	}
+
+	// security set
+	*index = 0;
+
+	// iterate over chars
+	for (i=(name_len-1); i >= 0; i--) {
+		// support only valid chars [A..Z]
+		if ((int) name[i] < 65 || (int) name[i] > 90) {
+			return 0;
+		}
+
+		*index += ((int) name[i] - 64) * pow;
+		pow *= 26;
+	}
+
+	// create 0-based column index
+	*index -= 1;
+
+	// out of bounds
+	if (*index < 0 || *index > 16383) {
+		return 0;
+	}
+
+	return 1;
+}
+
+/* {{{ proto string ExcelSheet::indexToColName(int column_index)
+	Returns the excel column name by 0-based index. */
+EXCEL_METHOD(Sheet, indexToColName)
+{
+	char name[4];
+	long index;
+	
+	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "l", &index) == FAILURE) {
+		RETURN_FALSE;
+	}
+	
+	if (index < 0 || index > 16383) {
+		RETURN_FALSE;
+	}
+	
+	// set all char elements to \0
+	memset(name, 0, sizeof(name));
+	
+	// use 1-based column index
+	if (!_php_excel_indexToColName(index, name)) {
+		RETURN_FALSE;
+	}
+	
+	RETURN_STRING(name, 1);
+}
+/* }}} */
+
+/* {{{ proto int ExcelSheet::colNameToIndex(string column_name)
+	Returns the excel 0-based index by column name. */
+EXCEL_METHOD(Sheet, colNameToIndex)
+{
+	char *name;
+	int name_len;
+	long index = 0;
+
+	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "s", &name, &name_len) == FAILURE) {
+		RETURN_FALSE;
+	}
+	
+	if (name_len > 3) {
+		RETURN_FALSE;
+	}
+	
+	if (!_php_excel_colNameToIndex(name, name_len, &index)) {
+		RETURN_FALSE;
+	}
+	
+	RETURN_LONG(index);
+}
+/* }}} */
+
 /* {{{ proto bool ExcelSheet::isLicensed()
 	Get license status */
 EXCEL_METHOD(Sheet, isLicensed)
@@ -4810,6 +4938,16 @@ ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_setRightToLeft, 0, 0, 1)
 	ZEND_ARG_INFO(0, mode)
 ZEND_END_ARG_INFO()
 #endif
+
+PHP_EXCEL_ARGINFO
+ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_indexToColName, 0, 0, 1)
+	ZEND_ARG_INFO(0, index)
+ZEND_END_ARG_INFO()
+
+PHP_EXCEL_ARGINFO
+ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_colNameToIndex, 0, 0, 1)
+	ZEND_ARG_INFO(0, col_name)
+ZEND_END_ARG_INFO()
 
 #if LIBXL_VERSION >= 0x03060000
 PHP_EXCEL_ARGINFO
@@ -5850,6 +5988,8 @@ zend_function_entry excel_funcs_sheet[] = {
 	EXCEL_ME(Sheet, setColHidden, arginfo_Sheet_setColHidden, 0)
 	EXCEL_ME(Sheet, setRowHidden, arginfo_Sheet_setRowHidden, 0)
 #endif
+	EXCEL_ME(Sheet, indexToColName, arginfo_Sheet_indexToColName, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
+	EXCEL_ME(Sheet, colNameToIndex, arginfo_Sheet_colNameToIndex, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
 	EXCEL_ME(Sheet, isLicensed, arginfo_Sheet_isLicensed, 0)
 	{NULL, NULL, NULL}
 };

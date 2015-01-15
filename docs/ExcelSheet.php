@@ -183,6 +183,16 @@ class ExcelSheet
 	} // clear
 
 	/**
+	* Calculates Excel column name from 0-based column index.
+	*
+	* @param int $index 0-based column number
+	* @return string
+	*/
+	public static function indexToColName($index)
+	{
+	} // indexToColName
+
+	/**
 	* Sets the print area.
 	*
 	* @param int $row_start 0-based row number
@@ -610,6 +620,16 @@ class ExcelSheet
 	public function horPageBreak($row, $break)
 	{
 	} // horPageBreak
+
+	/**
+	* Calculates Excel 0-based index from column name.
+	*
+	* @param string $col_name uppercase column name eg. "AF"
+	* @return int
+	*/
+	public static function colNameToIndex($col_name)
+	{
+	} // colNameToIndex
 
 	/**
 	* Insert columns from column_start to column_end

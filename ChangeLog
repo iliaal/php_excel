@@ -5,6 +5,8 @@
 		- ExcelSheet::rowHidden()
 		- ExcelSheet::setColHidden()
 		- ExcelSheet::setRowHidden()
+		- ExcelSheet::indexToColName()
+		- ExcelSheet::colNameToIndex()
 		- ExcelSheet::isLicensed()
 	* Added new methods (requires LibXL 3.6.0)
 		- ExcelSheet::hyperlinkSize()
