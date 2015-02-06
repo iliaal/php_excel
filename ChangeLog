@@ -23,6 +23,7 @@
 	* Added multibyte support for license name and license key (see issue #60 and README)
 	* Added default date format when writing dates
 	* Added ExcelSheet::__construct(ExcelBook $book, $name) for customized ExcelSheets
+	* Added warnings on read/write errors
 	* Removed final keyword for ExcelFormat::__construct(ExcelBook $book)
 	* Removed invalid PAPER_* constants in ExcelSheet
 	* Removed invalid COLOR_* constants in ExcelFormat
