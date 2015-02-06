@@ -64,3 +64,4 @@ tests/*/*/*.diff
 tests/*/*/*.php
 tests/*/*/*.exp
 tmp-php.ini
+libxl/*
