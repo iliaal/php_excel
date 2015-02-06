@@ -92,7 +92,7 @@ PHP_INI_END()
 		ce.create_object = excel_object_new_ ## c_name; \
 		excel_ce_ ## c_name = zend_register_internal_class_ex(&ce, NULL, NULL TSRMLS_CC); \
 		memcpy(&excel_object_handlers_ ## c_name, zend_get_std_object_handlers(), sizeof(zend_object_handlers)); \
-		excel_object_handlers_ ## c_name.clone_obj = clone;  \
+		excel_object_handlers_ ## c_name.clone_obj = clone; \
 	}
 
 zend_class_entry *excel_ce_book, *excel_ce_sheet, *excel_ce_format, *excel_ce_font;
@@ -1466,7 +1466,7 @@ EXCEL_METHOD(Book, colorUnpack)
 #endif
 
 /* {{{ proto int ExcelFont::size([int size])
-	Get or set the font size  */
+	Get or set the font size */
 EXCEL_METHOD(Font, size)
 {
 	zval *object = getThis();
@@ -1488,7 +1488,7 @@ EXCEL_METHOD(Font, size)
 /* }}} */
 
 /* {{{ proto bool ExcelFont::italics([bool italics])
-	Get or set the if italics are enabled  */
+	Get or set the if italics are enabled */
 EXCEL_METHOD(Font, italics)
 {
 	zval *object = getThis();
@@ -1510,7 +1510,7 @@ EXCEL_METHOD(Font, italics)
 /* }}} */
 
 /* {{{ proto bool ExcelFont::strike([bool strike])
-	Get or set the font strike-through  */
+	Get or set the font strike-through */
 EXCEL_METHOD(Font, strike)
 {
 	zval *object = getThis();
@@ -1532,7 +1532,7 @@ EXCEL_METHOD(Font, strike)
 /* }}} */
 
 /* {{{ proto bool ExcelFont::bold([bool bold])
-	Get or set the font bold  */
+	Get or set the font bold */
 EXCEL_METHOD(Font, bold)
 {
 	zval *object = getThis();
@@ -1554,7 +1554,7 @@ EXCEL_METHOD(Font, bold)
 /* }}} */
 
 /* {{{ proto int ExcelFont::color([int color])
-	Get or set the font color  */
+	Get or set the font color */
 EXCEL_METHOD(Font, color)
 {
 	zval *object = getThis();
@@ -1576,7 +1576,7 @@ EXCEL_METHOD(Font, color)
 /* }}} */
 
 /* {{{ proto int ExcelFont::mode([int mode])
-	Get or set the font mode  */
+	Get or set the font mode */
 EXCEL_METHOD(Font, mode)
 {
 	zval *object = getThis();
@@ -1598,7 +1598,7 @@ EXCEL_METHOD(Font, mode)
 /* }}} */
 
 /* {{{ proto int ExcelFont::underline([int underline_style])
-	Get or set the font underline style  */
+	Get or set the font underline style */
 EXCEL_METHOD(Font, underline)
 {
 	zval *object = getThis();
@@ -1620,7 +1620,7 @@ EXCEL_METHOD(Font, underline)
 /* }}} */
 
 /* {{{ proto string ExcelFont::name([string name])
-	Get or set the font name  */
+	Get or set the font name */
 EXCEL_METHOD(Font, name)
 {
 	zval *object = getThis();
@@ -1764,42 +1764,42 @@ EXCEL_METHOD(Format, getFont)
 }
 /* }}} */
 
-#define PHP_EXCEL_LONG_FORMAT_OPTION(func_name, write_only)	\
-	{	\
-		FormatHandle format;	\
-		zval *object = getThis();	\
-		long data;	\
-		if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "|l", &data) == FAILURE) {	\
-			RETURN_FALSE;	\
-		}	\
-		FORMAT_FROM_OBJECT(format, object);	\
-		if (ZEND_NUM_ARGS()) {	\
-			xlFormatSet ## func_name (format, data);	\
-		}	\
-		if (!write_only) {	\
-			RETURN_LONG(xlFormat ## func_name (format));	\
-		} else {	\
-			RETURN_TRUE;	\
-		}	\
+#define PHP_EXCEL_LONG_FORMAT_OPTION(func_name, write_only) \
+	{ \
+		FormatHandle format; \
+		zval *object = getThis(); \
+		long data; \
+		if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "|l", &data) == FAILURE) { \
+			RETURN_FALSE; \
+		} \
+		FORMAT_FROM_OBJECT(format, object); \
+		if (ZEND_NUM_ARGS()) { \
+			xlFormatSet ## func_name (format, data); \
+		} \
+		if (!write_only) { \
+			RETURN_LONG(xlFormat ## func_name (format)); \
+		} else { \
+			RETURN_TRUE; \
+		} \
 	}
 
-#define PHP_EXCEL_BOOL_FORMAT_OPTION(func_name)	\
-	{	\
-		FormatHandle format;	\
-		zval *object = getThis();	\
-		zend_bool data;	\
-		if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "|b", &data) == FAILURE) {	\
-			RETURN_FALSE;	\
-		}	\
-		FORMAT_FROM_OBJECT(format, object);	\
-		if (ZEND_NUM_ARGS()) {	\
-			xlFormatSet ## func_name (format, data);	\
-		}	\
-		RETURN_BOOL(xlFormat ## func_name (format));	\
+#define PHP_EXCEL_BOOL_FORMAT_OPTION(func_name) \
+	{ \
+		FormatHandle format; \
+		zval *object = getThis(); \
+		zend_bool data; \
+		if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "|b", &data) == FAILURE) { \
+			RETURN_FALSE; \
+		} \
+		FORMAT_FROM_OBJECT(format, object); \
+		if (ZEND_NUM_ARGS()) { \
+			xlFormatSet ## func_name (format, data); \
+		} \
+		RETURN_BOOL(xlFormat ## func_name (format)); \
 	}
 
 /* {{{ proto int ExcelFormat::numberFormat([int format])
-	Get or set the cell number format  */
+	Get or set the cell number format */
 EXCEL_METHOD(Format, numberFormat)
 {
 	PHP_EXCEL_LONG_FORMAT_OPTION(NumFormat, 0);
@@ -1807,7 +1807,7 @@ EXCEL_METHOD(Format, numberFormat)
 /* }}} */
 
 /* {{{ proto int ExcelFormat::horizontalAlign([int align_mode])
-	Get or set the cell horizontal alignment  */
+	Get or set the cell horizontal alignment */
 EXCEL_METHOD(Format, horizontalAlign)
 {
 	PHP_EXCEL_LONG_FORMAT_OPTION(AlignH, 0);
@@ -1815,7 +1815,7 @@ EXCEL_METHOD(Format, horizontalAlign)
 /* }}} */
 
 /* {{{ proto int ExcelFormat::verticalAlign([int align_mode])
-	Get or set the cell vertical alignment  */
+	Get or set the cell vertical alignment */
 EXCEL_METHOD(Format, verticalAlign)
 {
 	PHP_EXCEL_LONG_FORMAT_OPTION(AlignV, 0);
@@ -1823,7 +1823,7 @@ EXCEL_METHOD(Format, verticalAlign)
 /* }}} */
 
 /* {{{ proto bool ExcelFormat::wrap([bool wrap])
-	Get or set the cell wrapping  */
+	Get or set the cell wrapping */
 EXCEL_METHOD(Format, wrap)
 {
 	PHP_EXCEL_BOOL_FORMAT_OPTION(Wrap);
@@ -1831,7 +1831,7 @@ EXCEL_METHOD(Format, wrap)
 /* }}} */
 
 /* {{{ proto int ExcelFormat::rotate([int angle])
-	Get or set the cell data rotation  */
+	Get or set the cell data rotation */
 EXCEL_METHOD(Format, rotate)
 {
 	FormatHandle format;
@@ -1857,7 +1857,7 @@ EXCEL_METHOD(Format, rotate)
 /* }}} */
 
 /* {{{ proto int ExcelFormat::indent([int indent])
-	Get or set the cell text indentation level  */
+	Get or set the cell text indentation level */
 EXCEL_METHOD(Format, indent)
 {
 	FormatHandle format;
@@ -2560,16 +2560,16 @@ EXCEL_METHOD(Sheet, writeCol)
 }
 /* }}} */
 
-#define PHP_EXCEL_SHEET_GET_BOOL_STATE(func_name)	\
-	{	\
-		SheetHandle sheet;	\
-		zval *object = getThis();	\
-		long r, c;	\
-		if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "ll", &r, &c) == FAILURE) {	\
-			RETURN_FALSE;	\
-		}	\
-		SHEET_FROM_OBJECT(sheet, object);	\
-		RETURN_BOOL(xlSheet ## func_name (sheet, r, c));	\
+#define PHP_EXCEL_SHEET_GET_BOOL_STATE(func_name) \
+	{ \
+		SheetHandle sheet; \
+		zval *object = getThis(); \
+		long r, c; \
+		if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "ll", &r, &c) == FAILURE) { \
+			RETURN_FALSE; \
+		} \
+		SHEET_FROM_OBJECT(sheet, object); \
+		RETURN_BOOL(xlSheet ## func_name (sheet, r, c)); \
 	}
 
 /* {{{ proto bool ExcelSheet::isFormula(int row, int column)
@@ -2642,16 +2642,16 @@ EXCEL_METHOD(Sheet, removeCol)
 }
 /* }}} */
 
-#define PHP_EXCEL_SHEET_GET_DOUBLE_STATE(func_name)	\
-	{	\
-		SheetHandle sheet;	\
-		zval *object = getThis();	\
-		long val;	\
-		if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "l", &val) == FAILURE) {	\
-			RETURN_FALSE;	\
-		}	\
-		SHEET_FROM_OBJECT(sheet, object);	\
-		RETURN_DOUBLE(xlSheet ## func_name (sheet, val));	\
+#define PHP_EXCEL_SHEET_GET_DOUBLE_STATE(func_name) \
+	{ \
+		SheetHandle sheet; \
+		zval *object = getThis(); \
+		long val; \
+		if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "l", &val) == FAILURE) { \
+			RETURN_FALSE; \
+		} \
+		SHEET_FROM_OBJECT(sheet, object); \
+		RETURN_DOUBLE(xlSheet ## func_name (sheet, val)); \
 	}
 
 /* {{{ proto double ExcelSheet::colWidth(int column)
@@ -2929,17 +2929,17 @@ EXCEL_METHOD(Sheet, addPictureDim)
 /* }}} */
 #endif
 
-#define PHP_EXCEL_SHEET_SET_BREAK(func_name)	\
-	{	\
-		SheetHandle sheet;	\
-		zval *object = getThis();	\
-		long val;	\
+#define PHP_EXCEL_SHEET_SET_BREAK(func_name) \
+	{ \
+		SheetHandle sheet; \
+		zval *object = getThis(); \
+		long val; \
 		zend_bool brk; \
-		if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "lb", &val, &brk) == FAILURE) {	\
-			RETURN_FALSE;	\
-		}	\
-		SHEET_FROM_OBJECT(sheet, object);	\
-		RETURN_BOOL(xlSheet ## func_name (sheet, val, brk));	\
+		if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "lb", &val, &brk) == FAILURE) { \
+			RETURN_FALSE; \
+		} \
+		SHEET_FROM_OBJECT(sheet, object); \
+		RETURN_BOOL(xlSheet ## func_name (sheet, val, brk)); \
 	}
 
 /* {{{ proto bool ExcelSheet::horPageBreak(int row, bool break)
@@ -2976,17 +2976,17 @@ EXCEL_METHOD(Sheet, splitSheet)
 }
 /* }}} */
 
-#define PHP_EXCEL_SHEET_GROUP(func_name)	\
-	{	\
-		SheetHandle sheet;	\
-		zval *object = getThis();	\
-		long s, e;	\
+#define PHP_EXCEL_SHEET_GROUP(func_name) \
+	{ \
+		SheetHandle sheet; \
+		zval *object = getThis(); \
+		long s, e; \
 		zend_bool brk = 0; \
-		if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "ll|b", &s, &e, &brk) == FAILURE) {	\
-			RETURN_FALSE;	\
-		}	\
-		SHEET_FROM_OBJECT(sheet, object);	\
-		RETURN_BOOL(xlSheet ## func_name (sheet, s, e, brk));	\
+		if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "ll|b", &s, &e, &brk) == FAILURE) { \
+			RETURN_FALSE; \
+		} \
+		SHEET_FROM_OBJECT(sheet, object); \
+		RETURN_BOOL(xlSheet ## func_name (sheet, s, e, brk)); \
 	}
 
 /* {{{ proto bool ExcelSheet::groupRows(int start_row, int end_row [, bool collapse])
@@ -3046,51 +3046,51 @@ EXCEL_METHOD(Sheet, copy)
 #define PE_RETURN_IS_DOUBLE RETURN_DOUBLE
 #define PE_RETURN_IS_STRING(data) if (data) { RETURN_STRING((char *)data, 1) } else { RETURN_NULL(); }
 
-#define PHP_EXCEL_INFO(func_name, type)	\
-{	\
-	SheetHandle sheet;	\
-	zval *object = getThis();	\
-	if (ZEND_NUM_ARGS()) {	\
-		RETURN_FALSE;	\
-	}	\
-	SHEET_FROM_OBJECT(sheet, object);	\
-	PE_RETURN_ ## type (xlSheet ## func_name (sheet));	\
+#define PHP_EXCEL_INFO(func_name, type) \
+{ \
+	SheetHandle sheet; \
+	zval *object = getThis(); \
+	if (ZEND_NUM_ARGS()) { \
+		RETURN_FALSE; \
+	} \
+	SHEET_FROM_OBJECT(sheet, object); \
+	PE_RETURN_ ## type (xlSheet ## func_name (sheet)); \
 }
 
-#define PHP_EXCEL_SET_BOOL_VAL(func_name)	\
-	{	\
-		SheetHandle sheet;	\
-		zval *object = getThis();	\
-		zend_bool val;	\
-		if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "b", &val) == FAILURE) {	\
-			RETURN_FALSE;	\
-		}	\
-		SHEET_FROM_OBJECT(sheet, object);	\
-		xlSheet ## func_name (sheet, val);	\
+#define PHP_EXCEL_SET_BOOL_VAL(func_name) \
+	{ \
+		SheetHandle sheet; \
+		zval *object = getThis(); \
+		zend_bool val; \
+		if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "b", &val) == FAILURE) { \
+			RETURN_FALSE; \
+		} \
+		SHEET_FROM_OBJECT(sheet, object); \
+		xlSheet ## func_name (sheet, val); \
 	}
 
-#define PHP_EXCEL_SET_LONG_VAL(func_name)	\
-	{	\
-		SheetHandle sheet;	\
-		zval *object = getThis();	\
-		long val;	\
-		if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "l", &val) == FAILURE) {	\
-			RETURN_FALSE;	\
-		}	\
-		SHEET_FROM_OBJECT(sheet, object);	\
-		xlSheet ## func_name (sheet, val);	\
+#define PHP_EXCEL_SET_LONG_VAL(func_name) \
+	{ \
+		SheetHandle sheet; \
+		zval *object = getThis(); \
+		long val; \
+		if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "l", &val) == FAILURE) { \
+			RETURN_FALSE; \
+		} \
+		SHEET_FROM_OBJECT(sheet, object); \
+		xlSheet ## func_name (sheet, val); \
 	}
 
-#define PHP_EXCEL_SET_DOUBLE_VAL(func_name)	\
-	{	\
-		SheetHandle sheet;	\
-		zval *object = getThis();	\
-		double val;	\
-		if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "d", &val) == FAILURE) {	\
-			RETURN_FALSE;	\
-		}	\
-		SHEET_FROM_OBJECT(sheet, object);	\
-		xlSheet ## func_name (sheet, val);	\
+#define PHP_EXCEL_SET_DOUBLE_VAL(func_name) \
+	{ \
+		SheetHandle sheet; \
+		zval *object = getThis(); \
+		double val; \
+		if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "d", &val) == FAILURE) { \
+			RETURN_FALSE; \
+		} \
+		SHEET_FROM_OBJECT(sheet, object); \
+		xlSheet ## func_name (sheet, val); \
 	}
 
 /* {{{ proto int ExcelSheet::firstRow()
@@ -3371,18 +3371,18 @@ EXCEL_METHOD(Sheet, footer)
 }
 /* }}} */
 
-#define PHP_EXCEL_SET_HF(func_name)	\
-	{	\
-		SheetHandle sheet;	\
-		zval *object = getThis();	\
-		char *val;	\
-		int val_len;	\
-		double margin;	\
-		if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "sd", &val, &val_len, &margin) == FAILURE || val_len > 255) {	\
-			RETURN_FALSE;	\
-		}	\
-		SHEET_FROM_OBJECT(sheet, object);	\
-		RETURN_BOOL(xlSheet ## func_name (sheet, val, margin));	\
+#define PHP_EXCEL_SET_HF(func_name) \
+	{ \
+		SheetHandle sheet; \
+		zval *object = getThis(); \
+		char *val; \
+		int val_len; \
+		double margin; \
+		if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "sd", &val, &val_len, &margin) == FAILURE || val_len > 255) { \
+			RETURN_FALSE; \
+		} \
+		SHEET_FROM_OBJECT(sheet, object); \
+		RETURN_BOOL(xlSheet ## func_name (sheet, val, margin)); \
 	}
 
 /* {{{ proto bool ExcelSheet::setHeader(string header, double margin)
@@ -3631,21 +3631,21 @@ EXCEL_METHOD(Sheet, delNamedRange)
 }
 /* }}} */
 
-#define PHP_EXCEL_SHEET_PRINT_AREA(func_name)	\
-	{	\
-		SheetHandle sheet;	\
-		zval *object = getThis();	\
-		long s, e;	\
-		if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "ll", &s, &e) == FAILURE) {	\
-			RETURN_FALSE;	\
-		}	\
-		if (s > e) {	\
-			php_error_docref(NULL TSRMLS_CC, E_WARNING, "The range start is greater than the end.");	\
-			RETURN_FALSE;	\
-		}	\
-		SHEET_FROM_OBJECT(sheet, object);	\
-		xlSheet ## func_name (sheet, s, e);	\
-		RETURN_TRUE;	\
+#define PHP_EXCEL_SHEET_PRINT_AREA(func_name) \
+	{ \
+		SheetHandle sheet; \
+		zval *object = getThis(); \
+		long s, e; \
+		if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "ll", &s, &e) == FAILURE) { \
+			RETURN_FALSE; \
+		} \
+		if (s > e) { \
+			php_error_docref(NULL TSRMLS_CC, E_WARNING, "The range start is greater than the end."); \
+			RETURN_FALSE; \
+		} \
+		SHEET_FROM_OBJECT(sheet, object); \
+		xlSheet ## func_name (sheet, s, e); \
+		RETURN_TRUE; \
 	}
 
 /* {{{ proto bool ExcelSheet::setPrintRepeatRows(int rowFirst, int rowLast)
@@ -3827,7 +3827,7 @@ EXCEL_METHOD(Sheet, getIndexRange)
 #if LIBXL_VERSION >= 0x03050401
 	int hidden;
 	long scope_id = SCOPE_WORKBOOK;
-	
+
 	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "l|l", &index, &scope_id) == FAILURE) {
 		RETURN_FALSE;
 	}
@@ -4309,7 +4309,7 @@ EXCEL_METHOD(Sheet, hyperlink)
 	SHEET_FROM_OBJECT(sheet, object);
 
 	s = xlSheetHyperlink(sheet, index, &rowFirst, &rowLast, &colFirst, &colLast);
-	
+
 	if (!s) {
 		RETURN_FALSE;
 	}
@@ -4359,7 +4359,7 @@ EXCEL_METHOD(Sheet, addHyperlink)
 	}
 
 	SHEET_FROM_OBJECT(sheet, object);
-	
+
 	xlSheetAddHyperlink(sheet, val, row_first, row_last, col_first, col_last);
 	RETURN_TRUE;
 }
