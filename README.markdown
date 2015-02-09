@@ -32,15 +32,20 @@ git clone https://github.com/iliaal/php_excel.git ext/excel
 
 # replace <PATH> with the file path to the extracted libxl files
 # on a 32-bit platform use
-./configure --with-excel --with-libxl-incdir=<PATH>/libxl-3.6.0.1/include_c --with-libxl-libdir=<PATH>/libxl-3.6.0.1/lib
+./configure --with-excel=shared --with-libxl-incdir=<PATH>/libxl-3.6.0.1/include_c --with-libxl-libdir=<PATH>/libxl-3.6.0.1/lib
 
 # on a 64-bit platform use
-./configure --with-excel --with-libxl-incdir=<PATH>/libxl-3.6.0.1/include_c --with-libxl-libdir=<PATH>/libxl-3.6.0.1/lib64
+./configure --with-excel=shared --with-libxl-incdir=<PATH>/libxl-3.6.0.1/include_c --with-libxl-libdir=<PATH>/libxl-3.6.0.1/lib64
 ```
- 
+
 ### Windows
 
 Pre-build packages for Windows can be downloaded [here](http://windows.php.net/downloads/pecl/snaps/excel).
+
+### PHP7
+
+* requires LibXL 3.6.0+
+* use the php7 branch of the github repo
 
 ## Getting started
 
