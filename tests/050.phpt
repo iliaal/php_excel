@@ -4,11 +4,11 @@ Column Write
 date.timezone=America/Toronto
 --SKIPIF--
 <?php
-if (!extension_loaded("excel")) die("skip - Excel extension not found");
-if (getenv("TRAVIS") === "true") die("skip - TravisCI w/o credentials");
+    if (!extension_loaded("excel")) die("skip - Excel extension not found");
+    if (boolval(getenv('TRAVIS_CI'))) die("skip - TravisCI w/o credentials");
 ?>
 --FILE--
-<?php 
+<?php
 	$x = new ExcelBook();
 
 	$s = $x->addSheet("Sheet 1");

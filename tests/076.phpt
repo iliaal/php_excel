@@ -4,10 +4,10 @@ Test the ExcelSheet::mergeSize(), ExcelSheet::merge(), ExcelSheet::delMergeByInd
 <?php
     if (!extension_loaded("excel")) die("skip - Excel extension not found");
     if (!in_array('mergeSize', get_class_methods('ExcelSheet'))) die("skip - ExcelSheet::mergeSize() missing");
-    if (getenv("TRAVIS") === "true") die("skip - TravisCI w/o credentials");
+    if (boolval(getenv('TRAVIS_CI'))) die("skip - TravisCI w/o credentials");
 ?>
 --FILE--
-<?php 
+<?php
 
 // this test fails without credentials
 
