@@ -10,9 +10,9 @@ env:
     - REPORT_EXIT_STATUS=1
     - NO_INTERACTION=1
 
-branches:
-  only:
-    - master
+# branches:
+  # only:
+    # - master
 
 before_script:
   - wget http://libxl.com/download/libxl-lin-3.6.1.tar.gz
