@@ -10,6 +10,8 @@ date.timezone=America/Toronto
 --FILE--
 <?php 
     var_dump(getenv('TRAVIS_CI'));
+    var_dump(getenv('TRAVIS'));
+    var_dump(getenv('TRAVIS_PHP_VERSION'));
 
     $data = array("foo");
     
