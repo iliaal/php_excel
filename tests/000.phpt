@@ -5,7 +5,7 @@ date.timezone=America/Toronto
 --SKIPIF--
 <?php
 if (!extension_loaded("excel")) die("skip - Excel extension not found");
-if ((bool) getenv("TRAVIS") === "true") die("skip - TravisCI w/o credentials");
+if (getenv("TRAVIS") === "true") die("skip - TravisCI w/o credentials");
 ?>
 --FILE--
 <?php 

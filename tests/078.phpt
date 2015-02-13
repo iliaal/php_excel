@@ -4,7 +4,7 @@ Sheet::colHidden(), Sheet::rowHidden(), Sheet::setColHidden() and Sheet::setRowH
 <?php
     if (!extension_loaded("excel")) die("skip - Excel extension not found");
     if (!in_array('rowHidden', get_class_methods('ExcelSheet'))) die("skip - ExcelSheet::rowHidden() missing");
-    if ((bool) getenv("TRAVIS") === "true") die("skip - TravisCI w/o credentials");
+    if (getenv("TRAVIS") === "true") die("skip - TravisCI w/o credentials");
 ?>
 --FILE--
 <?php
