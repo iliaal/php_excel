@@ -3,7 +3,7 @@ Cell Format Detection
 --INI--
 date.timezone=America/Toronto
 --SKIPIF--
-<?php if (!extension_loaded("excel")) print "skip"; ?>
+<?php if (!extension_loaded("excel")) die("skip - Excel extension not found"); ?>
 --FILE--
 <?php 
 	$x = new ExcelBook();
@@ -12,7 +12,7 @@ date.timezone=America/Toronto
 
 	$data = array(true, 1.222, 434324, "fsdfasDF", NULL, "");
 	foreach ($data as $k => $v) {
-		$s->write($k, 1, $v);
+		$s->write($k+1, 1, $v);
 		var_dump($x->getError());
 	}
 
@@ -26,7 +26,7 @@ date.timezone=America/Toronto
 	}
 
 	for ($i = 0, $c = count($data); $i < $c; $i++) {
-		var_dump($type[$s->cellType($i, 1)]);
+		var_dump($type[$s->cellType($i+1, 1)]);
 	}
 
 	$format = $x->addFormat();

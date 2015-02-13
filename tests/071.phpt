@@ -1,7 +1,10 @@
 --TEST--
 Book::packDateValues()
 --SKIPIF--
-<?php if (!extension_loaded("excel") || !in_array('packDateValues', get_class_methods('ExcelBook'))) print "skip"; ?>
+<?php
+    if (!extension_loaded("excel")) die("skip - Excel extension not found");
+    if (!in_array('packDateValues', get_class_methods('ExcelBook'))) die("skip - ExcelBook::packDateValues() missing");
+?>
 --FILE--
 <?php 
 	$x = new ExcelBook();

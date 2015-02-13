@@ -1,11 +1,17 @@
 --TEST--
 Test the ExcelSheet::mergeSize(), ExcelSheet::merge(), ExcelSheet::delMergeByIndex() methods introduced in libxl 3.6.0.
 --SKIPIF--
-<?php if (!extension_loaded("excel")) || !in_array('mergeSize', get_class_methods('ExcelSheet'))) print "skip"; ?>
+<?php
+    if (!extension_loaded("excel")) die("skip - Excel extension not found");
+    if (!in_array('mergeSize', get_class_methods('ExcelSheet'))) die("skip - ExcelSheet::mergeSize() missing");
+    if ((bool) getenv("TRAVIS") === "true") die("skip - TravisCI w/o credentials");
+?>
 --FILE--
 <?php 
-$book = new ExcelBook();
 
+// this test fails without credentials
+
+$book = new ExcelBook();
 $sheet = $book->addSheet('Sheet 1');
 
 var_dump(

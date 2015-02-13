@@ -4,8 +4,8 @@ rgbMode()/setRGBMode() tests
 date.timezone=America/Toronto
 --SKIPIF--
 <?php
-	if (!extension_loaded("excel")) print "skip";
-	if (!method_exists(new ExcelBook(), "rgbMode")) print "skip";
+	if (!extension_loaded("excel")) die("skip - Excel extension not found");
+	if (!method_exists(new ExcelBook(), "rgbMode")) die("skip - ExcelBook::rgbMode() missing");
 ?>
 --FILE--
 <?php 

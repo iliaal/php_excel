@@ -3,11 +3,10 @@ Numeric Data format tests
 --INI--
 date.timezone=America/Toronto
 --SKIPIF--
-<?php if (!extension_loaded("excel")) print "skip"; ?>
+<?php if (!extension_loaded("excel")) die("skip - Excel extension not found"); ?>
 --FILE--
 <?php 
 	$x = new ExcelBook();
-
 	$s = $x->addSheet("Sheet 1");
 
 	$row = 1;
@@ -43,10 +42,26 @@ date.timezone=America/Toronto
 
 	$numbers = array(100, -100, 100.99, -100.99, 0.99, -0.99, 242342343, -242342343);
 
+    // bypass LibXL trial limitations
+    $storage = array();
+    $storage[0]['book'] = $x;
+    $storage[0]['sheet'] = $s;
+    
 	foreach ($oClass->getConstants() as $c => $val) {
 		if (!in_array($c, $constants)) {
 			continue;
 		}
+        
+        // bypass LibXL trial limitations
+        $storageIndex = floor($row / 5);
+        if (0 == $row % 5) {
+            $x = new ExcelBook();
+            $s = $x->addSheet("Sheet 1");
+            $storage[$storageIndex]['book'] = $x;
+            $storage[$storageIndex]['sheet'] = $s;
+        }
+        $x = $storage[$storageIndex]['book'];
+        $s = $storage[$storageIndex]['sheet'];
 	
 		var_dump($s->write($row, 0, $c));
 		var_dump($x->getError());
@@ -61,6 +76,12 @@ date.timezone=America/Toronto
 	}
 
 	for($i = 1; $i < $row; $i++) {
+    
+        // bypass LibXL trial limitations
+        $storageIndex = floor($i / 5);
+        $x = $storage[$storageIndex]['book'];
+        $s = $storage[$storageIndex]['sheet'];
+    
 		echo $s->read($i, 0) . " >> ";
 		foreach ($numbers as $k => $v) {
 			$format = '';

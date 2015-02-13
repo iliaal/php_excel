@@ -4,8 +4,8 @@ getAllFormats() tests
 date.timezone=America/Toronto
 --SKIPIF--
 <?php
-	if (!extension_loaded("excel")) print "skip";
-	if (!method_exists(new ExcelBook(), "getAllFormats")) print "skip";
+	if (!extension_loaded("excel")) die("skip - Excel extension not found");
+	if (!method_exists(new ExcelBook(), "getAllFormats")) die("skip - ExcelBook::getAllFormats() missing");
 ?>
 --FILE--
 <?php 

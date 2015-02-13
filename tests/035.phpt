@@ -3,7 +3,7 @@ Column/Row insertion/removal
 --INI--
 date.timezone=America/Toronto
 --SKIPIF--
-<?php if (!extension_loaded("excel")) print "skip"; ?>
+<?php if (!extension_loaded("excel")) die("skip - Excel extension not found"); ?>
 --FILE--
 <?php 
 	$x = new ExcelBook();
@@ -12,7 +12,7 @@ date.timezone=America/Toronto
 
 	for ($i = 0; $i < 10; $i++) {
 		for ($j = 0; $j < 10; $j++) {
-			$s->write($j, $i, "{$j} {$i}");
+			$s->write($j+1, $i, "{$j} {$i}");
 		}
 	}
 

@@ -1,7 +1,7 @@
 --TEST--
 Sheet::write***() implicit formula parsing with =
 --SKIPIF--
-<?php if (!extension_loaded("excel")) print "skip"; ?>
+<?php if (!extension_loaded("excel")) die("skip - Excel extension not found"); ?>
 --FILE--
 <?php
 $book = new ExcelBook();

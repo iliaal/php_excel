@@ -3,7 +3,7 @@ Text indentation
 --INI--
 date.timezone=America/Toronto
 --SKIPIF--
-<?php if (!extension_loaded("excel")) print "skip"; ?>
+<?php if (!extension_loaded("excel")) die("skip - Excel extension not found"); ?>
 --FILE--
 <?php 
 	$x = new ExcelBook();
@@ -16,13 +16,13 @@ date.timezone=America/Toronto
 		$format = $x->addFormat();
 		$format->indent($i);
 
-		var_dump($s->write($i, 0, $data, $format));
+		var_dump($s->write($i+1, 0, $data, $format));
 		var_dump($x->getError());
 	}
 
 	for($i = 0; $i < 17; $i++) {
 		$format = '';
-		$s->read($i, 0, $format);
+		$s->read($i+1, 0, $format);
 		echo (int)$format->indent() . "\n";
 	}
 

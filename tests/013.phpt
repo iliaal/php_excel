@@ -3,7 +3,7 @@ Border Colors
 --INI--
 date.timezone=America/Toronto
 --SKIPIF--
-<?php if (!extension_loaded("excel")) print "skip"; ?>
+<?php if (!extension_loaded("excel")) die("skip - Excel extension not found"); ?>
 --FILE--
 <?php 
 	$x = new ExcelBook();
@@ -13,13 +13,18 @@ date.timezone=America/Toronto
 	$data = "Test";
 	$oClass = new ReflectionClass('ExcelFormat');
 
-	$row = $col = 0;
+	$row = 1;
+    $col = 0;
 
 	foreach (array('', 'Left','Right','Top','Bottom') as $b) {
 		foreach ($oClass->getConstants() as $c => $val) {
 			if (strpos($c, 'COLOR_') !== 0) {
 				continue;
 			}
+            
+            // bypass LibXL trial limitations
+            $x = new ExcelBook();
+            $s = $x->addSheet("Sheet 1");
 
 			$f = 'border' . $b . 'Color';
 

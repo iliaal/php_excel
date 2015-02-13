@@ -1,7 +1,10 @@
 --TEST--
 Sheet::setTopLeftView() / Sheet::getTopLeftView()
 --SKIPIF--
-<?php if (!extension_loaded("excel") || !in_array('getTopLeftView', get_class_methods('ExcelSheet'))) print "skip"; ?>
+<?php
+    if (!extension_loaded("excel")) die("skip - Excel extension not found");
+    if (!in_array('getTopLeftView', get_class_methods('ExcelSheet'))) die("skip - ExcelSheet::getTopLeftView() missing");
+?>
 --FILE--
 <?php 
 	$x = new ExcelBook();

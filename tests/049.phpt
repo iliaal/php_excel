@@ -3,7 +3,7 @@ Row Write
 --INI--
 date.timezone=America/Toronto
 --SKIPIF--
-<?php if (!extension_loaded("excel")) print "skip"; ?>
+<?php if (!extension_loaded("excel")) die("skip - Excel extension not found"); ?>
 --FILE--
 <?php 
 	$x = new ExcelBook();
@@ -12,20 +12,20 @@ date.timezone=America/Toronto
 
 	$data = array(true, 1.222, 434324, "fsdfasDF", NULL, "", false, -3321, -77.3321, "a a a a a aa");
 
-	var_dump($s->writeRow(0, $data));
-	var_dump($s->writeRow(1, $data, 5));
+	var_dump($s->writeRow(1, $data));
+	var_dump($s->writeRow(2, $data, 5));
 
 	$format = $x->addFormat();
 	$format->borderStyle(ExcelFormat::BORDERSTYLE_THIN);
 
-	var_dump($s->writeRow(2, $data, 0, $format));
+	var_dump($s->writeRow(3, $data, 0, $format));
 
 	var_dump($s->writeRow(-1, $data));
 	var_dump($s->writeRow(1, $data, -1));
 
-	var_dump($s->readRow(0));
 	var_dump($s->readRow(1));
 	var_dump($s->readRow(2));
+	var_dump($s->readRow(3));
 
 
 	

@@ -3,11 +3,10 @@ Font styling tests
 --INI--
 date.timezone=America/Toronto
 --SKIPIF--
-<?php if (!extension_loaded("excel")) print "skip"; ?>
+<?php if (!extension_loaded("excel")) die("skip - Excel extension not found"); ?>
 --FILE--
-<?php 
+<?php
 	$x = new ExcelBook();
-
 	$s = $x->addSheet("Sheet 1");
 
 	for ($i = 0; $i < 40; $i++) {
@@ -17,13 +16,15 @@ date.timezone=America/Toronto
 		$format->setFont($font);
 
 		var_dump($s->write(1, $i, 'test', $format));
-		var_dump($x->getError());				
+		var_dump($x->getError());
 
 		$fmt = '';
 		$s->read(1, $i, $format);
 		echo $format->getFont()->size() . "\n";
 	}
 
+    $x = new ExcelBook();
+	$s = $x->addSheet("Sheet 1");
 	$i = 1;
 	foreach (array('italics', 'bold', 'strike') as $style) {
 		$font = $x->addFont();
@@ -32,7 +33,7 @@ date.timezone=America/Toronto
 		$format->setFont($font);
 
 		var_dump($s->write(2, $i, 'test', $format));
-		var_dump($x->getError());				
+		var_dump($x->getError());
 
 		$fmt = '';
 		$s->read(2, $i, $format);
@@ -41,6 +42,8 @@ date.timezone=America/Toronto
 		++$i;
 	}
 
+    $x = new ExcelBook();
+	$s = $x->addSheet("Sheet 1");
 	$i = 1;
 	$oClass = new ReflectionClass('ExcelFormat');
 	foreach ($oClass->getConstants() as $c => $val) {
@@ -54,7 +57,7 @@ date.timezone=America/Toronto
 		$format->setFont($font);
 
 		var_dump($s->write(2, $i, 'test', $format));
-		var_dump($x->getError());				
+		var_dump($x->getError());
 
 		$fmt = '';
 		$s->read(2, $i, $format);
@@ -63,6 +66,8 @@ date.timezone=America/Toronto
 		++$i;
 	}
 
+    $x = new ExcelBook();
+	$s = $x->addSheet("Sheet 1");
 	$i = 1;
 	$oClass = new ReflectionClass('ExcelFont');
 	foreach ($oClass->getConstants() as $c => $val) {
@@ -76,7 +81,7 @@ date.timezone=America/Toronto
 		$format->setFont($font);
 
 		var_dump($s->write(3, $i, 'test', $format));
-		var_dump($x->getError());				
+		var_dump($x->getError());
 
 		$fmt = '';
 		$s->read(3, $i, $format);
@@ -85,6 +90,8 @@ date.timezone=America/Toronto
 		++$i;
 	}
 
+    $x = new ExcelBook();
+	$s = $x->addSheet("Sheet 1");
 	$i = 1;
 	$oClass = new ReflectionClass('ExcelFont');
 	foreach ($oClass->getConstants() as $c => $val) {
@@ -98,7 +105,7 @@ date.timezone=America/Toronto
 		$format->setFont($font);
 
 		var_dump($s->write(4, $i, 'test', $format));
-		var_dump($x->getError());				
+		var_dump($x->getError());
 
 		$fmt = '';
 		$s->read(4, $i, $format);
@@ -107,6 +114,8 @@ date.timezone=America/Toronto
 		++$i;
 	}
 
+    $x = new ExcelBook();
+	$s = $x->addSheet("Sheet 1");
 	$i = 1;
 	foreach (array('Arial', 'Helvetica', 'Courier', 'Times New Roman', 'Tahoma', 'Courier New') as $style) {
 		$font = $x->addFont();
@@ -115,7 +124,7 @@ date.timezone=America/Toronto
 		$format->setFont($font);
 
 		var_dump($s->write(5, $i, 'test', $format));
-		var_dump($x->getError());				
+		var_dump($x->getError());
 
 		$fmt = '';
 		$s->read(5, $i, $format);

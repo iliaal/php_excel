@@ -4,9 +4,9 @@ setCellFormat() tests
 date.timezone=America/Toronto
 --SKIPIF--
 <?php
-	if (!extension_loaded("excel")) print "skip";
+	if (!extension_loaded("excel")) die("skip - Excel extension not found");
 	$x = new ExcelBook();
-	if (!method_exists($x->addSheet("a"), "setCellFormat")) print "skip";
+	if (!method_exists($x->addSheet("a"), "setCellFormat")) die("skip - ExcelSheet::setCellFormat() missing");
 ?>
 --FILE--
 <?php 

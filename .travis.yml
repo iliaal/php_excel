@@ -1,0 +1,26 @@
+language:
+  - php
+
+php:
+  - 5.5
+  - 5.6
+
+env:
+  global:
+    - REPORT_EXIT_STATUS=1
+    - NO_INTERACTION=1
+
+branches:
+  only:
+    - master
+
+before_script:
+  - wget http://libxl.com/download/libxl-lin-3.6.1.tar.gz
+  - tar -xzf ./libxl-lin-3.6.1.tar.gz
+  - phpize
+  - ./configure --with-excel=shared --with-libxl-incdir=./libxl-3.6.1.1/include_c --with-libxl-libdir=./libxl-3.6.1.1/lib64
+  - make
+  - sudo make install
+
+script:
+  - make test

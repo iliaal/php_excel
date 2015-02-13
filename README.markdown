@@ -7,6 +7,8 @@ libxl is a high-performance mechanism for working with Excel files and is
 able to generate output readable on Blackberries, iPhone, Office Products, 
 Numbers, etc...
 
+[![Build Status](https://travis-ci.org/johmue/php_excel.svg?branch=master)](https://travis-ci.org/johmue/php_excel)
+
 ## Documentation
 
 Please see the ```docs/``` and the ```tests/``` directory.

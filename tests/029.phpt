@@ -3,7 +3,7 @@ Width/Height Checks
 --INI--
 date.timezone=America/Toronto
 --SKIPIF--
-<?php if (!extension_loaded("excel")) print "skip"; ?>
+<?php if (!extension_loaded("excel")) die("skip - Excel extension not found"); ?>
 --FILE--
 <?php 
 	$x = new ExcelBook();
@@ -19,7 +19,7 @@ date.timezone=America/Toronto
     $s->setColWidth(2, 2, -1);
     var_dump($s->colWidth(2));
 	
-    $s->write(0, 3, 'TestTestTestTestTest');
+    $s->write(1, 3, 'TestTestTestTestTest');
     $colWidthBefore = $s->colWidth(3);
     $s->setColWidth(3, 3, -1);
     $colWidthAfter = $s->colWidth(3);

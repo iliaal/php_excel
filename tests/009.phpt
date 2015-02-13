@@ -3,26 +3,48 @@ Text rotation test
 --INI--
 date.timezone=America/Toronto
 --SKIPIF--
-<?php if (!extension_loaded("excel")) print "skip"; ?>
+<?php if (!extension_loaded("excel")) die("skip - Excel extension not found"); ?>
 --FILE--
-<?php 
-	$x = new ExcelBook();
+<?php
+	$x1 = new ExcelBook();
+	$s1 = $x1->addSheet("Sheet 1");
 
-	$s = $x->addSheet("Sheet 1");
+    $x2 = new ExcelBook();
+    $s2 = $x2->addSheet("Sheet 1");
 
 	$data = "Test";
 
 	for ($i = 0; $i < 181; $i++) {
+
+        // bypass LibXL trial limitations
+        if ($i < 91) {
+            $x = $x1;
+            $s = $s1;
+        } else {
+            $x = $x2;
+            $s = $s2;
+        }
+
 		$format = $x->addFormat();
 		$format->rotate($i);
 
-		var_dump($s->write($i, 0, $data, $format));
+		var_dump($s->write($i+1, 0, $data, $format));
 		var_dump($x->getError());
 	}
 
-	for($i = 0; $i < 181; $i++) {
+	for ($i = 0; $i < 181; $i++) {
+
+        // bypass LibXL trial limitations
+        if ($i < 91) {
+            $x = $x1;
+            $s = $s1;
+        } else {
+            $x = $x2;
+            $s = $s2;
+        }
+
 		$format = '';
-		$s->read($i, 0, $format);
+		$s->read($i+1, 0, $format);
 		echo (int)$format->rotate() . "\n";
 	}
 

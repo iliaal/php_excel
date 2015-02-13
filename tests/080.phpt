@@ -1,7 +1,12 @@
 --TEST--
 Sheet::writeCol() data type argument
+--INI--
+date.timezone=America/Toronto
 --SKIPIF--
-<?php if (!extension_loaded("excel")) || !in_array('writeCol', get_class_methods('ExcelSheet'))) print "skip"; ?>
+<?php
+    if (!extension_loaded("excel")) die("skip - Excel extension not found");
+    if (!in_array('writeCol', get_class_methods('ExcelSheet'))) die("skip - ExcelSheet::writeCol() missing");
+?>
 --FILE--
 <?php
 $book = new ExcelBook();

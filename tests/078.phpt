@@ -1,11 +1,15 @@
 --TEST--
 Sheet::colHidden(), Sheet::rowHidden(), Sheet::setColHidden() and Sheet::setRowHidden()
 --SKIPIF--
-<?php if (!extension_loaded("excel")) || !in_array('rowHidden', get_class_methods('ExcelSheet'))) print "skip"; ?>
+<?php
+    if (!extension_loaded("excel")) die("skip - Excel extension not found");
+    if (!in_array('rowHidden', get_class_methods('ExcelSheet'))) die("skip - ExcelSheet::rowHidden() missing");
+    if ((bool) getenv("TRAVIS") === "true") die("skip - TravisCI w/o credentials");
+?>
 --FILE--
-<?php 
-$book = new ExcelBook();
+<?php
 
+$book = new ExcelBook();
 $sheet = $book->addSheet('Sheet 1');
 
 var_dump(

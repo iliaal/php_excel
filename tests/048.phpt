@@ -3,11 +3,13 @@ Column Read
 --INI--
 date.timezone=America/Toronto
 --SKIPIF--
-<?php if (!extension_loaded("excel")) print "skip"; ?>
+<?php
+    if (!extension_loaded("excel")) die("skip - Excel extension not found");
+    if ((bool) getenv("TRAVIS") === "true") die("skip - TravisCI w/o credentials");
+?>
 --FILE--
-<?php 
+<?php
 	$x = new ExcelBook();
-
 	$s = $x->addSheet("Sheet 1");
 
 	$data = array(true, 1.222, 434324, "fsdfasDF", NULL, "", false, -3321, -77.3321, "a a a a a aa");
@@ -19,7 +21,7 @@ date.timezone=America/Toronto
 	}
 
 	var_dump($s->readCol(2), $x->getError());
-	var_dump($s->readCol(2, 4), $x->getError());	
+	var_dump($s->readCol(2, 4), $x->getError());
 	var_dump($s->readCol(2, 5, 5), $x->getError());
 
 	var_dump($s->readCol(-2));
@@ -28,7 +30,7 @@ date.timezone=America/Toronto
 	var_dump($s->readCol(2, 55));
 	var_dump($s->readCol(2, 2, 1));
 	var_dump($s->readCol(2, 2, 39));
-	
+
 	echo "OK\n";
 ?>
 --EXPECTF--
