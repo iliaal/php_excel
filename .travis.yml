@@ -15,6 +15,10 @@ branches:
   only:
     - master
 
+before_install:
+  - sudo apt-get update
+  - sudo apt-get install -y -qq gawk
+
 before_script:
   - wget http://libxl.com/download/libxl-lin-3.6.1.tar.gz
   - tar -xzf ./libxl-lin-3.6.1.tar.gz
@@ -25,3 +29,6 @@ before_script:
 
 script:
   - make test
+
+after_failure:
+  - for FILE in `find ./tests -name '*.diff'`; do echo echo $FILE; cat $FILE; echo; done

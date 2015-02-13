@@ -9,6 +9,8 @@ date.timezone=America/Toronto
 ?>
 --FILE--
 <?php 
+    var_dump(getenv('TRAVIS_CI'));
+
     $data = array("foo");
     
     $x = new ExcelBook('bar', 'baz');
