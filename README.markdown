@@ -20,67 +20,71 @@ Please see the ```docs/``` and the ```tests/``` directory.
 
 ### Linux
 
-    // change into php source files directory
-    cd php-5.x.x
-    
-    // clone repository into php extension dir
-    git clone https://github.com/iliaal/php_excel.git ext/excel
-    
-    // rebuild configure
-    ./buildconf --force
-    
-    // replace <PATH> with the file path to the extracted libxl files
-    // on a 32-bit platform use
-    ./configure --with-excel --with-libxl-incdir=<PATH>/libxl-3.6.0.1/include_c --with-libxl-libdir=<PATH>/libxl-3.6.0.1/lib
-    
-    // on a 64-bit platform use
-    ./configure --with-excel --with-libxl-incdir=<PATH>/libxl-3.6.0.1/include_c --with-libxl-libdir=<PATH>/libxl-3.6.0.1/lib64
+``` shell
+# change into php source files directory
+cd php-5.x.x
 
+# clone repository into php extension dir
+git clone https://github.com/iliaal/php_excel.git ext/excel
+
+# rebuild configure
+./buildconf --force
+
+# replace <PATH> with the file path to the extracted libxl files
+# on a 32-bit platform use
+./configure --with-excel --with-libxl-incdir=<PATH>/libxl-3.6.0.1/include_c --with-libxl-libdir=<PATH>/libxl-3.6.0.1/lib
+
+# on a 64-bit platform use
+./configure --with-excel --with-libxl-incdir=<PATH>/libxl-3.6.0.1/include_c --with-libxl-libdir=<PATH>/libxl-3.6.0.1/lib64
+```
+ 
 ### Windows
 
 Pre-build packages for Windows can be downloaded [here](http://windows.php.net/downloads/pecl/snaps/excel).
 
 ## Getting started
 
-    <?php
-        
-    // init excel work book as xlsx
-    $useXlsxFormat = true;
-    $xlBook = new \ExcelBook('<YOUR_LICENSE_NAME>', '<YOUR_LICENSE_KEY>', $useXlsxFormat);
-    $xlBook->setLocale('UTF-8');
+``` php
+<?php
+    
+// init excel work book as xlsx
+$useXlsxFormat = true;
+$xlBook = new \ExcelBook('<YOUR_LICENSE_NAME>', '<YOUR_LICENSE_KEY>', $useXlsxFormat);
+$xlBook->setLocale('UTF-8');
 
-    // add sheet to work book
-    $xlSheet1 = $xlBook->addSheet('Sheet1');
+// add sheet to work book
+$xlSheet1 = $xlBook->addSheet('Sheet1');
 
-    // create a small sample data set
-    $dataset = [
-        [1, 1500, 'John', 'Doe'],
-        [2,  750, 'Jane', 'Doe']
-    ];
+// create a small sample data set
+$dataset = [
+    [1, 1500, 'John', 'Doe'],
+    [2,  750, 'Jane', 'Doe']
+];
 
-    // write data set to sheet
-    $row = 1;
-    foreach($dataset as $item){
-        $xlSheet1->writeRow($row, $item);
-        $row++;
-    }
+// write data set to sheet
+$row = 1;
+foreach($dataset as $item){
+    $xlSheet1->writeRow($row, $item);
+    $row++;
+}
 
-    // write sum formula under data set
-    $col = 1;
-    $xlSheet1->write($row, $col, '=SUM(B1:B3)');
+// write sum formula under data set
+$col = 1;
+$xlSheet1->write($row, $col, '=SUM(B1:B3)');
 
-    // add second sheet to work book
-    $xlSheet2 = $xlBook->addSheet('Sheet2');
+// add second sheet to work book
+$xlSheet2 = $xlBook->addSheet('Sheet2');
 
-    // add a date with specific date format to second sheet
-    $row = 1; $col = 0;
-    $date = new \DateTime('2014-08-02');
-    $dateFormat = new \ExcelFormat($xlBook);
-    $dateFormat->numberFormat(\ExcelFormat::NUMFORMAT_DATE);
-    $xlSheet2->write($row, $col, $date->getTimestamp(), $dateFormat, \ExcelFormat::AS_DATE);
+// add a date with specific date format to second sheet
+$row = 1; $col = 0;
+$date = new \DateTime('2014-08-02');
+$dateFormat = new \ExcelFormat($xlBook);
+$dateFormat->numberFormat(\ExcelFormat::NUMFORMAT_DATE);
+$xlSheet2->write($row, $col, $date->getTimestamp(), $dateFormat, \ExcelFormat::AS_DATE);
 
-    // save workbook
-    $xlBook->save('test.xlsx');
+// save workbook
+$xlBook->save('test.xlsx');
+```
 
 ## optional php.ini settings
 
@@ -88,11 +92,13 @@ To prevent unvealing your credentials in your code you can save them in your php
 They will be automatically fetched by the extension and you can pass ```null``` instead of
 your credentials ```new \ExcelBook(null, null, $useXlsxFormat)```.
 
-    ; optional settings for excel extension
-    [excel]
-    excel.license_name="<YOUR_LICENSE_NAME>"
-    excel.license_key="<YOUR_LICENSE_KEY>"
-    excel.skip_empty=0
+``` ini
+; optional settings for excel extension
+[excel]
+excel.license_name="<YOUR_LICENSE_NAME>"
+excel.license_key="<YOUR_LICENSE_KEY>"
+excel.skip_empty=0
+```
 
 ## Known Issues
 
