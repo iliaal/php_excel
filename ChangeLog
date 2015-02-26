@@ -1,3 +1,5 @@
+[2015-??-??] - Version 1.0.2
+
 [2015-02-26] - Version 1.0.1
 	* Added methods
 		- ExcelBook::sheetType()
