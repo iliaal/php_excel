@@ -8,25 +8,7 @@ date.timezone=America/Toronto
     if (boolval(getenv('TRAVIS_CI'))) die("skip - TravisCI w/o credentials");
 ?>
 --FILE--
-<?php
-    echo 'TRAVIS_CI' . PHP_EOL;
-    var_dump(getenv('TRAVIS_CI'));
-    
-    echo 'TRAVIS' . PHP_EOL;
-    var_dump(getenv('TRAVIS'));
-    
-    echo 'TRAVIS_PHP_VERSION' . PHP_EOL;
-    var_dump(getenv('TRAVIS_PHP_VERSION'));
-    
-    echo 'TRAVIS_2' . PHP_EOL;
-    var_dump($_ENV['TRAVIS']);
-    
-    echo 'TRAVIS_CI_2' . PHP_EOL;
-    var_dump($_ENV['TRAVIS_CI']);
-    
-    echo 'TRAVIS_PHP_VERSION_2' . PHP_EOL;
-    var_dump($_ENV['TRAVIS_PHP_VERSION']);
-
+<?php 
     $data = array("foo");
     
     $x = new ExcelBook('bar', 'baz');
