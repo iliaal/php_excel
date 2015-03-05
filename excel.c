@@ -4540,6 +4540,28 @@ EXCEL_METHOD(Sheet, setColHidden)
 }
 /* }}} */
 
+/* {{{ proto long ExcelBook::sheetType(int sheet)
+	Returns type of sheet with specified index. */
+EXCEL_METHOD(Book, sheetType)
+{
+	zval *object = getThis();
+	BookHandle book;
+	long index;
+
+	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "l", &index) == FAILURE) {
+		RETURN_FALSE;
+	}
+
+	if (index < 0) {
+		RETURN_FALSE;
+	}
+
+	BOOK_FROM_OBJECT(book, object);
+	RETURN_LONG(xlBookSheetType(book, index));
+}
+/* }}} */
+#endif
+
 /* {{{ proto bool ExcelSheet::isLicensed()
 	Get license status */
 EXCEL_METHOD(Sheet, isLicensed)
@@ -4567,28 +4589,6 @@ EXCEL_METHOD(Sheet, isLicensed)
 	RETURN_TRUE;
 }
 /* }}} */
-
-/* {{{ proto long ExcelBook::sheetType(int sheet)
-	Returns type of sheet with specified index. */
-EXCEL_METHOD(Book, sheetType)
-{
-	zval *object = getThis();
-	BookHandle book;
-	long index;
-
-	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "l", &index) == FAILURE) {
-		RETURN_FALSE;
-	}
-
-	if (index < 0) {
-		RETURN_FALSE;
-	}
-
-	BOOK_FROM_OBJECT(book, object);
-	RETURN_LONG(xlBookSheetType(book, index));
-}
-/* }}} */
-#endif
 
 #if PHP_MAJOR_VERSION > 5 || (PHP_MAJOR_VERSION == 5 && PHP_MINOR_VERSION >= 3)
 # define PHP_EXCEL_ARGINFO
