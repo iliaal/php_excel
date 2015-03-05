@@ -2726,7 +2726,7 @@ EXCEL_METHOD(Sheet, addPictureDim)
 	long row, col, pic_id, w, h;
 	long x_offset = 0, y_offset = 0;
 
-	if (zend_parse_parameters(ZEND_NUM_ARGS(), "lllll", &row, &col, &pic_id, &w, &h, &x_offset, &y_offset) == FAILURE) {
+	if (zend_parse_parameters(ZEND_NUM_ARGS(), "lllll|ll", &row, &col, &pic_id, &w, &h, &x_offset, &y_offset) == FAILURE) {
 		RETURN_FALSE;
 	}
 
