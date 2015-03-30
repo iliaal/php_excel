@@ -394,7 +394,7 @@ EXCEL_METHOD(Book, loadFile)
 
 	BOOK_FROM_OBJECT(book, object);
 
-	stream = php_stream_open_wrapper(filename_zs->val, "rb", ENFORCE_SAFE_MODE | REPORT_ERRORS, NULL);
+	stream = php_stream_open_wrapper(filename_zs->val, "rb", REPORT_ERRORS, NULL);
 
 	if (!stream) {
 		RETURN_FALSE;
@@ -435,7 +435,7 @@ EXCEL_METHOD(Book, save)
 
 	if (filename_zs && filename_zs->len > 0) {
 		int numbytes;
-		php_stream *stream = php_stream_open_wrapper(filename_zs->val, "wb", ENFORCE_SAFE_MODE | REPORT_ERRORS, NULL);
+		php_stream *stream = php_stream_open_wrapper(filename_zs->val, "wb", REPORT_ERRORS, NULL);
 
 		if (!stream) {
 			RETURN_FALSE;
@@ -1205,7 +1205,7 @@ static void php_excel_add_picture(INTERNAL_FUNCTION_PARAMETERS, int mode) /* {{{
 	if (mode == 1) {
 		ret = xlBookAddPicture2(book, data_zs->val, data_zs->len);
 	} else {
-		stream = php_stream_open_wrapper(data_zs->val, "rb", ENFORCE_SAFE_MODE | REPORT_ERRORS, NULL);
+		stream = php_stream_open_wrapper(data_zs->val, "rb", REPORT_ERRORS, NULL);
 
 		if (!stream) {
 			RETURN_FALSE;
