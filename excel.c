@@ -3828,7 +3828,7 @@ EXCEL_METHOD(Sheet, getIndexRange)
 #if LIBXL_VERSION >= 0x03050401
 	int hidden;
 	long scope_id = SCOPE_WORKBOOK;
-	
+
 	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "l|l", &index, &scope_id) == FAILURE) {
 		RETURN_FALSE;
 	}
@@ -4310,7 +4310,7 @@ EXCEL_METHOD(Sheet, hyperlink)
 	SHEET_FROM_OBJECT(sheet, object);
 
 	s = xlSheetHyperlink(sheet, index, &rowFirst, &rowLast, &colFirst, &colLast);
-	
+
 	if (!s) {
 		RETURN_FALSE;
 	}
@@ -4360,7 +4360,7 @@ EXCEL_METHOD(Sheet, addHyperlink)
 	}
 
 	SHEET_FROM_OBJECT(sheet, object);
-	
+
 	xlSheetAddHyperlink(sheet, val, row_first, row_last, col_first, col_last);
 	RETURN_TRUE;
 }
@@ -4588,6 +4588,110 @@ EXCEL_METHOD(Book, sheetType)
 	RETURN_LONG(xlBookSheetType(book, index));
 }
 /* }}} */
+#endif
+
+#if LIBXL_VERSION >= 0x03060200
+/* {{{ proto void ExcelSheet::setAutoFitArea(int rowFirst, int colFirst, int rowLast, int colLast)
+	Sets the borders for autofit column widths feature.
+	The function xlSheetSetCol() with -1 width value will
+	affect only to the specified limited area. */
+EXCEL_METHOD(Sheet, setAutoFitArea)
+{
+	zval *object = getThis();
+	SheetHandle sheet;
+	long rowFirst=0, colFirst=0, rowLast=-1, colLast=-1;
+
+	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "|llll", &rowFirst, &rowLast, &colFirst, &colLast) == FAILURE) {
+		RETURN_FALSE;
+	}
+
+	if (rowFirst < 0) {
+		RETURN_FALSE;
+	}
+
+	if (colFirst < 0) {
+		RETURN_FALSE;
+	}
+
+	if (rowLast < -1) {
+		RETURN_FALSE;
+	}
+
+	if (colLast < -1) {
+		RETURN_FALSE;
+	}
+
+	SHEET_FROM_OBJECT(sheet, object);
+
+	xlSheetSetAutoFitArea(sheet, rowFirst, colFirst, rowLast, colLast);
+	RETURN_TRUE;
+}
+/* }}} */
+
+/* {{{ proto long ExcelSheet::printRepeatRows(int rowFirst, int rowLast)
+	Gets repeated rows on each page from rowFirst to rowLast.
+	Returns 0 if repeated rows aren't found. */
+EXCEL_METHOD(Sheet, printRepeatRows)
+{
+	zval *object = getThis();
+	SheetHandle sheet;
+	long rowFirst, rowLast;
+
+	SHEET_FROM_OBJECT(sheet, object);
+
+	if (!xlSheetPrintRepeatRows(sheet, &rowFirst, &rowLast)) {
+		RETURN_FALSE;
+	}
+
+	array_init(return_value);
+	add_assoc_long(return_value, "row_start", rowFirst);
+	add_assoc_long(return_value, "row_end", rowLast);
+}
+/* }}} */
+
+/* {{{ proto long ExcelSheet::printRepeatCols()
+	Gets repeated columns on each page from colFirst to colLast.
+	Returns 0 if repeated columns aren't found. */
+EXCEL_METHOD(Sheet, printRepeatCols)
+{
+	zval *object = getThis();
+	SheetHandle sheet;
+	long colFirst, colLast;
+
+	SHEET_FROM_OBJECT(sheet, object);
+
+	if (!xlSheetPrintRepeatCols(sheet, &colFirst, &colLast)) {
+		RETURN_FALSE;
+	}
+
+	array_init(return_value);
+	add_assoc_long(return_value, "col_start", colFirst);
+	add_assoc_long(return_value, "col_end", colLast);
+}
+/* }}} */
+
+/* {{{ proto long ExcelSheet::printArea()
+	Gets the print area. Returns 0 if print area isn't found. */
+EXCEL_METHOD(Sheet, printArea)
+{
+	zval *object = getThis();
+	SheetHandle sheet;
+	long rowFirst, colFirst, rowLast, colLast;
+
+	SHEET_FROM_OBJECT(sheet, object);
+
+	if (!xlSheetPrintArea(sheet, &rowFirst, &colFirst, &rowLast, &colLast)) {
+		RETURN_FALSE;
+	}
+
+	array_init(return_value);
+	add_assoc_long(return_value, "row_start", rowFirst);
+	add_assoc_long(return_value, "col_start", colFirst);
+	add_assoc_long(return_value, "row_end", rowLast);
+	add_assoc_long(return_value, "col_end", colLast);
+}
+/* }}} */
+
 #endif
 
 #if PHP_MAJOR_VERSION > 5 || (PHP_MAJOR_VERSION == 5 && PHP_MINOR_VERSION >= 3)
@@ -5668,6 +5772,28 @@ PHP_EXCEL_ARGINFO
 ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_isLicensed, 0, 0, 0)
 ZEND_END_ARG_INFO()
 
+#if LIBXL_VERSION >= 0x03060200
+PHP_EXCEL_ARGINFO
+ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_setAutoFitArea, 0, 0, 0)
+	ZEND_ARG_INFO(0, rowFirst)
+	ZEND_ARG_INFO(0, colFirst)
+	ZEND_ARG_INFO(0, rowLast)
+	ZEND_ARG_INFO(0, colLast)
+ZEND_END_ARG_INFO()
+
+PHP_EXCEL_ARGINFO
+ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_printRepeatRows, 0, 0, 0)
+ZEND_END_ARG_INFO()
+
+PHP_EXCEL_ARGINFO
+ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_printRepeatCols, 0, 0, 0)
+ZEND_END_ARG_INFO()
+
+PHP_EXCEL_ARGINFO
+ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_printArea, 0, 0, 0)
+ZEND_END_ARG_INFO()
+#endif
+
 #define EXCEL_ME(class_name, function_name, arg_info, flags) \
 	PHP_ME( Excel ## class_name, function_name, arg_info, flags)
 
@@ -5862,6 +5988,12 @@ zend_function_entry excel_funcs_sheet[] = {
 	EXCEL_ME(Sheet, setRowHidden, arginfo_Sheet_setRowHidden, 0)
 #endif
 	EXCEL_ME(Sheet, isLicensed, arginfo_Sheet_isLicensed, 0)
+#if LIBXL_VERSION >= 0x03060200
+	EXCEL_ME(Sheet, setAutoFitArea, arginfo_Sheet_setAutoFitArea, 0)
+	EXCEL_ME(Sheet, printRepeatRows, arginfo_Sheet_printRepeatRows, 0)
+	EXCEL_ME(Sheet, printRepeatCols, arginfo_Sheet_printRepeatCols, 0)
+	EXCEL_ME(Sheet, printArea, arginfo_Sheet_printArea, 0)
+#endif
 	{NULL, NULL, NULL}
 };
 

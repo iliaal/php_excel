@@ -196,6 +196,15 @@ class ExcelSheet
 	} // setPrintArea
 
 	/**
+	* Gets the print area. Returns false if print area isn't found.
+	*
+	* @return bool|array with keys "row_start"(int), "row_end"(int), "col_start"(int) and "col_end"(int)
+	*/
+	public function printArea()
+	{
+	} // printArea
+
+	/**
 	* Clears the print area
 	*
 	* @return bool
@@ -969,6 +978,20 @@ class ExcelSheet
 	} // setColWidth
 
 	/**
+	* Sets the borders for autofit column widths feature. The method Sheet::setCol()
+	* with -1 width value will affect only to the specified limited area.
+	*
+	* @param int $row_start 0-based row number
+	* @param int $row_end 0-based row number
+	* @param int $column_start 0-based column number
+	* @param int $column_end 0-based column number
+	* @return bool
+	*/
+	public function setAutofitArea($row_start=0, $row_end=-1, $column_start=0, $column_end=-1)
+	{
+	} // setAutofitArea
+
+	/**
 	* Sets gridlines for displaying
 	*
 	* @see ExcelSheet::displayGridlines()
@@ -1215,6 +1238,16 @@ class ExcelSheet
 	} // setPrintRepeatCols
 
 	/**
+	* Gets repeated columns on each page from colFirst to colLast. Returns false
+	* if repeated columns aren't found.
+	*
+	* @return bool|array with keys "col_start"(int) and "col_end"(int)
+	*/
+	public function printRepeatCols()
+	{
+	} // printRepeatCols
+
+	/**
 	* Sets repeated rows on each page from row_start to row_end
 	*
 	* @see ExcelSheet::setPrintRepeatCols()
@@ -1226,6 +1259,16 @@ class ExcelSheet
 	public function setPrintRepeatRows($row_start, $row_end)
 	{
 	} // setPrintRepeatRows
+
+	/**
+	* Gets repeated rows on each page from rowFirst to rowLast. Returns false
+	* if repeated rows aren't found.
+	*
+	* @return bool|array with keys "row_start"(int) and "row_end"(int)
+	*/
+	public function printRepeatRows()
+	{
+	} // printRepeatRows
 
 	/**
 	* Protects or unprotects the worksheet
