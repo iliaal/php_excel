@@ -68,7 +68,7 @@ enum libXLPictureType {PICTURETYPE_PNG, PICTURETYPE_JPEG, PICTURETYPE_WMF, PICTU
 #define PHP_EXCEL_FORMULA 2
 #define PHP_EXCEL_NUMERIC_STRING 3
 
-#define PHP_EXCEL_VERSION "1.0.1"
+#define PHP_EXCEL_VERSION "1.0.2dev"
 
 #ifdef COMPILE_DL_EXCEL
 ZEND_GET_MODULE(excel)
@@ -2882,7 +2882,7 @@ EXCEL_METHOD(Sheet, addPictureDim)
 	long row, col, pic_id, w, h;
 	long x_offset = 0, y_offset = 0;
 
-	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "lllll", &row, &col, &pic_id, &w, &h, &x_offset, &y_offset) == FAILURE) {
+	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "lllll|ll", &row, &col, &pic_id, &w, &h, &x_offset, &y_offset) == FAILURE) {
 		RETURN_FALSE;
 	}
 
@@ -4540,6 +4540,28 @@ EXCEL_METHOD(Sheet, setColHidden)
 }
 /* }}} */
 
+/* {{{ proto long ExcelBook::sheetType(int sheet)
+	Returns type of sheet with specified index. */
+EXCEL_METHOD(Book, sheetType)
+{
+	zval *object = getThis();
+	BookHandle book;
+	long index;
+
+	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "l", &index) == FAILURE) {
+		RETURN_FALSE;
+	}
+
+	if (index < 0) {
+		RETURN_FALSE;
+	}
+
+	BOOK_FROM_OBJECT(book, object);
+	RETURN_LONG(xlBookSheetType(book, index));
+}
+/* }}} */
+#endif
+
 /* {{{ proto bool ExcelSheet::isLicensed()
 	Get license status */
 EXCEL_METHOD(Sheet, isLicensed)
@@ -4567,28 +4589,6 @@ EXCEL_METHOD(Sheet, isLicensed)
 	RETURN_TRUE;
 }
 /* }}} */
-
-/* {{{ proto long ExcelBook::sheetType(int sheet)
-	Returns type of sheet with specified index. */
-EXCEL_METHOD(Book, sheetType)
-{
-	zval *object = getThis();
-	BookHandle book;
-	long index;
-
-	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "l", &index) == FAILURE) {
-		RETURN_FALSE;
-	}
-
-	if (index < 0) {
-		RETURN_FALSE;
-	}
-
-	BOOK_FROM_OBJECT(book, object);
-	RETURN_LONG(xlBookSheetType(book, index));
-}
-/* }}} */
-#endif
 
 #if LIBXL_VERSION >= 0x03060200
 /* {{{ proto void ExcelSheet::setAutoFitArea(int rowFirst, int colFirst, int rowLast, int colLast)

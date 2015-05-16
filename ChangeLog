@@ -1,3 +1,12 @@
+[2015-??-??] - Version 1.0.2
+	* Fixed bug in ExcelSheet::addPictureDim() (see issue #120)
+	* Fixed bug in ExcelSheet::isLicensed() (see issue #122)
+	* Added new methods (requires LibXL 3.6.2)
+		- ExcelBook::setAutoFitArea()
+		- ExcelBook::printArea()
+		- ExcelBook::printRepeatCols()
+		- ExcelBook::printRepeatRows()
+
 [2015-02-26] - Version 1.0.1
 	* Added methods
 		- ExcelBook::sheetType()
