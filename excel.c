@@ -4628,7 +4628,7 @@ EXCEL_METHOD(Sheet, setAutoFitArea)
 }
 /* }}} */
 
-/* {{{ proto long ExcelSheet::printRepeatRows(int rowFirst, int rowLast)
+/* {{{ proto long ExcelSheet::printRepeatRows()
 	Gets repeated rows on each page from rowFirst to rowLast.
 	Returns 0 if repeated rows aren't found. */
 EXCEL_METHOD(Sheet, printRepeatRows)
@@ -4636,6 +4636,10 @@ EXCEL_METHOD(Sheet, printRepeatRows)
 	zval *object = getThis();
 	SheetHandle sheet;
 	long rowFirst, rowLast;
+
+	if (ZEND_NUM_ARGS()) {
+		RETURN_FALSE;
+	}
 
 	SHEET_FROM_OBJECT(sheet, object);
 
@@ -4657,6 +4661,10 @@ EXCEL_METHOD(Sheet, printRepeatCols)
 	zval *object = getThis();
 	SheetHandle sheet;
 	long colFirst, colLast;
+
+	if (ZEND_NUM_ARGS()) {
+		RETURN_FALSE;
+	}
 
 	SHEET_FROM_OBJECT(sheet, object);
 
