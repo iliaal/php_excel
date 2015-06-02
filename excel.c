@@ -989,25 +989,37 @@ EXCEL_METHOD(Book, packDateValues)
 	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "llllll", &year, &month, &day, &hour, &min, &sec) == FAILURE) {
 		RETURN_FALSE;
 	}
-
-	if (year < 1) {
-		php_error_docref(NULL TSRMLS_CC, E_WARNING, "Invalid '%ld' value for year", year);
-		RETURN_FALSE;
-	} else if (month < 1 || month > 12) {
-		php_error_docref(NULL TSRMLS_CC, E_WARNING, "Invalid '%ld' value for month", month);
-		RETURN_FALSE;
-	} else if (day < 1 || day > 31) {
-		php_error_docref(NULL TSRMLS_CC, E_WARNING, "Invalid '%ld' value for day", day);
-		RETURN_FALSE;
-	} else if (hour < 0 || hour > 23) {
+	
+	// if it is a date or just a time - hour, min & sec must be checked
+	
+	if (hour < 0 || hour > 23) {
 		php_error_docref(NULL TSRMLS_CC, E_WARNING, "Invalid '%ld' value for hour", hour);
 		RETURN_FALSE;
-	} else if (min < 0 || min > 59) {
+	}
+	if (min < 0 || min > 59) {
 		php_error_docref(NULL TSRMLS_CC, E_WARNING, "Invalid '%ld' value for minute", min);
 		RETURN_FALSE;
-	} else if (sec < 0 || sec > 59) {
+	}
+	if (sec < 0 || sec > 59) {
 		php_error_docref(NULL TSRMLS_CC, E_WARNING, "Invalid '%ld' value for second", sec);
 		RETURN_FALSE;
+	}
+	
+	// check date only if there are values
+	// is every value=0 - it's okay for generating a time
+	if (year != 0 || month != 0 || day != 0) {
+	    if (year < 1) {
+		    php_error_docref(NULL TSRMLS_CC, E_WARNING, "Invalid '%ld' value for year", year);
+		    RETURN_FALSE;
+	    } 
+	    if (month < 1 || month > 12) {
+		    php_error_docref(NULL TSRMLS_CC, E_WARNING, "Invalid '%ld' value for month", month);
+		    RETURN_FALSE;
+	    } 
+	    if (day < 1 || day > 31) {
+		    php_error_docref(NULL TSRMLS_CC, E_WARNING, "Invalid '%ld' value for day", day);
+		    RETURN_FALSE;
+	    }
 	}
 
 	BOOK_FROM_OBJECT(book, object);
@@ -4635,7 +4647,7 @@ EXCEL_METHOD(Sheet, printRepeatRows)
 {
 	zval *object = getThis();
 	SheetHandle sheet;
-	long rowFirst, rowLast;
+	int rowFirst, rowLast;
 
 	if (ZEND_NUM_ARGS()) {
 		RETURN_FALSE;
@@ -4660,7 +4672,7 @@ EXCEL_METHOD(Sheet, printRepeatCols)
 {
 	zval *object = getThis();
 	SheetHandle sheet;
-	long colFirst, colLast;
+	int colFirst, colLast;
 
 	if (ZEND_NUM_ARGS()) {
 		RETURN_FALSE;
@@ -4684,7 +4696,7 @@ EXCEL_METHOD(Sheet, printArea)
 {
 	zval *object = getThis();
 	SheetHandle sheet;
-	long rowFirst, colFirst, rowLast, colLast;
+	int rowFirst, colFirst, rowLast, colLast;
 
 	SHEET_FROM_OBJECT(sheet, object);
 
