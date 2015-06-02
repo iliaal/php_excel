@@ -12,7 +12,8 @@
   | Rob Gagnon <rgagnon24@gmail.com>                                          |
   +---------------------------------------------------------------------------+
 */
-class ExcelFont {
+class ExcelFont
+{
 	const NORMAL = 0;
 	const SUPERSCRIPT = 1;
 	const SUBSCRIPT = 2;
@@ -30,7 +31,8 @@ class ExcelFont {
 	* @param ExcelBook $book
 	* @return ExcelFont
 	*/
-	public function __construct($book) {
+	public function __construct($book)
+	{
 	} // __construct
 
 	/**
@@ -39,7 +41,8 @@ class ExcelFont {
 	* @param bool $bold (optional, default=null)
 	* @return bool
 	*/
-	public function bold($bold = null) {
+	public function bold($bold = null)
+	{
 	} // bold
 
 	/**
@@ -48,7 +51,8 @@ class ExcelFont {
 	* @param int $color (optional, default=null) One of ExcelFormat::COLOR_* constants
 	* @return int
 	*/
-	public function color($color = null) {
+	public function color($color = null)
+	{
 	} // color
 
 	/**
@@ -57,7 +61,8 @@ class ExcelFont {
 	* @param bool $italics (optional, default=null)
 	* @return bool
 	*/
-	public function italics($italics = null) {
+	public function italics($italics = null)
+	{
 	} // italics
 
 	/**
@@ -66,7 +71,8 @@ class ExcelFont {
 	* @param int $mode (optional, default=null) One of ExcelFont::NORMAL, ::SUBSCRIPT, or ::SUPERSCRIPT
 	* @return int
 	*/
-	public function mode($mode = null) {
+	public function mode($mode = null)
+	{
 	} // mode
 
 	/**
@@ -75,7 +81,8 @@ class ExcelFont {
 	* @param string $font_name (optional, default=null)
 	* @return string
 	*/
-	public function name($font_name = null) {
+	public function name($font_name = null)
+	{
 	} // name
 
 	/**
@@ -84,7 +91,8 @@ class ExcelFont {
 	* @param int $size (optional, default=null)
 	* @return int The current font size
 	*/
-	public function size($size = null) {
+	public function size($size = null)
+	{
 	} // size
 
 	/**
@@ -93,7 +101,8 @@ class ExcelFont {
 	* @param bool $strike (optional, default=null)
 	* @return bool
 	*/
-	public function strike($strike = null) {
+	public function strike($strike = null)
+	{
 	} // strike
 
 	/**
@@ -102,8 +111,8 @@ class ExcelFont {
 	* @param int $underline (optional, default=null) One of ExcelFont::UNDERLINE_* constants
 	* @return int
 	*/
-	public function underline($underline = null) {
+	public function underline($underline = null)
+	{
 	} // underline
 
 } // end ExcelFont
-

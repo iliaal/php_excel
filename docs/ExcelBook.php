@@ -12,7 +12,8 @@
   | Rob Gagnon <rgagnon24@gmail.com>                                          |
   +---------------------------------------------------------------------------+
 */
-class ExcelBook {
+class ExcelBook
+{
 	const PICTURETYPE_DIB = 3;
 	const PICTURETYPE_EMF = 4;
 	const PICTURETYPE_JPEG = 1;
@@ -31,12 +32,13 @@ class ExcelBook {
 	/**
 	* Create a new Excel workbook
 	*
-	* @param string $license_name
-	* @param string $license_key
+	* @param string $license_name (optional, default=null)
+	* @param string $license_key (optional, default=null)
 	* @param bool $excel_2007 (optional, default=false)
 	* @return ExcelBook
 	*/
-	public function __construct($license_name, $license_key, $excel_2007 = false) {
+	public function __construct($license_name = null, $license_key = null, $excel_2007 = false)
+	{
 	} // __construct
 
 	/**
@@ -47,7 +49,8 @@ class ExcelBook {
 	* @param int $sheet_number (optional, default=null) If supplied, the 0-based worksheet number to set as active
 	* @return int 0-based active worksheet number
 	*/
-	public function activeSheet($sheet_number = null) {
+	public function activeSheet($sheet_number = null)
+	{
 	} // activeSheet
 
 	/**
@@ -57,7 +60,8 @@ class ExcelBook {
 	* @param string $format_string
 	* @return int The ID assigned to the new format
 	*/
-	public function addCustomFormat($format_string) {
+	public function addCustomFormat($format_string)
+	{
 	} // addCustomFormat
 
 	/**
@@ -66,7 +70,8 @@ class ExcelBook {
 	* @param ExcelFont $font (optional, default=null) Font to copy
 	* @return ExcelFont
 	*/
-	public function addFont($font = null) {
+	public function addFont($font = null)
+	{
 	} // addFont
 
 	/**
@@ -75,7 +80,8 @@ class ExcelBook {
 	* @param ExcelFormat $format (optional, default=null) Format to copy
 	* @return ExcelFormat
 	*/
-	public function addFormat($format) {
+	public function addFormat(ExcelFormat $format = null)
+	{
 	} // addFormat
 
 	/**
@@ -87,7 +93,8 @@ class ExcelBook {
 	* @param string $filename
 	* @return int A picture ID
 	*/
-	public function addPictureFromFile($filename) {
+	public function addPictureFromFile($filename)
+	{
 	} // addPictureFromFile
 
 	/**
@@ -99,7 +106,8 @@ class ExcelBook {
 	* @param string $data
 	* @return int A picture ID
 	*/
-	public function addPictureFromString($data) {
+	public function addPictureFromString($data)
+	{
 	} // addPictureFromString
 
 	/**
@@ -108,7 +116,8 @@ class ExcelBook {
 	* @param string $name The name for the new worksheet
 	* @return ExcelSheet The worksheet created
 	*/
-	public function addSheet($name) {
+	public function addSheet($name)
+	{
 	} // addSheet
 
 	/**
@@ -116,7 +125,8 @@ class ExcelBook {
 	*
 	* @return int BIFF version
 	*/
-	public function biffVersion() {
+	public function biffVersion()
+	{
 	} // biffVersion
 
 	/**
@@ -128,7 +138,8 @@ class ExcelBook {
 	* @param int $blue
 	* @return int
 	*/
-	public function colorPack($red, $green, $blue) {
+	public function colorPack($red, $green, $blue)
+	{
 	} // colorPack
 
 	/**
@@ -138,7 +149,8 @@ class ExcelBook {
 	* @param int $color One of ExcelFormat::COLOR_* constants
 	* @return array with keys "red"(int), "green"(int), and "blue"(int)
 	*/
-	public function colorUnpack($color) {
+	public function colorUnpack($color)
+	{
 	} // colorUnpack
 
 	/**
@@ -148,7 +160,8 @@ class ExcelBook {
 	* @param int $sheet_number The 0-based number of the source worksheet to copy
 	* @return ExcelSheet The worksheet created
 	*/
-	public function copySheet($name, $sheet_number) {
+	public function copySheet($name, $sheet_number)
+	{
 	} // copySheet
 
 	/**
@@ -157,7 +170,8 @@ class ExcelBook {
 	* @param int $sheet_number 0-based worksheet number to delete
 	* @return bool True if sheet deleted, false if $sheet_number invalid
 	*/
-	public function deleteSheet($sheet_number) {
+	public function deleteSheet($sheet_number)
+	{
 	} // deleteSheet
 
 	/**
@@ -167,7 +181,8 @@ class ExcelBook {
 	* @see ExcelBook::setActiveSheet()
 	* @return int 0-based active worksheet number
 	*/
-	public function getActiveSheet() {
+	public function getActiveSheet()
+	{
 	} // getActiveSheet
 
 	/**
@@ -175,7 +190,8 @@ class ExcelBook {
 	*
 	* @return array of ExcelFormat objects
 	*/
-	public function getAllFormats() {
+	public function getAllFormats()
+	{
 	} // getAllFormats
 
 	/**
@@ -185,7 +201,8 @@ class ExcelBook {
 	* @param int $id
 	* @return string
 	*/
-	public function getCustomFormat($id) {
+	public function getCustomFormat($id)
+	{
 	} // getCustomFormat
 
 	/**
@@ -194,7 +211,8 @@ class ExcelBook {
 	* @see ExcelBook::setDefaultFont()
 	* @return array with keys "font"(string) and "font_size"(int)
 	*/
-	public function getDefaultFont() {
+	public function getDefaultFont()
+	{
 	} // getDefaultFont
 
 	/**
@@ -202,7 +220,8 @@ class ExcelBook {
 	*
 	* @return string Description of last error that occurred, or false if no error
 	*/
-	public function getError() {
+	public function getError()
+	{
 	} // getError
 
 	/**
@@ -210,7 +229,8 @@ class ExcelBook {
 	*
 	* @return int Number of pictures in Workbook
 	*/
-	public function getNumPictures() {
+	public function getNumPictures()
+	{
 	} // getNumPictures
 
 	/**
@@ -219,7 +239,8 @@ class ExcelBook {
 	* @param int $index
 	* @return array with keys "data"(string) and "type"(int)
 	*/
-	public function getPicture($index) {
+	public function getPicture($index)
+	{
 	} // getPicture
 
 	/**
@@ -227,7 +248,8 @@ class ExcelBook {
 	*
 	* @return bool
 	*/
-	public function getRefR1C1() {
+	public function getRefR1C1()
+	{
 	} // getRefR1C1
 
 	/**
@@ -236,7 +258,8 @@ class ExcelBook {
 	* @param int $sheet_number (optional, default=0) 0-based worksheet number
 	* @return ExcelSheet or false if $sheet_number invalid
 	*/
-	public function getSheet($sheet_number = 0) {
+	public function getSheet($sheet_number = 0)
+	{
 	} // getSheet
 
 	/**
@@ -246,7 +269,8 @@ class ExcelBook {
 	* @param bool $case_insensitive (optional, default=false)
 	* @return ExcelSheet
 	*/
-	public function getSheetByName($name, $case_insensitive = false) {
+	public function getSheetByName($name, $case_insensitive = false)
+	{
 	} // getSheetByName
 
 	/**
@@ -258,7 +282,8 @@ class ExcelBook {
 	* @param ExcelSheet $sheet (optional)
 	* @return ExcelSheet
 	*/
-	public function insertSheet($index, $name, $sheet = null) {
+	public function insertSheet($index, $name, $sheet = null)
+	{
 	} // insertSheet
 
 	/**
@@ -268,7 +293,8 @@ class ExcelBook {
 	*
 	* @return bool
 	*/
-	public function isDate1904() {
+	public function isDate1904()
+	{
 	} // isDate1904
 
 	/**
@@ -276,7 +302,8 @@ class ExcelBook {
 	*
 	* @return bool
 	*/
-	public function isTemplate() {
+	public function isTemplate()
+	{
 	} // isTemplate
 
 	/**
@@ -285,7 +312,8 @@ class ExcelBook {
 	* @param string $data
 	* @return bool
 	*/
-	public function load($data) {
+	public function load($data)
+	{
 	} // load
 
 	/**
@@ -294,7 +322,8 @@ class ExcelBook {
 	* @param string $filename
 	* @return bool
 	*/
-	public function loadFile($filename) {
+	public function loadFile($filename)
+	{
 	} // loadFile
 
 	/**
@@ -304,9 +333,10 @@ class ExcelBook {
 	* @param int $timestamp
 	* @return float
 	*/
-	public function packDate($timestamp) {
+	public function packDate($timestamp)
+	{
 	} // packDate
-	
+
 	/**
 	* Pack a date from single values into an Excel double
 	*
@@ -318,7 +348,8 @@ class ExcelBook {
 	* @param int $second
 	* @return float
 	*/
-	public function packDateValues($year, $month, $day, $hour, $minute, $second) {
+	public function packDateValues($year, $month, $day, $hour, $minute, $second)
+	{
 	} // packDateValues
 
 	/**
@@ -327,7 +358,8 @@ class ExcelBook {
 	* @see ExcelBook::setRGBMode()
 	* @return bool
 	*/
-	public function rgbMode() {
+	public function rgbMode()
+	{
 	} // rgbMode
 
 	/**
@@ -336,7 +368,8 @@ class ExcelBook {
 	* @param string $filename (optional, default=null)
 	* @return mixed If $filename is null, returns string, otherwise returns bool true if OK, false if not
 	*/
-	public function save($filename = null) {
+	public function save($filename = null)
+	{
 	} // save
 
 	/**
@@ -347,7 +380,8 @@ class ExcelBook {
 	* @param int $sheet_number 0-based worksheet to make active
 	* @return bool
 	*/
-	public function setActiveSheet($sheet_number) {
+	public function setActiveSheet($sheet_number)
+	{
 	} // setActiveSheet
 
 	/**
@@ -358,7 +392,8 @@ class ExcelBook {
 	* @param bool $date_type
 	* @return bool
 	*/
-	public function setDate1904($date_type) {
+	public function setDate1904($date_type)
+	{
 	} // setDate1904
 
 	/**
@@ -369,7 +404,8 @@ class ExcelBook {
 	* @param string $font_size
 	* @return void
 	*/
-	public function setDefaultFont($font_name, $font_size) {
+	public function setDefaultFont($font_name, $font_size)
+	{
 	} // setDefaultFont
 
 	/**
@@ -379,7 +415,8 @@ class ExcelBook {
 	* @param string $locale
 	* @return void
 	*/
-	public function setLocale($locale) {
+	public function setLocale($locale)
+	{
 	} // setLocale
 
 	/**
@@ -388,7 +425,8 @@ class ExcelBook {
 	* @param bool $active
 	* @return void
 	*/
-	public function setRefR1C1($active) {
+	public function setRefR1C1($active)
+	{
 	} // setRefR1C1
 
 	/**
@@ -398,7 +436,8 @@ class ExcelBook {
 	* @param bool $mode
 	* @return void
 	*/
-	public function setRGBMode($mode) {
+	public function setRGBMode($mode)
+	{
 	} // setRGBMode
 
 	/**
@@ -407,7 +446,8 @@ class ExcelBook {
 	* @param bool $mode
 	* @return void
 	*/
-	public function setTemplate($mode) {
+	public function setTemplate($mode)
+	{
 	} // setTemplate
 
 	/**
@@ -415,7 +455,8 @@ class ExcelBook {
 	*
 	* @return int
 	*/
-	public function sheetCount() {
+	public function sheetCount()
+	{
 	} // sheetCount
 
 	/**
@@ -425,9 +466,10 @@ class ExcelBook {
 	* 2 - unknown
 	*
 	* @param int $sheet
-	* @return int 
+	* @return int
 	*/
-	public function sheetType($sheet) {
+	public function sheetType($sheet)
+	{
 	} // sheetType
 
 	/**
@@ -437,7 +479,8 @@ class ExcelBook {
 	* @param float $date
 	* @return int
 	*/
-	public function unpackDate($date) {
+	public function unpackDate($date)
+	{
 	} // unpackDate
 
 } // end ExcelBook

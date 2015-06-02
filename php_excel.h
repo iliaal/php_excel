@@ -17,7 +17,7 @@
 */
 
 #ifndef PHP_EXCEL_H
-#define PHP_EXCEL_H
+#define PHP_EXCEL_H 1
 
 extern zend_module_entry excel_module_entry;
 #define phpext_excel_ptr &excel_module_entry

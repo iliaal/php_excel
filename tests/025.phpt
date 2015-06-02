@@ -33,7 +33,8 @@ date.timezone=America/Toronto
 	$s->addPictureDim(40,40,$pic2,578/2,406/2);
 	var_dump($x->getError());
 
-
+	$s->addPictureDim(40,40,$pic2,578/2,406/2,1,2);
+	var_dump($x->getError());
 
 	echo "OK\n";
 ?>
@@ -41,6 +42,7 @@ date.timezone=America/Toronto
 int(%d)
 bool(false)
 int(%d)
+bool(false)
 bool(false)
 bool(false)
 bool(false)
