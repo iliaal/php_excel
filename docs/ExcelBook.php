@@ -340,6 +340,9 @@ class ExcelBook
 	/**
 	* Pack a date from single values into an Excel double
 	*
+	* with year=0, month=0 and day=0 you can generate a time-only value
+	* - if you click on a cell with time-format, in the "formula bar" will appear a time only (without date)
+	*
 	* @param int $year
 	* @param int $month
 	* @param int $day
