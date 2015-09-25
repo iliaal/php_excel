@@ -2872,16 +2872,20 @@ EXCEL_METHOD(Sheet, addPictureScaled)
 	SheetHandle sheet;
 	zval *object = getThis();
 	long row, col, pic_id;
-	long x_offset = 0, y_offset = 0;
+	long x_offset = 0, y_offset = 0, pos = 0;
 	double scale;
 
-	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "llld|ll", &row, &col, &pic_id, &scale, &x_offset, &y_offset) == FAILURE) {
+	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "llld|lll", &row, &col, &pic_id, &scale, &x_offset, &y_offset, &pos) == FAILURE) {
 		RETURN_FALSE;
 	}
 
 	SHEET_FROM_OBJECT(sheet, object);
 
-	xlSheetSetPicture(sheet, row, col, pic_id, scale, x_offset, y_offset);
+	xlSheetSetPicture(sheet, row, col, pic_id, scale, x_offset, y_offset
+#if LIBXL_VERSION >= 0x03060300
+, pos
+#endif
+	);
 }
 /* }}} */
 
@@ -2892,15 +2896,19 @@ EXCEL_METHOD(Sheet, addPictureDim)
 	SheetHandle sheet;
 	zval *object = getThis();
 	long row, col, pic_id, w, h;
-	long x_offset = 0, y_offset = 0;
+	long x_offset = 0, y_offset = 0, pos = 0;
 
-	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "lllll|ll", &row, &col, &pic_id, &w, &h, &x_offset, &y_offset) == FAILURE) {
+	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "lllll|lll", &row, &col, &pic_id, &w, &h, &x_offset, &y_offset, &pos) == FAILURE) {
 		RETURN_FALSE;
 	}
 
 	SHEET_FROM_OBJECT(sheet, object);
 
-	xlSheetSetPicture2(sheet, row, col, pic_id, w, h, x_offset, y_offset);
+	xlSheetSetPicture2(sheet, row, col, pic_id, w, h, x_offset, y_offset
+#if LIBXL_VERSION >= 0x03060300
+, pos
+#endif
+	);
 }
 /* }}} */
 #else
@@ -5318,6 +5326,9 @@ ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_addPictureScaled, 0, 0, 4)
 	ZEND_ARG_INFO(0, x_offset)
 	ZEND_ARG_INFO(0, y_offset)
 #endif
+#if LIBXL_VERSION >= 0x03060300
+	ZEND_ARG_INFO(0, pos)
+#endif
 ZEND_END_ARG_INFO()
 
 PHP_EXCEL_ARGINFO
@@ -5330,6 +5341,9 @@ ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_addPictureDim, 0, 0, 5)
 #if LIBXL_VERSION >= 0x03040000
 	ZEND_ARG_INFO(0, x_offset)
 	ZEND_ARG_INFO(0, y_offset)
+#endif
+#if LIBXL_VERSION >= 0x03060300
+	ZEND_ARG_INFO(0, pos)
 #endif
 ZEND_END_ARG_INFO()
 
@@ -6317,6 +6331,12 @@ PHP_MINIT_FUNCTION(excel)
 	REGISTER_EXCEL_CLASS_CONST_LONG(book, "SHEETTYPE_CHART", SHEETTYPE_CHART);
 	REGISTER_EXCEL_CLASS_CONST_LONG(book, "SHEETTYPE_UNKNOWN", SHEETTYPE_UNKNOWN);
 #endif
+#if LIBXL_VERSION >= 0x03060300
+	REGISTER_EXCEL_CLASS_CONST_LONG(book, "POSITION_MOVE_AND_SIZE", POSITION_MOVE_AND_SIZE);
+	REGISTER_EXCEL_CLASS_CONST_LONG(book, "POSITION_ONLY_MOVE", POSITION_ONLY_MOVE);
+	REGISTER_EXCEL_CLASS_CONST_LONG(book, "POSITION_ABSOLUTE", POSITION_ABSOLUTE);
+#endif
+
 	return SUCCESS;
 }
 /* }}} */

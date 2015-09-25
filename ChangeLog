@@ -6,6 +6,8 @@
 		- ExcelBook::printArea()
 		- ExcelBook::printRepeatCols()
 		- ExcelBook::printRepeatRows()
+	* Added support for LibXL 3.6.3
+	* ExcelSheet::addPictureDim() & ExcelSheet::addPictureScaled() now support position parameters
 
 [2015-02-26] - Version 1.0.1
 	* Added methods
