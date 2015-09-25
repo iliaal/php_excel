@@ -58,7 +58,7 @@ static long xlFormatBorderColor(FormatHandle f)
 #define PHP_EXCEL_FORMULA 2
 #define PHP_EXCEL_NUMERIC_STRING 3
 
-#define PHP_EXCEL_VERSION "1.0.1dev"
+#define PHP_EXCEL_VERSION "1.0.2dev"
 
 #ifdef COMPILE_DL_EXCEL
 ZEND_GET_MODULE(excel)
@@ -442,8 +442,8 @@ EXCEL_METHOD(Book, save)
 		}
 
 		if ((numbytes = php_stream_write(stream, contents, len)) != len) {
-			php_error_docref(NULL, E_WARNING, "Only %d of %d bytes written, possibly out of free disk space", numbytes, len);
 			php_stream_close(stream);
+			php_error_docref(NULL, E_WARNING, "Only %d of %d bytes written, possibly out of free disk space", numbytes, len);
 			RETURN_FALSE;
 		}
 
@@ -913,24 +913,36 @@ EXCEL_METHOD(Book, packDateValues)
 		RETURN_FALSE;
 	}
 
-	if (year < 1) {
-		php_error_docref(NULL, E_WARNING, "Invalid '%ld' value for year", year);
-		RETURN_FALSE;
-	} else if (month < 1 || month > 12) {
-		php_error_docref(NULL, E_WARNING, "Invalid '%ld' value for month", month);
-		RETURN_FALSE;
-	} else if (day < 1 || day > 31) {
-		php_error_docref(NULL, E_WARNING, "Invalid '%ld' value for day", day);
-		RETURN_FALSE;
-	} else if (hour < 0 || hour > 23) {
+	// if it is a date or just a time - hout, min & sec must be checked
+
+	if (hour < 0 || hour > 23) {
 		php_error_docref(NULL, E_WARNING, "Invalid '%ld' value for hour", hour);
 		RETURN_FALSE;
-	} else if (min < 0 || min > 59) {
+	}
+	if (min < 0 || min > 59) {
 		php_error_docref(NULL, E_WARNING, "Invalid '%ld' value for minute", min);
 		RETURN_FALSE;
-	} else if (sec < 0 || sec > 59) {
+	}
+	if (sec < 0 || sec > 59) {
 		php_error_docref(NULL, E_WARNING, "Invalid '%ld' value for second", sec);
 		RETURN_FALSE;
+	}
+
+	// check date only if there are values
+	// is every value=0 - it's okay for generating a time
+	if (year != 0 || month != 0 || day != 0) {
+		if (year < 1) {
+			php_error_docref(NULL, E_WARNING, "Invalid '%ld' value for year", year);
+			RETURN_FALSE;
+		}
+		if (month < 1 || month > 12) {
+			php_error_docref(NULL, E_WARNING, "Invalid '%ld' value for month", month);
+			RETURN_FALSE;
+		}
+		if (day < 1 || day > 31) {
+			php_error_docref(NULL, E_WARNING, "Invalid '%ld' value for day", day);
+			RETURN_FALSE;
+		}
 	}
 
 	BOOK_FROM_OBJECT(book, object);
@@ -2704,16 +2716,20 @@ EXCEL_METHOD(Sheet, addPictureScaled)
 	SheetHandle sheet;
 	zval *object = getThis();
 	long row, col, pic_id;
-	long x_offset = 0, y_offset = 0;
+	long x_offset = 0, y_offset = 0, pos = 0;
 	double scale;
 
-	if (zend_parse_parameters(ZEND_NUM_ARGS(), "llld|ll", &row, &col, &pic_id, &scale, &x_offset, &y_offset) == FAILURE) {
+	if (zend_parse_parameters(ZEND_NUM_ARGS(), "llld|lll", &row, &col, &pic_id, &scale, &x_offset, &y_offset, &pos) == FAILURE) {
 		RETURN_FALSE;
 	}
 
 	SHEET_FROM_OBJECT(sheet, object);
 
-	xlSheetSetPicture(sheet, row, col, pic_id, scale, x_offset, y_offset);
+	xlSheetSetPicture(sheet, row, col, pic_id, scale, x_offset, y_offset
+#if LIBXL_VERSION >= 0x03060300
+, pos
+#endif
+	);
 }
 /* }}} */
 
@@ -2724,15 +2740,19 @@ EXCEL_METHOD(Sheet, addPictureDim)
 	SheetHandle sheet;
 	zval *object = getThis();
 	long row, col, pic_id, w, h;
-	long x_offset = 0, y_offset = 0;
+	long x_offset = 0, y_offset = 0, pos = 0;
 
-	if (zend_parse_parameters(ZEND_NUM_ARGS(), "lllll|ll", &row, &col, &pic_id, &w, &h, &x_offset, &y_offset) == FAILURE) {
+	if (zend_parse_parameters(ZEND_NUM_ARGS(), "lllll|lll", &row, &col, &pic_id, &w, &h, &x_offset, &y_offset, &pos) == FAILURE) {
 		RETURN_FALSE;
 	}
 
 	SHEET_FROM_OBJECT(sheet, object);
 
-	xlSheetSetPicture2(sheet, row, col, pic_id, w, h, x_offset, y_offset);
+	xlSheetSetPicture2(sheet, row, col, pic_id, w, h, x_offset, y_offset
+#if LIBXL_VERSION >= 0x03060300
+, pos
+#endif
+	);
 }
 /* }}} */
 
@@ -4355,6 +4375,118 @@ EXCEL_METHOD(Book, sheetType)
 }
 /* }}} */
 
+#if LIBXL_VERSION >= 0x03060200
+/* {{{ proto void ExcelSheet::setAutoFitArea(int rowFirst, int colFirst, int rowLast, int colLast)
+	Sets the borders for autofit column widths feature.
+	The function xlSheetSetCol() with -1 width value will
+	affect only to the specified limited area. */
+EXCEL_METHOD(Sheet, setAutoFitArea)
+{
+	zval *object = getThis();
+	SheetHandle sheet;
+	long rowFirst=0, colFirst=0, rowLast=-1, colLast=-1;
+
+	if (zend_parse_parameters(ZEND_NUM_ARGS(), "|llll", &rowFirst, &rowLast, &colFirst, &colLast) == FAILURE) {
+		RETURN_FALSE;
+	}
+
+	if (rowFirst < 0) {
+		RETURN_FALSE;
+	}
+
+	if (colFirst < 0) {
+		RETURN_FALSE;
+	}
+
+	if (rowLast < -1) {
+		RETURN_FALSE;
+	}
+
+	if (colLast < -1) {
+		RETURN_FALSE;
+	}
+
+	SHEET_FROM_OBJECT(sheet, object);
+
+	xlSheetSetAutoFitArea(sheet, rowFirst, colFirst, rowLast, colLast);
+	RETURN_TRUE;
+}
+/* }}} */
+
+/* {{{ proto long ExcelSheet::printRepeatRows()
+	Gets repeated rows on each page from rowFirst to rowLast.
+	Returns 0 if repeated rows aren't found. */
+EXCEL_METHOD(Sheet, printRepeatRows)
+{
+	zval *object = getThis();
+	SheetHandle sheet;
+	int rowFirst, rowLast;
+
+	if (ZEND_NUM_ARGS()) {
+		RETURN_FALSE;
+	}
+
+	SHEET_FROM_OBJECT(sheet, object);
+
+	if (!xlSheetPrintRepeatRows(sheet, &rowFirst, &rowLast)) {
+		RETURN_FALSE;
+	}
+
+	array_init(return_value);
+	add_assoc_long(return_value, "row_start", rowFirst);
+	add_assoc_long(return_value, "row_end", rowLast);
+}
+/* }}} */
+
+/* {{{ proto long ExcelSheet::printRepeatCols()
+	Gets repeated columns on each page from colFirst to colLast.
+	Returns 0 if repeated columns aren't found. */
+EXCEL_METHOD(Sheet, printRepeatCols)
+{
+	zval *object = getThis();
+	SheetHandle sheet;
+	int colFirst, colLast;
+
+	if (ZEND_NUM_ARGS()) {
+		RETURN_FALSE;
+	}
+
+	SHEET_FROM_OBJECT(sheet, object);
+
+	if (!xlSheetPrintRepeatCols(sheet, &colFirst, &colLast)) {
+		RETURN_FALSE;
+	}
+
+	array_init(return_value);
+	add_assoc_long(return_value, "col_start", colFirst);
+	add_assoc_long(return_value, "col_end", colLast);
+}
+/* }}} */
+
+/* {{{ proto long ExcelSheet::printArea()
+	Gets the print area. Returns 0 if print area isn't found. */
+EXCEL_METHOD(Sheet, printArea)
+{
+	zval *object = getThis();
+	SheetHandle sheet;
+	int rowFirst, colFirst, rowLast, colLast;
+
+	SHEET_FROM_OBJECT(sheet, object);
+
+	if (!xlSheetPrintArea(sheet, &rowFirst, &colFirst, &rowLast, &colLast)) {
+		RETURN_FALSE;
+	}
+
+	array_init(return_value);
+	add_assoc_long(return_value, "row_start", rowFirst);
+	add_assoc_long(return_value, "col_start", colFirst);
+	add_assoc_long(return_value, "row_end", rowLast);
+	add_assoc_long(return_value, "col_end", colLast);
+}
+/* }}} */
+
+#endif
+
 ZEND_BEGIN_ARG_INFO_EX(arginfo_Book_load, 0, 0, 1)
 	ZEND_ARG_INFO(0, data)
 ZEND_END_ARG_INFO()
@@ -4832,6 +4964,9 @@ ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_addPictureScaled, 0, 0, 4)
 	ZEND_ARG_INFO(0, scale)
 	ZEND_ARG_INFO(0, x_offset)
 	ZEND_ARG_INFO(0, y_offset)
+#if LIBXL_VERSION >= 0x03060300
+	ZEND_ARG_INFO(0, pos)
+#endif
 ZEND_END_ARG_INFO()
 
 ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_addPictureDim, 0, 0, 5)
@@ -4842,7 +4977,10 @@ ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_addPictureDim, 0, 0, 5)
 	ZEND_ARG_INFO(0, height)
 	ZEND_ARG_INFO(0, x_offset)
 	ZEND_ARG_INFO(0, y_offset)
-ZEND_END_ARG_INFO()
+#if LIBXL_VERSION >= 0x03060300
+	ZEND_ARG_INFO(0, pos)
+#endif
+	ZEND_END_ARG_INFO()
 
 ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_horPageBreak, 0, 0, 2)
 	ZEND_ARG_INFO(0, row)
@@ -5197,6 +5335,24 @@ ZEND_END_ARG_INFO()
 ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_isLicensed, 0, 0, 0)
 ZEND_END_ARG_INFO()
 
+#if LIBXL_VERSION >= 0x03060200
+ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_setAutoFitArea, 0, 0, 0)
+	ZEND_ARG_INFO(0, row_start)
+	ZEND_ARG_INFO(0, row_end)
+	ZEND_ARG_INFO(0, col_start)
+	ZEND_ARG_INFO(0, col_end)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_printRepeatRows, 0, 0, 0)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_printRepeatCols, 0, 0, 0)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_printArea, 0, 0, 0)
+ZEND_END_ARG_INFO()
+#endif
+
 #define EXCEL_ME(class_name, function_name, arg_info, flags) \
 	PHP_ME(Excel ## class_name, function_name, arg_info, flags)
 
@@ -5365,6 +5521,12 @@ zend_function_entry excel_funcs_sheet[] = {
 	EXCEL_ME(Sheet, setColHidden, arginfo_Sheet_setColHidden, 0)
 	EXCEL_ME(Sheet, setRowHidden, arginfo_Sheet_setRowHidden, 0)
 	EXCEL_ME(Sheet, isLicensed, arginfo_Sheet_isLicensed, 0)
+#if LIBXL_VERSION >= 0x03060200
+	EXCEL_ME(Sheet, setAutoFitArea, arginfo_Sheet_setAutoFitArea, 0)
+	EXCEL_ME(Sheet, printRepeatRows, arginfo_Sheet_printRepeatRows, 0)
+	EXCEL_ME(Sheet, printRepeatCols, arginfo_Sheet_printRepeatCols, 0)
+	EXCEL_ME(Sheet, printArea, arginfo_Sheet_printArea, 0)
+#endif
 	{NULL, NULL, NULL}
 };
 
@@ -5658,6 +5820,11 @@ PHP_MINIT_FUNCTION(excel)
 	REGISTER_EXCEL_CLASS_CONST_LONG(book, "SHEETTYPE_SHEET", SHEETTYPE_SHEET);
 	REGISTER_EXCEL_CLASS_CONST_LONG(book, "SHEETTYPE_CHART", SHEETTYPE_CHART);
 	REGISTER_EXCEL_CLASS_CONST_LONG(book, "SHEETTYPE_UNKNOWN", SHEETTYPE_UNKNOWN);
+#if LIBXL_VERSION >= 0x03060300
+	REGISTER_EXCEL_CLASS_CONST_LONG(book, "POSITION_MOVE_AND_SIZE", POSITION_MOVE_AND_SIZE);
+	REGISTER_EXCEL_CLASS_CONST_LONG(book, "POSITION_ONLY_MOVE", POSITION_ONLY_MOVE);
+	REGISTER_EXCEL_CLASS_CONST_LONG(book, "POSITION_ABSOLUTE", POSITION_ABSOLUTE);
+#endif
 	return SUCCESS;
 }
 /* }}} */
