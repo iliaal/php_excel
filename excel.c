@@ -2410,6 +2410,10 @@ static zend_bool php_excel_write_cell(SheetHandle sheet, BookHandle book, int ro
 			return xlSheetWriteNum(sheet, row, col, Z_DVAL_P(data), format);
 
 		case IS_STRING:
+			if (Z_STRLEN_P(data) > 1 && '\'' == Z_STRVAL_P(data)[0]) {
+				memmove(Z_STRVAL_P(data), Z_STRVAL_P(data) + 1, Z_STRLEN_P(data));
+				return xlSheetWriteStr(sheet, row, col, Z_STRVAL_P(data), format);
+			}
 			if (Z_STRLEN_P(data) > 0 && '=' == Z_STRVAL_P(data)[0]) {
 				dtype = PHP_EXCEL_FORMULA;
 			}
