@@ -989,9 +989,9 @@ EXCEL_METHOD(Book, packDateValues)
 	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "llllll", &year, &month, &day, &hour, &min, &sec) == FAILURE) {
 		RETURN_FALSE;
 	}
-	
+
 	// if it is a date or just a time - hour, min & sec must be checked
-	
+
 	if (hour < 0 || hour > 23) {
 		php_error_docref(NULL TSRMLS_CC, E_WARNING, "Invalid '%ld' value for hour", hour);
 		RETURN_FALSE;
@@ -1004,22 +1004,22 @@ EXCEL_METHOD(Book, packDateValues)
 		php_error_docref(NULL TSRMLS_CC, E_WARNING, "Invalid '%ld' value for second", sec);
 		RETURN_FALSE;
 	}
-	
+
 	// check date only if there are values
 	// is every value=0 - it's okay for generating a time
 	if (year != 0 || month != 0 || day != 0) {
-	    if (year < 1) {
-		    php_error_docref(NULL TSRMLS_CC, E_WARNING, "Invalid '%ld' value for year", year);
-		    RETURN_FALSE;
-	    } 
-	    if (month < 1 || month > 12) {
-		    php_error_docref(NULL TSRMLS_CC, E_WARNING, "Invalid '%ld' value for month", month);
-		    RETURN_FALSE;
-	    } 
-	    if (day < 1 || day > 31) {
-		    php_error_docref(NULL TSRMLS_CC, E_WARNING, "Invalid '%ld' value for day", day);
-		    RETURN_FALSE;
-	    }
+		if (year < 1) {
+			php_error_docref(NULL TSRMLS_CC, E_WARNING, "Invalid '%ld' value for year", year);
+			RETURN_FALSE;
+		}
+		if (month < 1 || month > 12) {
+			php_error_docref(NULL TSRMLS_CC, E_WARNING, "Invalid '%ld' value for month", month);
+			RETURN_FALSE;
+		}
+		if (day < 1 || day > 31) {
+			php_error_docref(NULL TSRMLS_CC, E_WARNING, "Invalid '%ld' value for day", day);
+			RETURN_FALSE;
+		}
 	}
 
 	BOOK_FROM_OBJECT(book, object);
@@ -2410,6 +2410,9 @@ static zend_bool php_excel_write_cell(SheetHandle sheet, BookHandle book, int ro
 			return xlSheetWriteNum(sheet, row, col, Z_DVAL_P(data), format);
 
 		case IS_STRING:
+			if (Z_STRLEN_P(data) > 0 && '\'' == Z_STRVAL_P(data)[0]) {
+				return xlSheetWriteStr(sheet, row, col, Z_STRVAL_P(data) + 1, format);
+			}
 			if (Z_STRLEN_P(data) > 0 && '=' == Z_STRVAL_P(data)[0]) {
 				dtype = PHP_EXCEL_FORMULA;
 			}
