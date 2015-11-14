@@ -2278,7 +2278,7 @@ zend_bool php_excel_write_cell(SheetHandle sheet, BookHandle book, int row, int 
 				return xlSheetWriteFormula(sheet, row, col, Z_STRVAL_P(data), format);
 			} else {
 				if (dtype == PHP_EXCEL_NUMERIC_STRING) {
-					long lval;
+					zend_long lval;
 					double dval;
 
 					switch (is_numeric_string(Z_STRVAL_P(data), Z_STRLEN_P(data), &lval, &dval, 0)) {
