@@ -95,8 +95,8 @@ static zend_object_handlers excel_object_handlers_format;
 static zend_object_handlers excel_object_handlers_font;
 
 typedef struct _excel_book_object {
-	zend_object	std;
 	BookHandle book;
+	zend_object std;
 } excel_book_object;
 
 static inline excel_book_object *php_excel_book_object_fetch_object(zend_object *obj) {
@@ -116,9 +116,9 @@ static inline excel_book_object *php_excel_book_object_fetch_object(zend_object 
 	}
 
 typedef struct _excel_sheet_object {
-	zend_object	std;
 	SheetHandle	sheet;
 	BookHandle book;
+	zend_object std;
 } excel_sheet_object;
 
 static inline excel_sheet_object *php_excel_sheet_object_fetch_object(zend_object *obj) {
@@ -149,9 +149,9 @@ static inline excel_sheet_object *php_excel_sheet_object_fetch_object(zend_objec
 	}
 
 typedef struct _excel_font_object {
-	zend_object	std;
 	FontHandle font;
 	BookHandle book;
+	zend_object std;
 } excel_font_object;
 
 static inline excel_font_object *php_excel_font_object_fetch_object(zend_object *obj) {
@@ -180,9 +180,9 @@ static inline excel_font_object *php_excel_font_object_fetch_object(zend_object 
 	}
 
 typedef struct _excel_format_object {
-	zend_object	std;
 	FormatHandle format;
 	BookHandle book;
+	zend_object std;
 } excel_format_object;
 
 static inline excel_format_object *php_excel_format_object_fetch_object(zend_object *obj) {
