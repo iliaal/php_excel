@@ -31,7 +31,7 @@ bool(true)
 bool(false)
 bool(false)
 bool(false)
-string(5) "=3+4"
-string(1) ""
-string(2) "3"
+string(4) "=3+4"
+string(0) ""
+string(1) "3"
 OK
