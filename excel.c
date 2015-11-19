@@ -69,8 +69,10 @@ ZEND_DECLARE_MODULE_GLOBALS(excel)
 static PHP_GINIT_FUNCTION(excel);
 
 PHP_INI_BEGIN()
+#if defined(HAVE_LIBXL_SETKEY)
 	STD_PHP_INI_ENTRY("excel.license_name", NULL, PHP_INI_ALL, OnUpdateString, ini_license_name, zend_excel_globals, excel_globals)
 	STD_PHP_INI_ENTRY("excel.license_key", NULL, PHP_INI_ALL, OnUpdateString, ini_license_key, zend_excel_globals, excel_globals)
+#endif
 	STD_PHP_INI_ENTRY("excel.skip_empty", "0", PHP_INI_ALL, OnUpdateLong, ini_skip_empty, zend_excel_globals, excel_globals)
 PHP_INI_END()
 
