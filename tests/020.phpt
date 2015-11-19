@@ -5,18 +5,18 @@ date.timezone=America/Toronto
 --SKIPIF--
 <?php if (!extension_loaded("excel")) print "skip"; ?>
 --FILE--
-<?php 
+<?php
 	$x = new ExcelBook();
 
 	try {
 		$format = new ExcelFormat();
-	} catch (Exception $e) {
+	} catch (Throwable $e) {
 		var_dump($e->getMessage());
 	}
 
 	try {
 		$format = new ExcelFormat('cdsd');
-	} catch (Exception $e) {
+	} catch (Throwable $e) {
 		var_dump($e->getMessage());
 	}
 
@@ -24,5 +24,5 @@ date.timezone=America/Toronto
 ?>
 --EXPECTF--
 string(63) "ExcelFormat::__construct() expects exactly 1 parameter, 0 given"
-
-Catchable fatal error: Argument 1 passed to ExcelFormat::__construct() must be an instance of ExcelBook, string given in %s on line %d
+string(94) "Argument 1 passed to ExcelFormat::__construct() must be an instance of ExcelBook, string given"
+OK
