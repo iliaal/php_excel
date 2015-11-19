@@ -86,6 +86,11 @@ if test "$PHP_EXCEL" != "no"; then
     -L$EXCEL_LIBDIR
   ])
 
+  PHP_CHECK_LIBRARY(xl,xlBookSetKeyA,
+  [
+    AC_DEFINE(HAVE_LIBXL_SETKEY,1,[ ])
+  ],[],[])
+
   if test `grep -c FILLPATTERN_HORSTRIPE $EXCEL_INCDIR/enum.h` -eq 1; then
     AC_DEFINE(HAVE_LIBXL_243_PLUS,1,[ ])
   fi

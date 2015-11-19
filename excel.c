@@ -1135,6 +1135,20 @@ EXCEL_METHOD(Book, __construct)
 		RETURN_FALSE;
 	}
 
+	BOOK_FROM_OBJECT(book, object);
+
+	if (new_excel) {
+		excel_book_object *obj = (excel_book_object*) Z_EXCEL_BOOK_OBJ_P(object);
+		if ((book = xlCreateXMLBook())) {
+			xlBookRelease(obj->book);
+			obj->book = book;
+		} else {
+			RETURN_FALSE;
+		}
+	}
+
+#if defined(HAVE_LIBXL_SETKEY)
+
 	if (INI_STR("excel.license_name") && INI_STR("excel.license_key")) {
 		name = INI_STR("excel.license_name");
 		name_len = strlen(name);
@@ -1160,19 +1174,9 @@ EXCEL_METHOD(Book, __construct)
 		RETURN_FALSE;
 	}
 
-	BOOK_FROM_OBJECT(book, object);
-
-	if (new_excel) {
-		excel_book_object *obj = (excel_book_object*) Z_EXCEL_BOOK_OBJ_P(object);
-		if ((book = xlCreateXMLBook())) {
-			xlBookRelease(obj->book);
-			obj->book = book;
-		} else {
-			RETURN_FALSE;
-		}
-	}
-
 	xlBookSetKey(book, name_zs->val, key_zs->val);
+
+#endif
 }
 /* }}} */
 
