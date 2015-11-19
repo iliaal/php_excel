@@ -354,6 +354,18 @@ static zend_object *excel_format_object_clone(zval *this_ptr)
 #define EXCEL_METHOD(class_name, function_name) \
 	PHP_METHOD(Excel ## class_name, function_name)
 
+/* {{{ proto bool ExcelBook::requiresKey()
+	true if license key is required. */
+EXCEL_METHOD(Book, requiresKey)
+{
+#if defined(HAVE_LIBXL_SETKEY)
+	RETURN_BOOL(1);
+#else
+	RETURN_BOOL(0);
+#endif
+}
+/* }}} */
+
 /* {{{ proto bool ExcelBook::load(string data)
 	Load Excel data string. */
 EXCEL_METHOD(Book, load)
@@ -4495,6 +4507,9 @@ EXCEL_METHOD(Sheet, printArea)
 
 #endif
 
+ZEND_BEGIN_ARG_INFO_EX(arginfo_Book_requiresKey, 0, 0, 0)
+ZEND_END_ARG_INFO()
+
 ZEND_BEGIN_ARG_INFO_EX(arginfo_Book_load, 0, 0, 1)
 	ZEND_ARG_INFO(0, data)
 ZEND_END_ARG_INFO()
@@ -5365,6 +5380,7 @@ ZEND_END_ARG_INFO()
 	PHP_ME(Excel ## class_name, function_name, arg_info, flags)
 
 zend_function_entry excel_funcs_book[] = {
+	EXCEL_ME(Book, requiresKey, arginfo_Book_requiresKey, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
 	EXCEL_ME(Book, addFont, arginfo_Book_addFont, 0)
 	EXCEL_ME(Book, addFormat, arginfo_Book_addFormat, 0)
 	EXCEL_ME(Book, getAllFormats, arginfo_Book_getAllFormats, 0)

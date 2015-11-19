@@ -1,7 +1,7 @@
 --TEST--
 test Sheet::isLicensed()
 --SKIPIF--
-<?php if (!extension_loaded("excel")) print "skip"; ?>
+<?php if (!extension_loaded("excel") || !ExcelBook::requiresKey()) print "skip"; ?>
 --FILE--
 <?php
 
