@@ -117,12 +117,20 @@ in Excel or using the COM classes to open and save the Excel file via PHP. (**In
 
 ### multibyte characters in credentials
 
-If your credentials does not work properly because of multibyte characters you can compile php_excel with
-```--with-xml --with-libxml --with-iconv``` and your credentials will be automatically ```utf8_decoded()```
-before using with LibXL.
+If your credentials do not work properly because of multibyte characters you can extend ExcelBook
+class and circumvent the build-in mechanism for ```php.ini``` settings.
 
-If you compile php_excel as a shared extension on Linux you need to provide the path to the libxml directory.
-e.g. on Ubuntu you need to compile with ```--with-libxml-dir=/usr/include/libxml2```.
+    <?php
+    
+    class MyExcelBook extends \ExcelBook
+    {
+        public function __construct($license_name=null, $license_key=null, $new_excel=false)
+        {
+            $license_name = utf8_decode(get_cfg_var('excel.license_name'));
+            $license_key = utf8_decode(get_cfg_var('excel.license_key'));
+            parent::__construct($license_name, $license_key, $new_excel);
+        }
+    }
 
 ### Further reading
 

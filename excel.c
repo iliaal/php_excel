@@ -28,10 +28,6 @@
 #include "ext/standard/info.h"
 #include "ext/date/php_date.h"
 
-#if defined(HAVE_XML) && defined(EXCEL_WITH_LIBXML)
-#include "ext/xml/php_xml.h"
-#endif
-
 #include "php_excel.h"
 #include "zend_exceptions.h"
 
@@ -1128,35 +1124,20 @@ EXCEL_METHOD(Book, __construct)
 	zval *object = getThis();
 	char *name = NULL, *key;
 	int name_len = 0, key_len = 0;
-	zend_string *name_zs = NULL, *key_zs = NULL;
 	zend_bool new_excel = 0;
 
-	if (zend_parse_parameters(ZEND_NUM_ARGS(), "|SSb", &name_zs, &key_zs, &new_excel) == FAILURE) {
+	if (zend_parse_parameters(ZEND_NUM_ARGS(), "|ssb", &name, &name_len, &key, &key_len, &new_excel) == FAILURE) {
 		RETURN_FALSE;
 	}
 
-	if (INI_STR("excel.license_name") && INI_STR("excel.license_key")) {
+	if (name_len == 0 && INI_STR("excel.license_name") && INI_STR("excel.license_key")) {
 		name = INI_STR("excel.license_name");
 		name_len = strlen(name);
 		key = INI_STR("excel.license_key");
 		key_len = strlen(key);
 	}
 
-	if (name_zs && name_zs->len > 0 && key_zs && key_zs->len > 0) {
-		name = name_zs->val;
-		name_len = (int) name_zs->len;
-		key = key_zs->val;
-		key_len = (int) key_zs->len;
-	}
-
-#if defined(HAVE_XML) && defined(EXCEL_WITH_LIBXML)
-	if (name_len > 0 && key_len > 0) {
-		name_zs = xml_utf8_decode((const XML_Char *) name, name_len, "ISO-8859-1");
-		key_zs = xml_utf8_decode((const XML_Char *) key, key_len, "ISO-8859-1");
-	}
-#endif
-
-	if (!name_zs || name_zs->len < 1 || !key_zs || key_zs->len < 1) {
+	if (!name || name_len < 1 || !key || key_len < 1) {
 		RETURN_FALSE;
 	}
 
@@ -1172,7 +1153,7 @@ EXCEL_METHOD(Book, __construct)
 		}
 	}
 
-	xlBookSetKey(book, name_zs->val, key_zs->val);
+	xlBookSetKey(book, name, key);
 }
 /* }}} */
 
