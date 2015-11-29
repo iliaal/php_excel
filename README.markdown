@@ -40,7 +40,7 @@ git clone https://github.com/iliaal/php_excel.git ext/excel
 
 ### Windows
 
-Pre-build packages for Windows can be downloaded [here](http://windows.php.net/downloads/pecl/snaps/excel).
+Pre-build packages for Windows can be downloaded [here](http://windows.php.net/downloads/pecl/snaps/excel) or [here](https://www.apachelounge.com/viewtopic.php?t=6617).
 
 ### PHP7
 
