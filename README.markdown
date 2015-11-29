@@ -120,17 +120,19 @@ in Excel or using the COM classes to open and save the Excel file via PHP. (**In
 If your credentials do not work properly because of multibyte characters you can extend ExcelBook
 class and circumvent the build-in mechanism for ```php.ini``` settings.
 
-    <?php
-    
-    class MyExcelBook extends \ExcelBook
+``` php
+<?php
+
+class MyExcelBook extends \ExcelBook
+{
+    public function __construct($license_name=null, $license_key=null, $new_excel=false)
     {
-        public function __construct($license_name=null, $license_key=null, $new_excel=false)
-        {
-            $license_name = utf8_decode(get_cfg_var('excel.license_name'));
-            $license_key = utf8_decode(get_cfg_var('excel.license_key'));
-            parent::__construct($license_name, $license_key, $new_excel);
-        }
+        $license_name = utf8_decode(get_cfg_var('excel.license_name'));
+        $license_key = utf8_decode(get_cfg_var('excel.license_key'));
+        parent::__construct($license_name, $license_key, $new_excel);
     }
+}
+```
 
 ### Further reading
 
