@@ -1123,7 +1123,7 @@ EXCEL_METHOD(Book, __construct)
 	BookHandle book;
 	zval *object = getThis();
 	char *name = NULL, *key;
-	int name_len = 0, key_len = 0;
+	zend_long name_len = 0, key_len = 0;	
 	zend_bool new_excel = 0;
 
 	if (zend_parse_parameters(ZEND_NUM_ARGS(), "|ssb", &name, &name_len, &key, &key_len, &new_excel) == FAILURE) {
