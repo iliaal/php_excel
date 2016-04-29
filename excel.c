@@ -2288,7 +2288,7 @@ EXCEL_METHOD(Sheet, readCol)
 	BookHandle book;
 	zend_bool read_formula = 1;
 
-	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "l|ll", &col, &row_start, &row_end, &read_formula) == FAILURE) {
+	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "l|llb", &col, &row_start, &row_end, &read_formula) == FAILURE) {
 		RETURN_FALSE;
 	}
 
