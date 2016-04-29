@@ -1176,7 +1176,7 @@ class ExcelSheet
 	* @param int $scope_id
 	* @return bool
 	*/
-	public function setNamedRange($name, $row_from, $column_from, $row_to, $column_to, $scope_id = null)
+	public function setNamedRange($name, $row_from, $row_to, $column_from, $column_to, $scope_id = null)
 	{
 	} // setNamedRange
 
