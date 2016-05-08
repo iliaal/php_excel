@@ -2281,6 +2281,18 @@ zend_bool php_excel_write_cell(SheetHandle sheet, BookHandle book, int row, int 
 
 		case IS_FALSE:
 			return xlSheetWriteBool(sheet, row, col, 0, format);
+
+		case IS_ARRAY:
+			php_error_docref(NULL, E_WARNING, "Type mismatch: array not supported for atomic write operation in row %d, column %d", row, col);
+			return 1;
+
+		case IS_OBJECT:
+			php_error_docref(NULL, E_WARNING, "Type mismatch: object not supported for atomic write operation in row %d, column %d", row, col);
+			return 1;
+
+		case IS_RESOURCE:
+			php_error_docref(NULL, E_WARNING, "Type mismatch: resource not supported for atomic write operation in row %d, column %d", row, col);
+			return 1;
 	}
 
 	return 0;
