@@ -25,4 +25,8 @@ date.timezone=America/Toronto
 --EXPECTF--
 string(63) "ExcelFormat::__construct() expects exactly 1 parameter, 0 given"
 
-Catchable fatal error: Argument 1 passed to ExcelFormat::__construct() must be an instance of ExcelBook, string given in %s on line %d
+Fatal error: Uncaught TypeError: Argument 1 passed to ExcelFormat::__construct() must be an instance of ExcelBook, string given in %s:%d
+Stack trace:
+#0 %s(%d): ExcelFormat->__construct('cdsd')
+#1 {main}
+  thrown in %s on line %d
