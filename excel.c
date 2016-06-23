@@ -79,8 +79,10 @@ ZEND_DECLARE_MODULE_GLOBALS(excel)
 static PHP_GINIT_FUNCTION(excel);
 
 PHP_INI_BEGIN()
+#if defined(HAVE_LIBXL_SETKEY)
 	STD_PHP_INI_ENTRY("excel.license_name", NULL, PHP_INI_ALL, OnUpdateString, ini_license_name, zend_excel_globals, excel_globals)
 	STD_PHP_INI_ENTRY("excel.license_key", NULL, PHP_INI_ALL, OnUpdateString, ini_license_key, zend_excel_globals, excel_globals)
+#endif
 	STD_PHP_INI_ENTRY("excel.skip_empty", "0", PHP_INI_ALL, OnUpdateLong, ini_skip_empty, zend_excel_globals, excel_globals)
 PHP_INI_END()
 
@@ -386,6 +388,19 @@ static wchar_t * _php_excel_to_wide(const char *string, size_t len, size_t *out_
 
 #define EXCEL_METHOD(class_name, function_name) \
 	PHP_METHOD(Excel ## class_name, function_name)
+
+
+/* {{{ proto bool ExcelBook::requiresKey()
+	true if license key is required. */
+EXCEL_METHOD(Book, requiresKey)
+{
+#if defined(HAVE_LIBXL_SETKEY)
+	RETURN_BOOL(1);
+#else
+	RETURN_BOOL(0);
+#endif
+}
+/* }}} */
 
 /* {{{ proto bool ExcelBook::load(string data)
 	Load Excel data string. */
@@ -1240,6 +1255,7 @@ EXCEL_METHOD(Book, __construct)
 		RETURN_FALSE;
 	}
 #endif
+#if defined(HAVE_LIBXL_SETKEY)
 	if (!name_len) {
 		if (INI_STR("excel.license_name") && INI_STR("excel.license_key")) {
 			name = INI_STR("excel.license_name");
@@ -1252,6 +1268,7 @@ EXCEL_METHOD(Book, __construct)
 #endif
 		}
 	}
+#endif
 
 	BOOK_FROM_OBJECT(book, object);
 #ifdef LIBXL_VERSION
@@ -1263,6 +1280,9 @@ EXCEL_METHOD(Book, __construct)
 		} else {
 			RETURN_FALSE;
 		}
+#if !defined(HAVE_LIBXL_SETKEY)
+		return;
+#endif
 		if (!name_len && !key_len) {
 			return;
 		}
