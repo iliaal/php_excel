@@ -39,21 +39,10 @@ ZEND_END_MODULE_GLOBALS(excel)
 #include "TSRM.h"
 #endif
 
-#if ZEND_MODULE_API_NO >= 20100409
-#ifndef ZEND_ENGINE_2_4
-#define ZEND_ENGINE_2_4
-#endif
-#endif
-
-#if PHP_VERSION_ID >= 50300
 # define PHP_EXCEL_ERROR_HANDLING() \
 	zend_error_handling error_handling; \
 	zend_replace_error_handling(EH_THROW, NULL, &error_handling TSRMLS_CC);
 # define PHP_EXCEL_RESTORE_ERRORS() zend_restore_error_handling(&error_handling TSRMLS_CC);
-#else
-# define PHP_EXCEL_ERROR_HANDLING() php_set_error_handling(EH_THROW, NULL TSRMLS_CC); 
-# define PHP_EXCEL_RESTORE_ERRORS() php_std_error_handling();
-#endif
 
 #ifndef Z_SET_ISREF_P
 # define Z_SET_ISREF_P(pz)				(pz)->is_ref = 1
