@@ -8,6 +8,8 @@
 		- ExcelBook::printRepeatRows()
 	* Added support for LibXL 3.6.3
 	* ExcelSheet::addPictureDim() & ExcelSheet::addPictureScaled() now support position parameters
+	* Includes official PHP7 release
+	* Added support for libxl compiled from source
 
 [2015-02-26] - Version 1.0.1
 	* Added methods
