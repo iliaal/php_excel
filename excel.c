@@ -458,7 +458,7 @@ EXCEL_METHOD(Book, getSheet)
 {
 	BookHandle book;
 	zval *object = getThis();
-	long sheet = 0;
+	zend_long sheet = 0;
 	SheetHandle sh;
 	excel_sheet_object *fo;
 
@@ -533,7 +533,7 @@ EXCEL_METHOD(Book, deleteSheet)
 {
 	BookHandle book;
 	zval *object = getThis();
-	long sheet;
+	zend_long sheet;
 
 	if (zend_parse_parameters(ZEND_NUM_ARGS(), "l", &sheet) == FAILURE) {
 		RETURN_FALSE;
@@ -555,7 +555,7 @@ EXCEL_METHOD(Book, activeSheet)
 {
 	BookHandle book;
 	zval *object = getThis();
-	long sheet = -1;
+	zend_long sheet = -1;
 	long res;
 
 	if (zend_parse_parameters(ZEND_NUM_ARGS(), "|l", &sheet) == FAILURE) {
@@ -618,7 +618,7 @@ EXCEL_METHOD(Book, copySheet)
 	SheetHandle sh;
 	excel_sheet_object *fo;
 	zend_string *name_zs = NULL;
-	long num;
+	zend_long num;
 	SheetHandle osh;
 
 	if (zend_parse_parameters(ZEND_NUM_ARGS(), "Sl", &name_zs, &num) == FAILURE) {
@@ -831,7 +831,7 @@ EXCEL_METHOD(Book, getCustomFormat)
 {
 	BookHandle book;
 	zval *object = getThis();
-	long id;
+	zend_long id;
 	char *data;
 
 	if (zend_parse_parameters(ZEND_NUM_ARGS(), "l", &id) == FAILURE) {
@@ -871,7 +871,7 @@ EXCEL_METHOD(Book, packDate)
 {
 	BookHandle book;
 	zval *object = getThis();
-	long ts;
+	zend_long ts;
 	double dt;
 
 	if (zend_parse_parameters(ZEND_NUM_ARGS(), "l", &ts) == FAILURE) {
@@ -902,7 +902,7 @@ EXCEL_METHOD(Book, packDateValues)
 {
 	BookHandle book;
 	zval *object = getThis();
-	long year, month, day, hour, min, sec;
+	zend_long year, month, day, hour, min, sec;
 	double dt;
 
 	if (zend_parse_parameters(ZEND_NUM_ARGS(), "llllll", &year, &month, &day, &hour, &min, &sec) == FAILURE) {
@@ -1077,7 +1077,7 @@ EXCEL_METHOD(Book, setDefaultFont)
 {
 	BookHandle book;
 	zval *object = getThis();
-	long font_size;
+	zend_long font_size;
 	zend_string *font_zs = NULL;
 
 	if (zend_parse_parameters(ZEND_NUM_ARGS(), "Sl", &font_zs, &font_size) == FAILURE || font_size < 1) {
@@ -1122,7 +1122,7 @@ EXCEL_METHOD(Book, __construct)
 {
 	BookHandle book;
 	zval *object = getThis();
-	char *name = NULL, *key;
+	char *name = NULL, *key = NULL;
 	size_t name_len = 0, key_len = 0;
 	zend_bool new_excel = 0;
 
@@ -1163,7 +1163,7 @@ EXCEL_METHOD(Book, setActiveSheet)
 {
 	BookHandle book;
 	zval *object = getThis();
-	long id;
+	zend_long id;
 
 	if (zend_parse_parameters(ZEND_NUM_ARGS(), "l", &id) == FAILURE || id < 0) {
 		RETURN_FALSE;
@@ -1279,7 +1279,7 @@ EXCEL_METHOD(Book, colorPack)
 {
 	BookHandle book;
 	zval *object = getThis();
-	long r, g, b;
+	zend_long r, g, b;
 
 	if (zend_parse_parameters(ZEND_NUM_ARGS(), "lll", &r, &g, &b) == FAILURE) {
 		RETURN_FALSE;
@@ -1309,7 +1309,7 @@ EXCEL_METHOD(Book, colorUnpack)
 	BookHandle book;
 	zval *object = getThis();
 	int r, g, b;
-	long color;
+	zend_long color;
 
 	if (zend_parse_parameters(ZEND_NUM_ARGS(), "l", &color) == FAILURE) {
 		RETURN_FALSE;
@@ -1337,7 +1337,7 @@ EXCEL_METHOD(Font, size)
 {
 	zval *object = getThis();
 	FontHandle font;
-	long size = -1;
+	zend_long size = -1;
 
 	if (zend_parse_parameters(ZEND_NUM_ARGS(), "|l", &size) == FAILURE) {
 		RETURN_FALSE;
@@ -1425,7 +1425,7 @@ EXCEL_METHOD(Font, color)
 {
 	zval *object = getThis();
 	FontHandle font;
-	long color;
+	zend_long color;
 
 	if (zend_parse_parameters(ZEND_NUM_ARGS(), "|l", &color) == FAILURE) {
 		RETURN_FALSE;
@@ -1447,7 +1447,7 @@ EXCEL_METHOD(Font, mode)
 {
 	zval *object = getThis();
 	FontHandle font;
-	long mode;
+	zend_long mode;
 
 	if (zend_parse_parameters(ZEND_NUM_ARGS(), "|l", &mode) == FAILURE) {
 		RETURN_FALSE;
@@ -1469,7 +1469,7 @@ EXCEL_METHOD(Font, underline)
 {
 	zval *object = getThis();
 	FontHandle font;
-	long underline;
+	zend_long underline;
 
 	if (zend_parse_parameters(ZEND_NUM_ARGS(), "|l", &underline) == FAILURE) {
 		RETURN_FALSE;
@@ -1630,7 +1630,7 @@ EXCEL_METHOD(Format, getFont)
 	{ \
 		FormatHandle format; \
 		zval *object = getThis(); \
-		long data; \
+		zend_long data; \
 		if (zend_parse_parameters(ZEND_NUM_ARGS(), "|l", &data) == FAILURE) { \
 			RETURN_FALSE; \
 		} \
@@ -1698,7 +1698,7 @@ EXCEL_METHOD(Format, rotate)
 {
 	FormatHandle format;
 	zval *object = getThis();
-	long angle;
+	zend_long angle;
 
 	if (zend_parse_parameters(ZEND_NUM_ARGS(), "|l", &angle) == FAILURE) {
 		RETURN_FALSE;
@@ -1724,7 +1724,7 @@ EXCEL_METHOD(Format, indent)
 {
 	FormatHandle format;
 	zval *object = getThis();
-	long indent;
+	zend_long indent;
 
 	if (zend_parse_parameters(ZEND_NUM_ARGS(), "|l", &indent) == FAILURE) {
 		RETURN_FALSE;
@@ -1931,7 +1931,7 @@ EXCEL_METHOD(Sheet, cellType)
 {
 	zval *object = getThis();
 	SheetHandle sheet;
-	long row, col;
+	zend_long row, col;
 
 	if (zend_parse_parameters(ZEND_NUM_ARGS(), "ll", &row, &col) == FAILURE) {
 		RETURN_FALSE;
@@ -1950,7 +1950,7 @@ EXCEL_METHOD(Sheet, cellFormat)
 	zval *object = getThis();
 	SheetHandle sheet;
 	FormatHandle format;
-	long row, col;
+	zend_long row, col;
 	excel_format_object *fo;
 
 	if (zend_parse_parameters(ZEND_NUM_ARGS(), "ll", &row, &col) == FAILURE) {
@@ -1975,7 +1975,7 @@ EXCEL_METHOD(Sheet, setCellFormat)
 	SheetHandle sheet;
 	FormatHandle format;
 	zval *oformat;
-	long row, col;
+	zend_long row, col;
 
 	if (zend_parse_parameters(ZEND_NUM_ARGS(), "llo", &row, &col, &oformat, excel_ce_format) == FAILURE) {
 		RETURN_FALSE;
@@ -2058,9 +2058,9 @@ zend_bool php_excel_read_cell(int row, int col, zval *val, SheetHandle sheet, Bo
 EXCEL_METHOD(Sheet, readRow)
 {
 	zval *object = getThis();
-	long row;
-	long col_start = 0;
-	long col_end = -1;
+	zend_long row;
+	zend_long col_start = 0;
+	zend_long col_end = -1;
 	int lc;
 	SheetHandle sheet;
 	BookHandle book;
@@ -2118,9 +2118,9 @@ EXCEL_METHOD(Sheet, readRow)
 EXCEL_METHOD(Sheet, readCol)
 {
 	zval *object = getThis();
-	long col;
-	long row_start = 0;
-	long row_end = -1;
+	zend_long col;
+	zend_long row_start = 0;
+	zend_long row_end = -1;
 	int lc;
 	SheetHandle sheet;
 	BookHandle book;
@@ -2180,7 +2180,7 @@ EXCEL_METHOD(Sheet, read)
 	zval *object = getThis();
 	SheetHandle sheet;
 	BookHandle book;
-	long row, col;
+	zend_long row, col;
 	zval *oformat = NULL;
 	FormatHandle format = NULL;
 	zend_bool read_formula = 1;
@@ -2306,9 +2306,9 @@ EXCEL_METHOD(Sheet, write)
 	SheetHandle sheet;
 	BookHandle book;
 	FormatHandle format;
-	long row, col;
+	zend_long row, col;
 	zval *oformat = NULL;
-	long dtype = -1;
+	zend_long dtype = -1;
 	zval *data;
 
 	if (zend_parse_parameters(ZEND_NUM_ARGS(), "llz|O!l", &row, &col, &data, &oformat, excel_ce_format, &dtype) == FAILURE) {
@@ -2337,7 +2337,7 @@ EXCEL_METHOD(Sheet, writeRow)
 	SheetHandle sheet;
 	BookHandle book;
 	FormatHandle format;
-	long row, col = 0;
+	zend_long row, col = 0;
 	zval *oformat = NULL;
 	zval *data;
 	zval *element;
@@ -2383,12 +2383,12 @@ EXCEL_METHOD(Sheet, writeCol)
 	SheetHandle sheet;
 	BookHandle book;
 	FormatHandle format;
-	long row = 0, col;
+	zend_long row = 0, col;
 	zval *oformat = NULL;
 	zval *data;
 	zval *element;
 	long i;
-	long dtype = -1;
+	zend_long dtype = -1;
 
 	if (zend_parse_parameters(ZEND_NUM_ARGS(), "la|lO!l", &col, &data, &row, &oformat, excel_ce_format, &dtype) == FAILURE) {
 		RETURN_FALSE;
@@ -2426,7 +2426,7 @@ EXCEL_METHOD(Sheet, writeCol)
 	{ \
 		SheetHandle sheet; \
 		zval *object = getThis(); \
-		long r, c; \
+		zend_long r, c; \
 		if (zend_parse_parameters(ZEND_NUM_ARGS(), "ll", &r, &c) == FAILURE) { \
 			RETURN_FALSE; \
 		} \
@@ -2447,7 +2447,7 @@ EXCEL_METHOD(Sheet, isFormula)
 EXCEL_METHOD(Sheet, isDate)
 {
 	zval *object = getThis();
-	long r, c;
+	zend_long r, c;
 	SheetHandle sheet;
 
 	if (zend_parse_parameters(ZEND_NUM_ARGS(), "ll", &r, &c) == FAILURE) {
@@ -2500,7 +2500,7 @@ EXCEL_METHOD(Sheet, removeCol)
 	{ \
 		SheetHandle sheet; \
 		zval *object = getThis(); \
-		long val; \
+		zend_long val; \
 		if (zend_parse_parameters(ZEND_NUM_ARGS(), "l", &val) == FAILURE) { \
 			RETURN_FALSE; \
 		} \
@@ -2531,7 +2531,7 @@ EXCEL_METHOD(Sheet, readComment)
 		SheetHandle sheet;
 		zval *object = getThis();
 		const char *s;
-		long r, c;
+		zend_long r, c;
 
 		if (zend_parse_parameters(ZEND_NUM_ARGS(), "ll", &r, &c) == FAILURE) {
 			RETURN_FALSE;
@@ -2554,7 +2554,7 @@ EXCEL_METHOD(Sheet, writeComment)
 		SheetHandle sheet;
 		zval *object = getThis();
 		zend_string *val_zs = NULL, *auth_zs = NULL;
-		long r, c, w, h;
+		zend_long r, c, w, h;
 
 		if (zend_parse_parameters(ZEND_NUM_ARGS(), "llSSll", &r, &c, &val_zs, &auth_zs, &w, &h) == FAILURE) {
 			RETURN_FALSE;
@@ -2577,7 +2577,7 @@ EXCEL_METHOD(Sheet, setColWidth)
 		SheetHandle sheet;
 		FormatHandle format;
 		zval *object = getThis();
-		long s, e;
+		zend_long s, e;
 		double width;
 		zval *f = NULL;
 		zend_bool h = 0;
@@ -2614,7 +2614,7 @@ EXCEL_METHOD(Sheet, setRowHeight)
 		SheetHandle sheet;
 		FormatHandle format;
 		zval *object = getThis();
-		long row;
+		zend_long row;
 		double height;
 		zval *f = NULL;
 		zend_bool h = 0;
@@ -2647,7 +2647,7 @@ EXCEL_METHOD(Sheet, getMerge)
 {
 		SheetHandle sheet;
 		zval *object = getThis();
-		long row, col;
+		zend_long row, col;
 		int rowFirst, rowLast, colFirst, colLast;
 
 		if (zend_parse_parameters(ZEND_NUM_ARGS(), "ll", &row, &col) == FAILURE) {
@@ -2674,7 +2674,7 @@ EXCEL_METHOD(Sheet, setMerge)
 {
 	SheetHandle sheet;
 	zval *object = getThis();
-	long row_s, col_s, row_e, col_e;
+	zend_long row_s, col_s, row_e, col_e;
 
 	if (zend_parse_parameters(ZEND_NUM_ARGS(), "llll", &row_s, &row_e, &col_s, &col_e) == FAILURE) {
 		RETURN_FALSE;
@@ -2692,7 +2692,7 @@ EXCEL_METHOD(Sheet, deleteMerge)
 {
 	SheetHandle sheet;
 	zval *object = getThis();
-	long row, col;
+	zend_long row, col;
 
 	if (zend_parse_parameters(ZEND_NUM_ARGS(), "ll", &row, &col) == FAILURE) {
 		RETURN_FALSE;
@@ -2710,8 +2710,8 @@ EXCEL_METHOD(Sheet, addPictureScaled)
 {
 	SheetHandle sheet;
 	zval *object = getThis();
-	long row, col, pic_id;
-	long x_offset = 0, y_offset = 0, pos = 0;
+	zend_long row, col, pic_id;
+	zend_long x_offset = 0, y_offset = 0, pos = 0;
 	double scale;
 
 	if (zend_parse_parameters(ZEND_NUM_ARGS(), "llld|lll", &row, &col, &pic_id, &scale, &x_offset, &y_offset, &pos) == FAILURE) {
@@ -2734,8 +2734,8 @@ EXCEL_METHOD(Sheet, addPictureDim)
 {
 	SheetHandle sheet;
 	zval *object = getThis();
-	long row, col, pic_id, w, h;
-	long x_offset = 0, y_offset = 0, pos = 0;
+	zend_long row, col, pic_id, w, h;
+	zend_long x_offset = 0, y_offset = 0, pos = 0;
 
 	if (zend_parse_parameters(ZEND_NUM_ARGS(), "lllll|lll", &row, &col, &pic_id, &w, &h, &x_offset, &y_offset, &pos) == FAILURE) {
 		RETURN_FALSE;
@@ -2755,7 +2755,7 @@ EXCEL_METHOD(Sheet, addPictureDim)
 	{ \
 		SheetHandle sheet; \
 		zval *object = getThis(); \
-		long val; \
+		zend_long val; \
 		zend_bool brk; \
 		if (zend_parse_parameters(ZEND_NUM_ARGS(), "lb", &val, &brk) == FAILURE) { \
 			RETURN_FALSE; \
@@ -2786,7 +2786,7 @@ EXCEL_METHOD(Sheet, splitSheet)
 {
 	SheetHandle sheet;
 	zval *object = getThis();
-	long row, col;
+	zend_long row, col;
 
 	if (zend_parse_parameters(ZEND_NUM_ARGS(), "ll", &row, &col) == FAILURE) {
 		RETURN_FALSE;
@@ -2802,7 +2802,7 @@ EXCEL_METHOD(Sheet, splitSheet)
 	{ \
 		SheetHandle sheet; \
 		zval *object = getThis(); \
-		long s, e; \
+		zend_long s, e; \
 		zend_bool brk = 0; \
 		if (zend_parse_parameters(ZEND_NUM_ARGS(), "ll|b", &s, &e, &brk) == FAILURE) { \
 			RETURN_FALSE; \
@@ -2833,7 +2833,7 @@ EXCEL_METHOD(Sheet, clear)
 {
 	SheetHandle sheet;
 	zval *object = getThis();
-	long row_s, col_s, col_e, row_e;
+	zend_long row_s, col_s, col_e, row_e;
 
 	if (zend_parse_parameters(ZEND_NUM_ARGS(), "llll", &row_s, &row_e, &col_s, &col_e) == FAILURE) {
 		RETURN_FALSE;
@@ -2851,7 +2851,7 @@ EXCEL_METHOD(Sheet, copy)
 {
 	SheetHandle sheet;
 	zval *object = getThis();
-	long row, col, to_row, to_col;
+	zend_long row, col, to_row, to_col;
 
 	if (zend_parse_parameters(ZEND_NUM_ARGS(), "llll", &row, &col, &to_row, &to_col) == FAILURE) {
 		RETURN_FALSE;
@@ -2895,7 +2895,7 @@ EXCEL_METHOD(Sheet, copy)
 	{ \
 		SheetHandle sheet; \
 		zval *object = getThis(); \
-		long val; \
+		zend_long val; \
 		if (zend_parse_parameters(ZEND_NUM_ARGS(), "l", &val) == FAILURE) { \
 			RETURN_FALSE; \
 		} \
@@ -3034,7 +3034,7 @@ EXCEL_METHOD(Sheet, setTopLeftView)
 {
 	SheetHandle sheet;
 	zval *object = getThis();
-	long r,c;
+	zend_long r,c;
 
 	if (zend_parse_parameters(ZEND_NUM_ARGS(), "ll", &r, &c) == FAILURE) {
 		RETURN_FALSE;
@@ -3054,7 +3054,7 @@ EXCEL_METHOD(Sheet, rowColToAddr)
 	SheetHandle sheet;
 	zval *object = getThis();
 	zend_bool row_relative = 1, col_relative = 1;
-	long row, col;
+	zend_long row, col;
 	const char *cel_ref;
 
 	if (zend_parse_parameters(ZEND_NUM_ARGS(), "ll|bb", &row, &col, &row_relative, &col_relative) == FAILURE) {
@@ -3384,9 +3384,9 @@ EXCEL_METHOD(Sheet, setNamedRange)
 {
 	SheetHandle sheet;
 	zval *object = getThis();
-	long row, to_row, col, to_col;
+	zend_long row, to_row, col, to_col;
 	zend_string *name_zs = NULL;
-	long scope_id = SCOPE_WORKBOOK;
+	zend_long scope_id = SCOPE_WORKBOOK;
 
 	if (zend_parse_parameters(ZEND_NUM_ARGS(), "Sllll|l", &name_zs, &row, &to_row, &col, &to_col, &scope_id) == FAILURE) {
 		RETURN_FALSE;
@@ -3418,7 +3418,7 @@ EXCEL_METHOD(Sheet, delNamedRange)
 	SheetHandle sheet;
 	zval *object = getThis();
 	zend_string *val_zs = NULL;
-	long scope_id = SCOPE_WORKBOOK;
+	zend_long scope_id = SCOPE_WORKBOOK;
 
 	if (zend_parse_parameters(ZEND_NUM_ARGS(), "S|l", &val_zs, &scope_id) == FAILURE) {
 		RETURN_FALSE;
@@ -3439,7 +3439,7 @@ EXCEL_METHOD(Sheet, delNamedRange)
 	{ \
 		SheetHandle sheet; \
 		zval *object = getThis(); \
-		long s, e; \
+		zend_long s, e; \
 		if (zend_parse_parameters(ZEND_NUM_ARGS(), "ll", &s, &e) == FAILURE) { \
 			RETURN_FALSE; \
 		} \
@@ -3544,7 +3544,7 @@ EXCEL_METHOD(Sheet, setPrintFit)
 {
 	SheetHandle sheet;
 	zval *object = getThis();
-	long wPages, hPages;
+	zend_long wPages, hPages;
 
 	if (zend_parse_parameters(ZEND_NUM_ARGS(), "ll", &wPages, &hPages) == FAILURE) {
 		RETURN_FALSE;
@@ -3588,7 +3588,7 @@ EXCEL_METHOD(Sheet, getNamedRange)
 	zval *object = getThis();
 	zend_string *name_zs = NULL;
 	int rf, rl, cf, cl;
-	long scope_id = SCOPE_WORKBOOK;
+	zend_long scope_id = SCOPE_WORKBOOK;
 	int hidden = 0;
 
 	if (zend_parse_parameters(ZEND_NUM_ARGS(), "S|l", &name_zs, &scope_id) == FAILURE) {
@@ -3619,10 +3619,10 @@ EXCEL_METHOD(Sheet, getIndexRange)
 {
 	SheetHandle sheet;
 	zval *object = getThis();
-	long index;
+	zend_long index;
 	int rf, rl, cf, cl;
 	int hidden = 0;
-	long scope_id = SCOPE_WORKBOOK;
+	zend_long scope_id = SCOPE_WORKBOOK;
 
 	if (zend_parse_parameters(ZEND_NUM_ARGS(), "l|l", &index, &scope_id) == FAILURE) {
 		RETURN_FALSE;
@@ -3665,7 +3665,7 @@ EXCEL_METHOD(Sheet, getVerPageBreak)
 {
 	SheetHandle sheet;
 	zval *object = getThis();
-	long index;
+	zend_long index;
 
 	if (zend_parse_parameters(ZEND_NUM_ARGS(), "l", &index) == FAILURE) {
 		RETURN_FALSE;
@@ -3698,7 +3698,7 @@ EXCEL_METHOD(Sheet, getHorPageBreak)
 {
 	SheetHandle sheet;
 	zval *object = getThis();
-	long index;
+	zend_long index;
 
 	if (zend_parse_parameters(ZEND_NUM_ARGS(), "l", &index) == FAILURE) {
 		RETURN_FALSE;
@@ -3731,7 +3731,7 @@ EXCEL_METHOD(Sheet, getPictureInfo)
 {
 	SheetHandle sheet;
 	zval *object = getThis();
-	long index;
+	zend_long index;
 	int rowTop, colLeft, rowBottom, colRight, width, height, offset_x, offset_y;
 	int pic_index;
 
@@ -3834,7 +3834,7 @@ EXCEL_METHOD(Book, getPicture)
 {
 	BookHandle book;
 	zval *object = getThis();
-	long index;
+	zend_long index;
 	int type;
 	const char *buf;
 	unsigned int buf_len;
@@ -3882,7 +3882,7 @@ EXCEL_METHOD(Book, insertSheet)
 	SheetHandle sh, sheet;
 	excel_sheet_object *fo;
 	zend_string *name_zs = NULL;
-	long index;
+	zend_long index;
 
 	if (zend_parse_parameters(ZEND_NUM_ARGS(), "lS|o", &index, &name_zs, &shz) == FAILURE) {
 		RETURN_FALSE;
@@ -3966,7 +3966,7 @@ EXCEL_METHOD(Sheet, setRightToLeft)
 {
 	SheetHandle sheet;
 	zval *object = getThis();
-	long mode;
+	zend_long mode;
 
 	if (zend_parse_parameters(ZEND_NUM_ARGS(), "l", &mode) == FAILURE) {
 		RETURN_FALSE;
@@ -3983,7 +3983,7 @@ EXCEL_METHOD(Sheet, setPrintArea)
 {
 	zval *object = getThis();
 	SheetHandle sheet;
-	long row, col, to_row, to_col;
+	zend_long row, col, to_row, to_col;
 
 	if (zend_parse_parameters(ZEND_NUM_ARGS(), "llll", &row, &to_row, &col, &to_col) == FAILURE) {
 		RETURN_FALSE;
@@ -4077,7 +4077,7 @@ EXCEL_METHOD(Sheet, hyperlink)
 {
 	SheetHandle sheet;
 	zval *object = getThis();
-	long index;
+	zend_long index;
 	int rowFirst, rowLast, colFirst, colLast;
 	const char *s;
 
@@ -4108,7 +4108,7 @@ EXCEL_METHOD(Sheet, delHyperlink)
 {
 	zval *object = getThis();
 	SheetHandle sheet;
-	long index;
+	zend_long index;
 
 	if (zend_parse_parameters(ZEND_NUM_ARGS(), "l", &index) == FAILURE) {
 		RETURN_FALSE;
@@ -4130,7 +4130,7 @@ EXCEL_METHOD(Sheet, addHyperlink)
 	SheetHandle sheet;
 	zval *object = getThis();
 	zend_string *val_zs = NULL;
-	long row_first, row_last, col_first, col_last;
+	zend_long row_first, row_last, col_first, col_last;
 
 	if (zend_parse_parameters(ZEND_NUM_ARGS(), "Sllll", &val_zs, &row_first, &row_last, &col_first, &col_last) == FAILURE) {
 		RETURN_FALSE;
@@ -4170,7 +4170,7 @@ EXCEL_METHOD(Sheet, merge)
 {
 	SheetHandle sheet;
 	zval *object = getThis();
-	long index;
+	zend_long index;
 	int rowFirst, rowLast, colFirst, colLast;
 
 	if (zend_parse_parameters(ZEND_NUM_ARGS(), "l", &index) == FAILURE) {
@@ -4201,7 +4201,7 @@ EXCEL_METHOD(Sheet, delMergeByIndex)
 {
 	zval *object = getThis();
 	SheetHandle sheet;
-	long index;
+	zend_long index;
 
 	if (zend_parse_parameters(ZEND_NUM_ARGS(), "l", &index) == FAILURE) {
 		RETURN_FALSE;
@@ -4242,7 +4242,7 @@ EXCEL_METHOD(Sheet, rowHidden)
 {
 	zval *object = getThis();
 	SheetHandle sheet;
-	long row;
+	zend_long row;
 
 	if (zend_parse_parameters(ZEND_NUM_ARGS(), "l", &row) == FAILURE) {
 		RETURN_FALSE;
@@ -4263,7 +4263,7 @@ EXCEL_METHOD(Sheet, setRowHidden)
 {
 	zval *object = getThis();
 	SheetHandle sheet;
-	long row;
+	zend_long row;
 	zend_bool hidden;
 
 	if (zend_parse_parameters(ZEND_NUM_ARGS(), "lb", &row, &hidden) == FAILURE) {
@@ -4285,7 +4285,7 @@ EXCEL_METHOD(Sheet, colHidden)
 {
 	zval *object = getThis();
 	SheetHandle sheet;
-	long col;
+	zend_long col;
 
 	if (zend_parse_parameters(ZEND_NUM_ARGS(), "l", &col) == FAILURE) {
 		RETURN_FALSE;
@@ -4306,7 +4306,7 @@ EXCEL_METHOD(Sheet, setColHidden)
 {
 	zval *object = getThis();
 	SheetHandle sheet;
-	long col;
+	zend_long col;
 	zend_bool hidden;
 
 	if (zend_parse_parameters(ZEND_NUM_ARGS(), "lb", &col, &hidden) == FAILURE) {
@@ -4328,7 +4328,7 @@ EXCEL_METHOD(Book, sheetType)
 {
 	zval *object = getThis();
 	BookHandle book;
-	long index;
+	zend_long index;
 
 	if (zend_parse_parameters(ZEND_NUM_ARGS(), "l", &index) == FAILURE) {
 		RETURN_FALSE;
@@ -4380,7 +4380,7 @@ EXCEL_METHOD(Sheet, setAutoFitArea)
 {
 	zval *object = getThis();
 	SheetHandle sheet;
-	long rowFirst=0, colFirst=0, rowLast=-1, colLast=-1;
+	zend_long rowFirst=0, colFirst=0, rowLast=-1, colLast=-1;
 
 	if (zend_parse_parameters(ZEND_NUM_ARGS(), "|llll", &rowFirst, &rowLast, &colFirst, &colLast) == FAILURE) {
 		RETURN_FALSE;
