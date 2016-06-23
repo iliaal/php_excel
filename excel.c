@@ -360,13 +360,13 @@ EXCEL_METHOD(Book, load)
 		RETURN_FALSE;
 	}
 
-	if (!data_zs || data_zs->len < 1) {
+	if (!data_zs || ZSTR_LEN(data_zs) < 1) {
 		RETURN_FALSE;
 	}
 
 	BOOK_FROM_OBJECT(book, object);
 
-	RETURN_BOOL(xlBookLoadRaw(book, data_zs->val, data_zs->len));
+	RETURN_BOOL(xlBookLoadRaw(book, ZSTR_VAL(data_zs), ZSTR_LEN(data_zs)));
 }
 /* }}} */
 
@@ -384,13 +384,13 @@ EXCEL_METHOD(Book, loadFile)
 		RETURN_FALSE;
 	}
 
-	if (!filename_zs || filename_zs->len < 1) {
+	if (!filename_zs || ZSTR_LEN(filename_zs) < 1) {
 		RETURN_FALSE;
 	}
 
 	BOOK_FROM_OBJECT(book, object);
 
-	stream = php_stream_open_wrapper(filename_zs->val, "rb", REPORT_ERRORS, NULL);
+	stream = php_stream_open_wrapper(ZSTR_VAL(filename_zs), "rb", REPORT_ERRORS, NULL);
 
 	if (!stream) {
 		RETURN_FALSE;
@@ -399,12 +399,12 @@ EXCEL_METHOD(Book, loadFile)
 	contents = php_stream_copy_to_mem(stream, PHP_STREAM_COPY_ALL, 0);
 	php_stream_close(stream);
 
-	if (!contents || contents->len < 1) {
+	if (!contents || ZSTR_LEN(contents) < 1) {
 		zend_string_release(contents);
 		RETURN_FALSE;
 	}
 
-	RETVAL_BOOL(xlBookLoadRaw(book, contents->val, contents->len));
+	RETVAL_BOOL(xlBookLoadRaw(book, ZSTR_VAL(contents), ZSTR_LEN(contents)));
 	zend_string_release(contents);
 }
 /* }}} */
@@ -429,9 +429,9 @@ EXCEL_METHOD(Book, save)
 		RETURN_FALSE;
 	}
 
-	if (filename_zs && filename_zs->len > 0) {
+	if (filename_zs && ZSTR_LEN(filename_zs) > 0) {
 		int numbytes;
-		php_stream *stream = php_stream_open_wrapper(filename_zs->val, "wb", REPORT_ERRORS, NULL);
+		php_stream *stream = php_stream_open_wrapper(ZSTR_VAL(filename_zs), "wb", REPORT_ERRORS, NULL);
 
 		if (!stream) {
 			RETURN_FALSE;
@@ -500,7 +500,7 @@ EXCEL_METHOD(Book, getSheetByName)
 		RETURN_FALSE;
 	}
 
-	if (!sheet_name_zs || sheet_name_zs->len < 1) {
+	if (!sheet_name_zs || ZSTR_LEN(sheet_name_zs) < 1) {
 		RETURN_FALSE;
 	}
 
@@ -512,7 +512,7 @@ EXCEL_METHOD(Book, getSheetByName)
 		if (sh) {
 			s = xlSheetName(sh);
 			if (s) {
-				if ((case_s && !strcasecmp(s, sheet_name_zs->val)) || (!case_s && !strcmp(s, sheet_name_zs->val))) {
+				if ((case_s && !strcasecmp(s, ZSTR_VAL(sheet_name_zs))) || (!case_s && !strcmp(s, ZSTR_VAL(sheet_name_zs)))) {
 					ZVAL_OBJ(return_value, excel_object_new_sheet(excel_ce_sheet));
 					fo = Z_EXCEL_SHEET_OBJ_P(return_value);
 					fo->sheet = sh;
@@ -591,13 +591,13 @@ EXCEL_METHOD(Book, addSheet)
 		RETURN_FALSE;
 	}
 
-	if (!name_zs || name_zs->len < 1) {
+	if (!name_zs || ZSTR_LEN(name_zs) < 1) {
 		RETURN_FALSE;
 	}
 
 	BOOK_FROM_OBJECT(book, object);
 
-	sh = xlBookAddSheet(book, name_zs->val, 0);
+	sh = xlBookAddSheet(book, ZSTR_VAL(name_zs), 0);
 	if (!sh) {
 		RETURN_FALSE;
 	}
@@ -629,7 +629,7 @@ EXCEL_METHOD(Book, copySheet)
 		RETURN_FALSE;
 	}
 
-	if (!name_zs || name_zs->len < 1) {
+	if (!name_zs || ZSTR_LEN(name_zs) < 1) {
 		RETURN_FALSE;
 	}
 
@@ -638,7 +638,7 @@ EXCEL_METHOD(Book, copySheet)
 	if (!(osh = xlBookGetSheet(book, num))) {
 		RETURN_FALSE;
 	}
-	sh = xlBookAddSheet(book, name_zs->val, osh);
+	sh = xlBookAddSheet(book, ZSTR_VAL(name_zs), osh);
 
 	if (!sh) {
 		RETURN_FALSE;
@@ -812,13 +812,13 @@ EXCEL_METHOD(Book, addCustomFormat)
 		RETURN_FALSE;
 	}
 
-	if (!format_zs || format_zs->len < 1) {
+	if (!format_zs || ZSTR_LEN(format_zs) < 1) {
 		RETURN_FALSE;
 	}
 
 	BOOK_FROM_OBJECT(book, object);
 
-	if (!(id = xlBookAddCustomNumFormat(book, format_zs->val))) {
+	if (!(id = xlBookAddCustomNumFormat(book, ZSTR_VAL(format_zs)))) {
 		RETURN_FALSE;
 	}
 	RETURN_LONG(id);
@@ -1084,13 +1084,13 @@ EXCEL_METHOD(Book, setDefaultFont)
 		RETURN_FALSE;
 	}
 
-	if (!font_zs || font_zs->len < 1) {
+	if (!font_zs || ZSTR_LEN(font_zs) < 1) {
 		RETURN_FALSE;
 	}
 
 	BOOK_FROM_OBJECT(book, object);
 
-	xlBookSetDefaultFont(book, font_zs->val, (int)font_size);
+	xlBookSetDefaultFont(book, ZSTR_VAL(font_zs), (int)font_size);
 }
 /* }}} */
 
@@ -1106,13 +1106,13 @@ EXCEL_METHOD(Book, setLocale)
 		RETURN_FALSE;
 	}
 
-	if (!locale_zs || locale_zs->len < 1) {
+	if (!locale_zs || ZSTR_LEN(locale_zs) < 1) {
 		RETURN_FALSE;
 	}
 
 	BOOK_FROM_OBJECT(book, object);
 
-	xlBookSetLocale(book, locale_zs->val);
+	xlBookSetLocale(book, ZSTR_VAL(locale_zs));
 }
 /* }}} */
 
@@ -1189,16 +1189,16 @@ static void php_excel_add_picture(INTERNAL_FUNCTION_PARAMETERS, int mode) /* {{{
 		RETURN_FALSE;
 	}
 
-	if (!data_zs || data_zs->len < 1) {
+	if (!data_zs || ZSTR_LEN(data_zs) < 1) {
 		RETURN_FALSE;
 	}
 
 	BOOK_FROM_OBJECT(book, object);
 
 	if (mode == 1) {
-		ret = xlBookAddPicture2(book, data_zs->val, data_zs->len);
+		ret = xlBookAddPicture2(book, ZSTR_VAL(data_zs), ZSTR_LEN(data_zs));
 	} else {
-		stream = php_stream_open_wrapper(data_zs->val, "rb", REPORT_ERRORS, NULL);
+		stream = php_stream_open_wrapper(ZSTR_VAL(data_zs), "rb", REPORT_ERRORS, NULL);
 
 		if (!stream) {
 			RETURN_FALSE;
@@ -1207,11 +1207,11 @@ static void php_excel_add_picture(INTERNAL_FUNCTION_PARAMETERS, int mode) /* {{{
 		contents = php_stream_copy_to_mem(stream, PHP_STREAM_COPY_ALL, 0);
 		php_stream_close(stream);
 
-		if (!contents || contents->len < 1) {
+		if (!contents || ZSTR_LEN(contents) < 1) {
 			zend_string_release(contents);
 			RETURN_FALSE;
 		}
-		ret = xlBookAddPicture2(book, contents->val, contents->len);
+		ret = xlBookAddPicture2(book, ZSTR_VAL(contents), ZSTR_LEN(contents));
 		zend_string_release(contents);
 	}
 
@@ -1500,7 +1500,7 @@ EXCEL_METHOD(Font, name)
 	FONT_FROM_OBJECT(font, object);
 
 	if (name_zs) {
-		xlFontSetName(font, name_zs->val);
+		xlFontSetName(font, ZSTR_VAL(name_zs));
 	}
 
 	RETURN_STRING((char *)xlFontName(font));
@@ -1906,7 +1906,7 @@ EXCEL_METHOD(Sheet, __construct)
 	}
 	PHP_EXCEL_RESTORE_ERRORS();
 
-	if (!zbook || !name_zs || name_zs->len < 1) {
+	if (!zbook || !name_zs || ZSTR_LEN(name_zs) < 1) {
 		RETURN_FALSE;
 	}
 
@@ -1914,7 +1914,7 @@ EXCEL_METHOD(Sheet, __construct)
 
 	obj = Z_EXCEL_SHEET_OBJ_P(object);
 
-	sh = xlBookAddSheet(book, name_zs->val, 0);
+	sh = xlBookAddSheet(book, ZSTR_VAL(name_zs), 0);
 
 	if (!sh) {
 		RETURN_FALSE;
@@ -2250,7 +2250,7 @@ zend_bool php_excel_write_cell(SheetHandle sheet, BookHandle book, int row, int 
 		case IS_STRING:
 			data_zs = Z_STR_P(data);
 			if (Z_STRLEN_P(data) > 0 && '\'' == Z_STRVAL_P(data)[0]) {
-				return xlSheetWriteStr(sheet, row, col, (const char*) data_zs->val + 1, format);
+				return xlSheetWriteStr(sheet, row, col, (const char*) ZSTR_VAL(data_zs) + 1, format);
 			}
 			if (Z_STRLEN_P(data) > 0 && '=' == Z_STRVAL_P(data)[0]) {
 				dtype = PHP_EXCEL_FORMULA;
@@ -2273,7 +2273,7 @@ zend_bool php_excel_write_cell(SheetHandle sheet, BookHandle book, int row, int 
 				if (Z_STRLEN_P(data) == 0 && INI_INT("excel.skip_empty") == 2) {
 					return 1;
 				}
-				return xlSheetWriteStr(sheet, row, col, (const char*) data_zs->val, format);
+				return xlSheetWriteStr(sheet, row, col, (const char*) ZSTR_VAL(data_zs), format);
 			}
 
 		case IS_TRUE:
@@ -2560,13 +2560,13 @@ EXCEL_METHOD(Sheet, writeComment)
 			RETURN_FALSE;
 		}
 
-		if (!val_zs || val_zs->len < 1 || !auth_zs || auth_zs->len < 1) {
+		if (!val_zs || ZSTR_LEN(val_zs) < 1 || !auth_zs || ZSTR_LEN(auth_zs) < 1) {
 			RETURN_FALSE;
 		}
 
 		SHEET_FROM_OBJECT(sheet, object);
 
-		xlSheetWriteComment(sheet, r, c, val_zs->val, auth_zs->val, w, h);
+		xlSheetWriteComment(sheet, r, c, ZSTR_VAL(val_zs), ZSTR_VAL(auth_zs), w, h);
 }
 /* }}} */
 
@@ -3084,14 +3084,14 @@ EXCEL_METHOD(Sheet, addrToRowCol)
 		RETURN_FALSE;
 	}
 
-	if (!cell_reference_zs || cell_reference_zs->len < 1) {
+	if (!cell_reference_zs || ZSTR_LEN(cell_reference_zs) < 1) {
 		php_error_docref(NULL, E_WARNING, "Cell reference cannot be empty");
 		RETURN_FALSE;
 	}
 
 	SHEET_FROM_OBJECT(sheet, object);
 
-	xlSheetAddrToRowCol(sheet, cell_reference_zs->val, &row, &col, &rowRelative, &colRelative);
+	xlSheetAddrToRowCol(sheet, ZSTR_VAL(cell_reference_zs), &row, &col, &rowRelative, &colRelative);
 	array_init(return_value);
 	add_assoc_long(return_value, "row", row);
 	add_assoc_long(return_value, "column", col);
@@ -3197,11 +3197,11 @@ EXCEL_METHOD(Sheet, footer)
 		if (zend_parse_parameters(ZEND_NUM_ARGS(), "Sd", &val_zs, &margin) == FAILURE) { \
 			RETURN_FALSE; \
 		} \
-		if (!val_zs || val_zs->len > 255) { \
+		if (!val_zs || ZSTR_LEN(val_zs) > 255) { \
 			RETURN_FALSE; \
 		} \
 		SHEET_FROM_OBJECT(sheet, object); \
-		RETURN_BOOL(xlSheet ## func_name (sheet, val_zs->val, margin)); \
+		RETURN_BOOL(xlSheet ## func_name (sheet, ZSTR_VAL(val_zs), margin)); \
 	}
 
 /* {{{ proto bool ExcelSheet::setHeader(string header, double margin)
@@ -3374,7 +3374,7 @@ EXCEL_METHOD(Sheet, setName)
 
 	SHEET_FROM_OBJECT(sheet, object);
 
-	xlSheetSetName(sheet, val_zs->val);
+	xlSheetSetName(sheet, ZSTR_VAL(val_zs));
 }
 /* }}} */
 
@@ -3392,7 +3392,7 @@ EXCEL_METHOD(Sheet, setNamedRange)
 		RETURN_FALSE;
 	}
 
-	if (!name_zs || name_zs->len < 1) {
+	if (!name_zs || ZSTR_LEN(name_zs) < 1) {
 		php_error_docref(NULL, E_WARNING, "The range name cannot be empty.");
 		RETURN_FALSE;
 	}
@@ -3407,7 +3407,7 @@ EXCEL_METHOD(Sheet, setNamedRange)
 
 	SHEET_FROM_OBJECT(sheet, object);
 
-	RETURN_BOOL(xlSheetSetNamedRange(sheet, name_zs->val, row, to_row, col, to_col, scope_id));
+	RETURN_BOOL(xlSheetSetNamedRange(sheet, ZSTR_VAL(name_zs), row, to_row, col, to_col, scope_id));
 }
 /* }}} */
 
@@ -3424,14 +3424,14 @@ EXCEL_METHOD(Sheet, delNamedRange)
 		RETURN_FALSE;
 	}
 
-	if (!val_zs || val_zs->len < 1) {
+	if (!val_zs || ZSTR_LEN(val_zs) < 1) {
 		php_error_docref(NULL, E_WARNING, "The range name cannot be empty.");
 		RETURN_FALSE;
 	}
 
 	SHEET_FROM_OBJECT(sheet, object);
 
-	RETURN_BOOL(xlSheetDelNamedRange(sheet, val_zs->val, scope_id));
+	RETURN_BOOL(xlSheetDelNamedRange(sheet, ZSTR_VAL(val_zs), scope_id));
 }
 /* }}} */
 
@@ -3595,13 +3595,13 @@ EXCEL_METHOD(Sheet, getNamedRange)
 		RETURN_FALSE;
 	}
 
-	if (!name_zs || name_zs->len < 1) {
+	if (!name_zs || ZSTR_LEN(name_zs) < 1) {
 		RETURN_FALSE;
 	}
 
 	SHEET_FROM_OBJECT(sheet, object);
 
-	if (xlSheetGetNamedRange(sheet, name_zs->val, &rf, &rl, &cf, &cl, scope_id, &hidden)) {
+	if (xlSheetGetNamedRange(sheet, ZSTR_VAL(name_zs), &rf, &rl, &cf, &cl, scope_id, &hidden)) {
 		array_init(return_value);
 		add_assoc_long(return_value, "row_first", rf);
 		add_assoc_long(return_value, "row_last", rl);
@@ -3888,18 +3888,18 @@ EXCEL_METHOD(Book, insertSheet)
 		RETURN_FALSE;
 	}
 
-	if (!name_zs || name_zs->len < 1) {
+	if (!name_zs || ZSTR_LEN(name_zs) < 1) {
 		RETURN_FALSE;
 	}
 
 	BOOK_FROM_OBJECT(book, object);
 	if (shz) {
 		SHEET_FROM_OBJECT(sheet, shz);
-		if (!(sh = xlBookInsertSheet(book, index, name_zs->val, sheet))) {
+		if (!(sh = xlBookInsertSheet(book, index, ZSTR_VAL(name_zs), sheet))) {
 			RETURN_FALSE;
 		}
 	} else {
-		if (!(sh = xlBookInsertSheet(book, index, name_zs->val, 0))) {
+		if (!(sh = xlBookInsertSheet(book, index, ZSTR_VAL(name_zs), 0))) {
 			RETURN_FALSE;
 		}
 	}
@@ -4136,13 +4136,13 @@ EXCEL_METHOD(Sheet, addHyperlink)
 		RETURN_FALSE;
 	}
 
-	if (!val_zs || val_zs->len < 1) {
+	if (!val_zs || ZSTR_LEN(val_zs) < 1) {
 		RETURN_FALSE;
 	}
 
 	SHEET_FROM_OBJECT(sheet, object);
 
-	xlSheetAddHyperlink(sheet, val_zs->val, row_first, row_last, col_first, col_last);
+	xlSheetAddHyperlink(sheet, ZSTR_VAL(val_zs), row_first, row_last, col_first, col_last);
 
 	RETURN_TRUE;
 }
