@@ -348,6 +348,11 @@ static zend_object *excel_format_object_clone(zval *this_ptr)
 #define EXCEL_METHOD(class_name, function_name) \
 	PHP_METHOD(Excel ## class_name, function_name)
 
+#define EXCEL_NON_EMPTY_STRING(string_zval) \
+	if (!string_zval || ZSTR_LEN(string_zval) < 1) {	\
+		RETURN_FALSE;	\
+	}
+
 /* {{{ proto bool ExcelBook::load(string data)
 	Load Excel data string. */
 EXCEL_METHOD(Book, load)
@@ -360,9 +365,7 @@ EXCEL_METHOD(Book, load)
 		RETURN_FALSE;
 	}
 
-	if (!data_zs || ZSTR_LEN(data_zs) < 1) {
-		RETURN_FALSE;
-	}
+	EXCEL_NON_EMPTY_STRING(data_zs)
 
 	BOOK_FROM_OBJECT(book, object);
 
@@ -384,9 +387,7 @@ EXCEL_METHOD(Book, loadFile)
 		RETURN_FALSE;
 	}
 
-	if (!filename_zs || ZSTR_LEN(filename_zs) < 1) {
-		RETURN_FALSE;
-	}
+	EXCEL_NON_EMPTY_STRING(filename_zs)
 
 	BOOK_FROM_OBJECT(book, object);
 
@@ -500,9 +501,7 @@ EXCEL_METHOD(Book, getSheetByName)
 		RETURN_FALSE;
 	}
 
-	if (!sheet_name_zs || ZSTR_LEN(sheet_name_zs) < 1) {
-		RETURN_FALSE;
-	}
+	EXCEL_NON_EMPTY_STRING(sheet_name_zs)
 
 	BOOK_FROM_OBJECT(book, object);
 
@@ -591,9 +590,7 @@ EXCEL_METHOD(Book, addSheet)
 		RETURN_FALSE;
 	}
 
-	if (!name_zs || ZSTR_LEN(name_zs) < 1) {
-		RETURN_FALSE;
-	}
+	EXCEL_NON_EMPTY_STRING(name_zs)
 
 	BOOK_FROM_OBJECT(book, object);
 
@@ -629,9 +626,7 @@ EXCEL_METHOD(Book, copySheet)
 		RETURN_FALSE;
 	}
 
-	if (!name_zs || ZSTR_LEN(name_zs) < 1) {
-		RETURN_FALSE;
-	}
+	EXCEL_NON_EMPTY_STRING(name_zs)
 
 	BOOK_FROM_OBJECT(book, object);
 
@@ -812,9 +807,7 @@ EXCEL_METHOD(Book, addCustomFormat)
 		RETURN_FALSE;
 	}
 
-	if (!format_zs || ZSTR_LEN(format_zs) < 1) {
-		RETURN_FALSE;
-	}
+	EXCEL_NON_EMPTY_STRING(format_zs)
 
 	BOOK_FROM_OBJECT(book, object);
 
@@ -1084,9 +1077,7 @@ EXCEL_METHOD(Book, setDefaultFont)
 		RETURN_FALSE;
 	}
 
-	if (!font_zs || ZSTR_LEN(font_zs) < 1) {
-		RETURN_FALSE;
-	}
+	EXCEL_NON_EMPTY_STRING(font_zs)
 
 	BOOK_FROM_OBJECT(book, object);
 
@@ -1106,9 +1097,7 @@ EXCEL_METHOD(Book, setLocale)
 		RETURN_FALSE;
 	}
 
-	if (!locale_zs || ZSTR_LEN(locale_zs) < 1) {
-		RETURN_FALSE;
-	}
+	EXCEL_NON_EMPTY_STRING(locale_zs)
 
 	BOOK_FROM_OBJECT(book, object);
 
@@ -1189,9 +1178,7 @@ static void php_excel_add_picture(INTERNAL_FUNCTION_PARAMETERS, int mode) /* {{{
 		RETURN_FALSE;
 	}
 
-	if (!data_zs || ZSTR_LEN(data_zs) < 1) {
-		RETURN_FALSE;
-	}
+	EXCEL_NON_EMPTY_STRING(data_zs)
 
 	BOOK_FROM_OBJECT(book, object);
 
@@ -1906,9 +1893,10 @@ EXCEL_METHOD(Sheet, __construct)
 	}
 	PHP_EXCEL_RESTORE_ERRORS();
 
-	if (!zbook || !name_zs || ZSTR_LEN(name_zs) < 1) {
+	if (!zbook) {
 		RETURN_FALSE;
 	}
+	EXCEL_NON_EMPTY_STRING(name_zs)
 
 	BOOK_FROM_OBJECT(book, zbook);
 
@@ -2560,9 +2548,8 @@ EXCEL_METHOD(Sheet, writeComment)
 			RETURN_FALSE;
 		}
 
-		if (!val_zs || ZSTR_LEN(val_zs) < 1 || !auth_zs || ZSTR_LEN(auth_zs) < 1) {
-			RETURN_FALSE;
-		}
+		EXCEL_NON_EMPTY_STRING(auth_zs)
+		EXCEL_NON_EMPTY_STRING(val_zs)
 
 		SHEET_FROM_OBJECT(sheet, object);
 
@@ -3368,9 +3355,7 @@ EXCEL_METHOD(Sheet, setName)
 		RETURN_FALSE;
 	}
 
-	if (!val_zs) {
-		RETURN_FALSE;
-	}
+	EXCEL_NON_EMPTY_STRING(val_zs)
 
 	SHEET_FROM_OBJECT(sheet, object);
 
@@ -3595,9 +3580,7 @@ EXCEL_METHOD(Sheet, getNamedRange)
 		RETURN_FALSE;
 	}
 
-	if (!name_zs || ZSTR_LEN(name_zs) < 1) {
-		RETURN_FALSE;
-	}
+	EXCEL_NON_EMPTY_STRING(name_zs)
 
 	SHEET_FROM_OBJECT(sheet, object);
 
@@ -3888,9 +3871,7 @@ EXCEL_METHOD(Book, insertSheet)
 		RETURN_FALSE;
 	}
 
-	if (!name_zs || ZSTR_LEN(name_zs) < 1) {
-		RETURN_FALSE;
-	}
+	EXCEL_NON_EMPTY_STRING(name_zs)
 
 	BOOK_FROM_OBJECT(book, object);
 	if (shz) {
@@ -4136,9 +4117,7 @@ EXCEL_METHOD(Sheet, addHyperlink)
 		RETURN_FALSE;
 	}
 
-	if (!val_zs || ZSTR_LEN(val_zs) < 1) {
-		RETURN_FALSE;
-	}
+	EXCEL_NON_EMPTY_STRING(val_zs)
 
 	SHEET_FROM_OBJECT(sheet, object);
 
