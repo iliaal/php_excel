@@ -18,13 +18,13 @@ if test "$PHP_EXCEL" != "no"; then
   SEARCH_FOR="libxl.h"
 
   AC_MSG_CHECKING([for excel includes])
-  if test -r $PHP_LIBXL_INCDIR/include/$SEARCH_FOR; then
+  if test -r "$PHP_LIBXL_INCDIR/include/$SEARCH_FOR"; then
     EXCEL_INCDIR=$PHP_LIBXL_INCDIR/include
-  elif test -r $PHP_LIBXL_INCDIR/$SEARCH_FOR; then
+  elif test -r "$PHP_LIBXL_INCDIR/$SEARCH_FOR"; then
     EXCEL_INCDIR=$PHP_LIBXL_INCDIR
   else # search default path list
     for i in $SEARCH_PATH ; do
-      if test -r $i/include/$SEARCH_FOR; then
+      if test -r "$i/include/$SEARCH_FOR"; then
         EXCEL_INCDIR=$i/include
       fi
     done
@@ -40,13 +40,13 @@ if test "$PHP_EXCEL" != "no"; then
   SEARCH_FOR="libxl.${SHLIB_SUFFIX_NAME}"
 
   AC_MSG_CHECKING([for excel libraries])
-  if test -r $PHP_LIBXL_LIBDIR/$PHP_LIBDIR/$SEARCH_FOR; then
+  if test -r "$PHP_LIBXL_LIBDIR/$PHP_LIBDIR/$SEARCH_FOR"; then
     EXCEL_LIBDIR=$PHP_LIBXL_LIBDIR/$PHP_LIBDIR
-  elif test -r $PHP_LIBXL_LIBDIR/$SEARCH_FOR; then
+  elif test -r "$PHP_LIBXL_LIBDIR/$SEARCH_FOR"; then
     EXCEL_LIBDIR=$PHP_LIBXL_LIBDIR
   elif test -z "$EXCEL_LIBDIR"; then
     for i in $SEARCH_PATH ; do
-      if test -r $i/$PHP_LIBDIR/$SEARCH_FOR; then
+      if test -r "$i/$PHP_LIBDIR/$SEARCH_FOR"; then
         EXCEL_LIBDIR=$i/$PHP_LIBDIR
       fi
     done
@@ -60,13 +60,13 @@ if test "$PHP_EXCEL" != "no"; then
   fi
  
   AC_MSG_CHECKING([for libxml2])
-  if test -r $PHP_LIBXML_DIR/libxml; then
+  if test -r "$PHP_LIBXML_DIR/libxml"; then
     LIBXML_INCDIR=$PHP_LIBXML_DIR
   fi
 
   if test -z "$LIBXML_INCDIR"; then
     AC_MSG_RESULT([not found])
-    if test $PHP_ENABLE_LIBXML != "no"; then
+    if test "$PHP_ENABLE_LIBXML" != "no"; then
       AC_DEFINE(EXCEL_WITH_LIBXML, 1, [ ])
     fi
   else
