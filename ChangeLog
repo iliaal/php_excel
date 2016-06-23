@@ -1,3 +1,5 @@
+[2016-??-??] - Version 1.0.3dev
+
 [2016-06-23] - Version 1.0.2
 	* Fixed bug in ExcelSheet::addPictureDim() (see issue #120)
 	* Fixed bug in ExcelSheet::isLicensed() (see issue #122)
