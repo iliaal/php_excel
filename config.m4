@@ -86,10 +86,15 @@ if test "$PHP_EXCEL" != "no"; then
     -L$EXCEL_LIBDIR
   ])
 
-  PHP_CHECK_LIBRARY(xl,xlBookSetKeyA,
+  PHP_CHECK_LIBRARY(xl, xlBookSetKeyA,
   [
+  	PHP_ADD_INCLUDE($EXCEL_INCDIR)
+    PHP_ADD_INCLUDE($LIBXML_INCDIR)
+    PHP_ADD_LIBRARY_WITH_PATH(xl, $EXCEL_LIBDIR, EXCEL_SHARED_LIBADD)
     AC_DEFINE(HAVE_LIBXL_SETKEY,1,[ ])
-  ],[],[])
+  ],[],[
+  	-L$EXCEL_LIBDIR
+  ])
 
   if test `grep -c FILLPATTERN_HORSTRIPE $EXCEL_INCDIR/enum.h` -eq 1; then
     AC_DEFINE(HAVE_LIBXL_243_PLUS,1,[ ])
