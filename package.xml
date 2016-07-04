@@ -1,0 +1,165 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<package packagerversion="1.4.11" version="2.0" xmlns="http://pear.php.net/dtd/package-2.0" xmlns:tasks="http://pear.php.net/dtd/tasks-1.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://pear.php.net/dtd/tasks-1.0
+http://pear.php.net/dtd/tasks-1.0.xsd
+http://pear.php.net/dtd/package-2.0
+http://pear.php.net/dtd/package-2.0.xsd">
+<name>excel</name>
+  <channel>pecl.php.net</channel> <!-- doesn't allow empty channel -->
+  <summary>excel extension</summary>
+  <description>
+This extension uses libXl library to provide API for generating or parsing all Excel files.
+
+libxl is a high-performance mechanism for working with Excel files and is
+able to generate output readable on Blackberries, iPhone, Office Products,
+Numbers, etc...
+  </description>
+  <lead>
+    <name>Ilia Alshanetsky</name>
+    <user>iliaa</user>
+    <email>ilia@ilia.ws</email>
+    <active>yes</active>
+  </lead>
+  <date>2016-07-04</date>
+  <version>
+    <release>1.0.2</release>
+    <api>1.0.2</api>
+  </version>
+  <stability>
+    <release>stable</release>
+    <api>stable</api>
+  </stability>
+  <license uri="http://www.php.net/license/3_01.txt">PHP</license>
+  <notes>
+   - Version 1.0.9
+  </notes>
+  <contents>
+    <dir name="/">
+      <file name="config.m4" role="src" />
+      <file name="config.w32" role="src" />
+
+      <file name="excel.c" role="src" />
+      <file name="php_excel.h" role="src" />
+
+      <file name="README.markdown" role="doc" />
+      <file name="CREDITS" role="doc" />
+      <file name="ChangeLog" role="doc" />
+
+	  <dir name="docs">
+	  	<file name="ExcelBook.php" role="doc" />
+	  	<file name="ExcelFont.php" role="doc" />
+	  	<file name="ExcelFormat.php" role="doc" />
+	  	<file name="ExcelSheet.php" role="doc" />
+	  </dir>
+
+      <dir name="tests">
+		<file name="000.phpt" role="test" />
+		<file name="001.phpt" role="test" />
+		<file name="002.phpt" role="test" />
+		<file name="003.phpt" role="test" />
+		<file name="004.phpt" role="test" />
+		<file name="005.phpt" role="test" />
+		<file name="006.phpt" role="test" />
+		<file name="007.phpt" role="test" />
+		<file name="008.phpt" role="test" />
+		<file name="009.phpt" role="test" />
+		<file name="010.phpt" role="test" />
+		<file name="011.phpt" role="test" />
+		<file name="012.phpt" role="test" />
+		<file name="013.phpt" role="test" />
+		<file name="014.phpt" role="test" />
+		<file name="015.phpt" role="test" />
+		<file name="016.phpt" role="test" />
+		<file name="017.phpt" role="test" />
+		<file name="018.phpt" role="test" />
+		<file name="019.phpt" role="test" />
+		<file name="020.phpt" role="test" />
+		<file name="021.phpt" role="test" />
+		<file name="022.phpt" role="test" />
+		<file name="023.phpt" role="test" />
+		<file name="024.phpt" role="test" />
+		<file name="025.phpt" role="test" />
+		<file name="026.phpt" role="test" />
+		<file name="027.phpt" role="test" />
+		<file name="028.phpt" role="test" />
+		<file name="029.phpt" role="test" />
+		<file name="030.phpt" role="test" />
+		<file name="031.phpt" role="test" />
+		<file name="032.phpt" role="test" />
+		<file name="033.phpt" role="test" />
+		<file name="034.phpt" role="test" />
+		<file name="035.phpt" role="test" />
+		<file name="036.phpt" role="test" />
+		<file name="037.phpt" role="test" />
+		<file name="038.phpt" role="test" />
+		<file name="039.phpt" role="test" />
+		<file name="040.phpt" role="test" />
+		<file name="041.phpt" role="test" />
+		<file name="042.phpt" role="test" />
+		<file name="043.phpt" role="test" />
+		<file name="044.phpt" role="test" />
+		<file name="045.phpt" role="test" />
+		<file name="046.phpt" role="test" />
+		<file name="047.phpt" role="test" />
+		<file name="048.phpt" role="test" />
+		<file name="049.phpt" role="test" />
+		<file name="050.phpt" role="test" />
+		<file name="051.phpt" role="test" />
+		<file name="052.phpt" role="test" />
+		<file name="053.phpt" role="test" />
+		<file name="054.phpt" role="test" />
+		<file name="055.phpt" role="test" />
+		<file name="056.phpt" role="test" />
+		<file name="057.phpt" role="test" />
+		<file name="058.phpt" role="test" />
+		<file name="059.phpt" role="test" />
+		<file name="060.phpt" role="test" />
+		<file name="061.phpt" role="test" />
+		<file name="062.phpt" role="test" />
+		<file name="063.phpt" role="test" />
+		<file name="064.phpt" role="test" />
+		<file name="065.phpt" role="test" />
+		<file name="066.phpt" role="test" />
+		<file name="067.phpt" role="test" />
+		<file name="068.phpt" role="test" />
+		<file name="069.phpt" role="test" />
+		<file name="070.phpt" role="test" />
+		<file name="071.phpt" role="test" />
+		<file name="072.phpt" role="test" />
+		<file name="073.phpt" role="test" />
+		<file name="074.phpt" role="test" />
+		<file name="075.phpt" role="test" />
+		<file name="076.phpt" role="test" />
+		<file name="077.phpt" role="test" />
+		<file name="078.phpt" role="test" />
+		<file name="079.phpt" role="test" />
+		<file name="080.phpt" role="test" />
+		<file name="081.phpt" role="test" />
+		<file name="082.phpt" role="test" />
+		<file name="083.phpt" role="test" />
+		<file name="084.phpt" role="test" />
+		<file name="086.phpt" role="test" />
+		<file name="087.phpt" role="test" />
+		<file name="088.phpt" role="test" />
+		<file name="089.phpt" role="test" />
+		<file name="090.phpt" role="test" />
+		<file name="091.phpt" role="test" />
+		<file name="dateunpack_overflow_bug.phpt" role="test" />
+		<file name="number_format_bug.phpt" role="test" />
+		<file name="write_read_row_bug.phpt" role="test" />
+	  </dir>
+    </dir>
+  </contents>
+  <dependencies>
+    <required>
+      <php>
+        <min>7.0.0</min>
+      </php>
+      <pearinstaller>
+        <min>1.4.0b1</min>
+      </pearinstaller>
+    </required>
+  </dependencies>
+  <providesextension>excel</providesextension>
+  <extsrcrelease>
+  </extsrcrelease>
+</package>
