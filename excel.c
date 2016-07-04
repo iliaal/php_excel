@@ -414,7 +414,13 @@ EXCEL_METHOD(Book, loadFile)
 	contents = php_stream_copy_to_mem(stream, PHP_STREAM_COPY_ALL, 0);
 	php_stream_close(stream);
 
-	if (!contents || ZSTR_LEN(contents) < 1) {
+	if (!contents) {
+		php_error_docref(NULL, E_WARNING, "Source file is empty");
+		RETURN_FALSE;
+	}
+
+	if (ZSTR_LEN(contents) < 1) {
+		php_error_docref(NULL, E_WARNING, "Source file is empty");
 		zend_string_release(contents);
 		RETURN_FALSE;
 	}
