@@ -27,6 +27,9 @@ cd php-5.x.x
 # clone repository into php extension dir
 git clone https://github.com/iliaal/php_excel.git ext/excel
 
+# to build php7 module, you should use php7 git branch
+cd ext/excel && git checkout php7 && cd ../..
+
 # rebuild configure
 ./buildconf --force
 
