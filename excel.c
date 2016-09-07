@@ -5015,7 +5015,7 @@ ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_clear, 0, 0, 4)
 	ZEND_ARG_INFO(0, row_s)
 	ZEND_ARG_INFO(0, row_e)
 	ZEND_ARG_INFO(0, col_s)
-	ZEND_ARG_INFO(0, col_s)
+	ZEND_ARG_INFO(0, col_e)
 ZEND_END_ARG_INFO()
 
 ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_copy, 0, 0, 4)
