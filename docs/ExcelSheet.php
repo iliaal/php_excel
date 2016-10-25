@@ -75,6 +75,33 @@ class ExcelSheet
 	const LEFT_TO_RIGHT = 0;
 	const RIGHT_TO_LEFT = 1;
 
+	const IERR_EVAL_ERROR = 1;
+	const IERR_EMPTY_CELLREF = 2;
+	const IERR_NUMBER_STORED_AS_TEXT = 4;
+	const IERR_INCONSIST_RANGE = 8;
+	const IERR_INCONSIST_FMLA = 16;
+	const IERR_TWODIG_TEXTYEAR = 32;
+	const IERR_UNLOCK_FMLA = 64;
+	const IERR_DATA_VALIDATION = 128;
+
+	const PROT_DEFAULT = -1;
+	const PROT_ALL = 0;
+	const PROT_OBJECTS = 1;
+	const PROT_SCENARIOS = 2;
+	const PROT_FORMAT_CELLS = 4;
+	const PROT_FORMAT_COLUMNS = 8;
+	const PROT_FORMAT_ROWS = 16;
+	const PROT_INSERT_COLUMNS = 32;
+	const PROT_INSERT_ROWS = 64;
+	const PROT_INSERT_HYPERLINKS = 128;
+	const PROT_DELETE_COLUMNS = 256;
+	const PROT_DELETE_ROWS = 512;
+	const PROT_SEL_LOCKED_CELLS = 1024;
+	const PROT_SORT = 2048;
+	const PROT_AUTOFILTER = 4096;
+	const PROT_PIVOTTABLES = 8192;
+	const PROT_SEL_UNLOCKED_CELLS = 16384;
+
 	/**
 	* Create an ExcelSheet in given Workbook
 	*
@@ -100,6 +127,20 @@ class ExcelSheet
 	{
 	} // addHyperlink
 
+	/**
+	* Adds the ignored error for specified range. It allows to hide green triangles on left sides of cells.
+	*
+	* @param int $error - one of the ExcelSheet::IERR_* constants
+	* @param int $row_first 0-based (optional, default = 0)
+	* @param int $col_first 0-based (optional, default = 0)
+	* @param int $row_last 0-based (optional, default = 0)
+	* @param int $col_last 0-based (optional, default = 0)
+	* @return bool
+	*/
+	public function addIgnoredError($error, $row_first=0, $col_first=0, $row_last=0, $col_last=0)
+	{
+	} // addIgnoredError
+	
 	/**
 	* Insert a picture into a cell with given dimensions
 	*
@@ -148,6 +189,33 @@ class ExcelSheet
 	} // addrToRowCol
 
 	/**
+	* Returns the AutoFilter. Creates it if it doesn't exist.
+	*
+	* @return ExcelAutoFilter
+	*/
+	public function autoFilter()
+	{
+	} // autoFilter
+
+	/**
+	* Applies the AutoFilter to the sheet.
+	*
+	* @return bool
+	*/
+	public function applyFilter()
+	{
+	} // applyFilter
+
+	/**
+	* Removes the AutoFilter from the sheet.
+	*
+	* @return bool
+	*/
+	public function removeFilter()
+	{
+	} // removeFilter
+
+	/**
 	* Get the cell format
 	*
 	* @param int $row 0-based row number
@@ -163,7 +231,7 @@ class ExcelSheet
 	*
 	* @param int $row 0-based row number
 	* @param int $column 0-based column number
-	* @return int One of ExcelSheet:CELLTYPE_* constants
+	* @return int One of ExcelSheet::CELLTYPE_* constants
 	*/
 	public function cellType($row, $column)
 	{
@@ -1238,6 +1306,16 @@ class ExcelSheet
 	} // setPrintRepeatCols
 
 	/**
+	* Sets the color for the sheet's tab.
+	*
+	* @param int $color - one of the ExcelSheet::COLOR_* constants (optional, default=0)
+	* @return bool
+	*/
+	public function setTabColor($color=0)
+	{
+	} // setTabColor
+
+	/**
 	* Gets repeated columns on each page from colFirst to colLast. Returns false
 	* if repeated columns aren't found.
 	*
@@ -1275,9 +1353,11 @@ class ExcelSheet
 	*
 	* @see ExcelSheet::protect()
 	* @param bool $value
+	* @param string $password (optional, default="")
+	* @param int ExcelSheet::PROT_ALL (optional, default=ExcelSheet::PROT_DEFAULT)
 	* @return void
 	*/
-	public function setProtect($value)
+	public function setProtect($value, $password="", $enhancedProtection=ExcelSheet::PROT_DEFAULT)
 	{
 	} // setProtect
 
@@ -1385,6 +1465,25 @@ class ExcelSheet
 	} // splitSheet
 
 	/**
+	* Gets the table parameters by index.
+	*
+	* @param int $index (optional, default = 0)
+	* @return array with keys "name"(string), "row_first"(int), "col_first"(int), "row_last"(int), "col_last"(int), "header_row_count"(int) and "totals_row_count"(int)
+	*/
+	public function table($index=0)
+	{
+	} // table
+
+	/**
+	* Returns the number of tables in the sheet.
+	*
+	* @return int
+	*/
+	public function tableSize()
+	{
+	} // tableSize
+
+	/**
 	* Returns whether the sheet is centered vertically when printed
 	*
 	* @see ExcelSheet::hcenter()
@@ -1449,6 +1548,19 @@ class ExcelSheet
 	public function writeComment($row, $column, $comment, $author, $width, $height)
 	{
 	} // writeComment
+
+	/**
+	* Writes error into the cell with specified format. If format equals 0 then format is ignored.
+	*
+	* @param int $row (optional, default = 0)
+	* @param int $col (optional, default = 0)
+	* @param int $error - one of ExcelSheet::ERRORTYPE_* constants  (optional, default = 0)
+	* @param ExcelFormat $format  (optional, default = null)
+	* @return bool
+	*/
+	public function writeError($row=0, $col=0, $error=0, $format=null)
+	{
+	} // writeError
 
 	/**
 	* Write an array of values into a row

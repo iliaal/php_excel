@@ -85,12 +85,20 @@ PHP_INI_END()
 		excel_object_handlers_ ## c_name .clone_obj = clone; \
 	}
 
+#if LIBXL_VERSION < 0x03070000
 zend_class_entry *excel_ce_book, *excel_ce_sheet, *excel_ce_format, *excel_ce_font;
+#else
+zend_class_entry *excel_ce_book, *excel_ce_sheet, *excel_ce_format, *excel_ce_font, *excel_ce_filtercolumn, *excel_ce_autofilter;
+#endif
 
 static zend_object_handlers excel_object_handlers_book;
 static zend_object_handlers excel_object_handlers_sheet;
 static zend_object_handlers excel_object_handlers_format;
 static zend_object_handlers excel_object_handlers_font;
+#if LIBXL_VERSION >= 0x03070000
+static zend_object_handlers excel_object_handlers_autofilter;
+static zend_object_handlers excel_object_handlers_filtercolumn;
+#endif
 
 typedef struct _excel_book_object {
 	BookHandle book;
@@ -177,6 +185,28 @@ static inline excel_font_object *php_excel_font_object_fetch_object(zend_object 
 		} \
 	}
 
+#if LIBXL_VERSION >= 0x03070000
+#define AUTOFILTER_FROM_OBJECT(autofilter, object) \
+	{ \
+		excel_autofilter_object *obj = Z_EXCEL_AUTOFILTER_OBJ_P(object); \
+		autofilter = obj->autofilter; \
+		if (!autofilter) { \
+			php_error_docref(NULL, E_WARNING, "The autofilter wasn't initialized"); \
+			RETURN_FALSE; \
+		} \
+	}
+
+#define FILTERCOLUMN_FROM_OBJECT(filtercolumn, object) \
+	{ \
+		excel_filtercolumn_object *obj = Z_EXCEL_FILTERCOLUMN_OBJ_P(object); \
+		filtercolumn = obj->filtercolumn; \
+		if (!filtercolumn) { \
+			php_error_docref(NULL, E_WARNING, "The filtercolumn wasn't initialized"); \
+			RETURN_FALSE; \
+		} \
+	}
+#endif
+
 typedef struct _excel_format_object {
 	FormatHandle format;
 	BookHandle book;
@@ -187,6 +217,30 @@ static inline excel_format_object *php_excel_format_object_fetch_object(zend_obj
 	return (excel_format_object *)((char *)(obj) - XtOffsetOf(excel_format_object, std));
 }
 #define Z_EXCEL_FORMAT_OBJ_P(zv) php_excel_format_object_fetch_object(Z_OBJ_P(zv));
+
+#if LIBXL_VERSION >= 0x03070000
+typedef struct _excel_autofilter_object {
+	AutoFilterHandle autofilter;
+	SheetHandle sheet;
+	zend_object std;
+} excel_autofilter_object;
+
+static inline excel_autofilter_object *php_excel_autofilter_object_fetch_object(zend_object *obj) {
+	return (excel_autofilter_object *)((char *)(obj) - XtOffsetOf(excel_autofilter_object, std));
+}
+#define Z_EXCEL_AUTOFILTER_OBJ_P(zv) php_excel_autofilter_object_fetch_object(Z_OBJ_P(zv));
+
+typedef struct _excel_filtercolumn_object {
+	FilterColumnHandle filtercolumn;
+	AutoFilterHandle autofilter;
+	zend_object std;
+} excel_filtercolumn_object;
+
+static inline excel_filtercolumn_object *php_excel_filtercolumn_object_fetch_object(zend_object *obj) {
+	return (excel_filtercolumn_object *)((char *)(obj) - XtOffsetOf(excel_filtercolumn_object, std));
+}
+#define Z_EXCEL_FILTERCOLUMN_OBJ_P(zv) php_excel_filtercolumn_object_fetch_object(Z_OBJ_P(zv));
+#endif
 
 static void excel_book_object_free_storage(zend_object *object)
 {
@@ -346,6 +400,70 @@ static zend_object *excel_format_object_clone(zval *this_ptr)
 
 	return new_ov;
 }
+
+#if LIBXL_VERSION >= 0x03070000
+static void excel_autofilter_object_free_storage(zend_object *object)
+{
+	excel_autofilter_object *intern = php_excel_autofilter_object_fetch_object(object);
+	zend_object_std_dtor(&intern->std);
+}
+
+static zend_object *excel_object_new_autofilter_ex(zend_class_entry *class_type, excel_autofilter_object **ptr)
+{
+	excel_autofilter_object *intern;
+
+	intern = ecalloc(1,
+		sizeof(excel_autofilter_object) +
+		sizeof(zval) * (class_type->default_properties_count - 1));
+
+	if (ptr) {
+		*ptr = intern;
+	}
+
+	zend_object_std_init(&intern->std, class_type);
+	object_properties_init(&intern->std, class_type);
+
+	intern->std.handlers = &excel_object_handlers_autofilter;
+
+	return &intern->std;
+}
+
+static zend_object *excel_object_new_autofilter(zend_class_entry *class_type)
+{
+	return excel_object_new_autofilter_ex(class_type, NULL);
+}
+
+static void excel_filtercolumn_object_free_storage(zend_object *object)
+{
+	excel_filtercolumn_object *intern = php_excel_filtercolumn_object_fetch_object(object);
+	zend_object_std_dtor(&intern->std);
+}
+
+static zend_object *excel_object_new_filtercolumn_ex(zend_class_entry *class_type, excel_filtercolumn_object **ptr)
+{
+	excel_filtercolumn_object *intern;
+
+	intern = ecalloc(1,
+		sizeof(excel_filtercolumn_object) +
+		sizeof(zval) * (class_type->default_properties_count - 1));
+
+	if (ptr) {
+		*ptr = intern;
+	}
+
+	zend_object_std_init(&intern->std, class_type);
+	object_properties_init(&intern->std, class_type);
+
+	intern->std.handlers = &excel_object_handlers_filtercolumn;
+
+	return &intern->std;
+}
+
+static zend_object *excel_object_new_filtercolumn(zend_class_entry *class_type)
+{
+	return excel_object_new_filtercolumn_ex(class_type, NULL);
+}
+#endif
 
 #define EXCEL_METHOD(class_name, function_name) \
 	PHP_METHOD(Excel ## class_name, function_name)
@@ -4052,6 +4170,7 @@ EXCEL_METHOD(Sheet, protect)
 }
 /* }}} */
 
+#if LIBXL_VERSION < 0x03070000
 /* {{{ proto void ExcelSheet::setProtect(bool value)
 	Protects (protect = 1) or unprotects (protect = 0) the sheet. */
 EXCEL_METHOD(Sheet, setProtect)
@@ -4059,6 +4178,7 @@ EXCEL_METHOD(Sheet, setProtect)
 	PHP_EXCEL_SET_BOOL_VAL(SetProtect)
 }
 /* }}} */
+#endif
 
 /* {{{ proto long ExcelSheet::hyperlinkSize()
 	Returns the number of hyperlinks in the sheet. */
@@ -4484,6 +4604,628 @@ EXCEL_METHOD(Sheet, printArea)
 }
 /* }}} */
 
+#endif
+
+#if LIBXL_VERSION >= 0x03070000
+/* {{{ proto void ExcelSheet::setProtect(bool protect, string password, int enhancedProtection)
+	Protects the sheet with password and enchanced parameters below. It is possible to combine a few EnhancedProtection values with operator |. */
+EXCEL_METHOD(Sheet, setProtect)
+{
+	zval *object = getThis();
+	SheetHandle sheet;
+	zend_bool protect;
+	zend_string *password_zs = zend_string_init("", sizeof("")-1, 0);
+	zend_long enhancedProtection = PROT_DEFAULT;
+
+	if (zend_parse_parameters(ZEND_NUM_ARGS(), "b|Sl", &protect, &password_zs, &enhancedProtection) == FAILURE) {
+		RETURN_FALSE;
+	}
+
+	SHEET_FROM_OBJECT(sheet, object);
+
+	xlSheetSetProtectEx(sheet, protect, ZSTR_VAL(password_zs), enhancedProtection);
+
+	RETURN_TRUE;
+}
+/* }}} */
+
+/* {{{ proto long ExcelSheet::table()
+	Gets the table parameters by index. */
+EXCEL_METHOD(Sheet, table)
+{
+	zval *object = getThis();
+	SheetHandle sheet;
+	zend_long index=0, rowFirst, rowLast, colFirst, colLast, headerRowCount, totalsRowCount;
+	const char *name;
+
+	if (zend_parse_parameters(ZEND_NUM_ARGS(), "l", &index) == FAILURE) {
+		RETURN_FALSE;
+	}
+
+	SHEET_FROM_OBJECT(sheet, object);
+
+	// @todo check for XLSX format
+	if (!(name = xlSheetTable(sheet, index, &rowFirst, &rowLast, &colFirst, &colLast, &headerRowCount, &totalsRowCount))) {
+		RETURN_FALSE;
+	}
+
+	array_init(return_value);
+	add_assoc_string(return_value, "name", (char *)name);
+	add_assoc_long(return_value, "row_first", rowFirst);
+	add_assoc_long(return_value, "col_first", colFirst);
+	add_assoc_long(return_value, "row_last", rowLast);
+	add_assoc_long(return_value, "col_last", colLast);
+	add_assoc_long(return_value, "header_row_count", headerRowCount);
+	add_assoc_long(return_value, "totals_row_count", totalsRowCount);
+}
+/* }}} */
+
+/* {{{ proto long ExcelSheet::setTabColor([int color])
+	Sets the color for the sheet's tab. */
+EXCEL_METHOD(Sheet, setTabColor)
+{
+	zval *object = getThis();
+	SheetHandle sheet;
+	zend_long color = 0;
+
+	if (zend_parse_parameters(ZEND_NUM_ARGS(), "|l", &color) == FAILURE) {
+		RETURN_FALSE;
+	}
+
+	SHEET_FROM_OBJECT(sheet, object);
+
+	// @todo check for XLSX format
+	xlSheetSetTabColor(sheet, color);
+	RETURN_TRUE;
+}
+/* }}} */
+
+/* {{{ proto long ExcelSheet::autoFilter()
+	Returns the AutoFilter. Creates it if it doesn't exist. */
+EXCEL_METHOD(Sheet, autoFilter)
+{
+	zval *object = getThis();
+	excel_autofilter_object *obj;
+	SheetHandle sheet;
+
+	SHEET_FROM_OBJECT(sheet, object);
+
+	// @todo check for XLSX format
+	AutoFilterHandle ah = xlSheetAutoFilter(sheet);
+
+	ZVAL_OBJ(return_value, excel_object_new_autofilter(excel_ce_autofilter));
+	obj = Z_EXCEL_AUTOFILTER_OBJ_P(return_value);
+	obj->autofilter = ah;
+	obj->sheet = sheet;
+
+	RETURN_TRUE;
+}
+/* }}} */
+
+/* {{{ proto long ExcelSheet::applyFilter()
+	Applies the AutoFilter to the sheet. */
+EXCEL_METHOD(Sheet, applyFilter)
+{
+	zval *object = getThis();
+	SheetHandle sheet;
+
+	SHEET_FROM_OBJECT(sheet, object);
+
+	// @todo check for XLSX format
+	xlSheetApplyFilter(sheet);
+
+	RETURN_TRUE;
+}
+/* }}} */
+
+/* {{{ proto long ExcelSheet::removeFilter()
+	Removes the AutoFilter from the sheet. */
+EXCEL_METHOD(Sheet, removeFilter)
+{
+	zval *object = getThis();
+	SheetHandle sheet;
+
+	SHEET_FROM_OBJECT(sheet, object);
+
+	// @todo check for XLSX format
+	xlSheetRemoveFilter(sheet);
+
+	RETURN_TRUE;
+}
+/* }}} */
+
+/* {{{ proto long ExcelSheet::addIgnoredError()
+	Adds the ignored error for specified range. It allows to hide green triangles on left sides of cells. */
+EXCEL_METHOD(Sheet, addIgnoredError)
+{
+	zval *object = getThis();
+	SheetHandle sheet;
+	zend_long iError, rowFirst=0, colFirst=0, rowLast=0, colLast=0;
+
+	if (zend_parse_parameters(ZEND_NUM_ARGS(), "l|llll", &iError, &rowFirst, &colFirst, &rowLast, &colLast) == FAILURE) {
+		RETURN_FALSE;
+	}
+
+	SHEET_FROM_OBJECT(sheet, object);
+
+	if (!xlSheetAddIgnoredError(sheet, rowFirst, colFirst, rowLast, colLast, iError)) {
+		RETURN_FALSE
+	}
+
+	RETURN_TRUE;
+}
+/* }}} */
+
+/* {{{ proto long ExcelSheet::writeError()
+	Writes error into the cell with specified format. If format equals 0 then format is ignored. */
+EXCEL_METHOD(Sheet, writeError)
+{
+	zval *object = getThis();
+	SheetHandle sheet;
+	zend_long iError=0, row=0, col=0;
+	zval *oformat = NULL;
+	FormatHandle format = NULL;
+
+	if (zend_parse_parameters(ZEND_NUM_ARGS(), "|lllo", &row, &col, &iError, &oformat, excel_ce_format) == FAILURE) {
+		RETURN_FALSE;
+	}
+
+	SHEET_FROM_OBJECT(sheet, object);
+	FORMAT_FROM_OBJECT(format, oformat);
+
+	xlSheetWriteError(sheet, row, col, iError, format);
+}
+/* }}} */
+
+/* {{{ proto long ExcelSheet::removeComment()
+	Removes a comment from the cell (only for xls format). */
+EXCEL_METHOD(Sheet, removeComment)
+{
+	zval *object = getThis();
+	SheetHandle sheet;
+	zend_long row=0, col=0;
+
+	if (zend_parse_parameters(ZEND_NUM_ARGS(), "ll", &row, &col) == FAILURE) {
+		RETURN_FALSE;
+	}
+
+	SHEET_FROM_OBJECT(sheet, object);
+
+	xlSheetRemoveComment(sheet, row, col);
+}
+/* }}} */
+
+/* {{{ proto ExcelAutoFilter ExcelAutoFilter::__construct(ExcelSheet sheet)
+	Sheet Constructor. */
+EXCEL_METHOD(AutoFilter, __construct)
+{
+	AutoFilterHandle afh;
+	SheetHandle sheet;
+	zval *object = getThis();
+	excel_autofilter_object *obj;
+	zval *zsheet = NULL;
+
+	PHP_EXCEL_ERROR_HANDLING();
+	if (zend_parse_parameters(ZEND_NUM_ARGS(), "O", &zsheet, excel_ce_sheet) == FAILURE) {
+		PHP_EXCEL_RESTORE_ERRORS();
+		return;
+	}
+	PHP_EXCEL_RESTORE_ERRORS();
+
+	if (!zsheet) {
+		RETURN_FALSE;
+	}
+
+	SHEET_FROM_OBJECT(sheet, zsheet);
+
+	obj = Z_EXCEL_AUTOFILTER_OBJ_P(object);
+
+	afh = xlSheetAutoFilter(sheet);
+
+	if (!afh) {
+		RETURN_FALSE;
+	}
+
+	obj->sheet = sheet;
+	obj->autofilter = afh;
+}
+/* }}} */
+
+/* {{{ proto long AutoFilter::getRef()
+	Gets the cell range of AutoFilter with header. Returns 0 if error. */
+EXCEL_METHOD(AutoFilter, getRef)
+{
+	zval *object = getThis();
+	AutoFilterHandle autofilter;
+	int rowFirst=0, colFirst=0, rowLast=0, colLast=0;
+
+	AUTOFILTER_FROM_OBJECT(autofilter, object);
+
+	if (!xlAutoFilterGetRef(autofilter, &rowFirst, &colFirst, &rowLast, &colLast)) {
+		RETURN_FALSE;
+	}
+
+	array_init(return_value);
+	add_assoc_long(return_value, "row_first", rowFirst);
+	add_assoc_long(return_value, "col_first", colFirst);
+	add_assoc_long(return_value, "row_last", rowLast);
+	add_assoc_long(return_value, "col_last", rowLast);
+}
+/* }}} */
+
+/* {{{ proto long AutoFilter::setRef()
+	Sets the cell range of AutoFilter with header. */
+EXCEL_METHOD(AutoFilter, setRef)
+{
+	zval *object = getThis();
+	AutoFilterHandle autofilter;
+	zend_long rowFirst=0, colFirst=0, rowLast=0, colLast=0;
+
+	if (zend_parse_parameters(ZEND_NUM_ARGS(), "llll", &rowFirst, &colFirst, &rowLast, &colLast) == FAILURE) {
+		RETURN_FALSE;
+	}
+
+	AUTOFILTER_FROM_OBJECT(autofilter, object);
+
+	xlAutoFilterSetRef(autofilter, rowFirst, colFirst, rowLast, colLast);
+}
+/* }}} */
+
+/* {{{ proto long AutoFilter::column()
+	Returns the AutoFilter column by zero-based index. Creates it if it doesn't exist. */
+EXCEL_METHOD(AutoFilter, column)
+{
+	zval *object = getThis();
+	AutoFilterHandle autofilter;
+	zend_long colId;
+	excel_filtercolumn_object *obj;
+
+	if (zend_parse_parameters(ZEND_NUM_ARGS(), "l", &colId) == FAILURE) {
+		RETURN_FALSE;
+	}
+
+	AUTOFILTER_FROM_OBJECT(autofilter, object);
+
+	FilterColumnHandle fch = xlAutoFilterColumn(autofilter, colId);
+
+	ZVAL_OBJ(return_value, excel_object_new_filtercolumn(excel_ce_filtercolumn));
+	obj = Z_EXCEL_FILTERCOLUMN_OBJ_P(return_value);
+	obj->autofilter = autofilter;
+	obj->filtercolumn = fch;
+
+	RETURN_TRUE;
+}
+/* }}} */
+
+/* {{{ proto long AutoFilter::columnSize()
+	Returns the number of specified AutoFilter columns which have a filter information. */
+EXCEL_METHOD(AutoFilter, columnSize)
+{
+	zval *object = getThis();
+	AutoFilterHandle autofilter;
+
+	AUTOFILTER_FROM_OBJECT(autofilter, object);
+
+	RETURN_LONG(xlAutoFilterColumnSize(autofilter));
+}
+/* }}} */
+
+/* {{{ proto long AutoFilter::columnByIndex()
+	Returns the specified AutoFilter column which have a filter information by index. */
+EXCEL_METHOD(AutoFilter, columnByIndex)
+{
+	zval *object = getThis();
+	AutoFilterHandle autofilter;
+	excel_filtercolumn_object *obj;
+	zend_long index;
+
+	if (zend_parse_parameters(ZEND_NUM_ARGS(), "l", &index) == FAILURE) {
+		RETURN_FALSE;
+	}
+
+	AUTOFILTER_FROM_OBJECT(autofilter, object);
+
+	FilterColumnHandle fch = xlAutoFilterColumnByIndex(autofilter, index);
+
+	ZVAL_OBJ(return_value, excel_object_new_filtercolumn(excel_ce_filtercolumn));
+	obj = Z_EXCEL_FILTERCOLUMN_OBJ_P(return_value);
+	obj->autofilter = autofilter;
+	obj->filtercolumn = fch;
+
+	RETURN_TRUE;
+}
+/* }}} */
+
+/* {{{ proto long AutoFilter::getSortRange()
+	Gets the whole range of data to sort. Returns 0 if error. */
+EXCEL_METHOD(AutoFilter, getSortRange)
+{
+	zval *object = getThis();
+	AutoFilterHandle autofilter;
+	int rowFirst=0, colFirst=0, rowLast=0, colLast=0;
+
+	AUTOFILTER_FROM_OBJECT(autofilter, object);
+
+	if (!xlAutoFilterGetSortRange(autofilter, &rowFirst, &colFirst, &rowLast, &colLast)) {
+		RETURN_FALSE;
+	}
+
+	array_init(return_value);
+	add_assoc_long(return_value, "row_first", rowFirst);
+	add_assoc_long(return_value, "col_first", colFirst);
+	add_assoc_long(return_value, "row_last", rowLast);
+	add_assoc_long(return_value, "col_last", rowLast);
+}
+/* }}} */
+
+/* {{{ proto long AutoFilter::getSort()
+	Gets the zero-based index of sorted column in AutoFilter and its sort order. Returns 0 if error. */
+EXCEL_METHOD(AutoFilter, getSort)
+{
+	zval *object = getThis();
+	AutoFilterHandle autofilter;
+	int columnIndex, descending;
+
+	AUTOFILTER_FROM_OBJECT(autofilter, object);
+
+	if (!xlAutoFilterGetSort(autofilter, &columnIndex, &descending)) {
+		RETURN_FALSE;
+	}
+
+	array_init(return_value);
+	add_assoc_long(return_value, "column_index", columnIndex);
+	add_assoc_long(return_value, "descending", descending);
+}
+/* }}} */
+
+/* {{{ proto long AutoFilter::setSort()
+	Sets the sorted column in AutoFilter by zero-based index and its sort order. Returns 0 if error. */
+EXCEL_METHOD(AutoFilter, setSort)
+{
+	zval *object = getThis();
+	AutoFilterHandle autofilter;
+	zend_long columnIndex;
+	zend_bool descending;
+
+	if (zend_parse_parameters(ZEND_NUM_ARGS(), "lb", &columnIndex, &descending) == FAILURE) {
+		RETURN_FALSE;
+	}
+
+	AUTOFILTER_FROM_OBJECT(autofilter, object);
+
+	if (!xlAutoFilterSetSort(autofilter, columnIndex, descending)) {
+		RETURN_FALSE;
+	}
+
+	RETURN_TRUE;
+}
+/* }}} */
+
+/* {{{ proto ExcelFilterColumn ExcelFilterColumn::__construct(ExcelAutoFilter autofilter)
+	Sheet Constructor. */
+EXCEL_METHOD(FilterColumn, __construct)
+{
+	FilterColumnHandle fch;
+	AutoFilterHandle autofilter;
+	zval *object = getThis();
+	excel_filtercolumn_object *obj;
+	zval *zautofilter = NULL;
+	zend_long colId;
+
+	PHP_EXCEL_ERROR_HANDLING();
+	if (zend_parse_parameters(ZEND_NUM_ARGS(), "Ol", &zautofilter, excel_ce_autofilter, &colId) == FAILURE) {
+		PHP_EXCEL_RESTORE_ERRORS();
+		return;
+	}
+	PHP_EXCEL_RESTORE_ERRORS();
+
+	if (!zautofilter) {
+		RETURN_FALSE;
+	}
+
+	AUTOFILTER_FROM_OBJECT(autofilter, zautofilter);
+
+	obj = Z_EXCEL_FILTERCOLUMN_OBJ_P(object);
+
+	fch = xlAutoFilterColumn(autofilter, colId);
+
+	if (!fch) {
+		RETURN_FALSE;
+	}
+
+	obj->filtercolumn = fch;
+	obj->autofilter = autofilter;
+}
+/* }}} */
+
+/* {{{ proto long FilterColumn::index()
+	Returns the zero-based index of this AutoFilter column. */
+EXCEL_METHOD(FilterColumn, index)
+{
+	zval *object = getThis();
+	FilterColumnHandle filtercolumn;
+
+	FILTERCOLUMN_FROM_OBJECT(filtercolumn, object);
+
+	RETURN_LONG(xlFilterColumnIndex(filtercolumn));
+}
+/* }}} */
+
+/* {{{ proto long FilterColumn::filterType()
+	Returns the filter type of this AutoFilter column. */
+EXCEL_METHOD(FilterColumn, filterType)
+{
+	zval *object = getThis();
+	FilterColumnHandle filtercolumn;
+
+	FILTERCOLUMN_FROM_OBJECT(filtercolumn, object);
+
+	RETURN_LONG(xlFilterColumnFilterType(filtercolumn));
+}
+/* }}} */
+
+/* {{{ proto long FilterColumn::filterSize()
+	Returns the number of filter values. */
+EXCEL_METHOD(FilterColumn, filterSize)
+{
+	zval *object = getThis();
+	FilterColumnHandle filtercolumn;
+
+	FILTERCOLUMN_FROM_OBJECT(filtercolumn, object);
+
+	RETURN_LONG(xlFilterColumnFilterSize(filtercolumn));
+}
+/* }}} */
+
+/* {{{ proto long FilterColumn::filter()
+	Returns the filter value by index. */
+EXCEL_METHOD(FilterColumn, filter)
+{
+	zval *object = getThis();
+	FilterColumnHandle filtercolumn;
+	zend_long filterIndex;
+
+	if (zend_parse_parameters(ZEND_NUM_ARGS(), "l", &filterIndex) == FAILURE) {
+		RETURN_FALSE;
+	}
+
+	FILTERCOLUMN_FROM_OBJECT(filtercolumn, object);
+
+	RETURN_STRING((char *)xlFilterColumnFilter(filtercolumn, filterIndex));
+}
+/* }}} */
+
+/* {{{ proto long FilterColumn::addFilter()
+	Adds the filter value. */
+EXCEL_METHOD(FilterColumn, addFilter)
+{
+	zval *object = getThis();
+	FilterColumnHandle filtercolumn;
+	zend_string *filtervalue_zs = NULL;
+
+	if (zend_parse_parameters(ZEND_NUM_ARGS(), "S", &filtervalue_zs) == FAILURE) {
+		RETURN_FALSE;
+	}
+
+	FILTERCOLUMN_FROM_OBJECT(filtercolumn, object);
+
+	xlFilterColumnAddFilter(filtercolumn, ZSTR_VAL(filtervalue_zs));
+
+	RETURN_TRUE;
+}
+/* }}} */
+
+/* {{{ proto long FilterColumn::getTop10()
+	Gets the number of top or bottom items: */
+EXCEL_METHOD(FilterColumn, getTop10)
+{
+	zval *object = getThis();
+	FilterColumnHandle filtercolumn;
+	double value;
+	int top, percent;
+
+	FILTERCOLUMN_FROM_OBJECT(filtercolumn, object);
+
+	if (!xlFilterColumnGetTop10(filtercolumn, &value, &top, &percent)) {
+		RETURN_FALSE;
+	}
+
+	array_init(return_value);
+	add_assoc_double(return_value, "value", value);
+	add_assoc_bool(return_value, "top", top);
+	add_assoc_bool(return_value, "percent", percent);
+}
+/* }}} */
+
+/* {{{ proto long FilterColumn::setTop10()
+	Sets the number of top or bottom items: */
+EXCEL_METHOD(FilterColumn, setTop10)
+{
+	zval *object = getThis();
+	FilterColumnHandle filtercolumn;
+	double value;
+	zend_bool top = 1, percent = 0;
+
+	if (zend_parse_parameters(ZEND_NUM_ARGS(), "dbb", &value, &top, &percent) == FAILURE) {
+		RETURN_FALSE;
+	}
+
+	FILTERCOLUMN_FROM_OBJECT(filtercolumn, object);
+
+	xlFilterColumnSetTop10(filtercolumn, value, top, percent);
+
+	RETURN_TRUE;
+}
+/* }}} */
+
+/* {{{ proto long FilterColumn::getCustomFilter()
+	Gets the custom filter criteria: */
+EXCEL_METHOD(FilterColumn, getCustomFilter)
+{
+	zval *object = getThis();
+	FilterColumnHandle filtercolumn;
+	int op1, op2, andOp;
+	char *v1 = NULL, *v2 = NULL;
+
+	FILTERCOLUMN_FROM_OBJECT(filtercolumn, object);
+
+	if (!xlFilterColumnGetCustomFilter(filtercolumn, &op1, &v1, &op2, &v2, &andOp)) {
+		RETURN_FALSE;
+	}
+
+	array_init(return_value);
+	add_assoc_long(return_value, "operator_1", op1);
+	add_assoc_string(return_value, "value_1", v1);
+	add_assoc_long(return_value, "operator_2", op2);
+	add_assoc_string(return_value, "value_2", v2);
+	add_assoc_bool(return_value, "and_operator", andOp);
+}
+/* }}} */
+
+/* {{{ proto long FilterColumn::setCustomFilter()
+	Sets the custom filter criteria: */
+EXCEL_METHOD(FilterColumn, setCustomFilter)
+{
+	zval *object = getThis();
+	FilterColumnHandle filtercolumn;
+	zend_long op1, op2 = -1;
+	zend_string *v1 = NULL, *v2 = NULL;
+	zend_bool andOp = 0;
+
+	if (zend_parse_parameters(ZEND_NUM_ARGS(), "lS|lSb", &op1, &v1, &op2, &v2, &andOp) == FAILURE) {
+		RETURN_FALSE;
+	}
+
+	FILTERCOLUMN_FROM_OBJECT(filtercolumn, object);
+
+	EXCEL_NON_EMPTY_STRING(v1)
+
+	if (op2 == -1 || !v2) {
+		xlFilterColumnSetCustomFilter(filtercolumn, op1, ZSTR_VAL(v1));
+		RETURN_TRUE;
+	}
+
+	EXCEL_NON_EMPTY_STRING(v2)
+
+	xlFilterColumnSetCustomFilterEx(filtercolumn, op1, ZSTR_VAL(v1), op2, ZSTR_VAL(v2), andOp);
+	RETURN_TRUE;
+}
+/* }}} */
+
+/* {{{ proto long FilterColumn::clear()
+	Clear the filter criteria. */
+EXCEL_METHOD(FilterColumn, clear)
+{
+	zval *object = getThis();
+	FilterColumnHandle filtercolumn;
+
+	FILTERCOLUMN_FROM_OBJECT(filtercolumn, object);
+
+	xlFilterColumnClear(filtercolumn);
+
+	RETURN_TRUE;
+}
+/* }}} */
 #endif
 
 ZEND_BEGIN_ARG_INFO_EX(arginfo_Book_requiresKey, 0, 0, 0)
@@ -5188,6 +5930,10 @@ ZEND_END_ARG_INFO()
 
 ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_setProtect, 0, 0, 1)
 	ZEND_ARG_INFO(0, value)
+#if LIBXL_VERSION >= 0x03070000
+	ZEND_ARG_INFO(0, password)
+	ZEND_ARG_INFO(0, enhancedProtection)
+#endif
 ZEND_END_ARG_INFO()
 
 ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_setNamedRange, 0, 0, 5)
@@ -5353,6 +6099,126 @@ ZEND_END_ARG_INFO()
 
 ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_printArea, 0, 0, 0)
 ZEND_END_ARG_INFO()
+#endif
+
+#if LIBXL_VERSION >= 0x03070000
+ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_setTabColor, 0, 0, 0)
+	ZEND_ARG_INFO(0, color)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_table, 0, 0, 1)
+	ZEND_ARG_INFO(0, index)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_addIgnoredError, 0, 0, 1)
+	ZEND_ARG_INFO(0, iError)
+	ZEND_ARG_INFO(0, rowFirst)
+	ZEND_ARG_INFO(0, colFirst)
+	ZEND_ARG_INFO(0, rowLast)
+	ZEND_ARG_INFO(0, colLast)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_removeComment, 0, 0, 2)
+	ZEND_ARG_INFO(0, row)
+	ZEND_ARG_INFO(0, col)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_writeError, 0, 0, 0)
+	ZEND_ARG_INFO(0, row)
+	ZEND_ARG_INFO(0, col)
+	ZEND_ARG_INFO(0, iError)
+	ZEND_ARG_OBJ_INFO(0, format, ExcelFormat, 1)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_applyFilter, 0, 0, 0)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_autoFilter, 0, 0, 0)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_removeFilter, 0, 0, 0)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_INFO_EX(arginfo_AutoFilter___construct, 0, 0, 0)
+	ZEND_ARG_OBJ_INFO(0, sheet, ExcelSheet, 1)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_INFO_EX(arginfo_AutoFilter_getRef, 0, 0, 0)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_INFO_EX(arginfo_AutoFilter_setRef, 0, 0, 0)
+	ZEND_ARG_INFO(0, row_first)
+	ZEND_ARG_INFO(0, col_first)
+	ZEND_ARG_INFO(0, row_last)
+	ZEND_ARG_INFO(0, col_last)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_INFO_EX(arginfo_AutoFilter_column, 0, 0, 1)
+	ZEND_ARG_INFO(0, colId)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_INFO_EX(arginfo_AutoFilter_columnSize, 0, 0, 0)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_INFO_EX(arginfo_AutoFilter_columnByIndex, 0, 0, 1)
+	ZEND_ARG_INFO(0, index)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_INFO_EX(arginfo_AutoFilter_getSortRange, 0, 0, 0)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_INFO_EX(arginfo_AutoFilter_getSort, 0, 0, 0)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_INFO_EX(arginfo_AutoFilter_setSort, 0, 0, 2)
+	ZEND_ARG_INFO(0, columnIndex)
+	ZEND_ARG_INFO(0, descending)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_INFO_EX(arginfo_FilterColumn___construct, 0, 0, 1)
+	ZEND_ARG_OBJ_INFO(0, autoFilter, AutoFilter, 1)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_INFO_EX(arginfo_FilterColumn_index, 0, 0, 0)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_INFO_EX(arginfo_FilterColumn_filterType, 0, 0, 0)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_INFO_EX(arginfo_FilterColumn_filterSize, 0, 0, 0)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_INFO_EX(arginfo_FilterColumn_filter, 0, 0, 1)
+	ZEND_ARG_INFO(0, index)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_INFO_EX(arginfo_FilterColumn_addFilter, 0, 0, 1)
+	ZEND_ARG_INFO(0, filterValue)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_INFO_EX(arginfo_FilterColumn_getTop10, 0, 0, 0)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_INFO_EX(arginfo_FilterColumn_setTop10, 0, 0, 1)
+	ZEND_ARG_INFO(0, value)
+	ZEND_ARG_INFO(0, top)
+	ZEND_ARG_INFO(0, percent)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_INFO_EX(arginfo_FilterColumn_getCustomFilter, 0, 0, 0)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_INFO_EX(arginfo_FilterColumn_setCustomFilter, 0, 0, 2)
+	ZEND_ARG_INFO(0, operator_1)
+	ZEND_ARG_INFO(0, value_1)
+	ZEND_ARG_INFO(0, operator_2)
+	ZEND_ARG_INFO(0, value_2)
+	ZEND_ARG_INFO(0, andOp)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_INFO_EX(arginfo_FilterColumn_clear, 0, 0, 0)
+ZEND_END_ARG_INFO()
+
 #endif
 
 #define EXCEL_ME(class_name, function_name, arg_info, flags) \
@@ -5530,6 +6396,15 @@ zend_function_entry excel_funcs_sheet[] = {
 	EXCEL_ME(Sheet, printRepeatCols, arginfo_Sheet_printRepeatCols, 0)
 	EXCEL_ME(Sheet, printArea, arginfo_Sheet_printArea, 0)
 #endif
+#if LIBXL_VERSION >= 0x03070000
+	EXCEL_ME(Sheet, setTabColor, arginfo_Sheet_setTabColor, 0)
+	EXCEL_ME(Sheet, applyFilter, arginfo_Sheet_applyFilter, 0)
+	EXCEL_ME(Sheet, autoFilter, arginfo_Sheet_autoFilter, 0)
+	EXCEL_ME(Sheet, removeFilter, arginfo_Sheet_removeFilter, 0)
+	EXCEL_ME(Sheet, table, arginfo_Sheet_table, 0)
+	EXCEL_ME(Sheet, writeError, arginfo_Sheet_writeError, 0)
+	EXCEL_ME(Sheet, addIgnoredError, arginfo_Sheet_addIgnoredError, 0)
+#endif
 	{NULL, NULL, NULL}
 };
 
@@ -5577,16 +6452,48 @@ zend_function_entry excel_funcs_format[] = {
 	{NULL, NULL, NULL}
 };
 
+#if LIBXL_VERSION >= 0x03070000
+zend_function_entry excel_funcs_autofilter[] = {
+	EXCEL_ME(AutoFilter, __construct, arginfo_AutoFilter___construct, 0)
+	EXCEL_ME(AutoFilter, getRef, arginfo_AutoFilter_getRef, 0)
+	EXCEL_ME(AutoFilter, setRef, arginfo_AutoFilter_setRef, 0)
+	EXCEL_ME(AutoFilter, column, arginfo_AutoFilter_column, 0)
+	EXCEL_ME(AutoFilter, columnSize, arginfo_AutoFilter_columnSize, 0)
+	EXCEL_ME(AutoFilter, columnByIndex, arginfo_AutoFilter_columnByIndex, 0)
+	EXCEL_ME(AutoFilter, getSortRange, arginfo_AutoFilter_getSortRange, 0)
+	EXCEL_ME(AutoFilter, getSort, arginfo_AutoFilter_getSort, 0)
+	EXCEL_ME(AutoFilter, setSort, arginfo_AutoFilter_setSort, 0)
+	{NULL, NULL, NULL}
+};
+
+zend_function_entry excel_funcs_filtercolumn[] = {
+	EXCEL_ME(FilterColumn, __construct, arginfo_FilterColumn___construct, 0)
+	EXCEL_ME(FilterColumn, index, arginfo_FilterColumn_index, 0)
+	EXCEL_ME(FilterColumn, filterType, arginfo_FilterColumn_filterType, 0)
+	EXCEL_ME(FilterColumn, filterSize, arginfo_FilterColumn_filterSize, 0)
+	EXCEL_ME(FilterColumn, filter, arginfo_FilterColumn_filter, 0)
+	EXCEL_ME(FilterColumn, addFilter, arginfo_FilterColumn_addFilter, 0)
+	EXCEL_ME(FilterColumn, getTop10, arginfo_FilterColumn_getTop10, 0)
+	EXCEL_ME(FilterColumn, setTop10, arginfo_FilterColumn_setTop10, 0)
+	EXCEL_ME(FilterColumn, getCustomFilter, arginfo_FilterColumn_getCustomFilter, 0)
+	EXCEL_ME(FilterColumn, setCustomFilter, arginfo_FilterColumn_setCustomFilter, 0)
+	EXCEL_ME(FilterColumn, clear, arginfo_FilterColumn_clear, 0)
+	{NULL, NULL, NULL}
+};
+#endif
+
 /* {{{ PHP_MINIT_FUNCTION
  */
 PHP_MINIT_FUNCTION(excel)
 {
 	REGISTER_INI_ENTRIES();
 
-	REGISTER_EXCEL_CLASS(Book,		book,	NULL);
-	REGISTER_EXCEL_CLASS(Sheet,		sheet,	NULL);
-	REGISTER_EXCEL_CLASS(Format,	format,	excel_format_object_clone);
-	REGISTER_EXCEL_CLASS(Font,		font,	excel_font_object_clone);
+	REGISTER_EXCEL_CLASS(Book,			book,			NULL);
+	REGISTER_EXCEL_CLASS(Sheet,			sheet,			NULL);
+	REGISTER_EXCEL_CLASS(Format,		format,			excel_format_object_clone);
+	REGISTER_EXCEL_CLASS(Font,			font,			excel_font_object_clone);
+	REGISTER_EXCEL_CLASS(AutoFilter,	autofilter,		NULL);
+	REGISTER_EXCEL_CLASS(FilterColumn,	filtercolumn,	NULL);
 
 	REGISTER_EXCEL_CLASS_CONST_LONG(font, "NORMAL", SCRIPT_NORMAL);
 	REGISTER_EXCEL_CLASS_CONST_LONG(font, "SUBSCRIPT", SCRIPT_SUB);
@@ -5809,6 +6716,8 @@ PHP_MINIT_FUNCTION(excel)
 	REGISTER_EXCEL_CLASS_CONST_LONG(sheet, "PAPER_FANFOLD", PAPER_FANFOLD);
 	REGISTER_EXCEL_CLASS_CONST_LONG(sheet, "PAPER_GERMAN_STD_FANFOLD", PAPER_GERMAN_STD_FANFOLD);
 	REGISTER_EXCEL_CLASS_CONST_LONG(sheet, "PAPER_GERMAN_LEGAL_FANFOLD", PAPER_GERMAN_LEGAL_FANFOLD);
+
+
 	REGISTER_EXCEL_CLASS_CONST_LONG(book, "PICTURETYPE_PNG", PICTURETYPE_PNG);
 	REGISTER_EXCEL_CLASS_CONST_LONG(book, "PICTURETYPE_JPEG", PICTURETYPE_JPEG);
 	REGISTER_EXCEL_CLASS_CONST_LONG(book, "PICTURETYPE_WMF", PICTURETYPE_WMF);
@@ -5818,8 +6727,10 @@ PHP_MINIT_FUNCTION(excel)
 	REGISTER_EXCEL_CLASS_CONST_LONG(book, "PICTURETYPE_TIFF", PICTURETYPE_TIFF);
 	REGISTER_EXCEL_CLASS_CONST_LONG(book, "SCOPE_UNDEFINED", SCOPE_UNDEFINED);
 	REGISTER_EXCEL_CLASS_CONST_LONG(book, "SCOPE_WORKBOOK", SCOPE_WORKBOOK);
+
 	REGISTER_EXCEL_CLASS_CONST_LONG(sheet, "RIGHT_TO_LEFT", 1);
 	REGISTER_EXCEL_CLASS_CONST_LONG(sheet, "LEFT_TO_RIGHT", 0);
+
 	REGISTER_EXCEL_CLASS_CONST_LONG(book, "SHEETTYPE_SHEET", SHEETTYPE_SHEET);
 	REGISTER_EXCEL_CLASS_CONST_LONG(book, "SHEETTYPE_CHART", SHEETTYPE_CHART);
 	REGISTER_EXCEL_CLASS_CONST_LONG(book, "SHEETTYPE_UNKNOWN", SHEETTYPE_UNKNOWN);
@@ -5827,6 +6738,55 @@ PHP_MINIT_FUNCTION(excel)
 	REGISTER_EXCEL_CLASS_CONST_LONG(book, "POSITION_MOVE_AND_SIZE", POSITION_MOVE_AND_SIZE);
 	REGISTER_EXCEL_CLASS_CONST_LONG(book, "POSITION_ONLY_MOVE", POSITION_ONLY_MOVE);
 	REGISTER_EXCEL_CLASS_CONST_LONG(book, "POSITION_ABSOLUTE", POSITION_ABSOLUTE);
+#endif
+
+#if LIBXL_VERSION >= 0x03070000
+	REGISTER_EXCEL_CLASS_CONST_LONG(sheet, "PROT_DEFAULT", PROT_DEFAULT);
+	REGISTER_EXCEL_CLASS_CONST_LONG(sheet, "PROT_ALL", PROT_ALL);
+	REGISTER_EXCEL_CLASS_CONST_LONG(sheet, "PROT_OBJECTS", PROT_OBJECTS);
+	REGISTER_EXCEL_CLASS_CONST_LONG(sheet, "PROT_SCENARIOS", PROT_SCENARIOS);
+	REGISTER_EXCEL_CLASS_CONST_LONG(sheet, "PROT_FORMAT_CELLS", PROT_FORMAT_CELLS);
+	REGISTER_EXCEL_CLASS_CONST_LONG(sheet, "PROT_FORMAT_COLUMNS", PROT_FORMAT_COLUMNS);
+	REGISTER_EXCEL_CLASS_CONST_LONG(sheet, "PROT_FORMAT_ROWS", PROT_FORMAT_ROWS);
+	REGISTER_EXCEL_CLASS_CONST_LONG(sheet, "PROT_INSERT_COLUMNS", PROT_INSERT_COLUMNS);
+	REGISTER_EXCEL_CLASS_CONST_LONG(sheet, "PROT_INSERT_ROWS", PROT_INSERT_ROWS);
+	REGISTER_EXCEL_CLASS_CONST_LONG(sheet, "PROT_INSERT_HYPERLINKS", PROT_INSERT_HYPERLINKS);
+	REGISTER_EXCEL_CLASS_CONST_LONG(sheet, "PROT_DELETE_COLUMNS", PROT_DELETE_COLUMNS);
+	REGISTER_EXCEL_CLASS_CONST_LONG(sheet, "PROT_DELETE_ROWS", PROT_DELETE_ROWS);
+	REGISTER_EXCEL_CLASS_CONST_LONG(sheet, "PROT_SEL_LOCKED_CELLS", PROT_SEL_LOCKED_CELLS);
+	REGISTER_EXCEL_CLASS_CONST_LONG(sheet, "PROT_SORT", PROT_SORT);
+	REGISTER_EXCEL_CLASS_CONST_LONG(sheet, "PROT_AUTOFILTER", PROT_AUTOFILTER);
+	REGISTER_EXCEL_CLASS_CONST_LONG(sheet, "PROT_PIVOTTABLES", PROT_PIVOTTABLES);
+	REGISTER_EXCEL_CLASS_CONST_LONG(sheet, "PROT_SEL_UNLOCKED_CELLS", PROT_SEL_UNLOCKED_CELLS);
+
+	REGISTER_EXCEL_CLASS_CONST_LONG(sheet, "SHEETSTATE_VISIBLE", SHEETSTATE_VISIBLE);
+	REGISTER_EXCEL_CLASS_CONST_LONG(sheet, "SHEETSTATE_HIDDEN", SHEETSTATE_HIDDEN);
+	REGISTER_EXCEL_CLASS_CONST_LONG(sheet, "SHEETSTATE_VERYHIDDEN", SHEETSTATE_VERYHIDDEN);
+
+	REGISTER_EXCEL_CLASS_CONST_LONG(sheet, "IERR_EVAL_ERROR", IERR_EVAL_ERROR);
+	REGISTER_EXCEL_CLASS_CONST_LONG(sheet, "IERR_EMPTY_CELLREF", IERR_EMPTY_CELLREF);
+	REGISTER_EXCEL_CLASS_CONST_LONG(sheet, "IERR_NUMBER_STORED_AS_TEXT", IERR_NUMBER_STORED_AS_TEXT);
+	REGISTER_EXCEL_CLASS_CONST_LONG(sheet, "IERR_INCONSIST_RANGE", IERR_INCONSIST_RANGE);
+	REGISTER_EXCEL_CLASS_CONST_LONG(sheet, "IERR_INCONSIST_FMLA", IERR_INCONSIST_FMLA);
+	REGISTER_EXCEL_CLASS_CONST_LONG(sheet, "IERR_TWODIG_TEXTYEAR", IERR_TWODIG_TEXTYEAR);
+	REGISTER_EXCEL_CLASS_CONST_LONG(sheet, "IERR_UNLOCK_FMLA", IERR_UNLOCK_FMLA);
+	REGISTER_EXCEL_CLASS_CONST_LONG(sheet, "IERR_DATA_VALIDATION", IERR_DATA_VALIDATION);
+
+	REGISTER_EXCEL_CLASS_CONST_LONG(filtercolumn, "OPERATOR_EQUAL", OPERATOR_EQUAL);
+	REGISTER_EXCEL_CLASS_CONST_LONG(filtercolumn, "OPERATOR_GREATER_THAN", OPERATOR_GREATER_THAN);
+	REGISTER_EXCEL_CLASS_CONST_LONG(filtercolumn, "OPERATOR_GREATER_THAN_OR_EQUAL", OPERATOR_GREATER_THAN_OR_EQUAL);
+	REGISTER_EXCEL_CLASS_CONST_LONG(filtercolumn, "OPERATOR_LESS_THAN", OPERATOR_LESS_THAN);
+	REGISTER_EXCEL_CLASS_CONST_LONG(filtercolumn, "OPERATOR_LESS_THAN_OR_EQUAL", OPERATOR_LESS_THAN_OR_EQUAL);
+	REGISTER_EXCEL_CLASS_CONST_LONG(filtercolumn, "OPERATOR_NOT_EQUAL", OPERATOR_NOT_EQUAL);
+
+	REGISTER_EXCEL_CLASS_CONST_LONG(filtercolumn, "FILTER_VALUE", FILTER_VALUE);
+	REGISTER_EXCEL_CLASS_CONST_LONG(filtercolumn, "FILTER_TOP10", FILTER_TOP10);
+	REGISTER_EXCEL_CLASS_CONST_LONG(filtercolumn, "FILTER_CUSTOM", FILTER_CUSTOM);
+	REGISTER_EXCEL_CLASS_CONST_LONG(filtercolumn, "FILTER_DYNAMIC", FILTER_DYNAMIC);
+	REGISTER_EXCEL_CLASS_CONST_LONG(filtercolumn, "FILTER_COLOR", FILTER_COLOR);
+	REGISTER_EXCEL_CLASS_CONST_LONG(filtercolumn, "FILTER_ICON", FILTER_ICON);
+	REGISTER_EXCEL_CLASS_CONST_LONG(filtercolumn, "FILTER_EXT", FILTER_EXT);
+	REGISTER_EXCEL_CLASS_CONST_LONG(filtercolumn, "FILTER_NOT_SET", FILTER_NOT_SET);
 #endif
 
 	return SUCCESS;
