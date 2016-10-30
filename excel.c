@@ -4734,6 +4734,7 @@ EXCEL_METHOD(Sheet, removeFilter)
 }
 /* }}} */
 
+#if LIBXL_VERSION >= 0x03070002
 /* {{{ proto long ExcelSheet::addIgnoredError()
 	Adds the ignored error for specified range. It allows to hide green triangles on left sides of cells. */
 EXCEL_METHOD(Sheet, addIgnoredError)
@@ -4755,6 +4756,7 @@ EXCEL_METHOD(Sheet, addIgnoredError)
 	RETURN_TRUE;
 }
 /* }}} */
+#endif
 
 /* {{{ proto long ExcelSheet::writeError()
 	Writes error into the cell with specified format. If format equals 0 then format is ignored. */
@@ -6403,6 +6405,8 @@ zend_function_entry excel_funcs_sheet[] = {
 	EXCEL_ME(Sheet, removeFilter, arginfo_Sheet_removeFilter, 0)
 	EXCEL_ME(Sheet, table, arginfo_Sheet_table, 0)
 	EXCEL_ME(Sheet, writeError, arginfo_Sheet_writeError, 0)
+#endif
+#if LIBXL_VERSION >= 0x03070002
 	EXCEL_ME(Sheet, addIgnoredError, arginfo_Sheet_addIgnoredError, 0)
 #endif
 	{NULL, NULL, NULL}
