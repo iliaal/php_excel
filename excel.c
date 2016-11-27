@@ -2218,6 +2218,7 @@ static zend_bool php_excel_read_cell(int row, int col, zval *val, SheetHandle sh
 				ZVAL_STRING(val, (char *)s, 1);
 				return 1;
 			} else {
+				ZVAL_EMPTY_STRING(val);
 				return 0;
 			}
 		}
