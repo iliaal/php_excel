@@ -302,6 +302,9 @@ static void excel_font_object_free_storage(zend_object *object)
 #define REGISTER_EXCEL_CLASS_CONST_LONG(class_name, const_name, value) \
 	zend_declare_class_constant_long(excel_ce_ ## class_name, const_name, sizeof(const_name)-1, (long)value);
 
+#define REGISTER_EXCEL_CLASS_CONST_STRING(class_name, const_name, value) \
+	zend_declare_class_constant_string(excel_ce_ ## class_name, const_name, sizeof(const_name)-1, (char *)value);
+
 static zend_object *excel_object_new_font_ex(zend_class_entry *class_type, excel_font_object **ptr)
 {
 	excel_font_object *intern;
@@ -1461,6 +1464,24 @@ EXCEL_METHOD(Book, colorUnpack)
 }
 /* }}} */
 
+/* {{{ proto string ExcelBook::getLibXlVersion()
+	Returns the version of libXL library */
+EXCEL_METHOD(Book, getLibXlVersion)
+{
+	char libxl_api[25];
+	snprintf(libxl_api, sizeof(libxl_api), "%x", LIBXL_VERSION);
+	RETURN_STRING(libxl_api);
+}
+/* }}} */
+
+/* {{{ proto string ExcelBook::getPhpExcelVersion()
+	Returns the version of PHP Excel extension */
+EXCEL_METHOD(Book, getPhpExcelVersion)
+{
+	RETURN_STRING(PHP_EXCEL_VERSION);
+}
+/* }}} */
+
 /* {{{ proto int ExcelFont::size([int size])
 	Get or set the font size */
 EXCEL_METHOD(Font, size)
@@ -2380,11 +2401,11 @@ zend_bool php_excel_write_cell(SheetHandle sheet, BookHandle book, int row, int 
 
 		case IS_STRING:
 			data_zs = Z_STR_P(data);
-			if (dtype == PHP_EXCEL_STRING) {
-				return xlSheetWriteStr(sheet, row, col, (const char*) ZSTR_VAL(data_zs), format);
-			}
 			if (Z_STRLEN_P(data) > 0 && '\'' == Z_STRVAL_P(data)[0]) {
 				return xlSheetWriteStr(sheet, row, col, (const char*) ZSTR_VAL(data_zs) + 1, format);
+			}
+			if (dtype == PHP_EXCEL_STRING) {
+				return xlSheetWriteStr(sheet, row, col, (const char*) ZSTR_VAL(data_zs), format);
 			}
 			if (Z_STRLEN_P(data) > 0 && '=' == Z_STRVAL_P(data)[0]) {
 				dtype = PHP_EXCEL_FORMULA;
@@ -5232,6 +5253,147 @@ EXCEL_METHOD(FilterColumn, clear)
 /* }}} */
 #endif
 
+#if LIBXL_VERSION >= 0x03080000
+/* {{{ proto long ExcelBook::addPictureAsLink(str filename, bool insert)
+	Adds a picture to the workbook as link (only for xlsx files) */
+EXCEL_METHOD(Book, addPictureAsLink)
+{
+	zval *object = getThis();
+	BookHandle book;
+	zend_string *filename;
+	zend_bool insert = 0;
+	long result;
+
+	if (zend_parse_parameters(ZEND_NUM_ARGS(), "S|b", &filename, &insert) == FAILURE) {
+		RETURN_FALSE;
+	}
+
+	BOOK_FROM_OBJECT(book, object);
+
+	result = xlBookAddPictureAsLink(book, ZSTR_VAL(filename), insert);
+
+	if (-1 == result) {
+		php_error_docref(NULL, E_WARNING, "Could not add picture as link.");
+		RETURN_FALSE;
+	}
+
+	RETURN_LONG(result);
+}
+/* }}} */
+
+/* {{{ proto bool ExcelBook::moveSheet(int src_index, int dest_index)
+	Moves a sheet with specified index to a new position. Returns 0 if error occurs. */
+EXCEL_METHOD(Book, moveSheet)
+{
+	BookHandle book;
+	zval *object = getThis();
+	zend_long src_index, dest_index;
+
+	if (zend_parse_parameters(ZEND_NUM_ARGS(), "ll", &src_index, &dest_index) == FAILURE) {
+		RETURN_FALSE;
+	}
+
+	BOOK_FROM_OBJECT(book, object);
+
+	if (!xlBookMoveSheet(book, src_index, dest_index)) {
+		RETURN_FALSE;
+	}
+
+	RETURN_TRUE;
+}
+/* }}} */
+
+/* {{{ proto bool Sheet::addDataValidation()
+	Adds a data validation for the specified range (only for xlsx files). */
+EXCEL_METHOD(Sheet, addDataValidation)
+{
+	zval *object = getThis();
+	SheetHandle sheet;
+
+	zend_long type, op, row_first, row_last, col_first, col_last;
+	zend_string *val_1, *val_2;
+	zend_bool allow_blank = 1, hide_dropdown=0, show_inputmessage = 1, show_errormessage = 1;
+	zend_string *prompt_title = zend_string_init("", sizeof("")-1, 0), *prompt = zend_string_init("", sizeof("")-1, 0);
+	zend_string *error_title = zend_string_init("", sizeof("")-1, 0), *error = zend_string_init("", sizeof("")-1, 0);
+	zend_long error_style = 1;
+
+	if (zend_parse_parameters(ZEND_NUM_ARGS(), "llllllS|SbbbbSSSSl", &type, &op, &row_first, &row_last, \
+			&col_first, &col_last, &val_1, &val_2, &allow_blank, &hide_dropdown, &show_inputmessage, \
+			&show_errormessage, &prompt_title, &prompt, &error_title, &error, &error_style) == FAILURE) {
+		RETURN_FALSE;
+	}
+
+	if (!val_1 || ZSTR_LEN(val_1) < 1) {
+		php_error_docref(NULL, E_WARNING, "The first value can not be empty.");
+		RETURN_FALSE;
+	}
+
+	if ((op == VALIDATION_OP_BETWEEN || op == VALIDATION_OP_NOTBETWEEN) && ZEND_NUM_ARGS() < 8) {
+		php_error_docref(NULL, E_WARNING, "The second value can not be null when used with (not) between operator.");
+		RETURN_FALSE;
+	}
+
+	SHEET_FROM_OBJECT(sheet, object);
+
+	xlSheetAddDataValidationEx(sheet, type, op, row_first, row_last, col_first, col_last, ZSTR_VAL(val_1), \
+			ZSTR_VAL(val_2), allow_blank, hide_dropdown, show_inputmessage, show_errormessage, \
+			ZSTR_VAL(prompt_title), ZSTR_VAL(prompt), ZSTR_VAL(error_title), ZSTR_VAL(error), error_style);
+
+	RETURN_TRUE;
+}
+/* }}} */
+
+/* {{{ proto bool Sheet::addDataValidationDouble()
+	Adds a data validation for the specified range with double or date values for the relational operator
+	(only for xlsx files). See parameters in the xlSheetAddDataValidation() method. */
+EXCEL_METHOD(Sheet, addDataValidationDouble)
+{
+	zval *object = getThis();
+	SheetHandle sheet;
+
+	zend_long type, op, row_first, row_last, col_first, col_last;
+	double val_1, val_2;
+	zend_bool allow_blank = 1, hide_dropdown=0, show_inputmessage = 1, show_errormessage = 1;
+	zend_string *prompt_title = zend_string_init("", sizeof("")-1, 0), *prompt = zend_string_init("", sizeof("")-1, 0);
+	zend_string *error_title = zend_string_init("", sizeof("")-1, 0), *error = zend_string_init("", sizeof("")-1, 0);
+	zend_long error_style = 1;
+
+	if (zend_parse_parameters(ZEND_NUM_ARGS(), "lllllld|dbbbbSSSSl", &type, &op, &row_first, &row_last, \
+			&col_first, &col_last, &val_1, &val_2, &allow_blank, &hide_dropdown, &show_inputmessage, \
+			&show_errormessage, &prompt_title, &prompt, &error_title, &error, &error_style) == FAILURE) {
+		RETURN_FALSE;
+	}
+
+	if ((op == VALIDATION_OP_BETWEEN || op == VALIDATION_OP_NOTBETWEEN) && ZEND_NUM_ARGS() < 8) {
+		php_error_docref(NULL, E_WARNING, "The second value can not be null when used with (not) between operator.");
+		RETURN_FALSE;
+	}
+
+	SHEET_FROM_OBJECT(sheet, object);
+
+	xlSheetAddDataValidationDoubleEx(sheet, type, op, row_first, row_last, col_first, col_last, val_1, \
+			val_2, allow_blank, hide_dropdown, show_inputmessage, show_errormessage, \
+			ZSTR_VAL(prompt_title), ZSTR_VAL(prompt), ZSTR_VAL(error_title), ZSTR_VAL(error), error_style);
+
+	RETURN_TRUE;
+}
+/* }}} */
+
+/* {{{ proto bool Sheet::removeDataValidations()
+	Removes all data validations for the sheet (only for xlsx files). */
+EXCEL_METHOD(Sheet, removeDataValidations)
+{
+	zval *object = getThis();
+	SheetHandle sheet;
+
+	SHEET_FROM_OBJECT(sheet, object);
+	xlSheetRemoveDataValidations(sheet);
+
+	RETURN_TRUE;
+}
+/* }}} */
+#endif
+
 ZEND_BEGIN_ARG_INFO_EX(arginfo_Book_requiresKey, 0, 0, 0)
 ZEND_END_ARG_INFO()
 
@@ -5411,6 +5573,12 @@ ZEND_END_ARG_INFO()
 
 ZEND_BEGIN_ARG_INFO_EX(arginfo_Book_sheetType, 0, 0, 1)
 	ZEND_ARG_INFO(0, sheet)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_INFO_EX(arginfo_Book_getLibXlVersion, 0, 0, 0)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_INFO_EX(arginfo_Book_getPhpExcelVersion, 0, 0, 0)
 ZEND_END_ARG_INFO()
 
 ZEND_BEGIN_ARG_INFO_EX(arginfo_Font_size, 0, 0, 0)
@@ -6222,7 +6390,61 @@ ZEND_END_ARG_INFO()
 
 ZEND_BEGIN_ARG_INFO_EX(arginfo_FilterColumn_clear, 0, 0, 0)
 ZEND_END_ARG_INFO()
+#endif
 
+#if LIBXL_VERSION >= 0x03080000
+ZEND_BEGIN_ARG_INFO_EX(arginfo_Book_addPictureAsLink, 0, 0, 1)
+	ZEND_ARG_INFO(0, filename)
+	ZEND_ARG_INFO(0, insert)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_INFO_EX(arginfo_Book_moveSheet, 0, 0, 2)
+	ZEND_ARG_INFO(0, src_index)
+	ZEND_ARG_INFO(0, dest_index)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_addDataValidation, 0, 0, 7)
+	ZEND_ARG_INFO(0, type)
+	ZEND_ARG_INFO(0, op)
+	ZEND_ARG_INFO(0, row_first)
+	ZEND_ARG_INFO(0, row_last)
+	ZEND_ARG_INFO(0, col_first)
+	ZEND_ARG_INFO(0, col_last)
+	ZEND_ARG_INFO(0, val_1)
+	ZEND_ARG_INFO(0, val_2)
+	ZEND_ARG_INFO(0, allow_blank)
+	ZEND_ARG_INFO(0, hide_dropdown)
+	ZEND_ARG_INFO(0, show_inputmessage)
+	ZEND_ARG_INFO(0, show_errormessage)
+	ZEND_ARG_INFO(0, prompt_title)
+	ZEND_ARG_INFO(0, prompt)
+	ZEND_ARG_INFO(0, error_title)
+	ZEND_ARG_INFO(0, error)
+	ZEND_ARG_INFO(0, error_style)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_addDataValidationDouble, 0, 0, 7)
+	ZEND_ARG_INFO(0, type)
+	ZEND_ARG_INFO(0, op)
+	ZEND_ARG_INFO(0, row_first)
+	ZEND_ARG_INFO(0, row_last)
+	ZEND_ARG_INFO(0, col_first)
+	ZEND_ARG_INFO(0, col_last)
+	ZEND_ARG_INFO(0, val_1)
+	ZEND_ARG_INFO(0, val_2)
+	ZEND_ARG_INFO(0, allow_blank)
+	ZEND_ARG_INFO(0, hide_dropdown)
+	ZEND_ARG_INFO(0, show_inputmessage)
+	ZEND_ARG_INFO(0, show_errormessage)
+	ZEND_ARG_INFO(0, prompt_title)
+	ZEND_ARG_INFO(0, prompt)
+	ZEND_ARG_INFO(0, error_title)
+	ZEND_ARG_INFO(0, error)
+	ZEND_ARG_INFO(0, error_style)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_removeDataValidations, 0, 0, 0)
+ZEND_END_ARG_INFO()
 #endif
 
 #define EXCEL_ME(class_name, function_name, arg_info, flags) \
@@ -6272,6 +6494,12 @@ zend_function_entry excel_funcs_book[] = {
 	EXCEL_ME(Book, isTemplate, arginfo_Book_isTemplate, 0)
 	EXCEL_ME(Book, setTemplate, arginfo_Book_setTemplate, 0)
 	EXCEL_ME(Book, sheetType, arginfo_Book_sheetType, 0)
+	EXCEL_ME(Book, getLibXlVersion, arginfo_Book_getLibXlVersion, 0)
+	EXCEL_ME(Book, getPhpExcelVersion, arginfo_Book_getPhpExcelVersion, 0)
+#if LIBXL_VERSION >= 0x03080000
+	EXCEL_ME(Book, addPictureAsLink, arginfo_Book_addPictureAsLink, 0)
+	EXCEL_ME(Book, moveSheet, arginfo_Book_moveSheet, 0)
+#endif
 	{NULL, NULL, NULL}
 };
 
@@ -6408,6 +6636,11 @@ zend_function_entry excel_funcs_sheet[] = {
 	EXCEL_ME(Sheet, table, arginfo_Sheet_table, 0)
 	EXCEL_ME(Sheet, writeError, arginfo_Sheet_writeError, 0)
 	EXCEL_ME(Sheet, addIgnoredError, arginfo_Sheet_addIgnoredError, 0)
+#endif
+#if LIBXL_VERSION >= 0x03080000
+	EXCEL_ME(Sheet, addDataValidation, arginfo_Sheet_addDataValidation, 0)
+	EXCEL_ME(Sheet, addDataValidationDouble, arginfo_Sheet_addDataValidationDouble, 0)
+	EXCEL_ME(Sheet, removeDataValidations, arginfo_Sheet_removeDataValidations, 0)
 #endif
 	{NULL, NULL, NULL}
 };
@@ -6678,6 +6911,7 @@ PHP_MINIT_FUNCTION(excel)
 	REGISTER_EXCEL_CLASS_CONST_LONG(sheet, "ERRORTYPE_VALUE", ERRORTYPE_VALUE);
 	REGISTER_EXCEL_CLASS_CONST_LONG(sheet, "ERRORTYPE_DIV_0", ERRORTYPE_DIV_0);
 	REGISTER_EXCEL_CLASS_CONST_LONG(sheet, "ERRORTYPE_NULL", ERRORTYPE_NULL);
+	REGISTER_EXCEL_CLASS_CONST_LONG(sheet, "ERRORTYPE_NOERROR", ERRORTYPE_NOERROR);
 
 	REGISTER_EXCEL_CLASS_CONST_LONG(sheet, "PAPER_DEFAULT", PAPER_DEFAULT);
 	REGISTER_EXCEL_CLASS_CONST_LONG(sheet, "PAPER_LETTER", PAPER_LETTER);
@@ -6722,7 +6956,6 @@ PHP_MINIT_FUNCTION(excel)
 	REGISTER_EXCEL_CLASS_CONST_LONG(sheet, "PAPER_GERMAN_STD_FANFOLD", PAPER_GERMAN_STD_FANFOLD);
 	REGISTER_EXCEL_CLASS_CONST_LONG(sheet, "PAPER_GERMAN_LEGAL_FANFOLD", PAPER_GERMAN_LEGAL_FANFOLD);
 
-
 	REGISTER_EXCEL_CLASS_CONST_LONG(book, "PICTURETYPE_PNG", PICTURETYPE_PNG);
 	REGISTER_EXCEL_CLASS_CONST_LONG(book, "PICTURETYPE_JPEG", PICTURETYPE_JPEG);
 	REGISTER_EXCEL_CLASS_CONST_LONG(book, "PICTURETYPE_WMF", PICTURETYPE_WMF);
@@ -6730,6 +6963,7 @@ PHP_MINIT_FUNCTION(excel)
 	REGISTER_EXCEL_CLASS_CONST_LONG(book, "PICTURETYPE_EMF", PICTURETYPE_EMF);
 	REGISTER_EXCEL_CLASS_CONST_LONG(book, "PICTURETYPE_PICT", PICTURETYPE_PICT);
 	REGISTER_EXCEL_CLASS_CONST_LONG(book, "PICTURETYPE_TIFF", PICTURETYPE_TIFF);
+
 	REGISTER_EXCEL_CLASS_CONST_LONG(book, "SCOPE_UNDEFINED", SCOPE_UNDEFINED);
 	REGISTER_EXCEL_CLASS_CONST_LONG(book, "SCOPE_WORKBOOK", SCOPE_WORKBOOK);
 
@@ -6739,6 +6973,7 @@ PHP_MINIT_FUNCTION(excel)
 	REGISTER_EXCEL_CLASS_CONST_LONG(book, "SHEETTYPE_SHEET", SHEETTYPE_SHEET);
 	REGISTER_EXCEL_CLASS_CONST_LONG(book, "SHEETTYPE_CHART", SHEETTYPE_CHART);
 	REGISTER_EXCEL_CLASS_CONST_LONG(book, "SHEETTYPE_UNKNOWN", SHEETTYPE_UNKNOWN);
+
 #if LIBXL_VERSION >= 0x03060300
 	REGISTER_EXCEL_CLASS_CONST_LONG(book, "POSITION_MOVE_AND_SIZE", POSITION_MOVE_AND_SIZE);
 	REGISTER_EXCEL_CLASS_CONST_LONG(book, "POSITION_ONLY_MOVE", POSITION_ONLY_MOVE);
@@ -6792,6 +7027,30 @@ PHP_MINIT_FUNCTION(excel)
 	REGISTER_EXCEL_CLASS_CONST_LONG(filtercolumn, "FILTER_ICON", FILTER_ICON);
 	REGISTER_EXCEL_CLASS_CONST_LONG(filtercolumn, "FILTER_EXT", FILTER_EXT);
 	REGISTER_EXCEL_CLASS_CONST_LONG(filtercolumn, "FILTER_NOT_SET", FILTER_NOT_SET);
+#endif
+
+#if LIBXL_VERSION >= 0x03080000
+	REGISTER_EXCEL_CLASS_CONST_LONG(sheet, "VALIDATION_TYPE_NONE", VALIDATION_TYPE_NONE);
+	REGISTER_EXCEL_CLASS_CONST_LONG(sheet, "VALIDATION_TYPE_WHOLE", VALIDATION_TYPE_WHOLE);
+	REGISTER_EXCEL_CLASS_CONST_LONG(sheet, "VALIDATION_TYPE_DECIMAL", VALIDATION_TYPE_DECIMAL);
+	REGISTER_EXCEL_CLASS_CONST_LONG(sheet, "VALIDATION_TYPE_LIST", VALIDATION_TYPE_LIST);
+	REGISTER_EXCEL_CLASS_CONST_LONG(sheet, "VALIDATION_TYPE_DATE", VALIDATION_TYPE_DATE);
+	REGISTER_EXCEL_CLASS_CONST_LONG(sheet, "VALIDATION_TYPE_TIME", VALIDATION_TYPE_TIME);
+	REGISTER_EXCEL_CLASS_CONST_LONG(sheet, "VALIDATION_TYPE_TEXTLENGTH", VALIDATION_TYPE_TEXTLENGTH);
+	REGISTER_EXCEL_CLASS_CONST_LONG(sheet, "VALIDATION_TYPE_CUSTOM", VALIDATION_TYPE_CUSTOM);
+
+	REGISTER_EXCEL_CLASS_CONST_LONG(sheet, "VALIDATION_OP_BETWEEN", VALIDATION_OP_BETWEEN);
+	REGISTER_EXCEL_CLASS_CONST_LONG(sheet, "VALIDATION_OP_NOTBETWEEN", VALIDATION_OP_NOTBETWEEN);
+	REGISTER_EXCEL_CLASS_CONST_LONG(sheet, "VALIDATION_OP_EQUAL", VALIDATION_OP_EQUAL);
+	REGISTER_EXCEL_CLASS_CONST_LONG(sheet, "VALIDATION_OP_NOTEQUAL", VALIDATION_OP_NOTEQUAL);
+	REGISTER_EXCEL_CLASS_CONST_LONG(sheet, "VALIDATION_OP_LESSTHAN", VALIDATION_OP_LESSTHAN);
+	REGISTER_EXCEL_CLASS_CONST_LONG(sheet, "VALIDATION_OP_LESSTHANOREQUAL", VALIDATION_OP_LESSTHANOREQUAL);
+	REGISTER_EXCEL_CLASS_CONST_LONG(sheet, "VALIDATION_OP_GREATERTHAN", VALIDATION_OP_GREATERTHAN);
+	REGISTER_EXCEL_CLASS_CONST_LONG(sheet, "VALIDATION_OP_GREATERTHANOREQUAL", VALIDATION_OP_GREATERTHANOREQUAL);
+
+	REGISTER_EXCEL_CLASS_CONST_LONG(sheet, "VALIDATION_ERRSTYLE_STOP", VALIDATION_ERRSTYLE_STOP);
+	REGISTER_EXCEL_CLASS_CONST_LONG(sheet, "VALIDATION_ERRSTYLE_WARNING", VALIDATION_ERRSTYLE_WARNING);
+	REGISTER_EXCEL_CLASS_CONST_LONG(sheet, "VALIDATION_ERRSTYLE_INFORMATION", VALIDATION_ERRSTYLE_INFORMATION);
 #endif
 
 	return SUCCESS;
