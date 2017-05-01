@@ -2400,9 +2400,6 @@ zend_bool php_excel_write_cell(SheetHandle sheet, BookHandle book, int row, int 
 
 		case IS_STRING:
 			data_zs = Z_STR_P(data);
-			if (dtype == PHP_EXCEL_STRING) {
-				return xlSheetWriteStr(sheet, row, col, (const char*) ZSTR_VAL(data_zs), format);
-			}
 			if (Z_STRLEN_P(data) > 0 && '\'' == Z_STRVAL_P(data)[0]) {
 				return xlSheetWriteStr(sheet, row, col, (const char*) ZSTR_VAL(data_zs) + 1, format);
 			}
