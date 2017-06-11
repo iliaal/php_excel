@@ -1748,7 +1748,7 @@ EXCEL_METHOD(Format, getFont)
 		RETURN_FALSE;
 	}
 
-	ZVAL_OBJ(return_value, excel_object_new_sheet(excel_ce_font));
+	ZVAL_OBJ(return_value, excel_object_new_font(excel_ce_font));
 	fo = Z_EXCEL_FONT_OBJ_P(return_value);
 	fo->font = font;
 	fo->book = obj->book;
