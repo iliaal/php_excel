@@ -31,7 +31,7 @@ class ExcelFont
 	* @param ExcelBook $book
 	* @return ExcelFont
 	*/
-	public function __construct($book)
+	public function __construct(ExcelBook $book)
 	{
 	} // __construct
 
