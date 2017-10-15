@@ -4859,15 +4859,15 @@ EXCEL_METHOD(AutoFilter, setRef)
 {
 	zval *object = getThis();
 	AutoFilterHandle autofilter;
-	zend_long rowFirst=0, colFirst=0, rowLast=0, colLast=0;
+	zend_long rowFirst=0, rowLast=0, colFirst=0, colLast=0;
 
-	if (zend_parse_parameters(ZEND_NUM_ARGS(), "llll", &rowFirst, &colFirst, &rowLast, &colLast) == FAILURE) {
+	if (zend_parse_parameters(ZEND_NUM_ARGS(), "llll", &rowFirst, &rowLast, &colFirst, &colLast) == FAILURE) {
 		RETURN_FALSE;
 	}
 
 	AUTOFILTER_FROM_OBJECT(autofilter, object);
 
-	xlAutoFilterSetRef(autofilter, rowFirst, colFirst, rowLast, colLast);
+	xlAutoFilterSetRef(autofilter, rowFirst, rowLast, colFirst, colLast);
 }
 /* }}} */
 
@@ -4942,18 +4942,18 @@ EXCEL_METHOD(AutoFilter, getSortRange)
 {
 	zval *object = getThis();
 	AutoFilterHandle autofilter;
-	int rowFirst=0, colFirst=0, rowLast=0, colLast=0;
+	int rowFirst=0, rowLast=0, colFirst=0, colLast=0;
 
 	AUTOFILTER_FROM_OBJECT(autofilter, object);
 
-	if (!xlAutoFilterGetSortRange(autofilter, &rowFirst, &colFirst, &rowLast, &colLast)) {
+	if (!xlAutoFilterGetSortRange(autofilter, &rowFirst, &rowLast, &colFirst, &colLast)) {
 		RETURN_FALSE;
 	}
 
 	array_init(return_value);
 	add_assoc_long(return_value, "row_first", rowFirst);
-	add_assoc_long(return_value, "col_first", colFirst);
 	add_assoc_long(return_value, "row_last", rowLast);
+	add_assoc_long(return_value, "col_first", colFirst);
 	add_assoc_long(return_value, "col_last", rowLast);
 }
 /* }}} */
