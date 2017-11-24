@@ -2403,8 +2403,7 @@ static zend_bool php_excel_write_cell(SheetHandle sheet, BookHandle book, int ro
 				return 1;
 			}
 			if (!format) {
-				FormatHandle fmt = xlBookAddFormat(book, NULL);
-				return xlSheetWriteBlank(sheet, row, col, fmt);
+				return xlSheetWriteBlank(sheet, row, col, 0);
 			} else {
 				return xlSheetWriteBlank(sheet, row, col, format);
 			}
