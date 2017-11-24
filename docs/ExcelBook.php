@@ -85,6 +85,22 @@ class ExcelBook
 	} // addFormat
 
 	/**
+	* Adds a picture to the workbook as link (only for xlsx files).
+	* Supports BMP, DIB, PNG, JPG and WMF picture formats. Use picture identifier with
+	* \ExcelSheet::setPictureDim() or \ExcelSheet::setPictureScale() 
+	* @see \ExcelSheet::setPictureDim()
+	* @see \ExcelSheet::setPictureScale()
+	*
+	* @since libXl 3.8.0.0
+	* @param string $filename
+	* @param bool $insert (optional, default = false) false - stores only a link to file, true - stores a picture and a link to file.
+	* @return int picture identifier
+	*/
+	public function addPictureAsLink($filename, $insert = false)
+	{
+	} // addPictureAsLink
+
+	/**
 	* Add a picture from file
 	*
 	* @see ExcelBook::addPictureFromString()
@@ -225,6 +241,15 @@ class ExcelBook
 	} // getError
 
 	/**
+	* Get LibXL version
+	*
+	* @return string LibXl library version
+	*/
+	public function getLibXlVersion()
+	{
+	} // getLibXlVersion
+
+	/**
 	* Returns a number of pictures in this workbook.
 	*
 	* @return int Number of pictures in Workbook
@@ -232,6 +257,15 @@ class ExcelBook
 	public function getNumPictures()
 	{
 	} // getNumPictures
+
+	/**
+	* Get PHP excel extension version
+	*
+	* @return string PHP Excel version
+	*/
+	public function getPhpExcelVersion()
+	{
+	} // getPhpExcelVersion
 
 	/**
 	* Returns a picture at position index.
@@ -325,6 +359,18 @@ class ExcelBook
 	public function loadFile($filename)
 	{
 	} // loadFile
+
+	/**
+	* Moves a sheet with specified index to a new position. Returns false if error occurs.
+	*
+	* @since libXL 3.8.0.0
+	* @param int $srcIndex
+	* @param int $dstIndex
+	* @return bool
+	*/
+	public function moveSheet($srcIndex, $dstIndex)
+	{
+	} // moveSheet
 
 	/**
 	* Pack a unix timestamp into an Excel double

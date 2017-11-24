@@ -12,6 +12,8 @@ date.timezone=America/Toronto
 
 	$s->write(1, 1, "Test");
 
+	// fails for LibXl < 3.7.0
+	// because setProtect() returns null
 	var_dump(
 			$s->protect(),
 			$s->setProtect(true),
@@ -22,6 +24,6 @@ date.timezone=America/Toronto
 ?>
 --EXPECT--
 bool(false)
-NULL
+bool(true)
 bool(true)
 OK

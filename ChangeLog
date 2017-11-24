@@ -1,6 +1,15 @@
-[2016-??-??] - Version 1.0.3dev
+[2017-??-??] - Version 1.0.3dev
 	* Fixed crash when trying to read an empty file
 	* Added PECL package.xml to allow installation via pecl
+	* Added ExcelSheet::AS_STRING const to use with write operations (see PR 183 by ederuiter)
+	* Added new methods (requires LibXL 3.8.0)
+		- ExcelBook::addPictureAsLink()
+		- ExcelBook::moveSheet()
+		- ExcelSheet::addDataValidation()
+		- ExcelSheet::addDataValidationDouble()
+		- ExcelSheet::removeDataValidations()
+	* Added ExcelBook::getLibXlVersion()
+	* Added ExcelBook::getPhpExcelVersion()
 
 [2016-06-23] - Version 1.0.2
 	* Fixed bug in ExcelSheet::addPictureDim() (see issue #120)
