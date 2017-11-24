@@ -3601,7 +3601,7 @@ EXCEL_METHOD(Sheet, setName)
 /* }}} */
 
 #if LIBXL_VERSION >= 0x03010000
-/* {{{ proto bool ExcelSheet::setNamedRange(string name, int row, int col, int to_row, int to_col [, int scope_id])
+/* {{{ proto bool ExcelSheet::setNamedRange(string name, int row, int to_row, int col, int to_col [, int scope_id])
 	Create a named range */
 EXCEL_METHOD(Sheet, setNamedRange)
 {
