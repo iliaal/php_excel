@@ -1145,7 +1145,7 @@ class ExcelSheet
 	* @param int $column_end 0-based column number
 	* @return bool
 	*/
-	public function setAutofitArea($row_start=0, $row_end=-1, $column_start=0, $column_end=-1)
+	public function setAutofitArea($row_start = 0, $row_end = -1, $column_start = 0, $column_end = -1)
 	{
 	} // setAutofitArea
 
@@ -1447,7 +1447,7 @@ class ExcelSheet
 	* @param int ExcelSheet::PROT_ALL (optional, default=ExcelSheet::PROT_DEFAULT)
 	* @return void
 	*/
-	public function setProtect($value, $password="", $enhancedProtection=ExcelSheet::PROT_DEFAULT)
+	public function setProtect($value, $password = '', $enhancedProtection = ExcelSheet::PROT_DEFAULT)
 	{
 	} // setProtect
 
@@ -1560,7 +1560,7 @@ class ExcelSheet
 	* @param int $index (optional, default = 0)
 	* @return array with keys "name"(string), "row_first"(int), "col_first"(int), "row_last"(int), "col_last"(int), "header_row_count"(int) and "totals_row_count"(int)
 	*/
-	public function table($index=0)
+	public function table($index = 0)
 	{
 	} // table
 
@@ -1648,7 +1648,7 @@ class ExcelSheet
 	* @param ExcelFormat $format  (optional, default = null)
 	* @return bool
 	*/
-	public function writeError($row=0, $col=0, $error=0, $format=null)
+	public function writeError($row = 0, $col = 0, $error = 0, $format = null)
 	{
 	} // writeError
 

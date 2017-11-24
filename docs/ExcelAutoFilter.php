@@ -20,7 +20,7 @@ class ExcelAutoFilter
 	* @param ExcelSheet $sheet
 	* @return ExcelAutoFilter
 	*/
-	public function __construct($sheet)
+	public function __construct(ExcelSheet $sheet)
 	{
 	} // __construct
 
@@ -42,7 +42,7 @@ class ExcelAutoFilter
 	* @param int $col_last 0-based (optional, default = 0)
 	* @return void
 	*/
-	public function setRef($row_first=0, $row_last=0, $col_first=0, $col_last=0)
+	public function setRef($row_first = 0, $row_last = 0, $col_first = 0, $col_last = 0)
 	{
 	} // setRef
 

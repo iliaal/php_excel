@@ -36,7 +36,7 @@ class ExcelFilterColumn
 	* @param ExcelAutoFilter $autoFilter
 	* @return ExcelFilterColumn
 	*/
-	public function __construct($autoFilter)
+	public function __construct(ExcelAutoFilter $autoFilter)
 	{
 	} // __construct
 
@@ -104,7 +104,7 @@ class ExcelFilterColumn
 	* @param bool $percent - using percent instead of number items. (optional, default = false)
 	* @return bool
 	*/
-	public function setTop10($value, $top=true, $percent=false)
+	public function setTop10($value, $top = true, $percent = false)
 	{
 	} // setTop10
 
@@ -127,7 +127,7 @@ class ExcelFilterColumn
 	* @param bool $andOp - flag indicating whether the two criterias have an "and" relationship. True indicates "and", false indicates "or". (optional, default = false)
 	* @return void
 	*/
-	public function setCustomFilter($op1, $v1, $op2=-1, $v2=null, $andOp=false)
+	public function setCustomFilter($op1, $v1, $op2 = -1, $v2 = null, $andOp = false)
 	{
 	} // setCustomFilter
 
