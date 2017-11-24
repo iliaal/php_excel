@@ -53,6 +53,7 @@ static long xlFormatBorderColor(FormatHandle f)
 #define PHP_EXCEL_DATE 1
 #define PHP_EXCEL_FORMULA 2
 #define PHP_EXCEL_NUMERIC_STRING 3
+#define PHP_EXCEL_STRING 4
 
 #define PHP_EXCEL_VERSION "1.0.3dev"
 
@@ -2379,6 +2380,9 @@ zend_bool php_excel_write_cell(SheetHandle sheet, BookHandle book, int row, int 
 
 		case IS_STRING:
 			data_zs = Z_STR_P(data);
+			if (dtype == PHP_EXCEL_STRING) {
+				return xlSheetWriteStr(sheet, row, col, (const char*) ZSTR_VAL(data_zs), format);
+			}
 			if (Z_STRLEN_P(data) > 0 && '\'' == Z_STRVAL_P(data)[0]) {
 				return xlSheetWriteStr(sheet, row, col, (const char*) ZSTR_VAL(data_zs) + 1, format);
 			}
@@ -6508,6 +6512,7 @@ PHP_MINIT_FUNCTION(excel)
 	REGISTER_EXCEL_CLASS_CONST_LONG(format, "AS_DATE", PHP_EXCEL_DATE);
 	REGISTER_EXCEL_CLASS_CONST_LONG(format, "AS_FORMULA", PHP_EXCEL_FORMULA);
 	REGISTER_EXCEL_CLASS_CONST_LONG(format, "AS_NUMERIC_STRING", PHP_EXCEL_NUMERIC_STRING);
+	REGISTER_EXCEL_CLASS_CONST_LONG(format, "AS_STRING", PHP_EXCEL_STRING);
 
 	REGISTER_EXCEL_CLASS_CONST_LONG(format, "COLOR_BLACK", COLOR_BLACK);
 	REGISTER_EXCEL_CLASS_CONST_LONG(format, "COLOR_WHITE", COLOR_WHITE);
