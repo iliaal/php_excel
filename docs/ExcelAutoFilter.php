@@ -27,7 +27,7 @@ class ExcelAutoFilter
 	/**
 	* Gets the cell range of AutoFilter with header.
 	*
-	* @return array with keys "row_first"(int), "col_first"(int), "row_last"(int), "col_last"(int)
+	* @return array with keys "row_first"(int), "row_last"(int), "col_first"(int), "col_last"(int)
 	*/
 	public function getRef()
 	{
@@ -37,12 +37,12 @@ class ExcelAutoFilter
 	* Sets the cell range of AutoFilter with header.
 	*
 	* @param int $row_first 0-based (optional, default = 0)
-	* @param int $col_first 0-based (optional, default = 0)
 	* @param int $row_last 0-based (optional, default = 0)
+	* @param int $col_first 0-based (optional, default = 0)
 	* @param int $col_last 0-based (optional, default = 0)
 	* @return void
 	*/
-	public function setRef($row_first=0, $col_first=0, $row_last=0, $col_last=0)
+	public function setRef($row_first=0, $row_last=0, $col_first=0, $col_last=0)
 	{
 	} // setRef
 
