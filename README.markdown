@@ -91,7 +91,7 @@ $xlBook->save('test.xlsx');
 
 ## optional php.ini settings
 
-To prevent unvealing your credentials in your code you can save them in your php.ini file.
+To prevent unveiling your credentials in your code you can save them in your php.ini file.
 They will be automatically fetched by the extension and you can pass ```null``` instead of
 your credentials ```new \ExcelBook(null, null, $useXlsxFormat)```.
 
