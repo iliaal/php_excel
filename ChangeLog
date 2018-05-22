@@ -1,5 +1,6 @@
-[2017-??-??] - Version 1.0.3dev
+[2018-??-??] - Version 1.0.3dev
 	* Fixed crash when trying to read an empty file
+	* Fixed bug with writing references (see issue #234)
 	* Added PECL package.xml to allow installation via pecl
 	* Added ExcelSheet::AS_STRING const to use with write operations (see PR 183 by ederuiter)
 	* Added new methods (requires LibXL 3.8.0)
