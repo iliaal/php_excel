@@ -2581,7 +2581,7 @@ EXCEL_METHOD(Sheet, writeCol)
 		RETURN_BOOL(xlSheet ## func_name (sheet, r, c)); \
 	}
 
-#define PHP_EXCEL_SHEET_GET_BOOL_STATE_384(func_name) \
+#define PHP_EXCEL_SHEET_GET_BOOL_STATE_3831(func_name) \
 	{ \
 		SheetHandle sheet; \
 		zval *object = getThis(); \
@@ -2628,8 +2628,8 @@ EXCEL_METHOD(Sheet, isDate)
 	Inserts rows from rowFirst to rowLast */
 EXCEL_METHOD(Sheet, insertRow)
 {
-#if LIBXL_VERSION >= 0x03080400
-	PHP_EXCEL_SHEET_GET_BOOL_STATE_384(InsertRow)
+#if LIBXL_VERSION >= 0x03080301
+	PHP_EXCEL_SHEET_GET_BOOL_STATE_3831(InsertRow)
 #else
 	PHP_EXCEL_SHEET_GET_BOOL_STATE(InsertRow)
 #endif
@@ -2640,8 +2640,8 @@ EXCEL_METHOD(Sheet, insertRow)
 	Inserts columns from colFirst to colLast */
 EXCEL_METHOD(Sheet, insertCol)
 {
-#if LIBXL_VERSION >= 0x03080400
-	PHP_EXCEL_SHEET_GET_BOOL_STATE_384(InsertCol)
+#if LIBXL_VERSION >= 0x03080301
+	PHP_EXCEL_SHEET_GET_BOOL_STATE_3831(InsertCol)
 #else
 	PHP_EXCEL_SHEET_GET_BOOL_STATE(InsertCol)
 #endif
@@ -2652,8 +2652,8 @@ EXCEL_METHOD(Sheet, insertCol)
 	Removes rows from rowFirst to rowLast */
 EXCEL_METHOD(Sheet, removeRow)
 {
-#if LIBXL_VERSION >= 0x03080400
-	PHP_EXCEL_SHEET_GET_BOOL_STATE_384(RemoveRow)
+#if LIBXL_VERSION >= 0x03080301
+	PHP_EXCEL_SHEET_GET_BOOL_STATE_3831(RemoveRow)
 #else
 	PHP_EXCEL_SHEET_GET_BOOL_STATE(RemoveRow)
 #endif
@@ -2664,8 +2664,8 @@ EXCEL_METHOD(Sheet, removeRow)
 	Removes columns from colFirst to colLast */
 EXCEL_METHOD(Sheet, removeCol)
 {
-#if LIBXL_VERSION >= 0x03080400
-	PHP_EXCEL_SHEET_GET_BOOL_STATE_384(RemoveCol)
+#if LIBXL_VERSION >= 0x03080301
+	PHP_EXCEL_SHEET_GET_BOOL_STATE_3831(RemoveCol)
 #else
 	PHP_EXCEL_SHEET_GET_BOOL_STATE(RemoveCol)
 #endif
@@ -5823,7 +5823,7 @@ ZEND_END_ARG_INFO()
 ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_insertRow, 0, 0, 2)
 	ZEND_ARG_INFO(0, row_first)
 	ZEND_ARG_INFO(0, row_last)
-#if LIBXL_VERSION >= 0x03080400
+#if LIBXL_VERSION >= 0x03080301
 	ZEND_ARG_INFO(0, update_named_ranges)
 #endif
 ZEND_END_ARG_INFO()
@@ -5831,7 +5831,7 @@ ZEND_END_ARG_INFO()
 ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_insertCol, 0, 0, 2)
 	ZEND_ARG_INFO(0, col_first)
 	ZEND_ARG_INFO(0, col_last)
-#if LIBXL_VERSION >= 0x03080400
+#if LIBXL_VERSION >= 0x03080301
 	ZEND_ARG_INFO(0, update_named_ranges)
 #endif
 ZEND_END_ARG_INFO()
@@ -5839,7 +5839,7 @@ ZEND_END_ARG_INFO()
 ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_removeRow, 0, 0, 2)
 	ZEND_ARG_INFO(0, row_first)
 	ZEND_ARG_INFO(0, row_last)
-#if LIBXL_VERSION >= 0x03080400
+#if LIBXL_VERSION >= 0x03080301
 	ZEND_ARG_INFO(0, update_named_ranges)
 #endif
 ZEND_END_ARG_INFO()
@@ -5847,7 +5847,7 @@ ZEND_END_ARG_INFO()
 ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_removeCol, 0, 0, 2)
 	ZEND_ARG_INFO(0, col_first)
 	ZEND_ARG_INFO(0, col_last)
-#if LIBXL_VERSION >= 0x03080400
+#if LIBXL_VERSION >= 0x03080301
 	ZEND_ARG_INFO(0, update_named_ranges)
 #endif
 ZEND_END_ARG_INFO()
