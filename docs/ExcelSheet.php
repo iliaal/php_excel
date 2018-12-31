@@ -773,9 +773,10 @@ class ExcelSheet
 	*
 	* @param int $column_start 0-based column number
 	* @param int $column_end 0-based column number
+	* @param bool $update_named_ranges (optional, default=true)
 	* @return bool
 	*/
-	public function insertCol($column_start, $column_end)
+	public function insertCol($column_start, $column_end, $update_named_ranges = true)
 	{
 	} // insertCol
 
@@ -784,9 +785,10 @@ class ExcelSheet
 	*
 	* @param int $row_start 0-based row number
 	* @param int $row_end 0-based row number
+	* @param bool $update_named_ranges (optional, default=true)
 	* @return bool
 	*/
-	public function insertRow($row_start, $row_end)
+	public function insertRow($row_start, $row_end, $update_named_ranges = true)
 	{
 	} // insertRow
 
@@ -1032,9 +1034,10 @@ class ExcelSheet
 	*
 	* @param int $column_start 0-based column number
 	* @param int $column_end 0-based column number
+	* @param bool $update_named_ranges (optional, default=true)
 	* @return bool
 	*/
-	public function removeCol($column_start, $column_end)
+	public function removeCol($column_start, $column_end, $update_named_ranges = true)
 	{
 	} // removeCol
 
@@ -1053,9 +1056,10 @@ class ExcelSheet
 	*
 	* @param int $row_start 0-based row number
 	* @param int $row_end 0-based row number
+	* @param bool $update_named_ranges (optional, default=true)
 	* @return bool
 	*/
-	public function removeRow($row_start, $row_end)
+	public function removeRow($row_start, $row_end, $update_named_ranges = true)
 	{
 	} // removeRow
 
