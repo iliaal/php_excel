@@ -87,7 +87,7 @@ class ExcelBook
 	/**
 	* Adds a picture to the workbook as link (only for xlsx files).
 	* Supports BMP, DIB, PNG, JPG and WMF picture formats. Use picture identifier with
-	* \ExcelSheet::setPictureDim() or \ExcelSheet::setPictureScale() 
+	* \ExcelSheet::setPictureDim() or \ExcelSheet::setPictureScale()
 	* @see \ExcelSheet::setPictureDim()
 	* @see \ExcelSheet::setPictureScale()
 	*
@@ -361,6 +361,16 @@ class ExcelBook
 	} // loadFile
 
 	/**
+	* Load Excel sheet info
+	*
+	* @param string $filename
+	* @return bool
+	*/
+	public function loadInfo($filename)
+	{
+	} // loadInfo
+
+	/**
 	* Moves a sheet with specified index to a new position. Returns false if error occurs.
 	*
 	* @since libXL 3.8.0.0
@@ -507,6 +517,16 @@ class ExcelBook
 	public function sheetCount()
 	{
 	} // sheetCount
+
+	/**
+	* Returns the sheet name by index
+	*
+	* @param int $index
+	* @return string
+	*/
+	public function getSheetName($index)
+	{
+	} // getSheetName
 
 	/**
 	* Returns type of sheet with specified index:
