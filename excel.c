@@ -2607,6 +2607,19 @@ EXCEL_METHOD(Sheet, writeCol)
 		RETURN_BOOL(xlSheet ## func_name (sheet, r, c));	\
 	}
 
+#define PHP_EXCEL_SHEET_GET_BOOL_STATE_384(func_name) \
+	{	\
+		SheetHandle sheet;	\
+		zval *object = getThis();	\
+		long r, c;	\
+		zend_bool u = 1; \
+		if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "ll", &r, &c, &u) == FAILURE) {	\
+			RETURN_FALSE;	\
+		}	\
+		SHEET_FROM_OBJECT(sheet, object);	\
+		RETURN_BOOL(xlSheet ## func_name (sheet, r, c, u));	\
+	}
+
 /* {{{ proto bool ExcelSheet::isFormula(int row, int column)
 	Determine if the cell contains a formula */
 EXCEL_METHOD(Sheet, isFormula)
@@ -2645,35 +2658,51 @@ EXCEL_METHOD(Sheet, isDate)
 }
 /* }}} */
 
-/* {{{ proto bool ExcelSheet::insertRow(int row_first, int row_last)
+/* {{{ proto bool ExcelSheet::insertRow(int row_first, int row_last, bool update_named_ranges)
 	Inserts rows from rowFirst to rowLast */
 EXCEL_METHOD(Sheet, insertRow)
 {
+#if LIBXL_VERSION >= 0x03080301
+	PHP_EXCEL_SHEET_GET_BOOL_STATE_384(InsertRow)
+#else
 	PHP_EXCEL_SHEET_GET_BOOL_STATE(InsertRow)
+#endif
 }
 /* }}} */
 
-/* {{{ proto bool ExcelSheet::insertCol(int col_first, int col_last)
+/* {{{ proto bool ExcelSheet::insertCol(int col_first, int col_last, bool update_named_ranges)
 	Inserts columns from colFirst to colLast */
 EXCEL_METHOD(Sheet, insertCol)
 {
+#if LIBXL_VERSION >= 0x03080301
+	PHP_EXCEL_SHEET_GET_BOOL_STATE_384(InsertCol)
+#else
 	PHP_EXCEL_SHEET_GET_BOOL_STATE(InsertCol)
+#endif
 }
 /* }}} */
 
-/* {{{ proto bool ExcelSheet::removeRow(int row_first, int row_last)
+/* {{{ proto bool ExcelSheet::removeRow(int row_first, int row_last, bool update_named_ranges)
 	Removes rows from rowFirst to rowLast */
 EXCEL_METHOD(Sheet, removeRow)
 {
+#if LIBXL_VERSION >= 0x03080301
+	PHP_EXCEL_SHEET_GET_BOOL_STATE_384(RemoveRow)
+#else
 	PHP_EXCEL_SHEET_GET_BOOL_STATE(RemoveRow)
+#endif
 }
 /* }}} */
 
-/* {{{ proto bool ExcelSheet::removeCol(int col_first, int col_last)
+/* {{{ proto bool ExcelSheet::removeCol(int col_first, int col_last, bool update_named_ranges)
 	Removes columns from colFirst to colLast */
 EXCEL_METHOD(Sheet, removeCol)
 {
+#if LIBXL_VERSION >= 0x03080301
+	PHP_EXCEL_SHEET_GET_BOOL_STATE_384(RemoveCol)
+#else
 	PHP_EXCEL_SHEET_GET_BOOL_STATE(RemoveCol)
+#endif
 }
 /* }}} */
 
@@ -5255,24 +5284,36 @@ PHP_EXCEL_ARGINFO
 ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_insertRow, 0, 0, 2)
 	ZEND_ARG_INFO(0, row_first)
 	ZEND_ARG_INFO(0, row_last)
+#if LIBXL_VERSION >= 0x03080301
+	ZEND_ARG_INFO(0, update_named_ranges)
+#endif
 ZEND_END_ARG_INFO()
 
 PHP_EXCEL_ARGINFO
 ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_insertCol, 0, 0, 2)
 	ZEND_ARG_INFO(0, col_first)
 	ZEND_ARG_INFO(0, col_last)
+#if LIBXL_VERSION >= 0x03080301
+	ZEND_ARG_INFO(0, update_named_ranges)
+#endif
 ZEND_END_ARG_INFO()
 
 PHP_EXCEL_ARGINFO
 ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_removeRow, 0, 0, 2)
 	ZEND_ARG_INFO(0, row_first)
 	ZEND_ARG_INFO(0, row_last)
+#if LIBXL_VERSION >= 0x03080301
+	ZEND_ARG_INFO(0, update_named_ranges)
+#endif
 ZEND_END_ARG_INFO()
 
 PHP_EXCEL_ARGINFO
 ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_removeCol, 0, 0, 2)
 	ZEND_ARG_INFO(0, col_first)
 	ZEND_ARG_INFO(0, col_last)
+#if LIBXL_VERSION >= 0x03080301
+	ZEND_ARG_INFO(0, update_named_ranges)
+#endif
 ZEND_END_ARG_INFO()
 
 PHP_EXCEL_ARGINFO
