@@ -1481,6 +1481,57 @@ EXCEL_METHOD(Book, getPhpExcelVersion)
 }
 /* }}} */
 
+#if LIBXL_VERSION >= 0x03080300
+/* {{{ proto bool ExcelBook::loadInfo(string filename)
+	Loads only information about sheets. Afterwards you can call Book::sheetCount()
+	and Book::getSheetName() methods. Returns false if error occurs. Get error
+	info with Book::errorMessage(). */
+EXCEL_METHOD(Book, loadInfo)
+{
+	BookHandle book;
+	zval *object = getThis();
+	zend_string *filename_zs = NULL;
+
+	if (zend_parse_parameters(ZEND_NUM_ARGS(), "S", &filename_zs) == FAILURE) {
+		RETURN_FALSE;
+	}
+
+	EXCEL_NON_EMPTY_STRING(filename_zs)
+
+	BOOK_FROM_OBJECT(book, object);
+
+	RETURN_BOOL(xlBookLoadInfo(book, ZSTR_VAL(filename_zs)));
+}
+/* }}} */
+
+/* {{{ proto string ExcelBook::getSheetName(int index)
+	Returns a sheet name with specified index. Returns
+	NULL if error occurs. Get error info with xlBookErrorMessage(). */
+EXCEL_METHOD(Book, getSheetName)
+{
+	BookHandle book;
+	zval *object = getThis();
+	zend_long index;
+	char *data;
+
+	if (zend_parse_parameters(ZEND_NUM_ARGS(), "l", &index) == FAILURE) {
+		RETURN_FALSE;
+	}
+
+	if (index < 1) {
+		RETURN_FALSE;
+	}
+
+	BOOK_FROM_OBJECT(book, object);
+
+	if (!(data = (char *)xlBookGetSheetName(book, index))) {
+		RETURN_FALSE;
+	}
+	RETURN_STRING(data);
+}
+/* }}} */
+#endif
+
 /* {{{ proto int ExcelFont::size([int size])
 	Get or set the font size */
 EXCEL_METHOD(Font, size)
@@ -5577,6 +5628,16 @@ ZEND_END_ARG_INFO()
 ZEND_BEGIN_ARG_INFO_EX(arginfo_Book_getPhpExcelVersion, 0, 0, 0)
 ZEND_END_ARG_INFO()
 
+#if LIBXL_VERSION >= 0x03080300
+ZEND_BEGIN_ARG_INFO_EX(arginfo_Book_loadInfo, 0, 0, 1)
+	ZEND_ARG_INFO(0, filename)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_INFO_EX(arginfo_Book_getSheetName, 0, 0, 1)
+	ZEND_ARG_INFO(0, index)
+ZEND_END_ARG_INFO()
+#endif
+
 ZEND_BEGIN_ARG_INFO_EX(arginfo_Font_size, 0, 0, 0)
 	ZEND_ARG_INFO(0, size)
 ZEND_END_ARG_INFO()
@@ -6495,6 +6556,10 @@ zend_function_entry excel_funcs_book[] = {
 #if LIBXL_VERSION >= 0x03080000
 	EXCEL_ME(Book, addPictureAsLink, arginfo_Book_addPictureAsLink, 0)
 	EXCEL_ME(Book, moveSheet, arginfo_Book_moveSheet, 0)
+#endif
+#if LIBXL_VERSION >= 0x03080300
+	EXCEL_ME(Book, loadInfo, arginfo_Book_loadInfo, 0)
+	EXCEL_ME(Book, getSheetName, arginfo_Book_getSheetName, 0)
 #endif
 	{NULL, NULL, NULL}
 };
