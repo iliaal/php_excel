@@ -2615,11 +2615,24 @@ EXCEL_METHOD(Sheet, isDate)
 }
 /* }}} */
 
+#define PHP_EXCEL_SHEET_GROUP(func_name) \
+	{ \
+		SheetHandle sheet; \
+		zval *object = getThis(); \
+		zend_long s, e; \
+		zend_bool brk = 0; \
+		if (zend_parse_parameters(ZEND_NUM_ARGS(), "ll|b", &s, &e, &brk) == FAILURE) { \
+			RETURN_FALSE; \
+		} \
+		SHEET_FROM_OBJECT(sheet, object); \
+		RETURN_BOOL(xlSheet ## func_name (sheet, s, e, brk)); \
+	}
+
 /* {{{ proto bool ExcelSheet::insertRow(int row_first, int row_last)
 	Inserts rows from rowFirst to rowLast */
 EXCEL_METHOD(Sheet, insertRow)
 {
-	PHP_EXCEL_SHEET_GET_BOOL_STATE(InsertRow)
+	PHP_EXCEL_SHEET_GROUP(InsertRow)
 }
 /* }}} */
 
@@ -2627,7 +2640,7 @@ EXCEL_METHOD(Sheet, insertRow)
 	Inserts columns from colFirst to colLast */
 EXCEL_METHOD(Sheet, insertCol)
 {
-	PHP_EXCEL_SHEET_GET_BOOL_STATE(InsertCol)
+	PHP_EXCEL_SHEET_GROUP(InsertCol)
 }
 /* }}} */
 
@@ -2635,7 +2648,7 @@ EXCEL_METHOD(Sheet, insertCol)
 	Removes rows from rowFirst to rowLast */
 EXCEL_METHOD(Sheet, removeRow)
 {
-	PHP_EXCEL_SHEET_GET_BOOL_STATE(RemoveRow)
+	PHP_EXCEL_SHEET_GROUP(RemoveRow)
 }
 /* }}} */
 
@@ -2643,7 +2656,7 @@ EXCEL_METHOD(Sheet, removeRow)
 	Removes columns from colFirst to colLast */
 EXCEL_METHOD(Sheet, removeCol)
 {
-	PHP_EXCEL_SHEET_GET_BOOL_STATE(RemoveCol)
+	PHP_EXCEL_SHEET_GROUP(RemoveCol)
 }
 /* }}} */
 
@@ -2947,19 +2960,6 @@ EXCEL_METHOD(Sheet, splitSheet)
 	xlSheetSplit(sheet, row, col);
 }
 /* }}} */
-
-#define PHP_EXCEL_SHEET_GROUP(func_name) \
-	{ \
-		SheetHandle sheet; \
-		zval *object = getThis(); \
-		zend_long s, e; \
-		zend_bool brk = 0; \
-		if (zend_parse_parameters(ZEND_NUM_ARGS(), "ll|b", &s, &e, &brk) == FAILURE) { \
-			RETURN_FALSE; \
-		} \
-		SHEET_FROM_OBJECT(sheet, object); \
-		RETURN_BOOL(xlSheet ## func_name (sheet, s, e, brk)); \
-	}
 
 /* {{{ proto bool ExcelSheet::groupRows(int start_row, int end_row [, bool collapse])
 	Group rows from rowFirst to rowLast */
@@ -5798,21 +5798,25 @@ ZEND_END_ARG_INFO()
 ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_insertRow, 0, 0, 2)
 	ZEND_ARG_INFO(0, row_first)
 	ZEND_ARG_INFO(0, row_last)
+	ZEND_ARG_INFO(0, update_named_ranges)
 ZEND_END_ARG_INFO()
 
 ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_insertCol, 0, 0, 2)
 	ZEND_ARG_INFO(0, col_first)
 	ZEND_ARG_INFO(0, col_last)
+	ZEND_ARG_INFO(0, update_named_ranges)
 ZEND_END_ARG_INFO()
 
 ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_removeRow, 0, 0, 2)
 	ZEND_ARG_INFO(0, row_first)
 	ZEND_ARG_INFO(0, row_last)
+	ZEND_ARG_INFO(0, update_named_ranges)
 ZEND_END_ARG_INFO()
 
 ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_removeCol, 0, 0, 2)
 	ZEND_ARG_INFO(0, col_first)
 	ZEND_ARG_INFO(0, col_last)
+	ZEND_ARG_INFO(0, update_named_ranges)
 ZEND_END_ARG_INFO()
 
 ZEND_BEGIN_ARG_INFO_EX(arginfo_Sheet_colWidth, 0, 0, 1)
