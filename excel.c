@@ -2139,7 +2139,7 @@ EXCEL_METHOD(Sheet, setCellFormat)
 }
 /* }}} */
 
-zend_bool php_excel_read_cell(int row, int col, zval *val, SheetHandle sheet, BookHandle book, FormatHandle *format, zend_bool read_formula)
+zend_bool php_excel_read_cell(int row, int col, zval *val, SheetHandle sheet, BookHandle book, FormatHandle *format, zend_bool read_formula, int celltype_override)
 {
 	const char *s;
 	if (read_formula && xlSheetIsFormula(sheet, row, col)) {
@@ -2152,7 +2152,10 @@ zend_bool php_excel_read_cell(int row, int col, zval *val, SheetHandle sheet, Bo
 		}
 	}
 
-	switch (xlSheetCellType(sheet, row, col)) {
+	int celltype = celltype_override;
+	if (celltype == -1)
+		celltype = xlSheetCellType(sheet, row, col);
+	switch (celltype) {
 		case CELLTYPE_EMPTY:
 			*format = xlSheetCellFormat(sheet, row, col);
 			ZVAL_EMPTY_STRING(val);
@@ -2250,7 +2253,7 @@ EXCEL_METHOD(Sheet, readRow)
 		zval value;
 		FormatHandle format = NULL;
 
-		if (!php_excel_read_cell(row, lc, &value, sheet, book, &format, read_formula)) {
+		if (!php_excel_read_cell(row, lc, &value, sheet, book, &format, read_formula, -1)) {
 			zval_ptr_dtor(&value);
 			zval_dtor(return_value);
 			php_error_docref(NULL, E_WARNING, "Failed to read cell in row %d, column %d with error '%s'", row, lc, xlBookErrorMessage(book));
@@ -2310,7 +2313,7 @@ EXCEL_METHOD(Sheet, readCol)
 		zval value;
 		FormatHandle format = NULL;
 
-		if (!php_excel_read_cell(lc, col, &value, sheet, book, &format, read_formula)) {
+		if (!php_excel_read_cell(lc, col, &value, sheet, book, &format, read_formula, -1)) {
 			zval_ptr_dtor(&value);
 			zval_dtor(return_value);
 			php_error_docref(NULL, E_WARNING, "Failed to read cell in row %d, column %d with error '%s'", lc, col, xlBookErrorMessage(book));
@@ -2335,8 +2338,9 @@ EXCEL_METHOD(Sheet, read)
 	zval *oformat = NULL;
 	FormatHandle format = NULL;
 	zend_bool read_formula = 1;
+	zend_long celltype_override = -1;
 
-	if (zend_parse_parameters(ZEND_NUM_ARGS(), "ll|z/b", &row, &col, &oformat, &read_formula) == FAILURE) {
+	if (zend_parse_parameters(ZEND_NUM_ARGS(), "ll|z/bl", &row, &col, &oformat, &read_formula, &celltype_override) == FAILURE) {
 		RETURN_FALSE;
 	}
 
@@ -2347,7 +2351,7 @@ EXCEL_METHOD(Sheet, read)
 		ZVAL_NULL(oformat);
 	}
 
-	if (!php_excel_read_cell(row, col, return_value, sheet, book, &format, read_formula)) {
+	if (!php_excel_read_cell(row, col, return_value, sheet, book, &format, read_formula, celltype_override)) {
 		php_error_docref(NULL, E_WARNING, "Failed to read cell in row %d, column %d with error '%s'", row, col, xlBookErrorMessage(book));
 		RETURN_FALSE;
 	}

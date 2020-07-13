@@ -984,9 +984,10 @@ class ExcelSheet
 	* @param int $column 0-based column number
 	* @param &$format (optional, default=null)
 	* @param bool $read_formula (optional, default=true)
+	* @param int $celltype_override (option, default=-1)
 	* @return mixed
 	*/
-	public function read($row, $column, &$format = null, $read_formula = true)
+	public function read($row, $column, &$format = null, $read_formula = true, $celltype_override = -1)
 	{
 	} // read
 
