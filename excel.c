@@ -985,10 +985,12 @@ EXCEL_METHOD(Book, getCustomFormat)
 }
 /* }}} */
 
-static double _php_excel_date_pack(BookHandle book, long ts)
+static double _php_excel_date_pack(BookHandle book, long longts)
 {
+	time_t ts;
 	struct tm tm;
 
+	ts = (time_t) longts;
 	if (!php_localtime_r(&ts, &tm)) {
 		return -1;
 	}
@@ -3092,7 +3094,7 @@ EXCEL_METHOD(Sheet, copy)
 #define PE_RETURN_IS_LONG RETURN_LONG
 #define PE_RETURN_IS_BOOL RETURN_BOOL
 #define PE_RETURN_IS_DOUBLE RETURN_DOUBLE
-#define PE_RETURN_IS_STRING(data) if (data) { RETURN_STRING((char *)data) } else { RETURN_NULL(); }
+#define PE_RETURN_IS_STRING(data) if (data) { RETURN_STRING((char *)data); } else { RETURN_NULL(); }
 
 #define PHP_EXCEL_INFO(func_name, type) \
 { \
@@ -4732,7 +4734,7 @@ EXCEL_METHOD(Sheet, table)
 {
 	zval *object = getThis();
 	SheetHandle sheet;
-	zend_long index=0, rowFirst, rowLast, colFirst, colLast, headerRowCount, totalsRowCount;
+	int index=0, rowFirst, rowLast, colFirst, colLast, headerRowCount, totalsRowCount;
 	const char *name;
 
 	if (zend_parse_parameters(ZEND_NUM_ARGS(), "l", &index) == FAILURE) {
@@ -4846,7 +4848,7 @@ EXCEL_METHOD(Sheet, addIgnoredError)
 	SHEET_FROM_OBJECT(sheet, object);
 
 	if (!xlSheetAddIgnoredError(sheet, rowFirst, colFirst, rowLast, colLast, iError)) {
-		RETURN_FALSE
+		RETURN_FALSE;
 	}
 
 	RETURN_TRUE;

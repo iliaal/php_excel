@@ -41,8 +41,8 @@ ZEND_END_MODULE_GLOBALS(excel)
 
 # define PHP_EXCEL_ERROR_HANDLING() \
 	zend_error_handling error_handling; \
-	zend_replace_error_handling(EH_THROW, NULL, &error_handling TSRMLS_CC);
-# define PHP_EXCEL_RESTORE_ERRORS() zend_restore_error_handling(&error_handling TSRMLS_CC);
+	zend_replace_error_handling(EH_THROW, NULL, &error_handling);
+# define PHP_EXCEL_RESTORE_ERRORS() zend_restore_error_handling(&error_handling);
 
 #ifndef Z_SET_ISREF_P
 # define Z_SET_ISREF_P(pz)				(pz)->is_ref = 1
