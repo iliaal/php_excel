@@ -2681,10 +2681,30 @@ EXCEL_METHOD(Sheet, isDate)
 	Inserts rows from rowFirst to rowLast */
 EXCEL_METHOD(Sheet, insertRow)
 {
-#if LIBXL_VERSION >= 0x03080301
-	PHP_EXCEL_SHEET_GET_BOOL_STATE_3831(InsertRow)
+#if LIBXL_VERSION >= 0x03080800
+	SheetHandle sheet;
+	zval *object = getThis();
+	zend_long r, c;
+	zend_bool u = 1;
+	if (zend_parse_parameters(ZEND_NUM_ARGS(), "ll|b", &r, &c, &u) == FAILURE) {
+		RETURN_FALSE;
+	}
+	SHEET_FROM_OBJECT(sheet, object);
+	if (u == 1) {
+		RETURN_BOOL(xlSheetInsertRow (sheet, r, c));
+	} else {
+#ifdef _UNICODE
+		RETURN_BOOL(xlSheetInsertRowAndKeepRangesW (sheet, r, c));
 #else
+		RETURN_BOOL(xlSheetInsertRowAndKeepRangesA (sheet, r, c));
+#endif
+	}
+#else
+# if LIBXL_VERSION >= 0x03080301
+	PHP_EXCEL_SHEET_GET_BOOL_STATE_3831(InsertRow)
+# else
 	PHP_EXCEL_SHEET_GET_BOOL_STATE(InsertRow)
+# endif
 #endif
 }
 /* }}} */
@@ -2693,10 +2713,30 @@ EXCEL_METHOD(Sheet, insertRow)
 	Inserts columns from colFirst to colLast */
 EXCEL_METHOD(Sheet, insertCol)
 {
-#if LIBXL_VERSION >= 0x03080301
-	PHP_EXCEL_SHEET_GET_BOOL_STATE_3831(InsertCol)
+#if LIBXL_VERSION >= 0x03080800
+	SheetHandle sheet;
+	zval *object = getThis();
+	zend_long r, c;
+	zend_bool u = 1;
+	if (zend_parse_parameters(ZEND_NUM_ARGS(), "ll|b", &r, &c, &u) == FAILURE) {
+		RETURN_FALSE;
+	}
+	SHEET_FROM_OBJECT(sheet, object);
+	if (u == 1) {
+		RETURN_BOOL(xlSheetInsertCol (sheet, r, c));
+	} else {
+#ifdef _UNICODE
+		RETURN_BOOL(xlSheetInsertColAndKeepRangesW (sheet, r, c));
 #else
+		RETURN_BOOL(xlSheetInsertColAndKeepRangesA (sheet, r, c));
+#endif
+	}
+#else
+# if LIBXL_VERSION >= 0x03080301
+	PHP_EXCEL_SHEET_GET_BOOL_STATE_3831(InsertCol)
+# else
 	PHP_EXCEL_SHEET_GET_BOOL_STATE(InsertCol)
+# endif
 #endif
 }
 /* }}} */
@@ -2705,10 +2745,30 @@ EXCEL_METHOD(Sheet, insertCol)
 	Removes rows from rowFirst to rowLast */
 EXCEL_METHOD(Sheet, removeRow)
 {
-#if LIBXL_VERSION >= 0x03080301
-	PHP_EXCEL_SHEET_GET_BOOL_STATE_3831(RemoveRow)
+#if LIBXL_VERSION >= 0x03080800
+	SheetHandle sheet;
+	zval *object = getThis();
+	zend_long r, c;
+	zend_bool u = 1;
+	if (zend_parse_parameters(ZEND_NUM_ARGS(), "ll|b", &r, &c, &u) == FAILURE) {
+		RETURN_FALSE;
+	}
+	SHEET_FROM_OBJECT(sheet, object);
+	if (u == 1) {
+		RETURN_BOOL(xlSheetRemoveRow (sheet, r, c));
+	} else {
+#ifdef _UNICODE
+		RETURN_BOOL(xlSheetRemoveRowAndKeepRangesW (sheet, r, c));
 #else
+		RETURN_BOOL(xlSheetRemoveRowAndKeepRangesA (sheet, r, c));
+#endif
+	}
+#else
+# if LIBXL_VERSION >= 0x03080301
+	PHP_EXCEL_SHEET_GET_BOOL_STATE_3831(RemoveRow)
+# else
 	PHP_EXCEL_SHEET_GET_BOOL_STATE(RemoveRow)
+# endif
 #endif
 }
 /* }}} */
@@ -2717,10 +2777,30 @@ EXCEL_METHOD(Sheet, removeRow)
 	Removes columns from colFirst to colLast */
 EXCEL_METHOD(Sheet, removeCol)
 {
-#if LIBXL_VERSION >= 0x03080301
-	PHP_EXCEL_SHEET_GET_BOOL_STATE_3831(RemoveCol)
+#if LIBXL_VERSION >= 0x03080800
+	SheetHandle sheet;
+	zval *object = getThis();
+	zend_long r, c;
+	zend_bool u = 1;
+	if (zend_parse_parameters(ZEND_NUM_ARGS(), "ll|b", &r, &c, &u) == FAILURE) {
+		RETURN_FALSE;
+	}
+	SHEET_FROM_OBJECT(sheet, object);
+	if (u == 1) {
+		RETURN_BOOL(xlSheetRemoveCol (sheet, r, c));
+	} else {
+#ifdef _UNICODE
+		RETURN_BOOL(xlSheetRemoveColAndKeepRangesW (sheet, r, c));
 #else
+		RETURN_BOOL(xlSheetRemoveColAndKeepRangesA (sheet, r, c));
+#endif
+	}
+#else
+# if LIBXL_VERSION >= 0x03080301
+	PHP_EXCEL_SHEET_GET_BOOL_STATE_3831(RemoveCol)
+# else
 	PHP_EXCEL_SHEET_GET_BOOL_STATE(RemoveCol)
+# endif
 #endif
 }
 /* }}} */
