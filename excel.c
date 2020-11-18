@@ -329,13 +329,21 @@ static zend_object *excel_object_new_font(zend_class_entry *class_type)
 	return excel_object_new_font_ex(class_type, NULL);
 }
 
+#if PHP_MAJOR_VERSION >= 8
+static zend_object *excel_font_object_clone(zend_object *this_object)
+#else
 static zend_object *excel_font_object_clone(zval *this_ptr)
+#endif
 {
 	zend_object *new_ov;
 	FontHandle font;
 
 	excel_font_object *new_obj = NULL;
+#if PHP_MAJOR_VERSION >= 8
+	excel_font_object *old_obj = php_excel_font_object_fetch_object(this_object);
+#else
 	excel_font_object *old_obj = Z_EXCEL_FONT_OBJ_P(this_ptr);
+#endif
 	new_ov = excel_object_new_font_ex(old_obj->std.ce, &new_obj);
 
 	font = xlBookAddFont(old_obj->book, old_obj->font);
@@ -382,13 +390,21 @@ static zend_object *excel_object_new_format(zend_class_entry *class_type)
 	return excel_object_new_format_ex(class_type, NULL);
 }
 
+#if PHP_MAJOR_VERSION >= 8
+static zend_object *excel_format_object_clone(zend_object *this_object)
+#else
 static zend_object *excel_format_object_clone(zval *this_ptr)
+#endif
 {
 	zend_object *new_ov;
 	FormatHandle format;
 
 	excel_format_object *new_obj = NULL;
+#if PHP_MAJOR_VERSION >= 8
+	excel_format_object *old_obj = php_excel_format_object_fetch_object(this_object);
+#else
 	excel_format_object *old_obj = Z_EXCEL_FORMAT_OBJ_P(this_ptr);
+#endif
 	new_ov = excel_object_new_format_ex(old_obj->std.ce, &new_obj);
 
 	format = xlBookAddFormat(old_obj->book, old_obj->format);
