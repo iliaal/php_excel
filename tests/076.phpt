@@ -1,7 +1,7 @@
 --TEST--
 Test the ExcelSheet::mergeSize(), ExcelSheet::merge(), ExcelSheet::delMergeByIndex() methods introduced in libxl 3.6.0.
 --SKIPIF--
-<?php if (!extension_loaded("excel")) || !in_array('mergeSize', get_class_methods('ExcelSheet'))) print "skip"; ?>
+<?php if (!extension_loaded("excel") || !in_array('mergeSize', get_class_methods('ExcelSheet'))) print "skip"; ?>
 --FILE--
 <?php 
 $book = new ExcelBook();

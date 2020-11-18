@@ -3,7 +3,7 @@ Date format tests
 --INI--
 date.timezone=America/Toronto
 --SKIPIF--
-<?ph	p if (!extension_loaded("excel")) print "skip"; ?>
+<?php if (!extension_loaded("excel")) print "skip"; ?>
 --FILE--
 <?php 
 	$x = new ExcelBook();

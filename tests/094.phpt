@@ -1,7 +1,7 @@
 --TEST--
 Sheet::addDataValidation()
 --SKIPIF--
-<?php if (!extension_loaded("excel")) || !in_array('addDataValidation', get_class_methods('ExcelSheet'))) print "skip"; ?>
+<?php if (!extension_loaded("excel") || !in_array('addDataValidation', get_class_methods('ExcelSheet'))) print "skip"; ?>
 --FILE--
 <?php
 	$book = new ExcelBook(null, null, true);

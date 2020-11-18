@@ -1,7 +1,7 @@
 --TEST--
 Excel date pack/unpack tests
 --INI--
-date.timezone=America/Toronto
+date.timezone=Europe/Amsterdam
 --SKIPIF--
 <?php if (!extension_loaded("excel")) print "skip"; ?>
 --FILE--

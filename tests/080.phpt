@@ -1,7 +1,7 @@
 --TEST--
 Sheet::writeCol() data type argument
 --SKIPIF--
-<?php if (!extension_loaded("excel")) || !in_array('writeCol', get_class_methods('ExcelSheet'))) print "skip"; ?>
+<?php if (!extension_loaded("excel") || !in_array('writeCol', get_class_methods('ExcelSheet'))) print "skip"; ?>
 --FILE--
 <?php
 $book = new ExcelBook();
