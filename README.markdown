@@ -7,6 +7,10 @@ libxl is a high-performance mechanism for working with Excel files and is
 able to generate output readable on Blackberries, iPhone, Office Products, 
 Numbers, etc...
 
+## Contributing
+
+Read the information in the [CONTRIBUTOR.md](https://github.com/iliaal/php_excel/blob/master/CONTRIBUTOR.md) document.
+
 ## Documentation
 
 Please see the ```docs/``` and the ```tests/``` directory.
