@@ -2679,7 +2679,7 @@ EXCEL_METHOD(Sheet, isDate)
 	Inserts rows from rowFirst to rowLast */
 EXCEL_METHOD(Sheet, insertRow)
 {
-#if LIBXL_VERSION >= 0x03080301
+#if LIBXL_VERSION >= 0x03080301 && LIBXL_VERSION < 0x03080800
 	PHP_EXCEL_SHEET_GET_BOOL_STATE_3831(InsertRow)
 #else
 	PHP_EXCEL_SHEET_GET_BOOL_STATE(InsertRow)
@@ -2691,7 +2691,7 @@ EXCEL_METHOD(Sheet, insertRow)
 	Inserts columns from colFirst to colLast */
 EXCEL_METHOD(Sheet, insertCol)
 {
-#if LIBXL_VERSION >= 0x03080301
+#if LIBXL_VERSION >= 0x03080301 && LIBXL_VERSION < 0x03080800
 	PHP_EXCEL_SHEET_GET_BOOL_STATE_3831(InsertCol)
 #else
 	PHP_EXCEL_SHEET_GET_BOOL_STATE(InsertCol)
@@ -2703,7 +2703,7 @@ EXCEL_METHOD(Sheet, insertCol)
 	Removes rows from rowFirst to rowLast */
 EXCEL_METHOD(Sheet, removeRow)
 {
-#if LIBXL_VERSION >= 0x03080301
+#if LIBXL_VERSION >= 0x03080301 && LIBXL_VERSION < 0x03080800
 	PHP_EXCEL_SHEET_GET_BOOL_STATE_3831(RemoveRow)
 #else
 	PHP_EXCEL_SHEET_GET_BOOL_STATE(RemoveRow)
@@ -2715,7 +2715,7 @@ EXCEL_METHOD(Sheet, removeRow)
 	Removes columns from colFirst to colLast */
 EXCEL_METHOD(Sheet, removeCol)
 {
-#if LIBXL_VERSION >= 0x03080301
+#if LIBXL_VERSION >= 0x03080301 && LIBXL_VERSION < 0x03080800
 	PHP_EXCEL_SHEET_GET_BOOL_STATE_3831(RemoveCol)
 #else
 	PHP_EXCEL_SHEET_GET_BOOL_STATE(RemoveCol)
