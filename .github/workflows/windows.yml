@@ -31,7 +31,7 @@ jobs:
       fail-fast: false
       matrix: ${{ fromJson(needs.windows-matrix.outputs.matrix) }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Download and prepare LibXL
         shell: pwsh
@@ -70,7 +70,7 @@ jobs:
     needs: windows-build
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Upload release artifacts
         uses: php/php-windows-builder/release@v1
