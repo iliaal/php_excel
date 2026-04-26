@@ -18,6 +18,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 - Tag convention: 2.0.1+ uses bare semver tags (e.g. `2.0.1`). 2.0.0 was tagged as `v2.0.0`.
+- Migrated to stub-driven arginfo (`excel.stub.php` + generated
+  `excel_arginfo.h`). Method parameter and return types are now declared
+  and visible to Reflection / IDEs / static analyzers; previously they
+  were untyped at the engine boundary on most methods. Behavior is
+  unchanged. `excel.c` shrinks by 2010 lines (the inline arginfo blocks
+  and per-class function-entry tables now come from the generated header).
+  libxl-version-conditional methods (`addConditionalFormatting`,
+  `loadInfoRaw`, `setPassword`, etc.) use `#if LIBXL_VERSION >= ...`
+  blocks in the stub; gen_stub passes them through to the generated
+  header.
+- `php_excel.h` carries a polyfill for
+  `zend_register_internal_class_with_flags` (added in PHP 8.4) so the
+  generated arginfo header compiles cleanly against the project's
+  PHP 8.3 minimum.
 
 ### Fixed
 - Test 002 (date pack/unpack) timezone detection to work cross-platform

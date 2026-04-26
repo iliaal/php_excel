@@ -36,4 +36,22 @@ ZEND_END_MODULE_GLOBALS(excel)
 
 /* Removed: PHP_EXCEL_ERROR_HANDLING / PHP_EXCEL_RESTORE_ERRORS -- dead code since PHP 8.0 */
 
+/* gen_stub.php on PHP master emits register_class_*() functions that call
+ * zend_register_internal_class_with_flags(), which only exists in PHP 8.4+.
+ * Polyfill for older targets (we support 8.3+) so the generated arginfo
+ * header compiles unchanged. */
+#if PHP_VERSION_ID < 80400
+static zend_always_inline zend_class_entry *zend_register_internal_class_with_flags(
+    zend_class_entry *class_entry,
+    zend_class_entry *parent_ce,
+    uint32_t ce_flags)
+{
+    zend_class_entry *ce = zend_register_internal_class_ex(class_entry, parent_ce);
+    if (ce && ce_flags) {
+        ce->ce_flags |= ce_flags;
+    }
+    return ce;
+}
+#endif
+
 #endif	/* PHP_EXCEL_H */
