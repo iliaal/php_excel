@@ -16,10 +16,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   and ExcelTable classes
 - Licensed-only test for row 0 access and large cell counts
 
+### Changed
+- Tag convention: 2.0.1+ uses bare semver tags (e.g. `2.0.1`). 2.0.0 was tagged as `v2.0.0`.
+
 ### Fixed
 - Test 002 (date pack/unpack) timezone detection to work cross-platform
 
-[2026-04-05] - Version 2.0.0
+## [2.0.0] - 2026-04-05
 	* Added PHP 8.3, 8.4, 8.5 and master support
 	* Minimum PHP version is now 8.3
 	* Minimum LibXL version is now 4.6.0
@@ -88,7 +91,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 	* Added constants for CalcMode, CellStyle, TableStyle, FormControl types,
 	  ConditionalFormat types/operators/time periods, and CFVOType
 
-[2016-06-23] - Version 1.0.2
+## [1.0.2] - 2016-06-23
 	* Fixed bug in ExcelSheet::addPictureDim() (see issue #120)
 	* Fixed bug in ExcelSheet::isLicensed() (see issue #122)
 	* Added new methods (requires LibXL 3.6.2)
@@ -101,7 +104,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 	* Includes official PHP7 release
 	* Added support for libxl compiled from source
 
-[2015-02-26] - Version 1.0.1
+## [1.0.1] - 2015-02-26
 	* Added methods
 		- ExcelBook::sheetType()
 		- ExcelSheet::colHidden()
@@ -133,7 +136,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 	* Updated documentation and README
 	* Changed php.ini variable name: excel.ini_skip_empty --> excel.skip_emtpy
 
-[2014-06-03] - Version 1.0
+## [1.0] - 2014-06-03
 	* Fixed issue #63 writing for NULL values using writeRow()
 	* Added excel.ini_skip_empty INI setting that allows null values to be skipped, if set to 2 the empty strings will be skipped as well
 	* Added Sheet::setRightToLeft() and Sheet::setRightToLeft() methods that specifies whether the sheet in is "right to left" display mode
@@ -149,29 +152,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 	* Fixed parameter order inside ExcelSheet::getNamedRange()/getIndexRange() methods
 	* Fixed return value processing inside ExcelBook::setActiveSheet() method
 
-[2013-11-18] - Version 0.9.9
+## [0.9.9] - 2013-11-18
 	* Added ExcelBook::isDate1904()/ExcelBook::setDate1904() methods to set/retrieve base date format
 	* Allow compilation against LibXL 3.5.3
 	* Fixed bug with parameter order inside setNamedRange method (jacksonja)
 
-[2012-12-31] - Version 0.9.8
+## [0.9.8] - 2012-12-31
 	* Allow compilation against LibXL 3.4
 	* Updated ExcelSheet::addPictureScaled() and ExcelSheet::addPictureDim() to support optional x/y offset parameters
 
-[2012-10-16] - Version 0.9.7
+## [0.9.7] - 2012-10-16
 	* Updated INFO section of the extension to show libXL version
 	* Added new methods (requires LibXL 3.2.4+):
 		- added ExcelSheet::getTopLeftView() and ExcelSheet::setTopLeftView() methods for getting/setting a view position in the sheet
 		- added ExcelSheet::addrToRowCol() and ExcelSheet::rowColToAddr() methods for translating Excel cell position to row/column definitions
 
-[2011-10-12] - Version 0.9.6
+## [0.9.6] - 2011-10-12
 	* Added new methods (requires LibXL 3.2.3+):
 		- ExcelSheet::isHidden() that whether sheet is hidden.
 		- ExcelSheet::setHidden(bool flag) that hides/unhides the sheet.
 	* Allow compilation against LibXL 3.2.3/3.2.2
 	* Added a work-around for image index bug inside LibXL 3.2.2
 
-[2011-08-03] - Version 0.9.1
+## [0.9.1] - 2011-08-03
 	* Added new methods (requires LibXL 3.2.0+):
 		- ExcelSheet::setPrintFit(int wPages, int hPages) that fits sheet width and sheet height to wPages and hPages respectively
 		- ExcelSheet::getPrintFit() that returns whether fit to page option is enabled, and if so to what width & height
@@ -192,14 +195,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 		- ExcelSheet ExcelBook::insertSheet(int index, string name [, ExcelSheet sh]) that inserts a new sheet to this book at position index,
 		  returns the sheet handle. If ExcelSheet parameter is missing a new sheet will be created.
 
-[2011-01-14] - Version 0.9.1
+## [0.9.1] - 2011-01-14
 	* Added support for LibXL 3.1.0+
 	* Added work-around for a bug inside xlSheetIsDate() that detects treats custom number formats as dates
 	* Added ExcelBook::getSheetByName() method to retrieve sheet by name (original patch by Rob Gagnon)
 	* Added basic documentation
 	* Fixed a bug with ExcelSheet::readRow()/ExcelSheet::readCol() when end parameter is specified
 
-[2010-08-27] - Version 0.9.0
+## [0.9.0] - 2010-08-27
 	* Added support for LibXL 3.1.0
 	* Added new methods
 		- ExcelSheet::setNamedRange(string name, int row, int col, int to_row, int to_col)
@@ -213,7 +216,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 		- ExcelSheet::clearPrintRepeats()
 		- ExcelSheet::clearPrintArea()
 
-[2010-08-27] - Version 0.8.6
+## [0.8.6] - 2010-08-27
 	* Added support for LibXL 3.0.0
 	* Added support for generating Excel 2007/2010 (xlsx files)
 		- the ExcelBook() method now has a constructor parameter that can be used to toggle xlsx mode
@@ -221,13 +224,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 		- colorUnpack, colorPack, setRGBMode, rgbMode
 	* Added missing validation checks and fixed on-error memory leak
 
-[2010-08-11] - Version 0.8.5
+## [0.8.5] - 2010-08-11
 	* Fixed build on 5.4 (patch from Felipe Pena)
 
-[2010-08-01] - Version 0.8.2
+## [0.8.2] - 2010-08-01
 	* Fixed shared build
 
-[2010-08-01] - Version 0.8.1
+## [0.8.1] - 2010-08-01
 	* Fixed build on 5.3 (patch from Felipe Pena)
 	* Allow compilation against LibXL 2.4.3k
 	* Added ExcelSheet::setProtect(), ExcelSheet::protect() to set/get sheet protection
@@ -235,5 +238,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 	* Added ExcelSheet::setCellFormat() method (LibXL 2.4.3k+) to set a cell format
 	* Added ExcelBook::getAllFormats() method (LibXL 2.4.3k+) to get a list of all document formats
 
-[2010-08-01] - Version 0.8
+## [0.8] - 2010-08-01
 	* Initial Release
+
+[Unreleased]: https://github.com/iliaal/php_excel/compare/v2.0.0...HEAD
+[2.0.0]: https://github.com/iliaal/php_excel/releases/tag/v2.0.0
