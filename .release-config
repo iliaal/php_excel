@@ -1,0 +1,22 @@
+# Read by /release-ext. Schema documented in ~/.claude/commands/release-ext.md.
+
+extension: excel
+version_macro: PHP_EXCEL_VERSION
+version_file: excel.c
+repo: iliaal/php_excel
+build_matrix:
+  - PHP-8.3
+  - PHP-8.4
+  - PHP-8.5
+configure_base: "--with-excel --with-libxl-incdir=$HOME/ai/libxl-5.1.0/include_c --with-libxl-libdir=$HOME/ai/libxl-5.1.0/lib64"
+
+test_env:
+  LD_LIBRARY_PATH: "$HOME/ai/libxl-5.1.0/lib64"
+
+# Build (no test) against minimum supported libxl to verify version-guard ifdefs
+extra_lib_matrix:
+  - name: "libxl 4.6.0 (minimum)"
+    flags: "--with-excel --with-libxl-incdir=$HOME/ai/libxl-4.6.0/include_c --with-libxl-libdir=$HOME/ai/libxl-4.6.0/lib64"
+
+asan_test: true
+windows_ci: true

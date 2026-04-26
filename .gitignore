@@ -64,8 +64,10 @@ tests/*/*/*.diff
 tests/*/*/*.php
 tests/*/*/*.exp
 tmp-php.ini
+# local AI tooling: per-developer scaffolding, not checked in
+.claude/
+AGENTS.md
 CLAUDE.md
 .env
-.claude/
 configure.ac
 excel.dep
