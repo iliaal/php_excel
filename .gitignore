@@ -70,4 +70,4 @@ AGENTS.md
 CLAUDE.md
 .env
 configure.ac
-excel.dep
+*.dep
