@@ -82,7 +82,7 @@ Read performance is similar: 8-9× faster than PhpSpreadsheet, 3× faster than O
 
 ### Why PhpSpreadsheet OOMs and php_excel doesn't
 
-PHP's `memory_get_peak_usage()` reports about 2 MB for php_excel because LibXL allocates on the C heap, invisible to PHP's `memory_limit`. PhpSpreadsheet allocates in PHP's memory — it OOMs on 10,000 rows in a default 128 MB PHP-FPM pool. php_excel writes 100,000 rows in the same pool without raising the limit.
+PHP's `memory_get_peak_usage()` reports about 2 MB for php_excel because LibXL allocates on the C heap, invisible to PHP's `memory_limit`. PhpSpreadsheet allocates in PHP's memory: it OOMs on 10,000 rows in a default 128 MB PHP-FPM pool. php_excel writes 100,000 rows in the same pool without raising the limit.
 
 That's the practical difference. Bench numbers tell you it's faster; this tells you it's the difference between "report generates" and "report 500s in production."
 
@@ -120,8 +120,8 @@ excel.skip_empty=0
 
 Companion native PHP extensions for high-throughput PHP workloads:
 
-- **[mdparser](https://github.com/iliaal/mdparser)** — Native CommonMark + GFM markdown parser. 15-30× faster than pure-PHP libraries (Parsedown, cebe, michelf). Powered by cmark-gfm.
-- **[php_clickhouse](https://github.com/iliaal/php_clickhouse)** — Native ClickHouse client speaking the wire protocol directly. Picks up where SeasClick left off.
+- **[mdparser](https://github.com/iliaal/mdparser)**: native CommonMark + GFM markdown parser. 15-30× faster than pure-PHP libraries (Parsedown, cebe, michelf). Powered by cmark-gfm.
+- **[php_clickhouse](https://github.com/iliaal/php_clickhouse)**: native ClickHouse client speaking the wire protocol directly. Picks up where SeasClick left off.
 
 ## 📚 Read more
 
@@ -133,7 +133,7 @@ API reference lives in `docs/`; usage examples live in `tests/`.
 
 PHP License 3.01. See [LICENSE](LICENSE).
 
-LibXL itself is commercial — see [libxl.com](http://www.libxl.com/) for licensing.
+LibXL itself is commercial. See [libxl.com](http://www.libxl.com/) for licensing.
 
 ---
 
