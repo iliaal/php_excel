@@ -19,6 +19,48 @@ jobs:
           coverage: none
       - run: composer validate --strict
 
+  pie-smoke:
+    name: PIE install smoke
+    runs-on: ubuntu-latest
+    needs: validate
+    steps:
+      - uses: actions/checkout@v6
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          tools: phpize, php-config
+          coverage: none
+      - name: Install PIE build prerequisites
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends bison libtool-bin
+      - name: Cache LibXL
+        id: cache-libxl
+        uses: actions/cache@v5
+        with:
+          path: libxl-5.1.0
+          key: libxl-lin-5.1.0-v1
+      - name: Download LibXL
+        if: steps.cache-libxl.outputs.cache-hit != 'true'
+        run: |
+          curl -fsSL "https://www.libxl.com/download/libxl-lin-5.1.0.tar.gz" -o libxl.tar.gz
+          tar xzf libxl.tar.gz
+          extracted=$(ls -d libxl-* | grep -v tar | head -1)
+          if [ "$extracted" != "libxl-5.1.0" ]; then
+            mv "$extracted" "libxl-5.1.0"
+          fi
+      - name: Download PIE
+        run: |
+          curl -fsSL -o /tmp/pie.phar https://github.com/php/pie/releases/latest/download/pie.phar
+          chmod +x /tmp/pie.phar
+      - name: PIE build smoke
+        run: |
+          php /tmp/pie.phar repository:add path .
+          php /tmp/pie.phar build iliaal/php-excel:*@dev \
+            --with-excel \
+            --with-libxl-incdir=$PWD/libxl-5.1.0/include_c \
+            --with-libxl-libdir=$PWD/libxl-5.1.0/lib64
+
   linux:
     name: PHP ${{ matrix.php }} - libxl ${{ matrix.libxl }}
     runs-on: ubuntu-latest
