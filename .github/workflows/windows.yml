@@ -22,7 +22,7 @@ jobs:
         uses: php/php-windows-builder/extension-matrix@v1
         with:
           extension-url: ${{ github.event.repository.html_url }}
-          php-version-list: '8.3, 8.4'
+          php-version-list: '8.3, 8.4, 8.5'
 
   windows-build:
     name: Build ${{ matrix.php-version }} ${{ matrix.arch }} ${{ matrix.ts }}

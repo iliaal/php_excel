@@ -129,6 +129,67 @@ jobs:
             exit 1
           fi
 
+  linux-zts:
+    name: PHP ${{ matrix.php }} ZTS - Linux (canary)
+    runs-on: ubuntu-latest
+    env:
+      PHPTS: zts
+    strategy:
+      fail-fast: false
+      matrix:
+        php: ['8.4']
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Setup PHP (ZTS)
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          tools: phpize, php-config
+          coverage: none
+
+      - name: Cache LibXL
+        id: cache-libxl
+        uses: actions/cache@v5
+        with:
+          path: libxl-5.1.0
+          key: libxl-lin-5.1.0-v1
+
+      - name: Download LibXL
+        if: steps.cache-libxl.outputs.cache-hit != 'true'
+        run: |
+          curl -fsSL "https://www.libxl.com/download/libxl-lin-5.1.0.tar.gz" -o libxl.tar.gz
+          tar xzf libxl.tar.gz
+          extracted=$(ls -d libxl-* | grep -v tar | head -1)
+          if [ "$extracted" != "libxl-5.1.0" ]; then
+            mv "$extracted" "libxl-5.1.0"
+          fi
+
+      - name: Build extension under ZTS
+        run: |
+          phpize
+          ./configure \
+            --with-excel \
+            --with-libxl-incdir=${{ github.workspace }}/libxl-5.1.0/include_c \
+            --with-libxl-libdir=${{ github.workspace }}/libxl-5.1.0/lib64 \
+            --with-php-config=$(which php-config)
+          make -j$(nproc)
+
+      - name: Run tests under ZTS
+        run: |
+          export LD_LIBRARY_PATH="${{ github.workspace }}/libxl-5.1.0/lib64"
+          export TEST_PHP_EXECUTABLE=$(which php)
+          export TEST_PHP_ARGS="-d extension=$(pwd)/modules/excel.so"
+          export NO_INTERACTION=1
+          RESULT=$(php run-tests.php --show-diff -g FAIL,BORK,LEAK,XLEAK tests/ 2>&1)
+          echo "$RESULT"
+          FAILED=$(echo "$RESULT" | grep 'Tests failed' | grep -oP '\d+' | head -1)
+          if [ "$FAILED" -gt 0 ]; then
+            echo "::error::$FAILED test(s) failed under ZTS"
+            exit 1
+          fi
+
   asan:
     name: PHP ${{ matrix.php }} - ASAN
     runs-on: ubuntu-latest
