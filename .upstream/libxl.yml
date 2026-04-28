@@ -1,0 +1,8 @@
+# /release-ext library-freshness gate. Schema: ~/.claude/commands/release-ext.md
+# detected from .release-config (--with-libxl-libdir=$HOME/ai/libxl-5.1.0/lib64)
+
+pinned: 5.1.0
+resolver: html
+url: https://www.libxl.com/download.html
+version_regex: "libxl-lin-([0-9]+\\.[0-9]+\\.[0-9]+)\\.tar\\.gz"
+note: "Closed-source commercial; download page is the only version source. Linked, not vendored."
