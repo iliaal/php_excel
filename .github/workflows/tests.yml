@@ -7,6 +7,18 @@ on:
     branches: [master]
 
 jobs:
+  validate:
+    name: Validate composer.json
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          tools: composer
+          coverage: none
+      - run: composer validate --strict
+
   linux:
     name: PHP ${{ matrix.php }} - libxl ${{ matrix.libxl }}
     runs-on: ubuntu-latest
