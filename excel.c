@@ -116,6 +116,10 @@ typedef struct _excel_book_object {
 	 * wrappers stamp this at creation and CHECK_BOOK_GENERATION refuses to
 	 * use them once the value diverges. */
 	uint64_t generation;
+	/* True for xlCreateXMLBook() (XLSX, 1048576x16384), false for
+	 * xlCreateBook() (XLS, 65536x256). Used by EXCEL_VALIDATE_ROW_COL to
+	 * reject impossible coordinates per book type. */
+	bool is_xlsx;
 	zend_object std;
 } excel_book_object;
 
@@ -512,6 +516,8 @@ static zend_object *excel_object_new_book(zend_class_entry *class_type)
 	object_properties_init(&intern->std, class_type);
 
 	intern->book = NULL;
+	intern->generation = 0;
+	intern->is_xlsx = false;
 	intern->std.handlers = &excel_object_handlers_book;
 
 	return &intern->std;
@@ -861,16 +867,20 @@ static zend_object *excel_object_new_table(zend_class_entry *class_type)
 		RETURN_FALSE; \
 	}
 
-/* Coordinate validation for sheet read/write paths. We use the wider XLSX
- * limits (1048576 rows x 16384 cols) regardless of book type — XLS workbooks
- * will additionally fail inside libxl when out of XLS range, but read paths
- * (which libxl does not range-check) at least stop accepting impossible
- * coordinates that would silently return empty cells. */
-#define EXCEL_MAX_ROW 1048575
-#define EXCEL_MAX_COL 16383
-#define EXCEL_VALIDATE_ROW_COL(r, c) \
+/* Coordinate validation for sheet read/write paths. Limits depend on book
+ * type: XLSX is 1048576 rows x 16384 cols; XLS is 65536 rows x 256 cols.
+ * libxl write paths reject out-of-range writes themselves, but read paths
+ * silently return empty cells, so the macro must run before either. */
+#define EXCEL_MAX_ROW_XLSX 1048575
+#define EXCEL_MAX_COL_XLSX 16383
+#define EXCEL_MAX_ROW_XLS  65535
+#define EXCEL_MAX_COL_XLS  255
+#define EXCEL_VALIDATE_ROW_COL(r, c, parent_zv) \
 	do { \
-		if ((r) < 0 || (r) > EXCEL_MAX_ROW || (c) < 0 || (c) > EXCEL_MAX_COL) { \
+		excel_book_object *_vb = php_excel_resolve_book_obj(parent_zv); \
+		zend_long _maxr = (_vb && _vb->is_xlsx) ? EXCEL_MAX_ROW_XLSX : EXCEL_MAX_ROW_XLS; \
+		zend_long _maxc = (_vb && _vb->is_xlsx) ? EXCEL_MAX_COL_XLSX : EXCEL_MAX_COL_XLS; \
+		if ((r) < 0 || (r) > _maxr || (c) < 0 || (c) > _maxc) { \
 			php_error_docref(NULL, E_WARNING, \
 				"Invalid coordinates: row=" ZEND_LONG_FMT ", column=" ZEND_LONG_FMT, \
 				(zend_long)(r), (zend_long)(c)); \
@@ -1709,6 +1719,7 @@ EXCEL_METHOD(Book, __construct)
 			obj->generation++;
 		}
 		obj->book = book;
+		obj->is_xlsx = new_excel;
 	}
 
 #if defined(HAVE_LIBXL_SETKEY)
@@ -2879,7 +2890,7 @@ EXCEL_METHOD(Sheet, cellType)
 		RETURN_FALSE;
 	}
 
-	EXCEL_VALIDATE_ROW_COL(row, col);
+	EXCEL_VALIDATE_ROW_COL(row, col, object);
 	SHEET_FROM_OBJECT(sheet, object);
 
 	RETURN_LONG(xlSheetCellType(sheet, row, col));
@@ -2901,7 +2912,7 @@ EXCEL_METHOD(Sheet, cellFormat)
 		RETURN_FALSE;
 	}
 
-	EXCEL_VALIDATE_ROW_COL(row, col);
+	EXCEL_VALIDATE_ROW_COL(row, col, object);
 	SHEET_AND_BOOK_FROM_OBJECT(sheet, book, object);
 
 	format = xlSheetCellFormat(sheet, row, col);
@@ -2928,7 +2939,7 @@ EXCEL_METHOD(Sheet, setCellFormat)
 		RETURN_FALSE;
 	}
 
-	EXCEL_VALIDATE_ROW_COL(row, col);
+	EXCEL_VALIDATE_ROW_COL(row, col, object);
 	SHEET_FROM_OBJECT(sheet, object);
 	FORMAT_FROM_OBJECT(format, oformat);
 
@@ -3152,7 +3163,7 @@ EXCEL_METHOD(Sheet, read)
 		RETURN_FALSE;
 	}
 
-	EXCEL_VALIDATE_ROW_COL(row, col);
+	EXCEL_VALIDATE_ROW_COL(row, col, object);
 	SHEET_AND_BOOK_FROM_OBJECT(sheet, book, object);
 
 	if (oformat) {
@@ -3284,7 +3295,7 @@ EXCEL_METHOD(Sheet, write)
 		RETURN_FALSE;
 	}
 
-	EXCEL_VALIDATE_ROW_COL(row, col);
+	EXCEL_VALIDATE_ROW_COL(row, col, object);
 	SHEET_AND_BOOK_FROM_OBJECT(sheet, book, object);
 	if (oformat) {
 		FORMAT_FROM_OBJECT(format, oformat);
@@ -3317,7 +3328,7 @@ EXCEL_METHOD(Sheet, writeRow)
 		RETURN_FALSE;
 	}
 
-	EXCEL_VALIDATE_ROW_COL(row, col);
+	EXCEL_VALIDATE_ROW_COL(row, col, object);
 	SHEET_AND_BOOK_FROM_OBJECT(sheet, book, object);
 	if (oformat) {
 		FORMAT_FROM_OBJECT(format, oformat);
@@ -3355,7 +3366,7 @@ EXCEL_METHOD(Sheet, writeCol)
 		RETURN_FALSE;
 	}
 
-	EXCEL_VALIDATE_ROW_COL(row, col);
+	EXCEL_VALIDATE_ROW_COL(row, col, object);
 	SHEET_AND_BOOK_FROM_OBJECT(sheet, book, object);
 	if (oformat) {
 		FORMAT_FROM_OBJECT(format, oformat);
@@ -3382,7 +3393,7 @@ EXCEL_METHOD(Sheet, writeCol)
 		if (zend_parse_parameters(ZEND_NUM_ARGS(), "ll", &r, &c) == FAILURE) { \
 			RETURN_FALSE; \
 		} \
-		EXCEL_VALIDATE_ROW_COL(r, c); \
+		EXCEL_VALIDATE_ROW_COL(r, c, object); \
 		SHEET_FROM_OBJECT(sheet, object); \
 		RETURN_BOOL(xlSheet ## func_name (sheet, r, c)); \
 	}
@@ -3407,7 +3418,7 @@ EXCEL_METHOD(Sheet, isDate)
 		RETURN_FALSE;
 	}
 
-	EXCEL_VALIDATE_ROW_COL(r, c);
+	EXCEL_VALIDATE_ROW_COL(r, c, object);
 	SHEET_FROM_OBJECT(sheet, object);
 
 	if (xlSheetCellType(sheet, r, c) != CELLTYPE_NUMBER) {

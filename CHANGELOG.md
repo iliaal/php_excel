@@ -71,11 +71,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `Sheet::cellFormat()`, `Sheet::setCellFormat()`, `Sheet::isDate()`,
   `Sheet::isFormula()`, `Sheet::insertRow()`, `Sheet::insertCol()`,
   `Sheet::removeRow()`, `Sheet::removeCol()`, `Sheet::writeRow()`, and
-  `Sheet::writeCol()` now reject coordinates outside the XLSX maximum
-  (`row > 1048575` or `column > 16383`) and negative values with a unified
-  warning, instead of silently truncating to libxl's `int` and returning
-  empty cells. Read paths previously accepted any value because libxl
-  doesn't range-check reads.
+  `Sheet::writeCol()` now reject coordinates outside the workbook's
+  format-specific limits — XLSX (1048576 rows x 16384 cols) for books
+  created with `new ExcelBook(null, null, true)`, XLS (65536 rows x 256
+  cols) otherwise — instead of silently truncating to libxl's `int` and
+  returning empty cells. Read paths previously accepted any in-range
+  integer because libxl doesn't range-check reads.
 - `Sheet::autoFilter()`, `Sheet::applyFilter()`, `Sheet::removeFilter()`, and
   `Sheet::splitInfo()` now call `ZEND_PARSE_PARAMETERS_NONE()` so calling
   them with extra arguments raises `ArgumentCountError` rather than a debug-
