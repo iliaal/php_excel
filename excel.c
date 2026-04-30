@@ -888,6 +888,34 @@ static zend_object *excel_object_new_table(zend_class_entry *class_type)
 		} \
 	} while (0)
 
+/* Row-range validation for insertRow/removeRow, where both arguments are
+ * row indices (row_first, row_last). The cell-coordinate macro above would
+ * incorrectly check the second argument against the column limit. */
+#define EXCEL_VALIDATE_ROW_RANGE(rfirst, rlast, parent_zv) \
+	do { \
+		excel_book_object *_vb = php_excel_resolve_book_obj(parent_zv); \
+		zend_long _maxr = (_vb && _vb->is_xlsx) ? EXCEL_MAX_ROW_XLSX : EXCEL_MAX_ROW_XLS; \
+		if ((rfirst) < 0 || (rfirst) > _maxr || (rlast) < 0 || (rlast) > _maxr) { \
+			php_error_docref(NULL, E_WARNING, \
+				"Invalid row range: first=" ZEND_LONG_FMT ", last=" ZEND_LONG_FMT, \
+				(zend_long)(rfirst), (zend_long)(rlast)); \
+			RETURN_FALSE; \
+		} \
+	} while (0)
+
+/* Column-range validation for insertCol/removeCol. */
+#define EXCEL_VALIDATE_COL_RANGE(cfirst, clast, parent_zv) \
+	do { \
+		excel_book_object *_vb = php_excel_resolve_book_obj(parent_zv); \
+		zend_long _maxc = (_vb && _vb->is_xlsx) ? EXCEL_MAX_COL_XLSX : EXCEL_MAX_COL_XLS; \
+		if ((cfirst) < 0 || (cfirst) > _maxc || (clast) < 0 || (clast) > _maxc) { \
+			php_error_docref(NULL, E_WARNING, \
+				"Invalid column range: first=" ZEND_LONG_FMT ", last=" ZEND_LONG_FMT, \
+				(zend_long)(cfirst), (zend_long)(clast)); \
+			RETURN_FALSE; \
+		} \
+	} while (0)
+
 /* {{{ proto bool ExcelBook::requiresKey()
 	true if license key is required. */
 EXCEL_METHOD(Book, requiresKey)
@@ -3385,6 +3413,7 @@ EXCEL_METHOD(Sheet, writeCol)
 }
 /* }}} */
 
+/* Cell-coordinate variant: (row, column). */
 #define PHP_EXCEL_SHEET_GET_BOOL_STATE(func_name) \
 	{ \
 		SheetHandle sheet; \
@@ -3396,6 +3425,34 @@ EXCEL_METHOD(Sheet, writeCol)
 		EXCEL_VALIDATE_ROW_COL(r, c, object); \
 		SHEET_FROM_OBJECT(sheet, object); \
 		RETURN_BOOL(xlSheet ## func_name (sheet, r, c)); \
+	}
+
+/* Row-pair variant: (row_first, row_last). */
+#define PHP_EXCEL_SHEET_ROW_RANGE_OP(func_name) \
+	{ \
+		SheetHandle sheet; \
+		zval *object = ZEND_THIS; \
+		zend_long rfirst, rlast; \
+		if (zend_parse_parameters(ZEND_NUM_ARGS(), "ll", &rfirst, &rlast) == FAILURE) { \
+			RETURN_FALSE; \
+		} \
+		EXCEL_VALIDATE_ROW_RANGE(rfirst, rlast, object); \
+		SHEET_FROM_OBJECT(sheet, object); \
+		RETURN_BOOL(xlSheet ## func_name (sheet, rfirst, rlast)); \
+	}
+
+/* Column-pair variant: (col_first, col_last). */
+#define PHP_EXCEL_SHEET_COL_RANGE_OP(func_name) \
+	{ \
+		SheetHandle sheet; \
+		zval *object = ZEND_THIS; \
+		zend_long cfirst, clast; \
+		if (zend_parse_parameters(ZEND_NUM_ARGS(), "ll", &cfirst, &clast) == FAILURE) { \
+			RETURN_FALSE; \
+		} \
+		EXCEL_VALIDATE_COL_RANGE(cfirst, clast, object); \
+		SHEET_FROM_OBJECT(sheet, object); \
+		RETURN_BOOL(xlSheet ## func_name (sheet, cfirst, clast)); \
 	}
 
 /* {{{ proto bool ExcelSheet::isFormula(int row, int column)
@@ -3429,35 +3486,35 @@ EXCEL_METHOD(Sheet, isDate)
 }
 /* }}} */
 
-/* {{{ proto bool ExcelSheet::insertRow(int row_first, int row_last, bool update_named_ranges)
+/* {{{ proto bool ExcelSheet::insertRow(int row_first, int row_last)
 	Inserts rows from rowFirst to rowLast */
 EXCEL_METHOD(Sheet, insertRow)
 {
-	PHP_EXCEL_SHEET_GET_BOOL_STATE(InsertRow)
+	PHP_EXCEL_SHEET_ROW_RANGE_OP(InsertRow)
 }
 /* }}} */
 
-/* {{{ proto bool ExcelSheet::insertCol(int col_first, int col_last, bool update_named_ranges)
+/* {{{ proto bool ExcelSheet::insertCol(int col_first, int col_last)
 	Inserts columns from colFirst to colLast */
 EXCEL_METHOD(Sheet, insertCol)
 {
-	PHP_EXCEL_SHEET_GET_BOOL_STATE(InsertCol)
+	PHP_EXCEL_SHEET_COL_RANGE_OP(InsertCol)
 }
 /* }}} */
 
-/* {{{ proto bool ExcelSheet::removeRow(int row_first, int row_last, bool update_named_ranges)
+/* {{{ proto bool ExcelSheet::removeRow(int row_first, int row_last)
 	Removes rows from rowFirst to rowLast */
 EXCEL_METHOD(Sheet, removeRow)
 {
-	PHP_EXCEL_SHEET_GET_BOOL_STATE(RemoveRow)
+	PHP_EXCEL_SHEET_ROW_RANGE_OP(RemoveRow)
 }
 /* }}} */
 
-/* {{{ proto bool ExcelSheet::removeCol(int col_first, int col_last, bool update_named_ranges)
+/* {{{ proto bool ExcelSheet::removeCol(int col_first, int col_last)
 	Removes columns from colFirst to colLast */
 EXCEL_METHOD(Sheet, removeCol)
 {
-	PHP_EXCEL_SHEET_GET_BOOL_STATE(RemoveCol)
+	PHP_EXCEL_SHEET_COL_RANGE_OP(RemoveCol)
 }
 /* }}} */
 

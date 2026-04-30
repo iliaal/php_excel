@@ -69,14 +69,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   when the cell was actually left empty.
 - Coordinate validation: `Sheet::read()`, `Sheet::write()`, `Sheet::cellType()`,
   `Sheet::cellFormat()`, `Sheet::setCellFormat()`, `Sheet::isDate()`,
-  `Sheet::isFormula()`, `Sheet::insertRow()`, `Sheet::insertCol()`,
-  `Sheet::removeRow()`, `Sheet::removeCol()`, `Sheet::writeRow()`, and
-  `Sheet::writeCol()` now reject coordinates outside the workbook's
-  format-specific limits — XLSX (1048576 rows x 16384 cols) for books
-  created with `new ExcelBook(null, null, true)`, XLS (65536 rows x 256
-  cols) otherwise — instead of silently truncating to libxl's `int` and
-  returning empty cells. Read paths previously accepted any in-range
-  integer because libxl doesn't range-check reads.
+  `Sheet::isFormula()`, `Sheet::writeRow()`, and `Sheet::writeCol()` now
+  reject cell coordinates outside the workbook's format-specific limits —
+  XLSX (1048576 rows x 16384 cols) for books created with
+  `new ExcelBook(null, null, true)`, XLS (65536 rows x 256 cols) otherwise —
+  instead of silently truncating to libxl's `int` and returning empty cells.
+  Read paths previously accepted any in-range integer because libxl doesn't
+  range-check reads. `Sheet::insertRow()`, `Sheet::removeRow()`,
+  `Sheet::insertCol()`, and `Sheet::removeCol()` validate against the
+  appropriate axis limit for both arguments (the second argument is a row
+  or column endpoint, not the perpendicular axis).
 - `Sheet::autoFilter()`, `Sheet::applyFilter()`, `Sheet::removeFilter()`, and
   `Sheet::splitInfo()` now call `ZEND_PARSE_PARAMETERS_NONE()` so calling
   them with extra arguments raises `ArgumentCountError` rather than a debug-
