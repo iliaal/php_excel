@@ -36,10 +36,10 @@ bool(true)
 bool(true)
 bool(true)
 
-Warning: ExcelSheet::writeRow(): Invalid row number '-1' in %s on line %d
+Warning: ExcelSheet::writeRow(): Invalid coordinates: row=-1, column=0 in %s on line %d
 bool(false)
 
-Warning: ExcelSheet::writeRow(): Invalid starting column number '-1' in %s on line %d
+Warning: ExcelSheet::writeRow(): Invalid coordinates: row=2, column=-1 in %s on line %d
 bool(false)
 array(15) {
   [0]=>

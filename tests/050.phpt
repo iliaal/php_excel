@@ -34,10 +34,10 @@ bool(true)
 bool(true)
 bool(true)
 
-Warning: ExcelSheet::writeCol(): Invalid column number '-1' in %s on line %d
+Warning: ExcelSheet::writeCol(): Invalid coordinates: row=0, column=-1 in %s on line %d
 bool(false)
 
-Warning: ExcelSheet::writeCol(): Invalid starting row number '-1' in %s on line %d
+Warning: ExcelSheet::writeCol(): Invalid coordinates: row=-1, column=1 in %s on line %d
 bool(false)
 array(15) {
   [0]=>

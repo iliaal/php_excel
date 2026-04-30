@@ -1,5 +1,5 @@
 /* This is a generated file, edit excel.stub.php instead.
- * Stub hash: 06a0cfd30d4c5e58d96dbc24502dedaddb1c26c3 */
+ * Stub hash: d1178016f27953f7b8ad6e6e18a36661707880b1 */
 
 ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_ExcelBook_requiresKey, 0, 0, _IS_BOOL, 0)
 ZEND_END_ARG_INFO()
@@ -112,11 +112,11 @@ ZEND_END_ARG_INFO()
 #define arginfo_class_ExcelBook_setActiveSheet arginfo_class_ExcelBook_deleteSheet
 
 ZEND_BEGIN_ARG_WITH_RETURN_TYPE_MASK_EX(arginfo_class_ExcelBook_addPictureFromFile, 0, 1, MAY_BE_LONG|MAY_BE_FALSE)
-	ZEND_ARG_TYPE_INFO(0, filename, IS_MIXED, 0)
+	ZEND_ARG_TYPE_INFO(0, filename, IS_STRING, 0)
 ZEND_END_ARG_INFO()
 
 ZEND_BEGIN_ARG_WITH_RETURN_TYPE_MASK_EX(arginfo_class_ExcelBook_addPictureFromString, 0, 1, MAY_BE_LONG|MAY_BE_FALSE)
-	ZEND_ARG_TYPE_INFO(0, data, _IS_BOOL, 0)
+	ZEND_ARG_TYPE_INFO(0, data, IS_STRING, 0)
 ZEND_END_ARG_INFO()
 
 #define arginfo_class_ExcelBook_rgbMode arginfo_class_ExcelBook_requiresKey
@@ -315,22 +315,16 @@ ZEND_END_ARG_INFO()
 #define arginfo_class_ExcelSheet_isDate arginfo_class_ExcelSheet_isFormula
 
 ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_ExcelSheet_insertRow, 0, 2, _IS_BOOL, 0)
-	ZEND_ARG_TYPE_INFO(0, row_first, IS_MIXED, 0)
-	ZEND_ARG_TYPE_INFO(0, row_last, IS_MIXED, 0)
-	ZEND_ARG_TYPE_INFO_WITH_DEFAULT_VALUE(0, update_named_ranges, IS_MIXED, 0, "null")
+	ZEND_ARG_TYPE_INFO(0, row_first, IS_LONG, 0)
+	ZEND_ARG_TYPE_INFO(0, row_last, IS_LONG, 0)
 ZEND_END_ARG_INFO()
 
 ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_ExcelSheet_insertCol, 0, 2, _IS_BOOL, 0)
 	ZEND_ARG_TYPE_INFO(0, col_first, IS_LONG, 0)
-	ZEND_ARG_TYPE_INFO(0, col_last, IS_MIXED, 0)
-	ZEND_ARG_TYPE_INFO_WITH_DEFAULT_VALUE(0, update_named_ranges, IS_MIXED, 0, "null")
+	ZEND_ARG_TYPE_INFO(0, col_last, IS_LONG, 0)
 ZEND_END_ARG_INFO()
 
-ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_ExcelSheet_removeRow, 0, 2, _IS_BOOL, 0)
-	ZEND_ARG_TYPE_INFO(0, row_first, IS_LONG, 0)
-	ZEND_ARG_TYPE_INFO(0, row_last, IS_MIXED, 0)
-	ZEND_ARG_TYPE_INFO_WITH_DEFAULT_VALUE(0, update_named_ranges, IS_MIXED, 0, "null")
-ZEND_END_ARG_INFO()
+#define arginfo_class_ExcelSheet_removeRow arginfo_class_ExcelSheet_insertRow
 
 #define arginfo_class_ExcelSheet_removeCol arginfo_class_ExcelSheet_insertCol
 
@@ -408,12 +402,12 @@ ZEND_END_ARG_INFO()
 
 ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_ExcelSheet_horPageBreak, 0, 2, _IS_BOOL, 0)
 	ZEND_ARG_TYPE_INFO(0, row, IS_LONG, 0)
-	ZEND_ARG_TYPE_INFO(0, break, IS_LONG, 0)
+	ZEND_ARG_TYPE_INFO(0, break, _IS_BOOL, 0)
 ZEND_END_ARG_INFO()
 
 ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_ExcelSheet_verPageBreak, 0, 2, _IS_BOOL, 0)
 	ZEND_ARG_TYPE_INFO(0, col, IS_LONG, 0)
-	ZEND_ARG_TYPE_INFO(0, break, IS_LONG, 0)
+	ZEND_ARG_TYPE_INFO(0, break, _IS_BOOL, 0)
 ZEND_END_ARG_INFO()
 
 ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_ExcelSheet_splitSheet, 0, 2, IS_MIXED, 0)

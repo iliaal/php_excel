@@ -1,7 +1,7 @@
 --TEST--
 ExcelConditionalFormatting: addRange, addRule, conditionalFormattingSize
 --SKIPIF--
-<?php if (!extension_loaded("excel")) print "skip"; ?>
+<?php if (!extension_loaded("excel") || !method_exists("ExcelBook", "conditionalFormatSize")) print "skip"; ?>
 --FILE--
 <?php
 $book = new ExcelBook(null, null, true);

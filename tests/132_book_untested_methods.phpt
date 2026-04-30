@@ -1,7 +1,7 @@
 --TEST--
 ExcelBook::addPictureAsLink, ExcelBook::conditionalFormat, ExcelSheet::removeComment
 --SKIPIF--
-<?php if (!extension_loaded("excel")) print "skip"; ?>
+<?php if (!extension_loaded("excel") || !method_exists("ExcelBook", "conditionalFormatSize")) print "skip"; ?>
 --FILE--
 <?php
 

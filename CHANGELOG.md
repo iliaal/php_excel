@@ -33,7 +33,51 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   generated arginfo header compiles cleanly against the project's
   PHP 8.3 minimum.
 
+### Security
+- Stale child wrapper crashes: an `ExcelSheet`/`ExcelFormat`/`ExcelFont`/etc.
+  retained from before `Book::load()`, `Book::loadFile()`, `Book::loadInfo()`,
+  `Book::loadInfoRaw()`, `Book::clear()`, or a manual `Book::__construct()`
+  reuse now refuses to call libxl with a stale handle. Previously, calling a
+  method on such a wrapper could segfault (`pure virtual method called`,
+  `SEGV in xlFormatNumFormatA`, etc.). A book-level generation counter is
+  bumped on each invalidating operation; child wrappers stamp the value at
+  creation and check it before every libxl call, returning `false` with a
+  warning when stale.
+- NUL-byte gaps closed on the libxl boundary. Embedded NUL bytes are now
+  rejected (rather than silently truncating the value) in `Sheet::write()`,
+  `Sheet::writeRow()`, `Sheet::writeCol()` cell strings; `Book::getSheetByName()`;
+  `Book::loadFile()`, `Book::save()`, `Book::addPictureFromFile()` paths; and
+  the `ExcelBook::__construct()` license name/key arguments.
+- `Book::getSheetByName()` now compares names with binary-safe length-aware
+  comparison rather than `strcmp`/`strcasecmp`, eliminating prefix-match
+  false positives on names that differ only past an embedded NUL.
+
 ### Fixed
+- `Sheet::write()` / `writeRow()` / `writeCol()` now return `false` for
+  unsupported zval types (array, object, resource). Previously they emitted a
+  warning but returned `true`, leading callers to believe data was persisted
+  when the cell was actually left empty.
+- Coordinate validation: `Sheet::read()`, `Sheet::write()`, `Sheet::cellType()`,
+  `Sheet::cellFormat()`, `Sheet::setCellFormat()`, `Sheet::isDate()`,
+  `Sheet::isFormula()`, `Sheet::insertRow()`, `Sheet::insertCol()`,
+  `Sheet::removeRow()`, `Sheet::removeCol()`, `Sheet::writeRow()`, and
+  `Sheet::writeCol()` now reject negative and `> INT_MAX` coordinates with a
+  unified warning instead of silently truncating to libxl's `int` and
+  returning empty cells.
+- `Sheet::autoFilter()`, `Sheet::applyFilter()`, `Sheet::removeFilter()`, and
+  `Sheet::splitInfo()` now call `ZEND_PARSE_PARAMETERS_NONE()` so calling
+  them with extra arguments raises `ArgumentCountError` rather than a debug-
+  PHP arginfo/ZPP mismatch fatal.
+- Stub signatures corrected to match the C implementation:
+  `Book::addPictureFromFile(string)`, `Book::addPictureFromString(string)`
+  (were `mixed`/`bool`); `Sheet::insertRow/insertCol/removeRow/removeCol(int, int)`
+  (the spurious third `update_named_ranges` parameter is removed —
+  the underlying C ZPP only ever parsed `"ll"`); `Sheet::horPageBreak(int, bool)`
+  and `Sheet::verPageBreak(int, bool)` (were `int, int`). Reflection,
+  IDEs, and static analyzers now see the true signatures.
+- LibXL 4.6.0 test compatibility: tests calling LibXL 5.x-only APIs
+  (`addConditionalFormatting` 4-arg, `dpiAwareness`, `conditionalFormatSize`,
+  etc.) now skip via `method_exists()` instead of failing.
 - Test 002 (date pack/unpack) timezone detection to work cross-platform
 
 ## [2.0.0] - 2026-04-05

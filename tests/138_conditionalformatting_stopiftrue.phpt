@@ -1,7 +1,7 @@
 --TEST--
 ConditionalFormatting: stopIfTrue parameter on addRule, addOpNumRule, addOpStrRule, addAboveAverageRule, addTimePeriodRule, add2ColorScaleFormulaRule, add3ColorScaleRule, add3ColorScaleFormulaRule
 --SKIPIF--
-<?php if (!extension_loaded("excel")) print "skip"; ?>
+<?php if (!extension_loaded("excel") || !method_exists("ExcelBook", "conditionalFormatSize")) print "skip"; ?>
 --FILE--
 <?php
 $book = new ExcelBook(null, null, true);

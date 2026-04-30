@@ -110,6 +110,12 @@ static zend_object_handlers excel_object_handlers_table;
 
 typedef struct _excel_book_object {
 	BookHandle book;
+	/* Bumped whenever the underlying libxl book state is reset or a child-
+	 * invalidating mutation runs (load, loadFile, clear, deleteSheet,
+	 * insertSheet, copySheet, moveSheet, manual __construct reuse). Child
+	 * wrappers stamp this at creation and CHECK_BOOK_GENERATION refuses to
+	 * use them once the value diverges. */
+	uint64_t generation;
 	zend_object std;
 } excel_book_object;
 
@@ -132,6 +138,7 @@ static inline excel_book_object *php_excel_book_object_fetch_object(zend_object 
 typedef struct _excel_sheet_object {
 	SheetHandle	sheet;
 	BookHandle book;
+	uint64_t book_generation;
 	zval parent;
 	zend_object std;
 } excel_sheet_object;
@@ -150,6 +157,7 @@ static inline excel_sheet_object *php_excel_sheet_object_fetch_object(zend_objec
 			php_error_docref(NULL, E_WARNING, "The sheet wasn't initialized"); \
 			RETURN_FALSE; \
 		} \
+		CHECK_BOOK_GENERATION(obj); \
 	}
 
 #define SHEET_AND_BOOK_FROM_OBJECT(sheet, book, object) \
@@ -161,11 +169,13 @@ static inline excel_sheet_object *php_excel_sheet_object_fetch_object(zend_objec
 			php_error_docref(NULL, E_WARNING, "The sheet wasn't initialized"); \
 			RETURN_FALSE; \
 		} \
+		CHECK_BOOK_GENERATION(obj); \
 	}
 
 typedef struct _excel_font_object {
 	FontHandle font;
 	BookHandle book;
+	uint64_t book_generation;
 	zval parent;
 	zend_object std;
 } excel_font_object;
@@ -183,6 +193,7 @@ static inline excel_font_object *php_excel_font_object_fetch_object(zend_object 
 			php_error_docref(NULL, E_WARNING, "The font wasn't initialized"); \
 			RETURN_FALSE; \
 		} \
+		CHECK_BOOK_GENERATION(obj); \
 	}
 
 #define FORMAT_FROM_OBJECT(format, object) \
@@ -193,6 +204,7 @@ static inline excel_font_object *php_excel_font_object_fetch_object(zend_object 
 			php_error_docref(NULL, E_WARNING, "The format wasn't initialized"); \
 			RETURN_FALSE; \
 		} \
+		CHECK_BOOK_GENERATION(obj); \
 	}
 
 #define AUTOFILTER_FROM_OBJECT(autofilter, object) \
@@ -203,6 +215,7 @@ static inline excel_font_object *php_excel_font_object_fetch_object(zend_object 
 			php_error_docref(NULL, E_WARNING, "The autofilter wasn't initialized"); \
 			RETURN_FALSE; \
 		} \
+		CHECK_BOOK_GENERATION(obj); \
 	}
 
 #define FILTERCOLUMN_FROM_OBJECT(filtercolumn, object) \
@@ -213,11 +226,13 @@ static inline excel_font_object *php_excel_font_object_fetch_object(zend_object 
 			php_error_docref(NULL, E_WARNING, "The filtercolumn wasn't initialized"); \
 			RETURN_FALSE; \
 		} \
+		CHECK_BOOK_GENERATION(obj); \
 	}
 
 typedef struct _excel_format_object {
 	FormatHandle format;
 	BookHandle book;
+	uint64_t book_generation;
 	zval parent;
 	zend_object std;
 } excel_format_object;
@@ -230,6 +245,7 @@ static inline excel_format_object *php_excel_format_object_fetch_object(zend_obj
 typedef struct _excel_autofilter_object {
 	AutoFilterHandle autofilter;
 	SheetHandle sheet;
+	uint64_t book_generation;
 	zval parent;
 	zend_object std;
 } excel_autofilter_object;
@@ -242,6 +258,7 @@ static inline excel_autofilter_object *php_excel_autofilter_object_fetch_object(
 typedef struct _excel_filtercolumn_object {
 	FilterColumnHandle filtercolumn;
 	AutoFilterHandle autofilter;
+	uint64_t book_generation;
 	zval parent;
 	zend_object std;
 } excel_filtercolumn_object;
@@ -254,6 +271,7 @@ static inline excel_filtercolumn_object *php_excel_filtercolumn_object_fetch_obj
 typedef struct _excel_richstring_object {
 	RichStringHandle richstring;
 	BookHandle book;
+	uint64_t book_generation;
 	zval parent;
 	zend_object std;
 } excel_richstring_object;
@@ -271,11 +289,13 @@ static inline excel_richstring_object *php_excel_richstring_object_fetch_object(
 			php_error_docref(NULL, E_WARNING, "The richstring wasn't initialized"); \
 			RETURN_FALSE; \
 		} \
+		CHECK_BOOK_GENERATION(obj); \
 	}
 
 typedef struct _excel_formcontrol_object {
 	FormControlHandle formcontrol;
 	SheetHandle sheet;
+	uint64_t book_generation;
 	zval parent;
 	zend_object std;
 } excel_formcontrol_object;
@@ -293,11 +313,13 @@ static inline excel_formcontrol_object *php_excel_formcontrol_object_fetch_objec
 			php_error_docref(NULL, E_WARNING, "The formcontrol wasn't initialized"); \
 			RETURN_FALSE; \
 		} \
+		CHECK_BOOK_GENERATION(obj); \
 	}
 
 typedef struct _excel_conditionalformat_object {
 	ConditionalFormatHandle conditionalformat;
 	BookHandle book;
+	uint64_t book_generation;
 	zval parent;
 	zend_object std;
 } excel_conditionalformat_object;
@@ -315,11 +337,13 @@ static inline excel_conditionalformat_object *php_excel_conditionalformat_object
 			php_error_docref(NULL, E_WARNING, "The conditionalformat wasn't initialized"); \
 			RETURN_FALSE; \
 		} \
+		CHECK_BOOK_GENERATION(obj); \
 	}
 
 typedef struct _excel_conditionalformatting_object {
 	ConditionalFormattingHandle conditionalformatting;
 	SheetHandle sheet;
+	uint64_t book_generation;
 	zval parent;
 	zend_object std;
 } excel_conditionalformatting_object;
@@ -337,11 +361,13 @@ static inline excel_conditionalformatting_object *php_excel_conditionalformattin
 			php_error_docref(NULL, E_WARNING, "The conditionalformatting wasn't initialized"); \
 			RETURN_FALSE; \
 		} \
+		CHECK_BOOK_GENERATION(obj); \
 	}
 
 typedef struct _excel_coreproperties_object {
 	CorePropertiesHandle coreproperties;
 	BookHandle book;
+	uint64_t book_generation;
 	zval parent;
 	zend_object std;
 } excel_coreproperties_object;
@@ -359,11 +385,13 @@ static inline excel_coreproperties_object *php_excel_coreproperties_object_fetch
 			php_error_docref(NULL, E_WARNING, "The coreproperties wasn't initialized"); \
 			RETURN_FALSE; \
 		} \
+		CHECK_BOOK_GENERATION(obj); \
 	}
 
 typedef struct _excel_table_object {
 	TableHandle table;
 	SheetHandle sheet;
+	uint64_t book_generation;
 	zval parent;
 	zend_object std;
 } excel_table_object;
@@ -381,7 +409,73 @@ static inline excel_table_object *php_excel_table_object_fetch_object(zend_objec
 			php_error_docref(NULL, E_WARNING, "The table wasn't initialized"); \
 			RETURN_FALSE; \
 		} \
+		CHECK_BOOK_GENERATION(obj); \
 	}
+
+/* Walk the parent zval chain up to the owning ExcelBook so that any descendant
+ * (sheet, format, autofilter, filtercolumn, table, ...) can compare its
+ * book_generation against the book's current generation counter. */
+static inline excel_book_object *php_excel_resolve_book_obj(zval *parent_zv) {
+	int hops = 0;
+	while (parent_zv && Z_TYPE_P(parent_zv) == IS_OBJECT && hops++ < 8) {
+		zend_class_entry *ce = Z_OBJCE_P(parent_zv);
+		if (ce == excel_ce_book) {
+			return php_excel_book_object_fetch_object(Z_OBJ_P(parent_zv));
+		} else if (ce == excel_ce_sheet) {
+			parent_zv = &php_excel_sheet_object_fetch_object(Z_OBJ_P(parent_zv))->parent;
+		} else if (ce == excel_ce_format) {
+			parent_zv = &php_excel_format_object_fetch_object(Z_OBJ_P(parent_zv))->parent;
+		} else if (ce == excel_ce_font) {
+			parent_zv = &php_excel_font_object_fetch_object(Z_OBJ_P(parent_zv))->parent;
+		} else if (ce == excel_ce_autofilter) {
+			parent_zv = &php_excel_autofilter_object_fetch_object(Z_OBJ_P(parent_zv))->parent;
+		} else if (ce == excel_ce_filtercolumn) {
+			parent_zv = &php_excel_filtercolumn_object_fetch_object(Z_OBJ_P(parent_zv))->parent;
+		} else if (ce == excel_ce_richstring) {
+			parent_zv = &php_excel_richstring_object_fetch_object(Z_OBJ_P(parent_zv))->parent;
+		} else if (ce == excel_ce_formcontrol) {
+			parent_zv = &php_excel_formcontrol_object_fetch_object(Z_OBJ_P(parent_zv))->parent;
+		} else if (ce == excel_ce_conditionalformat) {
+			parent_zv = &php_excel_conditionalformat_object_fetch_object(Z_OBJ_P(parent_zv))->parent;
+		} else if (ce == excel_ce_conditionalformatting) {
+			parent_zv = &php_excel_conditionalformatting_object_fetch_object(Z_OBJ_P(parent_zv))->parent;
+		} else if (ce == excel_ce_coreproperties) {
+			parent_zv = &php_excel_coreproperties_object_fetch_object(Z_OBJ_P(parent_zv))->parent;
+		} else if (ce == excel_ce_table) {
+			parent_zv = &php_excel_table_object_fetch_object(Z_OBJ_P(parent_zv))->parent;
+		} else {
+			return NULL;
+		}
+	}
+	return NULL;
+}
+
+#define CHECK_BOOK_GENERATION(child_obj) \
+	do { \
+		excel_book_object *_b = php_excel_resolve_book_obj(&(child_obj)->parent); \
+		if (!_b || !_b->book || _b->generation != (child_obj)->book_generation) { \
+			php_error_docref(NULL, E_WARNING, \
+				"Underlying ExcelBook handle is stale (parent was reloaded, cleared, or reinitialized)"); \
+			RETURN_FALSE; \
+		} \
+	} while (0)
+
+/* Stamp child wrapper with current book generation and copy parent zval.
+ * Use at every child creation site instead of a bare ZVAL_COPY(&x->parent, p). */
+#define EXCEL_INIT_PARENT(child_obj, parent_zv) \
+	do { \
+		excel_book_object *_bg = php_excel_resolve_book_obj(parent_zv); \
+		(child_obj)->book_generation = _bg ? _bg->generation : 0; \
+		ZVAL_COPY(&(child_obj)->parent, parent_zv); \
+	} while (0)
+
+/* Invalidate every existing child wrapper of `book_zv`. Call after any libxl
+ * operation that resets book state (load/clear) or shifts internal child
+ * indices (delete/insert/copy/move sheet). */
+static inline void php_excel_book_bump_generation(zval *book_zv) {
+	excel_book_object *bobj = php_excel_book_object_fetch_object(Z_OBJ_P(book_zv));
+	bobj->generation++;
+}
 
 static void excel_book_object_free_storage(zend_object *object)
 {
@@ -486,7 +580,7 @@ static zend_object *excel_font_object_clone(zend_object *object)
 	} else {
 		new_obj->book = old_obj->book;
 		new_obj->font = font;
-		ZVAL_COPY(&new_obj->parent, &old_obj->parent);
+		EXCEL_INIT_PARENT(new_obj, &old_obj->parent);
 	}
 
 	zend_objects_clone_members(&new_obj->std, &old_obj->std);
@@ -544,7 +638,7 @@ static zend_object *excel_format_object_clone(zend_object *object)
 	} else {
 		new_obj->book = old_obj->book;
 		new_obj->format = format;
-		ZVAL_COPY(&new_obj->parent, &old_obj->parent);
+		EXCEL_INIT_PARENT(new_obj, &old_obj->parent);
 	}
 
 	zend_objects_clone_members(&new_obj->std, &old_obj->std);
@@ -745,6 +839,19 @@ static zend_object *excel_object_new_table(zend_class_entry *class_type)
 		RETURN_FALSE; \
 	}
 
+/* Coordinate validation for sheet read/write paths. Negative or out-of-int-
+ * range values silently produce an empty cell when passed to libxl, masking
+ * application bugs and bypassing PHP-side validation. */
+#define EXCEL_VALIDATE_ROW_COL(r, c) \
+	do { \
+		if ((r) < 0 || (r) > INT_MAX || (c) < 0 || (c) > INT_MAX) { \
+			php_error_docref(NULL, E_WARNING, \
+				"Invalid coordinates: row=" ZEND_LONG_FMT ", column=" ZEND_LONG_FMT, \
+				(zend_long)(r), (zend_long)(c)); \
+			RETURN_FALSE; \
+		} \
+	} while (0)
+
 /* {{{ proto bool ExcelBook::requiresKey()
 	true if license key is required. */
 EXCEL_METHOD(Book, requiresKey)
@@ -773,6 +880,7 @@ EXCEL_METHOD(Book, load)
 
 	BOOK_FROM_OBJECT(book, object);
 
+	php_excel_book_bump_generation(object);
 	RETURN_BOOL(xlBookLoadRaw(book, ZSTR_VAL(data_zs), ZSTR_LEN(data_zs)));
 }
 /* }}} */
@@ -792,6 +900,7 @@ EXCEL_METHOD(Book, loadFile)
 	}
 
 	EXCEL_NON_EMPTY_STRING(filename_zs)
+	EXCEL_NUL_SAFE_STRING(filename_zs)
 
 	BOOK_FROM_OBJECT(book, object);
 
@@ -815,6 +924,7 @@ EXCEL_METHOD(Book, loadFile)
 		RETURN_FALSE;
 	}
 
+	php_excel_book_bump_generation(object);
 	RETVAL_BOOL(xlBookLoadRaw(book, ZSTR_VAL(contents), ZSTR_LEN(contents)));
 	zend_string_release(contents);
 }
@@ -832,6 +942,10 @@ EXCEL_METHOD(Book, save)
 
 	if (zend_parse_parameters(ZEND_NUM_ARGS(), "|S", &filename_zs) == FAILURE) {
 		RETURN_FALSE;
+	}
+
+	if (filename_zs && ZSTR_LEN(filename_zs) > 0) {
+		EXCEL_NUL_SAFE_STRING(filename_zs)
 	}
 
 	BOOK_FROM_OBJECT(book, object);
@@ -891,7 +1005,7 @@ EXCEL_METHOD(Book, getSheet)
 	fo = Z_EXCEL_SHEET_OBJ_P(return_value);
 	fo->sheet = sh;
 	fo->book = book;
-	ZVAL_COPY(&fo->parent, object);
+	EXCEL_INIT_PARENT(fo, object);
 }
 /* }}} */
 
@@ -913,6 +1027,7 @@ EXCEL_METHOD(Book, getSheetByName)
 	}
 
 	EXCEL_NON_EMPTY_STRING(sheet_name_zs)
+	EXCEL_NUL_SAFE_STRING(sheet_name_zs)
 
 	BOOK_FROM_OBJECT(book, object);
 
@@ -920,14 +1035,18 @@ EXCEL_METHOD(Book, getSheetByName)
 	for(sheet = 0; sheet < sheet_count; sheet++) {
 		SheetHandle sh = xlBookGetSheet(book, sheet);
 		if (sh) {
+			size_t needle_len = ZSTR_LEN(sheet_name_zs);
 			s = xlSheetName(sh);
 			if (s) {
-				if ((case_s && !strcasecmp(s, ZSTR_VAL(sheet_name_zs))) || (!case_s && !strcmp(s, ZSTR_VAL(sheet_name_zs)))) {
+				size_t hay_len = strlen(s);
+				if (hay_len == needle_len &&
+				    ((case_s && !zend_binary_strcasecmp(s, hay_len, ZSTR_VAL(sheet_name_zs), needle_len)) ||
+				     (!case_s && !memcmp(s, ZSTR_VAL(sheet_name_zs), needle_len)))) {
 					ZVAL_OBJ(return_value, excel_object_new_sheet(excel_ce_sheet));
 					fo = Z_EXCEL_SHEET_OBJ_P(return_value);
 					fo->sheet = sh;
 					fo->book = book;
-					ZVAL_COPY(&fo->parent, object);
+					EXCEL_INIT_PARENT(fo, object);
 					return;
 				}
 			}
@@ -956,6 +1075,9 @@ EXCEL_METHOD(Book, deleteSheet)
 
 	BOOK_FROM_OBJECT(book, object);
 
+	/* Note: the generation counter is intentionally not bumped here. Other
+	 * sheet/format/font wrappers remain valid; using the wrapper of the
+	 * just-deleted sheet is the caller's responsibility. */
 	RETURN_BOOL(xlBookDelSheet(book, sheet));
 }
 /* }}} */
@@ -1016,7 +1138,7 @@ EXCEL_METHOD(Book, addSheet)
 	fo = Z_EXCEL_SHEET_OBJ_P(return_value);
 	fo->sheet = sh;
 	fo->book = book;
-	ZVAL_COPY(&fo->parent, object);
+	EXCEL_INIT_PARENT(fo, object);
 }
 /* }}} */
 
@@ -1058,7 +1180,7 @@ EXCEL_METHOD(Book, copySheet)
 	fo = Z_EXCEL_SHEET_OBJ_P(return_value);
 	fo->sheet = sh;
 	fo->book = book;
-	ZVAL_COPY(&fo->parent, object);
+	EXCEL_INIT_PARENT(fo, object);
 }
 /* }}} */
 
@@ -1131,7 +1253,7 @@ EXCEL_METHOD(Book, addFont)
 	fo = Z_EXCEL_FONT_OBJ_P(return_value);
 	fo->font = nfont;
 	fo->book = book;
-	ZVAL_COPY(&fo->parent, object);
+	EXCEL_INIT_PARENT(fo, object);
 }
 /* }}} */
 
@@ -1164,7 +1286,7 @@ EXCEL_METHOD(Book, addFormat)
 	fo = Z_EXCEL_FORMAT_OBJ_P(return_value);
 	fo->format = nformat;
 	fo->book = book;
-	ZVAL_COPY(&fo->parent, object);
+	EXCEL_INIT_PARENT(fo, object);
 }
 /* }}} */
 
@@ -1200,7 +1322,7 @@ EXCEL_METHOD(Book, getAllFormats)
 			fo = Z_EXCEL_FORMAT_OBJ_P(&value);
 			fo->format = format;
 			fo->book = book;
-			ZVAL_COPY(&fo->parent, object);
+			EXCEL_INIT_PARENT(fo, object);
 
 			add_next_index_zval(return_value, &value);
 		}
@@ -1539,6 +1661,11 @@ EXCEL_METHOD(Book, __construct)
 		}
 		if (obj->book) {
 			xlBookRelease(obj->book);
+			/* If the book object is being reconstructed, every existing child
+			 * wrapper now references freed libxl handles. Bump generation so
+			 * any subsequent use of those wrappers fails the stale-check
+			 * instead of dereferencing freed memory. */
+			obj->generation++;
 		}
 		obj->book = book;
 	}
@@ -1553,6 +1680,11 @@ EXCEL_METHOD(Book, __construct)
 	}
 
 	if (!name || name_len < 1 || !key || key_len < 1) {
+		RETURN_FALSE;
+	}
+
+	if (name_len != strlen(name) || key_len != strlen(key)) {
+		php_error_docref(NULL, E_WARNING, "License name/key must not contain NUL bytes");
 		RETURN_FALSE;
 	}
 
@@ -1601,6 +1733,9 @@ static void php_excel_add_picture(INTERNAL_FUNCTION_PARAMETERS, int mode) /* {{{
 	if (mode == 1) {
 		ret = xlBookAddPicture2(book, ZSTR_VAL(data_zs), ZSTR_LEN(data_zs));
 	} else {
+		/* path-mode: data_zs is a filesystem path. NUL truncation here
+		 * silently opens a different file than the caller validated. */
+		EXCEL_NUL_SAFE_STRING(data_zs)
 		stream = php_stream_open_wrapper(ZSTR_VAL(data_zs), "rb", REPORT_ERRORS, NULL);
 
 		if (!stream) {
@@ -1771,6 +1906,7 @@ EXCEL_METHOD(Book, loadInfo)
 
 	BOOK_FROM_OBJECT(book, object);
 
+	php_excel_book_bump_generation(object);
 	RETURN_BOOL(xlBookLoadInfo(book, ZSTR_VAL(filename_zs)));
 }
 /* }}} */
@@ -1822,7 +1958,7 @@ EXCEL_METHOD(Book, addRichString)
 	ro = Z_EXCEL_RICHSTRING_OBJ_P(return_value);
 	ro->richstring = rs;
 	ro->book = book;
-	ZVAL_COPY(&ro->parent, object);
+	EXCEL_INIT_PARENT(ro, object);
 }
 
 EXCEL_METHOD(Book, calcMode)
@@ -1873,7 +2009,7 @@ EXCEL_METHOD(Book, addConditionalFormat)
 	cfo = Z_EXCEL_CONDITIONALFORMAT_OBJ_P(return_value);
 	cfo->conditionalformat = cf;
 	cfo->book = book;
-	ZVAL_COPY(&cfo->parent, object);
+	EXCEL_INIT_PARENT(cfo, object);
 }
 
 EXCEL_METHOD(Book, addFormatFromStyle)
@@ -1899,7 +2035,7 @@ EXCEL_METHOD(Book, addFormatFromStyle)
 	fo = Z_EXCEL_FORMAT_OBJ_P(return_value);
 	fo->format = format;
 	fo->book = book;
-	ZVAL_COPY(&fo->parent, object);
+	EXCEL_INIT_PARENT(fo, object);
 }
 
 EXCEL_METHOD(Book, removeVBA)
@@ -1987,6 +2123,7 @@ EXCEL_METHOD(Book, loadInfoRaw)
 
 	BOOK_FROM_OBJECT(book, object);
 
+	php_excel_book_bump_generation(object);
 	RETURN_BOOL(xlBookLoadInfoRaw(book, ZSTR_VAL(data), ZSTR_LEN(data)));
 }
 #endif
@@ -2026,7 +2163,7 @@ EXCEL_METHOD(Book, conditionalFormat)
 	cfo = Z_EXCEL_CONDITIONALFORMAT_OBJ_P(return_value);
 	cfo->conditionalformat = cfh;
 	cfo->book = book;
-	ZVAL_COPY(&cfo->parent, object);
+	EXCEL_INIT_PARENT(cfo, object);
 }
 
 EXCEL_METHOD(Book, conditionalFormatSize)
@@ -2050,6 +2187,7 @@ EXCEL_METHOD(Book, clear)
 
 	BOOK_FROM_OBJECT(book, object);
 
+	php_excel_book_bump_generation(object);
 	xlBookClear(book);
 	RETURN_TRUE;
 }
@@ -2075,7 +2213,7 @@ EXCEL_METHOD(Book, coreProperties)
 	cpo = Z_EXCEL_COREPROPERTIES_OBJ_P(return_value);
 	cpo->coreproperties = cp;
 	cpo->book = book;
-	ZVAL_COPY(&cpo->parent, object);
+	EXCEL_INIT_PARENT(cpo, object);
 }
 
 EXCEL_METHOD(Book, removeAllPhonetics)
@@ -2295,7 +2433,7 @@ EXCEL_METHOD(Format, __construct)
 
 	obj->format = format;
 	obj->book = book;
-	ZVAL_COPY(&obj->parent, zbook);
+	EXCEL_INIT_PARENT(obj, zbook);
 }
 /* }}} */
 
@@ -2325,7 +2463,7 @@ EXCEL_METHOD(Font, __construct)
 
 	obj->font = font;
 	obj->book = book;
-	ZVAL_COPY(&obj->parent, zbook);
+	EXCEL_INIT_PARENT(obj, zbook);
 }
 /* }}} */
 
@@ -2376,7 +2514,7 @@ EXCEL_METHOD(Format, getFont)
 		fo = Z_EXCEL_FONT_OBJ_P(return_value);
 		fo->font = font;
 		fo->book = fobj->book;
-		ZVAL_COPY(&fo->parent, object);
+		EXCEL_INIT_PARENT(fo, object);
 	}
 }
 /* }}} */
@@ -2684,7 +2822,7 @@ EXCEL_METHOD(Sheet, __construct)
 
 	obj->sheet = sh;
 	obj->book = book;
-	ZVAL_COPY(&obj->parent, zbook);
+	EXCEL_INIT_PARENT(obj, zbook);
 }
 /* }}} */
 
@@ -2700,6 +2838,7 @@ EXCEL_METHOD(Sheet, cellType)
 		RETURN_FALSE;
 	}
 
+	EXCEL_VALIDATE_ROW_COL(row, col);
 	SHEET_FROM_OBJECT(sheet, object);
 
 	RETURN_LONG(xlSheetCellType(sheet, row, col));
@@ -2721,6 +2860,7 @@ EXCEL_METHOD(Sheet, cellFormat)
 		RETURN_FALSE;
 	}
 
+	EXCEL_VALIDATE_ROW_COL(row, col);
 	SHEET_AND_BOOK_FROM_OBJECT(sheet, book, object);
 
 	format = xlSheetCellFormat(sheet, row, col);
@@ -2729,7 +2869,7 @@ EXCEL_METHOD(Sheet, cellFormat)
 	fo = Z_EXCEL_FORMAT_OBJ_P(return_value);
 	fo->format = format;
 	fo->book = book;
-	ZVAL_COPY(&fo->parent, object);
+	EXCEL_INIT_PARENT(fo, object);
 }
 /* }}} */
 
@@ -2747,6 +2887,7 @@ EXCEL_METHOD(Sheet, setCellFormat)
 		RETURN_FALSE;
 	}
 
+	EXCEL_VALIDATE_ROW_COL(row, col);
 	SHEET_FROM_OBJECT(sheet, object);
 	FORMAT_FROM_OBJECT(format, oformat);
 
@@ -2970,6 +3111,7 @@ EXCEL_METHOD(Sheet, read)
 		RETURN_FALSE;
 	}
 
+	EXCEL_VALIDATE_ROW_COL(row, col);
 	SHEET_AND_BOOK_FROM_OBJECT(sheet, book, object);
 
 	if (oformat) {
@@ -2990,7 +3132,7 @@ EXCEL_METHOD(Sheet, read)
 		fo = Z_EXCEL_FORMAT_OBJ_P(oformat);
 		fo->format = format;
 		fo->book = book;
-		ZVAL_COPY(&fo->parent, object);
+		EXCEL_INIT_PARENT(fo, object);
 	}
 }
 /* }}} */
@@ -3033,6 +3175,12 @@ bool php_excel_write_cell(SheetHandle sheet, BookHandle book, int row, int col, 
 
 		case IS_STRING:
 			data_zs = Z_STR_P(data);
+			/* libxl writes use NUL-terminated C strings; reject embedded
+			 * NULs so the caller's value isn't silently truncated. */
+			if (ZSTR_LEN(data_zs) != strlen(ZSTR_VAL(data_zs))) {
+				php_error_docref(NULL, E_WARNING, "Cell string must not contain NUL bytes");
+				return 0;
+			}
 			if (Z_STRLEN_P(data) > 0 && '\'' == Z_STRVAL_P(data)[0]) {
 				return xlSheetWriteStr(sheet, row, col, (const char*) ZSTR_VAL(data_zs) + 1, format);
 			}
@@ -3072,7 +3220,7 @@ bool php_excel_write_cell(SheetHandle sheet, BookHandle book, int row, int col, 
 
 		default:
 			php_error_docref(NULL, E_WARNING, "Type mismatch: %d not supported for atomic write operation in row %d, column %d", Z_TYPE_P(data), row, col);
-			return 1;
+			return 0;
 	}
 
 	return 0;
@@ -3095,6 +3243,7 @@ EXCEL_METHOD(Sheet, write)
 		RETURN_FALSE;
 	}
 
+	EXCEL_VALIDATE_ROW_COL(row, col);
 	SHEET_AND_BOOK_FROM_OBJECT(sheet, book, object);
 	if (oformat) {
 		FORMAT_FROM_OBJECT(format, oformat);
@@ -3127,19 +3276,10 @@ EXCEL_METHOD(Sheet, writeRow)
 		RETURN_FALSE;
 	}
 
+	EXCEL_VALIDATE_ROW_COL(row, col);
 	SHEET_AND_BOOK_FROM_OBJECT(sheet, book, object);
 	if (oformat) {
 		FORMAT_FROM_OBJECT(format, oformat);
-	}
-
-	if (row < 0) {
-		php_error_docref(NULL, E_WARNING, "Invalid row number '%ld'", row);
-		RETURN_FALSE;
-	}
-
-	if (col < 0) {
-		php_error_docref(NULL, E_WARNING, "Invalid starting column number '%ld'", col);
-		RETURN_FALSE;
 	}
 
 	i = col;
@@ -3174,19 +3314,10 @@ EXCEL_METHOD(Sheet, writeCol)
 		RETURN_FALSE;
 	}
 
+	EXCEL_VALIDATE_ROW_COL(row, col);
 	SHEET_AND_BOOK_FROM_OBJECT(sheet, book, object);
 	if (oformat) {
 		FORMAT_FROM_OBJECT(format, oformat);
-	}
-
-	if (col < 0) {
-		php_error_docref(NULL, E_WARNING, "Invalid column number '%ld'", col);
-		RETURN_FALSE;
-	}
-
-	if (row < 0) {
-		php_error_docref(NULL, E_WARNING, "Invalid starting row number '%ld'", row);
-		RETURN_FALSE;
 	}
 
 	i = row;
@@ -3210,6 +3341,7 @@ EXCEL_METHOD(Sheet, writeCol)
 		if (zend_parse_parameters(ZEND_NUM_ARGS(), "ll", &r, &c) == FAILURE) { \
 			RETURN_FALSE; \
 		} \
+		EXCEL_VALIDATE_ROW_COL(r, c); \
 		SHEET_FROM_OBJECT(sheet, object); \
 		RETURN_BOOL(xlSheet ## func_name (sheet, r, c)); \
 	}
@@ -3234,6 +3366,7 @@ EXCEL_METHOD(Sheet, isDate)
 		RETURN_FALSE;
 	}
 
+	EXCEL_VALIDATE_ROW_COL(r, c);
 	SHEET_FROM_OBJECT(sheet, object);
 
 	if (xlSheetCellType(sheet, r, c) != CELLTYPE_NUMBER) {
@@ -4671,7 +4804,7 @@ EXCEL_METHOD(Book, insertSheet)
 	fo = Z_EXCEL_SHEET_OBJ_P(return_value);
 	fo->sheet = sh;
 	fo->book = book;
-	ZVAL_COPY(&fo->parent, object);
+	EXCEL_INIT_PARENT(fo, object);
 }
 /* }}} */
 
@@ -4970,6 +5103,8 @@ EXCEL_METHOD(Sheet, splitInfo)
 	SheetHandle sheet;
 	zval *object = ZEND_THIS;
 	int row, col;
+
+	ZEND_PARSE_PARAMETERS_NONE();
 
 	SHEET_FROM_OBJECT(sheet, object);
 
@@ -5307,6 +5442,8 @@ EXCEL_METHOD(Sheet, autoFilter)
 	excel_autofilter_object *obj;
 	SheetHandle sheet;
 
+	ZEND_PARSE_PARAMETERS_NONE();
+
 	SHEET_FROM_OBJECT(sheet, object);
 
 	// @todo check for XLSX format
@@ -5316,7 +5453,7 @@ EXCEL_METHOD(Sheet, autoFilter)
 	obj = Z_EXCEL_AUTOFILTER_OBJ_P(return_value);
 	obj->autofilter = ah;
 	obj->sheet = sheet;
-	ZVAL_COPY(&obj->parent, object);
+	EXCEL_INIT_PARENT(obj, object);
 }
 /* }}} */
 
@@ -5326,6 +5463,8 @@ EXCEL_METHOD(Sheet, applyFilter)
 {
 	zval *object = ZEND_THIS;
 	SheetHandle sheet;
+
+	ZEND_PARSE_PARAMETERS_NONE();
 
 	SHEET_FROM_OBJECT(sheet, object);
 
@@ -5342,6 +5481,8 @@ EXCEL_METHOD(Sheet, removeFilter)
 {
 	zval *object = ZEND_THIS;
 	SheetHandle sheet;
+
+	ZEND_PARSE_PARAMETERS_NONE();
 
 	SHEET_FROM_OBJECT(sheet, object);
 
@@ -5446,7 +5587,7 @@ EXCEL_METHOD(AutoFilter, __construct)
 
 	obj->sheet = sheet;
 	obj->autofilter = afh;
-	ZVAL_COPY(&obj->parent, zsheet);
+	EXCEL_INIT_PARENT(obj, zsheet);
 }
 /* }}} */
 
@@ -5511,7 +5652,7 @@ EXCEL_METHOD(AutoFilter, column)
 	obj = Z_EXCEL_FILTERCOLUMN_OBJ_P(return_value);
 	obj->autofilter = autofilter;
 	obj->filtercolumn = fch;
-	ZVAL_COPY(&obj->parent, object);
+	EXCEL_INIT_PARENT(obj, object);
 }
 /* }}} */
 
@@ -5549,7 +5690,7 @@ EXCEL_METHOD(AutoFilter, columnByIndex)
 	obj = Z_EXCEL_FILTERCOLUMN_OBJ_P(return_value);
 	obj->autofilter = autofilter;
 	obj->filtercolumn = fch;
-	ZVAL_COPY(&obj->parent, object);
+	EXCEL_INIT_PARENT(obj, object);
 }
 /* }}} */
 
@@ -5662,7 +5803,7 @@ EXCEL_METHOD(FilterColumn, __construct)
 
 	obj->filtercolumn = fch;
 	obj->autofilter = autofilter;
-	ZVAL_COPY(&obj->parent, zautofilter);
+	EXCEL_INIT_PARENT(obj, zautofilter);
 }
 /* }}} */
 
@@ -6096,7 +6237,7 @@ EXCEL_METHOD(Sheet, readRichStr)
 	ro = Z_EXCEL_RICHSTRING_OBJ_P(return_value);
 	ro->richstring = rs;
 	ro->book = book;
-	ZVAL_COPY(&ro->parent, object);
+	EXCEL_INIT_PARENT(ro, object);
 }
 
 EXCEL_METHOD(Sheet, writeRichStr)
@@ -6157,7 +6298,7 @@ EXCEL_METHOD(Sheet, formControl)
 	fco = Z_EXCEL_FORMCONTROL_OBJ_P(return_value);
 	fco->formcontrol = fc;
 	fco->sheet = sheet;
-	ZVAL_COPY(&fco->parent, object);
+	EXCEL_INIT_PARENT(fco, object);
 }
 
 EXCEL_METHOD(Sheet, getActiveCell)
@@ -6358,7 +6499,7 @@ EXCEL_METHOD(Sheet, colFormat)
 	fo = Z_EXCEL_FORMAT_OBJ_P(return_value);
 	fo->format = format;
 	fo->book = book;
-	ZVAL_COPY(&fo->parent, object);
+	EXCEL_INIT_PARENT(fo, object);
 }
 
 EXCEL_METHOD(Sheet, rowFormat)
@@ -6385,7 +6526,7 @@ EXCEL_METHOD(Sheet, rowFormat)
 	fo = Z_EXCEL_FORMAT_OBJ_P(return_value);
 	fo->format = format;
 	fo->book = book;
-	ZVAL_COPY(&fo->parent, object);
+	EXCEL_INIT_PARENT(fo, object);
 }
 
 EXCEL_METHOD(Sheet, setColPx)
@@ -6480,7 +6621,7 @@ EXCEL_METHOD(Sheet, addTable)
 	to = Z_EXCEL_TABLE_OBJ_P(return_value);
 	to->table = th;
 	to->sheet = sheet;
-	ZVAL_COPY(&to->parent, object);
+	EXCEL_INIT_PARENT(to, object);
 }
 
 EXCEL_METHOD(Sheet, getTableByName)
@@ -6509,7 +6650,7 @@ EXCEL_METHOD(Sheet, getTableByName)
 	to = Z_EXCEL_TABLE_OBJ_P(return_value);
 	to->table = th;
 	to->sheet = sheet;
-	ZVAL_COPY(&to->parent, object);
+	EXCEL_INIT_PARENT(to, object);
 }
 
 EXCEL_METHOD(Sheet, getTableByIndex)
@@ -6535,7 +6676,7 @@ EXCEL_METHOD(Sheet, getTableByIndex)
 	to = Z_EXCEL_TABLE_OBJ_P(return_value);
 	to->table = th;
 	to->sheet = sheet;
-	ZVAL_COPY(&to->parent, object);
+	EXCEL_INIT_PARENT(to, object);
 }
 
 EXCEL_METHOD(Sheet, applyFilter2)
@@ -6586,7 +6727,7 @@ EXCEL_METHOD(Sheet, addConditionalFormatting)
 	cfo = Z_EXCEL_CONDITIONALFORMATTING_OBJ_P(return_value);
 	cfo->conditionalformatting = cfh;
 	cfo->sheet = sheet;
-	ZVAL_COPY(&cfo->parent, object);
+	EXCEL_INIT_PARENT(cfo, object);
 }
 
 #if LIBXL_VERSION >= 0x05010000
@@ -6613,7 +6754,7 @@ EXCEL_METHOD(Sheet, conditionalFormatting)
 	cfo = Z_EXCEL_CONDITIONALFORMATTING_OBJ_P(return_value);
 	cfo->conditionalformatting = cfh;
 	cfo->sheet = sheet;
-	ZVAL_COPY(&cfo->parent, object);
+	EXCEL_INIT_PARENT(cfo, object);
 }
 
 EXCEL_METHOD(Sheet, removeConditionalFormatting)
@@ -6670,7 +6811,7 @@ EXCEL_METHOD(RichString, __construct)
 
 	obj->richstring = rs;
 	obj->book = book;
-	ZVAL_COPY(&obj->parent, zbook);
+	EXCEL_INIT_PARENT(obj, zbook);
 }
 
 EXCEL_METHOD(RichString, addFont)
@@ -6704,7 +6845,7 @@ EXCEL_METHOD(RichString, addFont)
 	fo = Z_EXCEL_FONT_OBJ_P(return_value);
 	fo->font = nfont;
 	fo->book = ro->book;
-	ZVAL_COPY(&fo->parent, object);
+	EXCEL_INIT_PARENT(fo, object);
 }
 
 EXCEL_METHOD(RichString, addText)
@@ -6763,7 +6904,7 @@ EXCEL_METHOD(RichString, getText)
 		fo = Z_EXCEL_FONT_OBJ_P(&zfont);
 		fo->font = font;
 		fo->book = ro->book;
-		ZVAL_COPY(&fo->parent, object);
+		EXCEL_INIT_PARENT(fo, object);
 		add_assoc_zval(return_value, "font", &zfont);
 	} else {
 		add_assoc_null(return_value, "font");
@@ -6809,7 +6950,7 @@ EXCEL_METHOD(FormControl, __construct)
 
 	obj->formcontrol = fc;
 	obj->sheet = sheet;
-	ZVAL_COPY(&obj->parent, zsheet);
+	EXCEL_INIT_PARENT(obj, zsheet);
 }
 
 EXCEL_METHOD(FormControl, objectType)
@@ -7336,7 +7477,7 @@ EXCEL_METHOD(ConditionalFormat, __construct)
 
 	obj->conditionalformat = cf;
 	obj->book = book;
-	ZVAL_COPY(&obj->parent, zbook);
+	EXCEL_INIT_PARENT(obj, zbook);
 }
 
 EXCEL_METHOD(ConditionalFormat, font)
@@ -7360,7 +7501,7 @@ EXCEL_METHOD(ConditionalFormat, font)
 	fo = Z_EXCEL_FONT_OBJ_P(return_value);
 	fo->font = font;
 	fo->book = cfo->book;
-	ZVAL_COPY(&fo->parent, object);
+	EXCEL_INIT_PARENT(fo, object);
 }
 
 EXCEL_METHOD(ConditionalFormat, numFormat)
@@ -7702,7 +7843,7 @@ EXCEL_METHOD(ConditionalFormatting, __construct)
 
 	obj->conditionalformatting = cfh;
 	obj->sheet = sheet;
-	ZVAL_COPY(&obj->parent, zsheet);
+	EXCEL_INIT_PARENT(obj, zsheet);
 }
 
 EXCEL_METHOD(ConditionalFormatting, addRange)
@@ -7942,7 +8083,7 @@ EXCEL_METHOD(CoreProperties, __construct)
 
 	obj->coreproperties = cp;
 	obj->book = book;
-	ZVAL_COPY(&obj->parent, zbook);
+	EXCEL_INIT_PARENT(obj, zbook);
 }
 
 #define COREPROPERTIES_STRING_GETTER(method_name, api_func) \
@@ -8085,7 +8226,7 @@ EXCEL_METHOD(Table, __construct)
 
 	obj->table = th;
 	obj->sheet = sheet;
-	ZVAL_COPY(&obj->parent, zsheet);
+	EXCEL_INIT_PARENT(obj, zsheet);
 }
 
 EXCEL_METHOD(Table, name)
@@ -8159,7 +8300,7 @@ EXCEL_METHOD(Table, autoFilter)
 	aobj = Z_EXCEL_AUTOFILTER_OBJ_P(return_value);
 	aobj->autofilter = afh;
 	aobj->sheet = tobj->sheet;
-	ZVAL_COPY(&aobj->parent, object);
+	EXCEL_INIT_PARENT(aobj, object);
 }
 
 EXCEL_METHOD(Table, style)
