@@ -145,7 +145,7 @@ class ExcelSheet
     public function setLandscape(mixed $value): mixed {}  // ZPP ""
     public function landscape(): bool {}  // ZPP ""
     public function paper(): int|false {}  // ZPP ""
-    public function setPaper(string $value): mixed {}  // ZPP ""
+    public function setPaper(int $value): mixed {}  // ZPP "l"
     public function header(): string|null|false {}  // ZPP ""
     public function footer(): string|null|false {}  // ZPP ""
     public function setHeader(mixed $header, mixed $margin): bool {}  // ZPP ""
@@ -170,8 +170,8 @@ class ExcelSheet
     public function setName(string $name): mixed {}  // ZPP "S"
     public function setNamedRange(string $name, int $row, int $col, int $to_row, int $to_col, int $scope_id = 0): bool {}  // ZPP "Sllll|l"
     public function delNamedRange(string $name, int $scope_id = 0): bool {}  // ZPP "S|l"
-    public function setPrintRepeatRows(mixed $row_start, mixed $row_end): bool {}  // ZPP ""
-    public function setPrintRepeatCols(bool $col_start, mixed $col_end): bool {}  // ZPP ""
+    public function setPrintRepeatRows(int $row_start, int $row_end): bool {}  // ZPP "ll"
+    public function setPrintRepeatCols(int $col_start, int $col_end): bool {}  // ZPP "ll"
     public function getGroupSummaryBelow(): bool {}  // ZPP ""
     public function setGroupSummaryBelow(bool $direction): bool {}  // ZPP "b"
     public function getGroupSummaryRight(): bool {}  // ZPP ""
@@ -437,14 +437,14 @@ class ExcelConditionalFormat
 
 class ExcelConditionalFormatting
 {
-    public function __construct(ExcelSheet $sheet) {}  // ZPP "Ollll"
+    public function __construct(ExcelSheet $sheet) {}  // ZPP "O"
     public function addRange(int $rowFirst, int $rowLast, int $colFirst, int $colLast): bool {}  // ZPP "llll"
-    public function addRule(int $type, ExcelConditionalFormat $cf, string $value, string $stopIfTrue = ""): bool {}  // ZPP "lOS|b"
-    public function addTopRule(ExcelConditionalFormat $cf, int $value, int $bottom, bool $percent, bool $stopIfTrue = false): bool {}  // ZPP "Olbb|b"
-    public function addOpNumRule(int $op, ExcelConditionalFormat $cf, float $value1, float $value2, float $stopIfTrue = 0.0): bool {}  // ZPP "lOdd|b"
-    public function addOpStrRule(int $op, ExcelConditionalFormat $cf, string $value1, string $value2, string $stopIfTrue = ""): bool {}  // ZPP "lOSS|b"
-    public function addAboveAverageRule(ExcelConditionalFormat $cf, bool $above, bool $equal, bool $stdDev, int $stopIfTrue = 0): bool {}  // ZPP "Obbl|b"
-    public function addTimePeriodRule(ExcelConditionalFormat $cf, int $timePeriod, int $stopIfTrue = 0): bool {}  // ZPP "Ol|b"
+    public function addRule(int $type, ExcelConditionalFormat $cf, string $value, bool $stopIfTrue = false): bool {}  // ZPP "lOS|b"
+    public function addTopRule(ExcelConditionalFormat $cf, int $value, bool $bottom, bool $percent, bool $stopIfTrue = false): bool {}  // ZPP "Olbb|b"
+    public function addOpNumRule(int $op, ExcelConditionalFormat $cf, float $value1, float $value2, bool $stopIfTrue = false): bool {}  // ZPP "lOdd|b"
+    public function addOpStrRule(int $op, ExcelConditionalFormat $cf, string $value1, string $value2, bool $stopIfTrue = false): bool {}  // ZPP "lOSS|b"
+    public function addAboveAverageRule(ExcelConditionalFormat $cf, bool $above, bool $equal, int $stdDev, bool $stopIfTrue = false): bool {}  // ZPP "Obbl|b"
+    public function addTimePeriodRule(ExcelConditionalFormat $cf, int $timePeriod, bool $stopIfTrue = false): bool {}  // ZPP "Ol|b"
     public function add2ColorScaleRule(int $minColor, int $maxColor, int $minType, float $minValue, int $maxType, float $maxValue, bool $stopIfTrue = false): bool {}  // ZPP "llldld|b"
     public function add2ColorScaleFormulaRule(int $minColor, int $maxColor, int $minType, string $minValue, int $maxType, string $maxValue, bool $stopIfTrue = false): bool {}  // ZPP "lllSlS|b"
     public function add3ColorScaleRule(int $minColor, int $midColor, int $maxColor, int $minType, float $minValue, int $midType, float $midValue, int $maxType, float $maxValue, bool $stopIfTrue = false): bool {}  // ZPP "lllldldld|b"
@@ -484,7 +484,7 @@ class ExcelCoreProperties
 
 class ExcelTable
 {
-    public function __construct(ExcelSheet $sheet, string $name, string $rowFirst, int $rowLast, int $colFirst, int $colLast, int $hasHeaders = 0, bool $style = false) {}  // ZPP "OSllll|bl"
+    public function __construct(ExcelSheet $sheet, string $name, int $rowFirst, int $rowLast, int $colFirst, int $colLast, bool $hasHeaders = true, int $style = 0) {}  // ZPP "OSllll|bl"
     public function name(): mixed {}  // ZPP ""
     public function setName(string $value): bool {}  // ZPP "S"
     public function ref(): mixed {}  // ZPP ""

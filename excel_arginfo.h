@@ -1,5 +1,5 @@
 /* This is a generated file, edit excel.stub.php instead.
- * Stub hash: d1178016f27953f7b8ad6e6e18a36661707880b1 */
+ * Stub hash: 1952936763fab7b2f8b7c0fa6ef20da99d6dc8e7 */
 
 ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_ExcelBook_requiresKey, 0, 0, _IS_BOOL, 0)
 ZEND_END_ARG_INFO()
@@ -497,7 +497,7 @@ ZEND_END_ARG_INFO()
 #define arginfo_class_ExcelSheet_paper arginfo_class_ExcelBook_sheetCount
 
 ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_ExcelSheet_setPaper, 0, 1, IS_MIXED, 0)
-	ZEND_ARG_TYPE_INFO(0, value, IS_STRING, 0)
+	ZEND_ARG_TYPE_INFO(0, value, IS_LONG, 0)
 ZEND_END_ARG_INFO()
 
 ZEND_BEGIN_ARG_WITH_RETURN_TYPE_MASK_EX(arginfo_class_ExcelSheet_header, 0, 0, MAY_BE_STRING|MAY_BE_NULL|MAY_BE_FALSE)
@@ -546,7 +546,9 @@ ZEND_END_ARG_INFO()
 
 #define arginfo_class_ExcelSheet_printHeaders arginfo_class_ExcelBook_requiresKey
 
-#define arginfo_class_ExcelSheet_setPrintHeaders arginfo_class_ExcelSheet_setPaper
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_ExcelSheet_setPrintHeaders, 0, 1, IS_MIXED, 0)
+	ZEND_ARG_TYPE_INFO(0, value, IS_STRING, 0)
+ZEND_END_ARG_INFO()
 
 #define arginfo_class_ExcelSheet_name arginfo_class_ExcelSheet_header
 
@@ -569,13 +571,13 @@ ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_ExcelSheet_delNamedRange, 
 ZEND_END_ARG_INFO()
 
 ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_ExcelSheet_setPrintRepeatRows, 0, 2, _IS_BOOL, 0)
-	ZEND_ARG_TYPE_INFO(0, row_start, IS_MIXED, 0)
-	ZEND_ARG_TYPE_INFO(0, row_end, IS_MIXED, 0)
+	ZEND_ARG_TYPE_INFO(0, row_start, IS_LONG, 0)
+	ZEND_ARG_TYPE_INFO(0, row_end, IS_LONG, 0)
 ZEND_END_ARG_INFO()
 
 ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_ExcelSheet_setPrintRepeatCols, 0, 2, _IS_BOOL, 0)
-	ZEND_ARG_TYPE_INFO(0, col_start, _IS_BOOL, 0)
-	ZEND_ARG_TYPE_INFO(0, col_end, IS_MIXED, 0)
+	ZEND_ARG_TYPE_INFO(0, col_start, IS_LONG, 0)
+	ZEND_ARG_TYPE_INFO(0, col_end, IS_LONG, 0)
 ZEND_END_ARG_INFO()
 
 #define arginfo_class_ExcelSheet_getGroupSummaryBelow arginfo_class_ExcelBook_requiresKey
@@ -1310,13 +1312,13 @@ ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_ExcelConditionalFormatting
 	ZEND_ARG_TYPE_INFO(0, type, IS_LONG, 0)
 	ZEND_ARG_OBJ_INFO(0, cf, ExcelConditionalFormat, 0)
 	ZEND_ARG_TYPE_INFO(0, value, IS_STRING, 0)
-	ZEND_ARG_TYPE_INFO_WITH_DEFAULT_VALUE(0, stopIfTrue, IS_STRING, 0, "\"\"")
+	ZEND_ARG_TYPE_INFO_WITH_DEFAULT_VALUE(0, stopIfTrue, _IS_BOOL, 0, "false")
 ZEND_END_ARG_INFO()
 
 ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_ExcelConditionalFormatting_addTopRule, 0, 4, _IS_BOOL, 0)
 	ZEND_ARG_OBJ_INFO(0, cf, ExcelConditionalFormat, 0)
 	ZEND_ARG_TYPE_INFO(0, value, IS_LONG, 0)
-	ZEND_ARG_TYPE_INFO(0, bottom, IS_LONG, 0)
+	ZEND_ARG_TYPE_INFO(0, bottom, _IS_BOOL, 0)
 	ZEND_ARG_TYPE_INFO(0, percent, _IS_BOOL, 0)
 	ZEND_ARG_TYPE_INFO_WITH_DEFAULT_VALUE(0, stopIfTrue, _IS_BOOL, 0, "false")
 ZEND_END_ARG_INFO()
@@ -1326,7 +1328,7 @@ ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_ExcelConditionalFormatting
 	ZEND_ARG_OBJ_INFO(0, cf, ExcelConditionalFormat, 0)
 	ZEND_ARG_TYPE_INFO(0, value1, IS_DOUBLE, 0)
 	ZEND_ARG_TYPE_INFO(0, value2, IS_DOUBLE, 0)
-	ZEND_ARG_TYPE_INFO_WITH_DEFAULT_VALUE(0, stopIfTrue, IS_DOUBLE, 0, "0.0")
+	ZEND_ARG_TYPE_INFO_WITH_DEFAULT_VALUE(0, stopIfTrue, _IS_BOOL, 0, "false")
 ZEND_END_ARG_INFO()
 
 ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_ExcelConditionalFormatting_addOpStrRule, 0, 4, _IS_BOOL, 0)
@@ -1334,21 +1336,21 @@ ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_ExcelConditionalFormatting
 	ZEND_ARG_OBJ_INFO(0, cf, ExcelConditionalFormat, 0)
 	ZEND_ARG_TYPE_INFO(0, value1, IS_STRING, 0)
 	ZEND_ARG_TYPE_INFO(0, value2, IS_STRING, 0)
-	ZEND_ARG_TYPE_INFO_WITH_DEFAULT_VALUE(0, stopIfTrue, IS_STRING, 0, "\"\"")
+	ZEND_ARG_TYPE_INFO_WITH_DEFAULT_VALUE(0, stopIfTrue, _IS_BOOL, 0, "false")
 ZEND_END_ARG_INFO()
 
 ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_ExcelConditionalFormatting_addAboveAverageRule, 0, 4, _IS_BOOL, 0)
 	ZEND_ARG_OBJ_INFO(0, cf, ExcelConditionalFormat, 0)
 	ZEND_ARG_TYPE_INFO(0, above, _IS_BOOL, 0)
 	ZEND_ARG_TYPE_INFO(0, equal, _IS_BOOL, 0)
-	ZEND_ARG_TYPE_INFO(0, stdDev, _IS_BOOL, 0)
-	ZEND_ARG_TYPE_INFO_WITH_DEFAULT_VALUE(0, stopIfTrue, IS_LONG, 0, "0")
+	ZEND_ARG_TYPE_INFO(0, stdDev, IS_LONG, 0)
+	ZEND_ARG_TYPE_INFO_WITH_DEFAULT_VALUE(0, stopIfTrue, _IS_BOOL, 0, "false")
 ZEND_END_ARG_INFO()
 
 ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_ExcelConditionalFormatting_addTimePeriodRule, 0, 2, _IS_BOOL, 0)
 	ZEND_ARG_OBJ_INFO(0, cf, ExcelConditionalFormat, 0)
 	ZEND_ARG_TYPE_INFO(0, timePeriod, IS_LONG, 0)
-	ZEND_ARG_TYPE_INFO_WITH_DEFAULT_VALUE(0, stopIfTrue, IS_LONG, 0, "0")
+	ZEND_ARG_TYPE_INFO_WITH_DEFAULT_VALUE(0, stopIfTrue, _IS_BOOL, 0, "false")
 ZEND_END_ARG_INFO()
 
 ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_ExcelConditionalFormatting_add2ColorScaleRule, 0, 6, _IS_BOOL, 0)
@@ -1451,12 +1453,12 @@ ZEND_END_ARG_INFO()
 ZEND_BEGIN_ARG_INFO_EX(arginfo_class_ExcelTable___construct, 0, 0, 6)
 	ZEND_ARG_OBJ_INFO(0, sheet, ExcelSheet, 0)
 	ZEND_ARG_TYPE_INFO(0, name, IS_STRING, 0)
-	ZEND_ARG_TYPE_INFO(0, rowFirst, IS_STRING, 0)
+	ZEND_ARG_TYPE_INFO(0, rowFirst, IS_LONG, 0)
 	ZEND_ARG_TYPE_INFO(0, rowLast, IS_LONG, 0)
 	ZEND_ARG_TYPE_INFO(0, colFirst, IS_LONG, 0)
 	ZEND_ARG_TYPE_INFO(0, colLast, IS_LONG, 0)
-	ZEND_ARG_TYPE_INFO_WITH_DEFAULT_VALUE(0, hasHeaders, IS_LONG, 0, "0")
-	ZEND_ARG_TYPE_INFO_WITH_DEFAULT_VALUE(0, style, _IS_BOOL, 0, "false")
+	ZEND_ARG_TYPE_INFO_WITH_DEFAULT_VALUE(0, hasHeaders, _IS_BOOL, 0, "true")
+	ZEND_ARG_TYPE_INFO_WITH_DEFAULT_VALUE(0, style, IS_LONG, 0, "0")
 ZEND_END_ARG_INFO()
 
 #define arginfo_class_ExcelTable_name arginfo_class_ExcelFormControl_objectType

@@ -49,6 +49,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `xlBookAddFont`/`xlBookAddFormat` directly with freed handles. `clone $f`
   on a stale wrapper now throws an exception instead of producing an ASAN
   SEGV.
+- NUL-byte protection extended to
+  `ExcelConditionalFormatting::add2ColorScaleFormulaRule()` and
+  `add3ColorScaleFormulaRule()` (formula strings) and to
+  `ExcelSheet::addDataValidationDouble()` (prompt/error strings) — all
+  previously passed `ZSTR_VAL()` directly to libxl, where embedded NULs
+  would silently truncate the value while peer methods rejected it.
 - `ExcelBook::__construct()` with a NUL-bearing license name or key now
   throws an exception. Previously it emitted a warning and returned an
   initialized workbook, since PHP ignores constructor return values —
@@ -78,7 +84,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   range-check reads. `Sheet::insertRow()`, `Sheet::removeRow()`,
   `Sheet::insertCol()`, and `Sheet::removeCol()` validate against the
   appropriate axis limit for both arguments (the second argument is a row
-  or column endpoint, not the perpendicular axis).
+  or column endpoint, not the perpendicular axis). Coordinate validation
+  also covers `Sheet::rowColToAddr()`, `setActiveCell()`, `setPrintArea()`,
+  `setMerge()`, `getMerge()`, `deleteMerge()`, `clear()` (range), `copy()`,
+  `splitSheet()`, `setTopLeftView()`, `readComment()`, `writeComment()`,
+  `removeComment()`, `removePicture()`, `readRichStr()`, `writeRichStr()`,
+  `hyperlinkIndex()`, `writeError()`, `addPictureScaled()`, `addPictureDim()`,
+  `setColWidth()`, `setColPx()`, `setRowPx()`, `setBorder()`, `addTable()`,
+  `setPrintRepeatRows()`, `setPrintRepeatCols()`,
+  `addDataValidation()`/`addDataValidationDouble()`,
+  `AutoFilter::setRef()`, `Sheet::addConditionalFormatting()`, and
+  `ConditionalFormatting::addRange()`.
 - `Sheet::autoFilter()`, `Sheet::applyFilter()`, `Sheet::removeFilter()`, and
   `Sheet::splitInfo()` now call `ZEND_PARSE_PARAMETERS_NONE()` so calling
   them with extra arguments raises `ArgumentCountError` rather than a debug-
@@ -87,9 +103,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `Book::addPictureFromFile(string)`, `Book::addPictureFromString(string)`
   (were `mixed`/`bool`); `Sheet::insertRow/insertCol/removeRow/removeCol(int, int)`
   (the spurious third `update_named_ranges` parameter is removed —
-  the underlying C ZPP only ever parsed `"ll"`); `Sheet::horPageBreak(int, bool)`
-  and `Sheet::verPageBreak(int, bool)` (were `int, int`). Reflection,
-  IDEs, and static analyzers now see the true signatures.
+  the underlying C ZPP only ever parsed `"ll"`); `Sheet::horPageBreak(int, bool)`,
+  `Sheet::verPageBreak(int, bool)` (were `int, int`); `Sheet::setPaper(int)`
+  (was `string`); `Sheet::setPrintRepeatRows/Cols(int, int)` (had drifted
+  to `mixed`/`bool`); `ConditionalFormatting::addRule/addOpNumRule/
+  addOpStrRule/addAboveAverageRule/addTimePeriodRule` `stopIfTrue` is
+  `bool` (was `string`/`float`/`int`); `ConditionalFormatting::addTopRule`
+  `bottom` is `bool` (was `int`); `ConditionalFormatting::addAboveAverageRule`
+  `stdDev` is `int` (was `bool`); `ExcelTable::__construct` `rowFirst:int`
+  / `hasHeaders:bool` / `style:int` (were `string`/`int`/`bool`).
+  Reflection, IDEs, and static analyzers now see the true signatures.
 - LibXL 4.6.0 test compatibility: tests calling LibXL 5.x-only APIs
   (`addConditionalFormatting` 4-arg, `dpiAwareness`, `conditionalFormatSize`,
   etc.) now skip via `method_exists()` instead of failing.

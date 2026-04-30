@@ -3559,6 +3559,7 @@ EXCEL_METHOD(Sheet, readComment)
 			RETURN_FALSE;
 		}
 
+		EXCEL_VALIDATE_ROW_COL(r, c, object);
 		SHEET_FROM_OBJECT(sheet, object);
 
 		s = xlSheetReadComment(sheet, r, c);
@@ -3586,8 +3587,7 @@ EXCEL_METHOD(Sheet, writeComment)
 		EXCEL_NON_EMPTY_STRING(val_zs)
 		EXCEL_NUL_SAFE_STRING(val_zs)
 		EXCEL_NUL_SAFE_STRING(auth_zs)
-		EXCEL_VALIDATE_INT_RANGE(r)
-		EXCEL_VALIDATE_INT_RANGE(c)
+		EXCEL_VALIDATE_ROW_COL(r, c, object);
 
 		SHEET_FROM_OBJECT(sheet, object);
 
@@ -3611,6 +3611,7 @@ EXCEL_METHOD(Sheet, setColWidth)
 			RETURN_FALSE;
 		}
 
+		EXCEL_VALIDATE_COL_RANGE(s, e, object);
 		SHEET_FROM_OBJECT(sheet, object);
 
 		if (f) {
@@ -3619,9 +3620,6 @@ EXCEL_METHOD(Sheet, setColWidth)
 
 		if (e < s) {
 			php_error_docref(NULL, E_WARNING, "Start cell is greater then end cell");
-			RETURN_FALSE;
-		} else if (s < 0) {
-			php_error_docref(NULL, E_WARNING, "Start cell cannot be less then 0");
 			RETURN_FALSE;
 		} else if (width < -1) {
 			php_error_docref(NULL, E_WARNING, "Width cannot be less then -1");
@@ -3648,16 +3646,21 @@ EXCEL_METHOD(Sheet, setRowHeight)
 			RETURN_FALSE;
 		}
 
+		{
+			excel_book_object *_vb = php_excel_resolve_book_obj(object);
+			zend_long _maxr = (_vb && _vb->is_xlsx) ? EXCEL_MAX_ROW_XLSX : EXCEL_MAX_ROW_XLS;
+			if (row < 0 || row > _maxr) {
+				php_error_docref(NULL, E_WARNING, "Invalid row: " ZEND_LONG_FMT, row);
+				RETURN_FALSE;
+			}
+		}
 		SHEET_FROM_OBJECT(sheet, object);
 
 		if (f) {
 			FORMAT_FROM_OBJECT(format, f);
 		}
 
-		if (row < 0) {
-			php_error_docref(NULL, E_WARNING, "Row number cannot be less then 0");
-			RETURN_FALSE;
-		} else if (height < 0) {
+		if (height < 0) {
 			php_error_docref(NULL, E_WARNING, "Height cannot be less then 0");
 			RETURN_FALSE;
 		}
@@ -3679,6 +3682,7 @@ EXCEL_METHOD(Sheet, getMerge)
 			RETURN_FALSE;
 		}
 
+		EXCEL_VALIDATE_ROW_COL(row, col, object);
 		SHEET_FROM_OBJECT(sheet, object);
 
 		if (!xlSheetGetMerge(sheet, row, col, &rowFirst, &rowLast, &colFirst, &colLast)) {
@@ -3705,6 +3709,8 @@ EXCEL_METHOD(Sheet, setMerge)
 		RETURN_FALSE;
 	}
 
+	EXCEL_VALIDATE_ROW_RANGE(row_s, row_e, object);
+	EXCEL_VALIDATE_COL_RANGE(col_s, col_e, object);
 	SHEET_FROM_OBJECT(sheet, object);
 
 	RETURN_BOOL(xlSheetSetMerge(sheet, row_s, row_e, col_s, col_e));
@@ -3723,6 +3729,7 @@ EXCEL_METHOD(Sheet, deleteMerge)
 		RETURN_FALSE;
 	}
 
+	EXCEL_VALIDATE_ROW_COL(row, col, object);
 	SHEET_FROM_OBJECT(sheet, object);
 
 	RETURN_BOOL(xlSheetDelMerge(sheet, row, col));
@@ -3743,6 +3750,7 @@ EXCEL_METHOD(Sheet, addPictureScaled)
 		RETURN_FALSE;
 	}
 
+	EXCEL_VALIDATE_ROW_COL(row, col, object);
 	SHEET_FROM_OBJECT(sheet, object);
 
 	xlSheetSetPicture(sheet, row, col, pic_id, scale, x_offset, y_offset
@@ -3764,6 +3772,7 @@ EXCEL_METHOD(Sheet, addPictureDim)
 		RETURN_FALSE;
 	}
 
+	EXCEL_VALIDATE_ROW_COL(row, col, object);
 	SHEET_FROM_OBJECT(sheet, object);
 
 	xlSheetSetPicture2(sheet, row, col, pic_id, w, h, x_offset, y_offset
@@ -3813,6 +3822,7 @@ EXCEL_METHOD(Sheet, splitSheet)
 		RETURN_FALSE;
 	}
 
+	EXCEL_VALIDATE_ROW_COL(row, col, object);
 	SHEET_FROM_OBJECT(sheet, object);
 
 	xlSheetSplit(sheet, row, col);
@@ -3860,6 +3870,8 @@ EXCEL_METHOD(Sheet, clear)
 		RETURN_FALSE;
 	}
 
+	EXCEL_VALIDATE_ROW_RANGE(row_s, row_e, object);
+	EXCEL_VALIDATE_COL_RANGE(col_s, col_e, object);
 	SHEET_FROM_OBJECT(sheet, object);
 
 	xlSheetClear(sheet, row_s, row_e, col_s, col_e);
@@ -3878,6 +3890,8 @@ EXCEL_METHOD(Sheet, copy)
 		RETURN_FALSE;
 	}
 
+	EXCEL_VALIDATE_ROW_COL(row, col, object);
+	EXCEL_VALIDATE_ROW_COL(to_row, to_col, object);
 	SHEET_FROM_OBJECT(sheet, object);
 
 	RETURN_BOOL(xlSheetCopyCell(sheet, row, col, to_row, to_col));
@@ -4059,6 +4073,8 @@ EXCEL_METHOD(Sheet, setTopLeftView)
 		RETURN_FALSE;
 	}
 
+	EXCEL_VALIDATE_ROW_COL(r, c, object);
+
 	SHEET_FROM_OBJECT(sheet, object);
 
 	xlSheetSetTopLeftView(sheet, r, c);
@@ -4080,6 +4096,7 @@ EXCEL_METHOD(Sheet, rowColToAddr)
 		RETURN_FALSE;
 	}
 
+	EXCEL_VALIDATE_ROW_COL(row, col, object);
 	SHEET_FROM_OBJECT(sheet, object);
 
 	cel_ref = xlSheetRowColToAddr(sheet, row, col, row_relative, col_relative);
@@ -4461,7 +4478,7 @@ EXCEL_METHOD(Sheet, delNamedRange)
 }
 /* }}} */
 
-#define PHP_EXCEL_SHEET_PRINT_AREA(func_name) \
+#define PHP_EXCEL_SHEET_PRINT_REPEAT_ROWS(func_name) \
 	{ \
 		SheetHandle sheet; \
 		zval *object = ZEND_THIS; \
@@ -4469,6 +4486,25 @@ EXCEL_METHOD(Sheet, delNamedRange)
 		if (zend_parse_parameters(ZEND_NUM_ARGS(), "ll", &s, &e) == FAILURE) { \
 			RETURN_FALSE; \
 		} \
+		EXCEL_VALIDATE_ROW_RANGE(s, e, object); \
+		if (s > e) { \
+			php_error_docref(NULL, E_WARNING, "The range start is greater than the end."); \
+			RETURN_FALSE; \
+		} \
+		SHEET_FROM_OBJECT(sheet, object); \
+		xlSheet ## func_name (sheet, s, e); \
+		RETURN_TRUE; \
+	}
+
+#define PHP_EXCEL_SHEET_PRINT_REPEAT_COLS(func_name) \
+	{ \
+		SheetHandle sheet; \
+		zval *object = ZEND_THIS; \
+		zend_long s, e; \
+		if (zend_parse_parameters(ZEND_NUM_ARGS(), "ll", &s, &e) == FAILURE) { \
+			RETURN_FALSE; \
+		} \
+		EXCEL_VALIDATE_COL_RANGE(s, e, object); \
 		if (s > e) { \
 			php_error_docref(NULL, E_WARNING, "The range start is greater than the end."); \
 			RETURN_FALSE; \
@@ -4482,7 +4518,7 @@ EXCEL_METHOD(Sheet, delNamedRange)
 	Sets repeated rows on each page from rowFirst to rowLast. */
 EXCEL_METHOD(Sheet, setPrintRepeatRows)
 {
-	PHP_EXCEL_SHEET_PRINT_AREA(SetPrintRepeatRows)
+	PHP_EXCEL_SHEET_PRINT_REPEAT_ROWS(SetPrintRepeatRows)
 }
 /* }}} */
 
@@ -4490,7 +4526,7 @@ EXCEL_METHOD(Sheet, setPrintRepeatRows)
 	Sets repeated columns on each page from colFirst to colLast. */
 EXCEL_METHOD(Sheet, setPrintRepeatCols)
 {
-	PHP_EXCEL_SHEET_PRINT_AREA(SetPrintRepeatCols)
+	PHP_EXCEL_SHEET_PRINT_REPEAT_COLS(SetPrintRepeatCols)
 }
 /* }}} */
 
@@ -4990,6 +5026,9 @@ EXCEL_METHOD(Sheet, setPrintArea)
 	if (zend_parse_parameters(ZEND_NUM_ARGS(), "llll", &row, &to_row, &col, &to_col) == FAILURE) {
 		RETURN_FALSE;
 	}
+
+	EXCEL_VALIDATE_ROW_RANGE(row, to_row, object);
+	EXCEL_VALIDATE_COL_RANGE(col, to_col, object);
 
 	if (row > to_row) {
 		php_error_docref(NULL, E_WARNING, "The range row start cannot be greater than row end.");
@@ -5638,8 +5677,7 @@ EXCEL_METHOD(Sheet, writeError)
 		RETURN_FALSE;
 	}
 
-	EXCEL_VALIDATE_INT_RANGE(row);
-	EXCEL_VALIDATE_INT_RANGE(col);
+	EXCEL_VALIDATE_ROW_COL(row, col, object);
 
 	SHEET_FROM_OBJECT(sheet, object);
 
@@ -5663,6 +5701,7 @@ EXCEL_METHOD(Sheet, removeComment)
 		RETURN_FALSE;
 	}
 
+	EXCEL_VALIDATE_ROW_COL(row, col, object);
 	SHEET_FROM_OBJECT(sheet, object);
 
 	xlSheetRemoveComment(sheet, row, col);
@@ -5734,6 +5773,8 @@ EXCEL_METHOD(AutoFilter, setRef)
 		RETURN_FALSE;
 	}
 
+	EXCEL_VALIDATE_ROW_RANGE(rowFirst, rowLast, object);
+	EXCEL_VALIDATE_COL_RANGE(colFirst, colLast, object);
 	AUTOFILTER_FROM_OBJECT(autofilter, object);
 
 	xlAutoFilterSetRef(autofilter, rowFirst, rowLast, colFirst, colLast);
@@ -6195,10 +6236,8 @@ EXCEL_METHOD(Sheet, addDataValidation)
 	EXCEL_NUL_SAFE_STRING(prompt)
 	EXCEL_NUL_SAFE_STRING(error_title)
 	EXCEL_NUL_SAFE_STRING(error)
-	EXCEL_VALIDATE_INT_RANGE(row_first);
-	EXCEL_VALIDATE_INT_RANGE(row_last);
-	EXCEL_VALIDATE_INT_RANGE(col_first);
-	EXCEL_VALIDATE_INT_RANGE(col_last);
+	EXCEL_VALIDATE_ROW_RANGE(row_first, row_last, object);
+	EXCEL_VALIDATE_COL_RANGE(col_first, col_last, object);
 
 	if ((op == VALIDATION_OP_BETWEEN || op == VALIDATION_OP_NOTBETWEEN) && ZEND_NUM_ARGS() < 8) {
 		php_error_docref(NULL, E_WARNING, "The second value can not be null when used with (not) between operator.");
@@ -6236,6 +6275,13 @@ EXCEL_METHOD(Sheet, addDataValidationDouble)
 			&show_errormessage, &prompt_title, &prompt, &error_title, &error, &error_style) == FAILURE) {
 		RETURN_FALSE;
 	}
+
+	EXCEL_NUL_SAFE_STRING(prompt_title)
+	EXCEL_NUL_SAFE_STRING(prompt)
+	EXCEL_NUL_SAFE_STRING(error_title)
+	EXCEL_NUL_SAFE_STRING(error)
+	EXCEL_VALIDATE_ROW_RANGE(row_first, row_last, object);
+	EXCEL_VALIDATE_COL_RANGE(col_first, col_last, object);
 
 	if ((op == VALIDATION_OP_BETWEEN || op == VALIDATION_OP_NOTBETWEEN) && ZEND_NUM_ARGS() < 8) {
 		php_error_docref(NULL, E_WARNING, "The second value can not be null when used with (not) between operator.");
@@ -6297,6 +6343,7 @@ EXCEL_METHOD(Sheet, removePicture)
 		RETURN_FALSE;
 	}
 
+	EXCEL_VALIDATE_ROW_COL(row, col, object);
 	SHEET_FROM_OBJECT(sheet, object);
 
 	RETURN_BOOL(xlSheetRemovePicture(sheet, row, col));
@@ -6335,6 +6382,7 @@ EXCEL_METHOD(Sheet, readRichStr)
 		RETURN_FALSE;
 	}
 
+	EXCEL_VALIDATE_ROW_COL(row, col, object);
 	SHEET_AND_BOOK_FROM_OBJECT(sheet, book, object);
 
 	rs = xlSheetReadRichStr(sheet, row, col, NULL);
@@ -6362,6 +6410,7 @@ EXCEL_METHOD(Sheet, writeRichStr)
 		RETURN_FALSE;
 	}
 
+	EXCEL_VALIDATE_ROW_COL(row, col, object);
 	SHEET_FROM_OBJECT(sheet, object);
 
 	excel_richstring_object *rso = Z_EXCEL_RICHSTRING_OBJ_P(zrs);
@@ -6439,6 +6488,7 @@ EXCEL_METHOD(Sheet, setActiveCell)
 		RETURN_FALSE;
 	}
 
+	EXCEL_VALIDATE_ROW_COL(row, col, object);
 	SHEET_FROM_OBJECT(sheet, object);
 
 	xlSheetSetActiveCell(sheet, row, col);
@@ -6549,6 +6599,7 @@ EXCEL_METHOD(Sheet, hyperlinkIndex)
 		RETURN_FALSE;
 	}
 
+	EXCEL_VALIDATE_ROW_COL(row, col, object);
 	SHEET_FROM_OBJECT(sheet, object);
 
 	RETURN_LONG(xlSheetHyperlinkIndex(sheet, row, col));
@@ -6651,6 +6702,7 @@ EXCEL_METHOD(Sheet, setColPx)
 		RETURN_FALSE;
 	}
 
+	EXCEL_VALIDATE_COL_RANGE(colFirst, colLast, object);
 	SHEET_FROM_OBJECT(sheet, object);
 
 	if (f) {
@@ -6673,6 +6725,14 @@ EXCEL_METHOD(Sheet, setRowPx)
 		RETURN_FALSE;
 	}
 
+	{
+		excel_book_object *_vb = php_excel_resolve_book_obj(object);
+		zend_long _maxr = (_vb && _vb->is_xlsx) ? EXCEL_MAX_ROW_XLSX : EXCEL_MAX_ROW_XLS;
+		if (row < 0 || row > _maxr) {
+			php_error_docref(NULL, E_WARNING, "Invalid row: " ZEND_LONG_FMT, row);
+			RETURN_FALSE;
+		}
+	}
 	SHEET_FROM_OBJECT(sheet, object);
 
 	if (f) {
@@ -6692,6 +6752,8 @@ EXCEL_METHOD(Sheet, setBorder)
 		RETURN_FALSE;
 	}
 
+	EXCEL_VALIDATE_ROW_RANGE(rowFirst, rowLast, object);
+	EXCEL_VALIDATE_COL_RANGE(colFirst, colLast, object);
 	SHEET_FROM_OBJECT(sheet, object);
 
 	RETURN_BOOL(xlSheetSetBorder(sheet, rowFirst, rowLast, colFirst, colLast, borderStyle, borderColor));
@@ -6714,10 +6776,8 @@ EXCEL_METHOD(Sheet, addTable)
 
 	EXCEL_NON_EMPTY_STRING(name)
 	EXCEL_NUL_SAFE_STRING(name)
-	EXCEL_VALIDATE_INT_RANGE(rowFirst);
-	EXCEL_VALIDATE_INT_RANGE(rowLast);
-	EXCEL_VALIDATE_INT_RANGE(colFirst);
-	EXCEL_VALIDATE_INT_RANGE(colLast);
+	EXCEL_VALIDATE_ROW_RANGE(rowFirst, rowLast, object);
+	EXCEL_VALIDATE_COL_RANGE(colFirst, colLast, object);
 
 	SHEET_FROM_OBJECT(sheet, object);
 
@@ -6818,6 +6878,8 @@ EXCEL_METHOD(Sheet, addConditionalFormatting)
 		RETURN_FALSE;
 	}
 
+	EXCEL_VALIDATE_ROW_RANGE(rowFirst, rowLast, object);
+	EXCEL_VALIDATE_COL_RANGE(colFirst, colLast, object);
 	SHEET_FROM_OBJECT(sheet, object);
 
 	cfh = xlSheetAddConditionalFormatting(sheet, rowFirst, rowLast, colFirst, colLast);
@@ -7965,6 +8027,8 @@ EXCEL_METHOD(ConditionalFormatting, addRange)
 		RETURN_FALSE;
 	}
 
+	EXCEL_VALIDATE_ROW_RANGE(rowFirst, rowLast, object);
+	EXCEL_VALIDATE_COL_RANGE(colFirst, colLast, object);
 	CONDITIONALFORMATTING_FROM_OBJECT(cfing, object);
 
 	xlConditionalFormattingAddRange(cfing, rowFirst, rowLast, colFirst, colLast);
@@ -8124,6 +8188,9 @@ EXCEL_METHOD(ConditionalFormatting, add2ColorScaleFormulaRule)
 		RETURN_FALSE;
 	}
 
+	EXCEL_NUL_SAFE_STRING(minVal)
+	EXCEL_NUL_SAFE_STRING(maxVal)
+
 	CONDITIONALFORMATTING_FROM_OBJECT(cfing, object);
 
 	xlConditionalFormattingAdd2ColorScaleFormulaRule(cfing, minColor, maxColor, minType, ZSTR_VAL(minVal), maxType, ZSTR_VAL(maxVal), stopIfTrue);
@@ -8159,6 +8226,10 @@ EXCEL_METHOD(ConditionalFormatting, add3ColorScaleFormulaRule)
 	if (zend_parse_parameters(ZEND_NUM_ARGS(), "llllSlSlS|b", &minColor, &midColor, &maxColor, &minType, &minVal, &midType, &midVal, &maxType, &maxVal, &stopIfTrue) == FAILURE) {
 		RETURN_FALSE;
 	}
+
+	EXCEL_NUL_SAFE_STRING(minVal)
+	EXCEL_NUL_SAFE_STRING(midVal)
+	EXCEL_NUL_SAFE_STRING(maxVal)
 
 	CONDITIONALFORMATTING_FROM_OBJECT(cfing, object);
 

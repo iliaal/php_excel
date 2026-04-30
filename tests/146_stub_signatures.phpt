@@ -14,7 +14,18 @@ $cases = [
     [ExcelSheet::class, "removeCol", 2, ["int", "int"]],
     [ExcelSheet::class, "horPageBreak", 2, ["int", "bool"]],
     [ExcelSheet::class, "verPageBreak", 2, ["int", "bool"]],
+    [ExcelSheet::class, "setPaper", 1, ["int"]],
+    [ExcelSheet::class, "setPrintRepeatRows", 2, ["int", "int"]],
+    [ExcelSheet::class, "setPrintRepeatCols", 2, ["int", "int"]],
+    [ExcelTable::class, "__construct", 8, ["ExcelSheet", "string", "int", "int", "int", "int", "bool", "int"]],
 ];
+
+$cases[] = [ExcelConditionalFormatting::class, "addRule", 4, ["int", "ExcelConditionalFormat", "string", "bool"]];
+$cases[] = [ExcelConditionalFormatting::class, "addTopRule", 5, ["ExcelConditionalFormat", "int", "bool", "bool", "bool"]];
+$cases[] = [ExcelConditionalFormatting::class, "addOpNumRule", 5, ["int", "ExcelConditionalFormat", "float", "float", "bool"]];
+$cases[] = [ExcelConditionalFormatting::class, "addOpStrRule", 5, ["int", "ExcelConditionalFormat", "string", "string", "bool"]];
+$cases[] = [ExcelConditionalFormatting::class, "addAboveAverageRule", 5, ["ExcelConditionalFormat", "bool", "bool", "int", "bool"]];
+$cases[] = [ExcelConditionalFormatting::class, "addTimePeriodRule", 3, ["ExcelConditionalFormat", "int", "bool"]];
 
 foreach ($cases as [$cls, $m, $count, $types]) {
     $r = new ReflectionMethod($cls, $m);
@@ -51,5 +62,15 @@ ExcelSheet::removeRow: OK
 ExcelSheet::removeCol: OK
 ExcelSheet::horPageBreak: OK
 ExcelSheet::verPageBreak: OK
+ExcelSheet::setPaper: OK
+ExcelSheet::setPrintRepeatRows: OK
+ExcelSheet::setPrintRepeatCols: OK
+ExcelTable::__construct: OK
+ExcelConditionalFormatting::addRule: OK
+ExcelConditionalFormatting::addTopRule: OK
+ExcelConditionalFormatting::addOpNumRule: OK
+ExcelConditionalFormatting::addOpStrRule: OK
+ExcelConditionalFormatting::addAboveAverageRule: OK
+ExcelConditionalFormatting::addTimePeriodRule: OK
 insertRow(1,1,false): ArgumentCountError
 OK
