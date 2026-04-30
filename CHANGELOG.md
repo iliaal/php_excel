@@ -36,13 +36,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Security
 - Stale child wrapper crashes: an `ExcelSheet`/`ExcelFormat`/`ExcelFont`/etc.
   retained from before `Book::load()`, `Book::loadFile()`, `Book::loadInfo()`,
-  `Book::loadInfoRaw()`, `Book::clear()`, or a manual `Book::__construct()`
-  reuse now refuses to call libxl with a stale handle. Previously, calling a
-  method on such a wrapper could segfault (`pure virtual method called`,
-  `SEGV in xlFormatNumFormatA`, etc.). A book-level generation counter is
-  bumped on each invalidating operation; child wrappers stamp the value at
-  creation and check it before every libxl call, returning `false` with a
-  warning when stale.
+  `Book::loadInfoRaw()`, `Book::clear()`, `Book::deleteSheet()`, or a manual
+  `Book::__construct()` reuse now refuses to call libxl with a stale handle.
+  Previously, calling a method on such a wrapper could segfault
+  (`pure virtual method called`, `SEGV in xlFormatNumFormatA`, etc.). A
+  book-level generation counter is bumped on each invalidating operation;
+  child wrappers stamp the value at creation and check it before every libxl
+  call, returning `false` with a warning when stale. Sibling sheets must be
+  re-fetched after `deleteSheet()`.
+- Stale-wrapper checks extended to `ExcelFont` and `ExcelFormat` clone
+  handlers, which previously bypassed the FROM_OBJECT macros and called
+  `xlBookAddFont`/`xlBookAddFormat` directly with freed handles. `clone $f`
+  on a stale wrapper now throws an exception instead of producing an ASAN
+  SEGV.
+- `ExcelBook::__construct()` with a NUL-bearing license name or key now
+  throws an exception. Previously it emitted a warning and returned an
+  initialized workbook, since PHP ignores constructor return values —
+  callers received a usable object built from rejected input.
 - NUL-byte gaps closed on the libxl boundary. Embedded NUL bytes are now
   rejected (rather than silently truncating the value) in `Sheet::write()`,
   `Sheet::writeRow()`, `Sheet::writeCol()` cell strings; `Book::getSheetByName()`;
@@ -61,9 +71,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `Sheet::cellFormat()`, `Sheet::setCellFormat()`, `Sheet::isDate()`,
   `Sheet::isFormula()`, `Sheet::insertRow()`, `Sheet::insertCol()`,
   `Sheet::removeRow()`, `Sheet::removeCol()`, `Sheet::writeRow()`, and
-  `Sheet::writeCol()` now reject negative and `> INT_MAX` coordinates with a
-  unified warning instead of silently truncating to libxl's `int` and
-  returning empty cells.
+  `Sheet::writeCol()` now reject coordinates outside the XLSX maximum
+  (`row > 1048575` or `column > 16383`) and negative values with a unified
+  warning, instead of silently truncating to libxl's `int` and returning
+  empty cells. Read paths previously accepted any value because libxl
+  doesn't range-check reads.
 - `Sheet::autoFilter()`, `Sheet::applyFilter()`, `Sheet::removeFilter()`, and
   `Sheet::splitInfo()` now call `ZEND_PARSE_PARAMETERS_NONE()` so calling
   them with extra arguments raises `ArgumentCountError` rather than a debug-

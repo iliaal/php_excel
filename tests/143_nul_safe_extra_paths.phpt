@@ -31,9 +31,21 @@ var_dump(@$b->addPictureFromFile(__DIR__ . "/phplogo.jpg\0suffix"));
 
 unlink($tmp);
 
-// Constructor license args must reject NUL
-var_dump(@new ExcelBook("name\0evil", "key", true));
-var_dump(@new ExcelBook("name", "key\0evil", true));
+// Constructor license args must reject NUL by throwing — PHP ignores
+// constructor return values, so RETURN_FALSE would leave the caller
+// with a usable object built from rejected input.
+try {
+    new ExcelBook("name\0evil", "key", true);
+    echo "name nul: no exception\n";
+} catch (Exception $e) {
+    echo "name nul: " . $e->getMessage() . "\n";
+}
+try {
+    new ExcelBook("name", "key\0evil", true);
+    echo "key nul: no exception\n";
+} catch (Exception $e) {
+    echo "key nul: " . $e->getMessage() . "\n";
+}
 
 echo "OK\n";
 ?>
@@ -45,8 +57,6 @@ bool(false)
 bool(false)
 bool(false)
 bool(false)
-object(ExcelBook)#3 (0) {
-}
-object(ExcelBook)#3 (0) {
-}
+name nul: License name/key must not contain NUL bytes
+key nul: License name/key must not contain NUL bytes
 OK

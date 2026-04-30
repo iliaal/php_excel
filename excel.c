@@ -477,6 +477,20 @@ static inline void php_excel_book_bump_generation(zval *book_zv) {
 	bobj->generation++;
 }
 
+/* Throw-on-stale variant for code paths that cannot use RETURN_FALSE — most
+ * importantly clone handlers, which must always produce an object and signal
+ * failure via exception. Returns 1 on valid, 0 (and throws) on stale. */
+static inline int php_excel_check_book_generation_throw(zval *parent_zv, uint64_t stamped) {
+	excel_book_object *b = php_excel_resolve_book_obj(parent_zv);
+	if (!b || !b->book || b->generation != stamped) {
+		zend_throw_exception(NULL,
+			"Underlying ExcelBook handle is stale (parent was reloaded, cleared, or reinitialized)",
+			0);
+		return 0;
+	}
+	return 1;
+}
+
 static void excel_book_object_free_storage(zend_object *object)
 {
 	excel_book_object *intern = php_excel_book_object_fetch_object(object);
@@ -574,6 +588,10 @@ static zend_object *excel_font_object_clone(zend_object *object)
 		return new_ov;
 	}
 
+	if (!php_excel_check_book_generation_throw(&old_obj->parent, old_obj->book_generation)) {
+		return new_ov;
+	}
+
 	font = xlBookAddFont(old_obj->book, old_obj->font);
 	if (!font) {
 		zend_throw_exception(NULL, "Failed to copy font", 0);
@@ -629,6 +647,10 @@ static zend_object *excel_format_object_clone(zend_object *object)
 
 	if (!old_obj->book || !old_obj->format) {
 		zend_throw_exception(NULL, "Cannot clone: parent ExcelBook is no longer initialized", 0);
+		return new_ov;
+	}
+
+	if (!php_excel_check_book_generation_throw(&old_obj->parent, old_obj->book_generation)) {
 		return new_ov;
 	}
 
@@ -839,12 +861,16 @@ static zend_object *excel_object_new_table(zend_class_entry *class_type)
 		RETURN_FALSE; \
 	}
 
-/* Coordinate validation for sheet read/write paths. Negative or out-of-int-
- * range values silently produce an empty cell when passed to libxl, masking
- * application bugs and bypassing PHP-side validation. */
+/* Coordinate validation for sheet read/write paths. We use the wider XLSX
+ * limits (1048576 rows x 16384 cols) regardless of book type — XLS workbooks
+ * will additionally fail inside libxl when out of XLS range, but read paths
+ * (which libxl does not range-check) at least stop accepting impossible
+ * coordinates that would silently return empty cells. */
+#define EXCEL_MAX_ROW 1048575
+#define EXCEL_MAX_COL 16383
 #define EXCEL_VALIDATE_ROW_COL(r, c) \
 	do { \
-		if ((r) < 0 || (r) > INT_MAX || (c) < 0 || (c) > INT_MAX) { \
+		if ((r) < 0 || (r) > EXCEL_MAX_ROW || (c) < 0 || (c) > EXCEL_MAX_COL) { \
 			php_error_docref(NULL, E_WARNING, \
 				"Invalid coordinates: row=" ZEND_LONG_FMT ", column=" ZEND_LONG_FMT, \
 				(zend_long)(r), (zend_long)(c)); \
@@ -1064,6 +1090,7 @@ EXCEL_METHOD(Book, deleteSheet)
 	BookHandle book;
 	zval *object = ZEND_THIS;
 	zend_long sheet;
+	int ret;
 
 	if (zend_parse_parameters(ZEND_NUM_ARGS(), "l", &sheet) == FAILURE) {
 		RETURN_FALSE;
@@ -1075,10 +1102,16 @@ EXCEL_METHOD(Book, deleteSheet)
 
 	BOOK_FROM_OBJECT(book, object);
 
-	/* Note: the generation counter is intentionally not bumped here. Other
-	 * sheet/format/font wrappers remain valid; using the wrapper of the
-	 * just-deleted sheet is the caller's responsibility. */
-	RETURN_BOOL(xlBookDelSheet(book, sheet));
+	ret = xlBookDelSheet(book, sheet);
+	if (ret) {
+		/* The deleted sheet's libxl handle is freed; an existing PHP
+		 * wrapper for it now points at freed memory and would crash with
+		 * "pure virtual method called" on next use. Bump the generation
+		 * so any outstanding wrapper fails the stale-check instead.
+		 * Sibling sheets must be re-fetched via getSheet/getSheetByName. */
+		php_excel_book_bump_generation(object);
+	}
+	RETURN_BOOL(ret);
 }
 /* }}} */
 
@@ -1645,7 +1678,15 @@ EXCEL_METHOD(Book, __construct)
 	bool new_excel = 0;
 
 	if (zend_parse_parameters(ZEND_NUM_ARGS(), "|s!s!b", &name, &name_len, &key, &key_len, &new_excel) == FAILURE) {
-		RETURN_FALSE;
+		RETURN_THROWS();
+	}
+
+	/* Reject NUL-bearing license arguments before creating the libxl book.
+	 * PHP ignores constructor return values, so we throw — otherwise the
+	 * caller would get a usable workbook back from rejected input. */
+	if ((name && name_len != strlen(name)) || (key && key_len != strlen(key))) {
+		zend_throw_exception(NULL, "License name/key must not contain NUL bytes", 0);
+		RETURN_THROWS();
 	}
 
 	{

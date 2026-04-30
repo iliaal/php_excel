@@ -19,15 +19,18 @@ date.timezone=America/Toronto
 
 	var_dump($x->deleteSheet(2), $x->deleteSheet(1));
 
-	var_dump($x->getSheet(0));
+	// deleteSheet bumps the book generation; re-fetch any pre-existing
+	// sheet wrapper before further use.
+	$s = $x->getSheet(0);
+	var_dump($s);
 
 	$s3 = $x->copySheet("Sheet 3 (copy of 1)", 0);
 	var_dump($s2, $x->getError());
 
 	var_dump($x->activeSheet());
-	
+
 	$x->setActiveSheet(1);
-	
+
 	var_dump($s3->write(2, 2, 'Sheet 2 (copy)'));
 	var_dump($x->getError());
 
