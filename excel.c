@@ -19,6 +19,7 @@
 #endif
 
 #include "libxl.h"
+#include <limits.h>
 #include <stdlib.h>
 
 #include "php.h"
@@ -474,6 +475,11 @@ static zend_object *excel_font_object_clone(zend_object *object)
 	excel_font_object *old_obj = php_excel_font_object_fetch_object(object);
 	new_ov = excel_object_new_font_ex(old_obj->std.ce, &new_obj);
 
+	if (!old_obj->book || !old_obj->font) {
+		zend_throw_exception(NULL, "Cannot clone: parent ExcelBook is no longer initialized", 0);
+		return new_ov;
+	}
+
 	font = xlBookAddFont(old_obj->book, old_obj->font);
 	if (!font) {
 		zend_throw_exception(NULL, "Failed to copy font", 0);
@@ -526,6 +532,11 @@ static zend_object *excel_format_object_clone(zend_object *object)
 	excel_format_object *new_obj = NULL;
 	excel_format_object *old_obj = php_excel_format_object_fetch_object(object);
 	new_ov = excel_object_new_format_ex(old_obj->std.ce, &new_obj);
+
+	if (!old_obj->book || !old_obj->format) {
+		zend_throw_exception(NULL, "Cannot clone: parent ExcelBook is no longer initialized", 0);
+		return new_ov;
+	}
 
 	format = xlBookAddFormat(old_obj->book, old_obj->format);
 	if (!format) {
@@ -715,6 +726,23 @@ static zend_object *excel_object_new_table(zend_class_entry *class_type)
 #define EXCEL_NON_EMPTY_STRING(string_zval) \
 	if (!string_zval || ZSTR_LEN(string_zval) < 1) {	\
 		RETURN_FALSE;	\
+	}
+
+/* PHP zend_string is binary-safe; libxl C ABI is NUL-terminated.
+ * Reject embedded NUL bytes so libxl never sees a silently-truncated
+ * value while the application-side validator saw the full string. */
+#define EXCEL_NUL_SAFE_STRING(string_zval) \
+	if ((string_zval) && ZSTR_LEN(string_zval) != strlen(ZSTR_VAL(string_zval))) { \
+		php_error_docref(NULL, E_WARNING, "String must not contain NUL bytes"); \
+		RETURN_FALSE; \
+	}
+
+/* libxl APIs take int for row/col/dimension args; zend_long is 64-bit.
+ * Reject out-of-int-range values before the implicit narrowing cast. */
+#define EXCEL_VALIDATE_INT_RANGE(arg) \
+	if ((arg) < 0 || (arg) > INT_MAX) { \
+		php_error_docref(NULL, E_WARNING, "Argument out of int range"); \
+		RETURN_FALSE; \
 	}
 
 /* {{{ proto bool ExcelBook::requiresKey()
@@ -975,6 +1003,7 @@ EXCEL_METHOD(Book, addSheet)
 	}
 
 	EXCEL_NON_EMPTY_STRING(name_zs)
+	EXCEL_NUL_SAFE_STRING(name_zs)
 
 	BOOK_FROM_OBJECT(book, object);
 
@@ -1012,6 +1041,7 @@ EXCEL_METHOD(Book, copySheet)
 	}
 
 	EXCEL_NON_EMPTY_STRING(name_zs)
+	EXCEL_NUL_SAFE_STRING(name_zs)
 
 	BOOK_FROM_OBJECT(book, object);
 
@@ -1192,6 +1222,7 @@ EXCEL_METHOD(Book, addCustomFormat)
 	}
 
 	EXCEL_NON_EMPTY_STRING(format_zs)
+	EXCEL_NUL_SAFE_STRING(format_zs)
 
 	BOOK_FROM_OBJECT(book, object);
 
@@ -1452,6 +1483,7 @@ EXCEL_METHOD(Book, setDefaultFont)
 	}
 
 	EXCEL_NON_EMPTY_STRING(font_zs)
+	EXCEL_NUL_SAFE_STRING(font_zs)
 
 	BOOK_FROM_OBJECT(book, object);
 
@@ -1472,6 +1504,7 @@ EXCEL_METHOD(Book, setLocale)
 	}
 
 	EXCEL_NON_EMPTY_STRING(locale_zs)
+	EXCEL_NUL_SAFE_STRING(locale_zs)
 
 	BOOK_FROM_OBJECT(book, object);
 
@@ -1734,6 +1767,7 @@ EXCEL_METHOD(Book, loadInfo)
 	}
 
 	EXCEL_NON_EMPTY_STRING(filename_zs)
+	EXCEL_NUL_SAFE_STRING(filename_zs)
 
 	BOOK_FROM_OBJECT(book, object);
 
@@ -1902,6 +1936,8 @@ EXCEL_METHOD(Book, setPassword)
 	if (zend_parse_parameters(ZEND_NUM_ARGS(), "S", &password) == FAILURE) {
 		RETURN_FALSE;
 	}
+
+	EXCEL_NUL_SAFE_STRING(password)
 
 	BOOK_FROM_OBJECT(book, object);
 
@@ -2220,6 +2256,8 @@ EXCEL_METHOD(Font, name)
 	if (zend_parse_parameters(ZEND_NUM_ARGS(), "|S", &name_zs) == FAILURE) {
 		RETURN_FALSE;
 	}
+
+	EXCEL_NUL_SAFE_STRING(name_zs)
 
 	FONT_FROM_OBJECT(font, object);
 
@@ -2628,6 +2666,10 @@ EXCEL_METHOD(Sheet, __construct)
 		zend_throw_exception(NULL, "Sheet name cannot be empty", 0);
 		RETURN_THROWS();
 	}
+	if (ZSTR_LEN(name_zs) != strlen(ZSTR_VAL(name_zs))) {
+		zend_throw_exception(NULL, "Sheet name must not contain NUL bytes", 0);
+		RETURN_THROWS();
+	}
 
 	BOOK_FROM_OBJECT(book, zbook);
 
@@ -2816,6 +2858,13 @@ EXCEL_METHOD(Sheet, readRow)
 		RETURN_FALSE;
 	}
 
+	/* Excel column max is 16384 (XFD); cap before array_init_size to avoid
+	 * INT_MAX-sized bucket pre-allocation if libxl ever surfaces an extreme value. */
+	if ((col_end - col_start) > 16384) {
+		php_error_docref(NULL, E_WARNING, "Column range too large");
+		RETURN_FALSE;
+	}
+
 	lc = col_start;
 
 	array_init_size(return_value, col_end - col_start + 1);
@@ -2874,6 +2923,12 @@ EXCEL_METHOD(Sheet, readCol)
 
 	if (row_end < row_start || row_end > lc) {
 		php_error_docref(NULL, E_WARNING, "Invalid ending row number '%ld'", row_end);
+		RETURN_FALSE;
+	}
+
+	/* Excel row max is 1048576 (XFD); cap before array_init_size. */
+	if ((row_end - row_start) > 1048576) {
+		php_error_docref(NULL, E_WARNING, "Row range too large");
 		RETURN_FALSE;
 	}
 
@@ -3287,6 +3342,10 @@ EXCEL_METHOD(Sheet, writeComment)
 
 		EXCEL_NON_EMPTY_STRING(auth_zs)
 		EXCEL_NON_EMPTY_STRING(val_zs)
+		EXCEL_NUL_SAFE_STRING(val_zs)
+		EXCEL_NUL_SAFE_STRING(auth_zs)
+		EXCEL_VALIDATE_INT_RANGE(r)
+		EXCEL_VALIDATE_INT_RANGE(c)
 
 		SHEET_FROM_OBJECT(sheet, object);
 
@@ -3806,6 +3865,7 @@ EXCEL_METHOD(Sheet, addrToRowCol)
 		php_error_docref(NULL, E_WARNING, "Cell reference cannot be empty");
 		RETURN_FALSE;
 	}
+	EXCEL_NUL_SAFE_STRING(cell_reference_zs)
 
 	SHEET_FROM_OBJECT(sheet, object);
 
@@ -3918,6 +3978,7 @@ EXCEL_METHOD(Sheet, footer)
 		if (!val_zs || ZSTR_LEN(val_zs) > 255) { \
 			RETURN_FALSE; \
 		} \
+		EXCEL_NUL_SAFE_STRING(val_zs); \
 		SHEET_FROM_OBJECT(sheet, object); \
 		RETURN_BOOL(xlSheet ## func_name (sheet, ZSTR_VAL(val_zs), margin)); \
 	}
@@ -4087,6 +4148,7 @@ EXCEL_METHOD(Sheet, setName)
 	}
 
 	EXCEL_NON_EMPTY_STRING(val_zs)
+	EXCEL_NUL_SAFE_STRING(val_zs)
 
 	SHEET_FROM_OBJECT(sheet, object);
 
@@ -4112,6 +4174,7 @@ EXCEL_METHOD(Sheet, setNamedRange)
 		php_error_docref(NULL, E_WARNING, "The range name cannot be empty.");
 		RETURN_FALSE;
 	}
+	EXCEL_NUL_SAFE_STRING(name_zs)
 
 	if (row > to_row) {
 		php_error_docref(NULL, E_WARNING, "The range row start cannot be greater than row end.");
@@ -4120,6 +4183,10 @@ EXCEL_METHOD(Sheet, setNamedRange)
 		php_error_docref(NULL, E_WARNING, "The range column start cannot be greater than column end.");
 		RETURN_FALSE;
 	}
+	EXCEL_VALIDATE_INT_RANGE(row);
+	EXCEL_VALIDATE_INT_RANGE(to_row);
+	EXCEL_VALIDATE_INT_RANGE(col);
+	EXCEL_VALIDATE_INT_RANGE(to_col);
 
 	SHEET_FROM_OBJECT(sheet, object);
 
@@ -4144,6 +4211,7 @@ EXCEL_METHOD(Sheet, delNamedRange)
 		php_error_docref(NULL, E_WARNING, "The range name cannot be empty.");
 		RETURN_FALSE;
 	}
+	EXCEL_NUL_SAFE_STRING(val_zs)
 
 	SHEET_FROM_OBJECT(sheet, object);
 
@@ -4306,6 +4374,7 @@ EXCEL_METHOD(Sheet, getNamedRange)
 	}
 
 	EXCEL_NON_EMPTY_STRING(name_zs)
+	EXCEL_NUL_SAFE_STRING(name_zs)
 
 	SHEET_FROM_OBJECT(sheet, object);
 
@@ -4583,6 +4652,8 @@ EXCEL_METHOD(Book, insertSheet)
 	}
 
 	EXCEL_NON_EMPTY_STRING(name_zs)
+	EXCEL_NUL_SAFE_STRING(name_zs)
+	EXCEL_VALIDATE_INT_RANGE(index)
 
 	BOOK_FROM_OBJECT(book, object);
 	if (shz) {
@@ -4812,6 +4883,11 @@ EXCEL_METHOD(Sheet, addHyperlink)
 	}
 
 	EXCEL_NON_EMPTY_STRING(val_zs)
+	EXCEL_NUL_SAFE_STRING(val_zs)
+	EXCEL_VALIDATE_INT_RANGE(row_first);
+	EXCEL_VALIDATE_INT_RANGE(row_last);
+	EXCEL_VALIDATE_INT_RANGE(col_first);
+	EXCEL_VALIDATE_INT_RANGE(col_last);
 
 	SHEET_FROM_OBJECT(sheet, object);
 
@@ -5162,6 +5238,8 @@ EXCEL_METHOD(Sheet, setProtect)
 		RETURN_FALSE;
 	}
 
+	EXCEL_NUL_SAFE_STRING(password_zs)
+
 	SHEET_FROM_OBJECT(sheet, object);
 
 	xlSheetSetProtectEx(sheet, protect, password_zs ? ZSTR_VAL(password_zs) : "", enhancedProtection);
@@ -5306,9 +5384,12 @@ EXCEL_METHOD(Sheet, writeError)
 	zval *oformat = NULL;
 	FormatHandle format = NULL;
 
-	if (zend_parse_parameters(ZEND_NUM_ARGS(), "|lllo", &row, &col, &iError, &oformat, excel_ce_format) == FAILURE) {
+	if (zend_parse_parameters(ZEND_NUM_ARGS(), "lll|o", &row, &col, &iError, &oformat, excel_ce_format) == FAILURE) {
 		RETURN_FALSE;
 	}
+
+	EXCEL_VALIDATE_INT_RANGE(row);
+	EXCEL_VALIDATE_INT_RANGE(col);
 
 	SHEET_FROM_OBJECT(sheet, object);
 
@@ -5658,6 +5739,8 @@ EXCEL_METHOD(FilterColumn, addFilter)
 		RETURN_FALSE;
 	}
 
+	EXCEL_NUL_SAFE_STRING(filtervalue_zs)
+
 	FILTERCOLUMN_FROM_OBJECT(filtercolumn, object);
 
 	xlFilterColumnAddFilter(filtercolumn, ZSTR_VAL(filtervalue_zs));
@@ -5750,6 +5833,7 @@ EXCEL_METHOD(FilterColumn, setCustomFilter)
 	FILTERCOLUMN_FROM_OBJECT(filtercolumn, object);
 
 	EXCEL_NON_EMPTY_STRING(v1)
+	EXCEL_NUL_SAFE_STRING(v1)
 
 	if (op2 == -1 || !v2) {
 		xlFilterColumnSetCustomFilter(filtercolumn, op1, ZSTR_VAL(v1));
@@ -5757,6 +5841,7 @@ EXCEL_METHOD(FilterColumn, setCustomFilter)
 	}
 
 	EXCEL_NON_EMPTY_STRING(v2)
+	EXCEL_NUL_SAFE_STRING(v2)
 
 	xlFilterColumnSetCustomFilterEx(filtercolumn, op1, ZSTR_VAL(v1), op2, ZSTR_VAL(v2), andOp);
 	RETURN_TRUE;
@@ -5791,6 +5876,9 @@ EXCEL_METHOD(Book, addPictureAsLink)
 	if (zend_parse_parameters(ZEND_NUM_ARGS(), "S|b", &filename, &insert) == FAILURE) {
 		RETURN_FALSE;
 	}
+
+	EXCEL_NON_EMPTY_STRING(filename)
+	EXCEL_NUL_SAFE_STRING(filename)
 
 	BOOK_FROM_OBJECT(book, object);
 
@@ -5851,6 +5939,16 @@ EXCEL_METHOD(Sheet, addDataValidation)
 		php_error_docref(NULL, E_WARNING, "The first value can not be empty.");
 		RETURN_FALSE;
 	}
+	EXCEL_NUL_SAFE_STRING(val_1)
+	EXCEL_NUL_SAFE_STRING(val_2)
+	EXCEL_NUL_SAFE_STRING(prompt_title)
+	EXCEL_NUL_SAFE_STRING(prompt)
+	EXCEL_NUL_SAFE_STRING(error_title)
+	EXCEL_NUL_SAFE_STRING(error)
+	EXCEL_VALIDATE_INT_RANGE(row_first);
+	EXCEL_VALIDATE_INT_RANGE(row_last);
+	EXCEL_VALIDATE_INT_RANGE(col_first);
+	EXCEL_VALIDATE_INT_RANGE(col_last);
 
 	if ((op == VALIDATION_OP_BETWEEN || op == VALIDATION_OP_NOTBETWEEN) && ZEND_NUM_ARGS() < 8) {
 		php_error_docref(NULL, E_WARNING, "The second value can not be null when used with (not) between operator.");
@@ -6121,6 +6219,9 @@ EXCEL_METHOD(Sheet, addSelectionRange)
 		RETURN_FALSE;
 	}
 
+	EXCEL_NON_EMPTY_STRING(sqref)
+	EXCEL_NUL_SAFE_STRING(sqref)
+
 	SHEET_FROM_OBJECT(sheet, object);
 
 	xlSheetAddSelectionRange(sheet, ZSTR_VAL(sqref));
@@ -6361,6 +6462,13 @@ EXCEL_METHOD(Sheet, addTable)
 		RETURN_FALSE;
 	}
 
+	EXCEL_NON_EMPTY_STRING(name)
+	EXCEL_NUL_SAFE_STRING(name)
+	EXCEL_VALIDATE_INT_RANGE(rowFirst);
+	EXCEL_VALIDATE_INT_RANGE(rowLast);
+	EXCEL_VALIDATE_INT_RANGE(colFirst);
+	EXCEL_VALIDATE_INT_RANGE(colLast);
+
 	SHEET_FROM_OBJECT(sheet, object);
 
 	th = xlSheetAddTable(sheet, ZSTR_VAL(name), rowFirst, rowLast, colFirst, colLast, hasHeaders, style);
@@ -6386,6 +6494,9 @@ EXCEL_METHOD(Sheet, getTableByName)
 	if (zend_parse_parameters(ZEND_NUM_ARGS(), "S", &name) == FAILURE) {
 		RETURN_FALSE;
 	}
+
+	EXCEL_NON_EMPTY_STRING(name)
+	EXCEL_NUL_SAFE_STRING(name)
 
 	SHEET_FROM_OBJECT(sheet, object);
 
@@ -6608,6 +6719,8 @@ EXCEL_METHOD(RichString, addText)
 		RETURN_FALSE;
 	}
 
+	EXCEL_NUL_SAFE_STRING(text)
+
 	RICHSTRING_FROM_OBJECT(rs, object);
 
 	if (zfont) {
@@ -6746,6 +6859,7 @@ EXCEL_METHOD(FormControl, setFmlaGroup)
 	if (zend_parse_parameters(ZEND_NUM_ARGS(), "S", &val) == FAILURE) {
 		RETURN_FALSE;
 	}
+	EXCEL_NUL_SAFE_STRING(val)
 	FORMCONTROL_FROM_OBJECT(fc, object);
 	xlFormControlSetFmlaGroup(fc, ZSTR_VAL(val));
 	RETURN_TRUE;
@@ -6769,6 +6883,7 @@ EXCEL_METHOD(FormControl, setFmlaLink)
 	if (zend_parse_parameters(ZEND_NUM_ARGS(), "S", &val) == FAILURE) {
 		RETURN_FALSE;
 	}
+	EXCEL_NUL_SAFE_STRING(val)
 	FORMCONTROL_FROM_OBJECT(fc, object);
 	xlFormControlSetFmlaLink(fc, ZSTR_VAL(val));
 	RETURN_TRUE;
@@ -6792,6 +6907,7 @@ EXCEL_METHOD(FormControl, setFmlaRange)
 	if (zend_parse_parameters(ZEND_NUM_ARGS(), "S", &val) == FAILURE) {
 		RETURN_FALSE;
 	}
+	EXCEL_NUL_SAFE_STRING(val)
 	FORMCONTROL_FROM_OBJECT(fc, object);
 	xlFormControlSetFmlaRange(fc, ZSTR_VAL(val));
 	RETURN_TRUE;
@@ -6815,6 +6931,7 @@ EXCEL_METHOD(FormControl, setFmlaTxbx)
 	if (zend_parse_parameters(ZEND_NUM_ARGS(), "S", &val) == FAILURE) {
 		RETURN_FALSE;
 	}
+	EXCEL_NUL_SAFE_STRING(val)
 	FORMCONTROL_FROM_OBJECT(fc, object);
 	xlFormControlSetFmlaTxbx(fc, ZSTR_VAL(val));
 	RETURN_TRUE;
@@ -6932,6 +7049,7 @@ EXCEL_METHOD(FormControl, addItem)
 	if (zend_parse_parameters(ZEND_NUM_ARGS(), "S", &val) == FAILURE) {
 		RETURN_FALSE;
 	}
+	EXCEL_NUL_SAFE_STRING(val)
 	FORMCONTROL_FROM_OBJECT(fc, object);
 	xlFormControlAddItem(fc, ZSTR_VAL(val));
 	RETURN_TRUE;
@@ -6946,6 +7064,8 @@ EXCEL_METHOD(FormControl, insertItem)
 	if (zend_parse_parameters(ZEND_NUM_ARGS(), "lS", &index, &val) == FAILURE) {
 		RETURN_FALSE;
 	}
+	EXCEL_NUL_SAFE_STRING(val)
+	EXCEL_VALIDATE_INT_RANGE(index)
 	FORMCONTROL_FROM_OBJECT(fc, object);
 	xlFormControlInsertItem(fc, index, ZSTR_VAL(val));
 	RETURN_TRUE;
@@ -7125,6 +7245,7 @@ EXCEL_METHOD(FormControl, setMultiSel)
 	if (zend_parse_parameters(ZEND_NUM_ARGS(), "S", &val) == FAILURE) {
 		RETURN_FALSE;
 	}
+	EXCEL_NUL_SAFE_STRING(val)
 	FORMCONTROL_FROM_OBJECT(fc, object);
 	xlFormControlSetMultiSel(fc, ZSTR_VAL(val));
 	RETURN_TRUE;
@@ -7281,6 +7402,7 @@ EXCEL_METHOD(ConditionalFormat, setCustomNumFormat)
 	if (zend_parse_parameters(ZEND_NUM_ARGS(), "S", &val) == FAILURE) {
 		RETURN_FALSE;
 	}
+	EXCEL_NUL_SAFE_STRING(val)
 	CONDITIONALFORMAT_FROM_OBJECT(cf, object);
 	xlConditionalFormatSetCustomNumFormat(cf, ZSTR_VAL(val));
 	RETURN_TRUE;
@@ -7612,6 +7734,8 @@ EXCEL_METHOD(ConditionalFormatting, addRule)
 		RETURN_FALSE;
 	}
 
+	EXCEL_NUL_SAFE_STRING(value)
+
 	CONDITIONALFORMATTING_FROM_OBJECT(cfing, object);
 
 	excel_conditionalformat_object *cfo = Z_EXCEL_CONDITIONALFORMAT_OBJ_P(zcf);
@@ -7670,6 +7794,9 @@ EXCEL_METHOD(ConditionalFormatting, addOpStrRule)
 	if (zend_parse_parameters(ZEND_NUM_ARGS(), "lOSS|b", &op, &zcf, excel_ce_conditionalformat, &v1, &v2, &stopIfTrue) == FAILURE) {
 		RETURN_FALSE;
 	}
+
+	EXCEL_NUL_SAFE_STRING(v1)
+	EXCEL_NUL_SAFE_STRING(v2)
 
 	CONDITIONALFORMATTING_FROM_OBJECT(cfing, object);
 
@@ -7838,6 +7965,7 @@ EXCEL_METHOD(CoreProperties, method_name) \
 	if (zend_parse_parameters(ZEND_NUM_ARGS(), "S", &val) == FAILURE) { \
 		RETURN_FALSE; \
 	} \
+	EXCEL_NUL_SAFE_STRING(val) \
 	COREPROPERTIES_FROM_OBJECT(cp, object); \
 	api_func(cp, ZSTR_VAL(val)); \
 	RETURN_TRUE; \
@@ -7931,6 +8059,20 @@ EXCEL_METHOD(Table, __construct)
 		return;
 	}
 
+	if (!name || ZSTR_LEN(name) < 1) {
+		zend_throw_exception(NULL, "Table name cannot be empty", 0);
+		RETURN_THROWS();
+	}
+	if (ZSTR_LEN(name) != strlen(ZSTR_VAL(name))) {
+		zend_throw_exception(NULL, "Table name must not contain NUL bytes", 0);
+		RETURN_THROWS();
+	}
+	if (rowFirst < 0 || rowFirst > INT_MAX || rowLast < 0 || rowLast > INT_MAX
+			|| colFirst < 0 || colFirst > INT_MAX || colLast < 0 || colLast > INT_MAX) {
+		zend_throw_exception(NULL, "Row/column out of int range", 0);
+		RETURN_THROWS();
+	}
+
 	SHEET_FROM_OBJECT(sheet, zsheet);
 
 	obj = Z_EXCEL_TABLE_OBJ_P(object);
@@ -7964,6 +8106,8 @@ EXCEL_METHOD(Table, setName)
 	if (zend_parse_parameters(ZEND_NUM_ARGS(), "S", &val) == FAILURE) {
 		RETURN_FALSE;
 	}
+	EXCEL_NON_EMPTY_STRING(val)
+	EXCEL_NUL_SAFE_STRING(val)
 	TABLE_FROM_OBJECT(table, object);
 	xlTableSetName(table, ZSTR_VAL(val));
 	RETURN_TRUE;
@@ -7987,6 +8131,8 @@ EXCEL_METHOD(Table, setRef)
 	if (zend_parse_parameters(ZEND_NUM_ARGS(), "S", &val) == FAILURE) {
 		RETURN_FALSE;
 	}
+	EXCEL_NON_EMPTY_STRING(val)
+	EXCEL_NUL_SAFE_STRING(val)
 	TABLE_FROM_OBJECT(table, object);
 	xlTableSetRef(table, ZSTR_VAL(val));
 	RETURN_TRUE;
@@ -8152,6 +8298,9 @@ EXCEL_METHOD(Table, setColumnName)
 	if (zend_parse_parameters(ZEND_NUM_ARGS(), "lS", &index, &name) == FAILURE) {
 		RETURN_FALSE;
 	}
+	EXCEL_NON_EMPTY_STRING(name)
+	EXCEL_NUL_SAFE_STRING(name)
+	EXCEL_VALIDATE_INT_RANGE(index)
 	TABLE_FROM_OBJECT(table, object);
 	RETURN_BOOL(xlTableSetColumnName(table, index, ZSTR_VAL(name)));
 }

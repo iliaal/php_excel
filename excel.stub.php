@@ -217,7 +217,7 @@ class ExcelSheet
     public function applyFilter(): bool {}  // ZPP ""
     public function removeFilter(): bool {}  // ZPP ""
     public function addIgnoredError(int $iError, int $rowFirst = 0, int $colFirst = 0, int $rowLast = 0, int $colLast = 0): bool {}  // ZPP "l|llll"
-    public function writeError(int $row = 0, int $col = 0, int $iError = 0, ?ExcelFormat $format = null): mixed {}  // ZPP "|lllo"
+    public function writeError(int $row, int $col, int $iError, ?ExcelFormat $format = null): mixed {}  // ZPP "lll|o"
     public function removeComment(int $row, int $col): mixed {}  // ZPP "ll"
     public function addDataValidation(int $type, int $op, int $row_first, int $row_last, int $col_first, int $col_last, string $val_1, string $val_2 = "", bool $allow_blank = false, bool $hide_dropdown = false, bool $show_inputmessage = false, bool $show_errormessage = false, string $prompt_title = "", string $prompt = "", string $error_title = "", string $error = "", int $error_style = 0): bool {}  // ZPP "llllllS|SbbbbSSSSl"
     public function addDataValidationDouble(int $type, int $op, int $row_first, int $row_last, int $col_first, int $col_last, float $val_1, float $val_2 = 0.0, bool $allow_blank = false, bool $hide_dropdown = false, bool $show_inputmessage = false, bool $show_errormessage = false, string $prompt_title = "", string $prompt = "", string $error_title = "", string $error = "", int $error_style = 0): bool {}  // ZPP "lllllld|dbbbbSSSSl"

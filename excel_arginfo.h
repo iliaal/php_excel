@@ -1,5 +1,5 @@
 /* This is a generated file, edit excel.stub.php instead.
- * Stub hash: c92768f63746d717b257020bfbb224754fa08f1b */
+ * Stub hash: 06a0cfd30d4c5e58d96dbc24502dedaddb1c26c3 */
 
 ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_ExcelBook_requiresKey, 0, 0, _IS_BOOL, 0)
 ZEND_END_ARG_INFO()
@@ -727,10 +727,10 @@ ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_ExcelSheet_addIgnoredError
 	ZEND_ARG_TYPE_INFO_WITH_DEFAULT_VALUE(0, colLast, IS_LONG, 0, "0")
 ZEND_END_ARG_INFO()
 
-ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_ExcelSheet_writeError, 0, 0, IS_MIXED, 0)
-	ZEND_ARG_TYPE_INFO_WITH_DEFAULT_VALUE(0, row, IS_LONG, 0, "0")
-	ZEND_ARG_TYPE_INFO_WITH_DEFAULT_VALUE(0, col, IS_LONG, 0, "0")
-	ZEND_ARG_TYPE_INFO_WITH_DEFAULT_VALUE(0, iError, IS_LONG, 0, "0")
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_ExcelSheet_writeError, 0, 3, IS_MIXED, 0)
+	ZEND_ARG_TYPE_INFO(0, row, IS_LONG, 0)
+	ZEND_ARG_TYPE_INFO(0, col, IS_LONG, 0)
+	ZEND_ARG_TYPE_INFO(0, iError, IS_LONG, 0)
 	ZEND_ARG_OBJ_INFO_WITH_DEFAULT_VALUE(0, format, ExcelFormat, 1, "null")
 ZEND_END_ARG_INFO()
 

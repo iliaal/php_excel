@@ -64,6 +64,9 @@ tests/*/*/*.diff
 tests/*/*/*.php
 tests/*/*/*.exp
 tmp-php.ini
+# in-progress security findings (pre-disclosure); never commit
+docs/security/
+
 # local AI tooling: per-developer scaffolding, not checked in
 .claude/
 AGENTS.md

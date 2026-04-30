@@ -1462,7 +1462,7 @@ class ExcelSheet
 	* @param ExcelFormat|null $format (optional, default=null)
 	* @return void
 	*/
-	public function writeError(int $row = 0, int $col = 0, int $iError = 0, ?ExcelFormat $format = null)
+	public function writeError(int $row, int $col, int $iError, ?ExcelFormat $format = null)
 	{
 	}
 
