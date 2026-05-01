@@ -33,6 +33,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   generated arginfo header compiles cleanly against the project's
   PHP 8.3 minimum.
 
+### Fixed (correctness)
+- `Sheet::addDataValidationDouble()` left the optional `$val_2` parameter
+  uninitialized when the caller used a non-(NOT)BETWEEN operator. The C
+  declared `double val_1, val_2;` without a default, so the unused slot
+  forwarded a stack-garbage value to `xlSheetAddDataValidationDoubleEx`.
+  Initialized to `0.0` so the unused slot is deterministic.
+- Stub defaults for `Sheet::addDataValidation()` and
+  `Sheet::addDataValidationDouble()` now match the C implementation:
+  `allow_blank=true`, `show_inputmessage=true`, `show_errormessage=true`,
+  `error_style=1`. The previous stub said `false`/`0`, so reflection-
+  driven callers using `getDefaultValue()` got opposite behavior from
+  the documented defaults.
+- `Book::activeSheet()`'s stub default is now `-1` (the C "getter mode"
+  sentinel). The previous default of `0` caused reflection-driven calls
+  to silently switch the workbook back to sheet index 0 instead of just
+  returning the current active sheet.
+- Stale ZPP comments in `excel.stub.php` for `insertSheet`, `setCellFormat`,
+  and `writeError` now reflect the typed-object signatures actually
+  parsed by the C (`O`/`O!`).
+
 ### Security
 - `ExcelSheet::setColWidth()` and `setRowHeight()` now reject non-`ExcelFormat`
   objects with `TypeError` instead of crashing. ZPP previously parsed the

@@ -80,6 +80,27 @@ foreach ([
     catch (Throwable $e) { echo "$name: caught\n"; }
 }
 
+// Re-scan: addDataValidationDouble must initialize the optional val_2
+// before passing it to libxl on the non-(NOT)BETWEEN branch — otherwise
+// we feed garbage into the unused slot.
+$bv = new ExcelBook(null, null, true);
+$sv = $bv->addSheet("V");
+var_dump($sv->addDataValidationDouble(0, 3, 1, 1, 0, 0, 5.0));  // EQUAL, 7 args
+
+// Re-scan: addDataValidation defaults in the stub must match C runtime
+// initialisation (allow_blank=true, show_*=true, error_style=1).
+$rd = new ReflectionMethod(ExcelSheet::class, "addDataValidation");
+foreach ($rd->getParameters() as $p) {
+    if (in_array($p->getName(), ["allow_blank", "show_inputmessage", "show_errormessage", "error_style"])) {
+        echo $p->getName() . "=" . var_export($p->getDefaultValue(), true) . "\n";
+    }
+}
+
+// Re-scan: activeSheet must default to the getter-mode sentinel (-1)
+// so calling it with no args doesn't reset the active sheet to 0.
+$ra = new ReflectionMethod(ExcelBook::class, "activeSheet");
+echo "activeSheet \$sheet=" . var_export($ra->getParameters()[0]->getDefaultValue(), true) . "\n";
+
 echo "OK\n";
 ?>
 --EXPECT--
@@ -97,4 +118,10 @@ readRow $read_formula = true
 ExcelFormat: caught
 ExcelFont: caught
 ExcelSheet: caught
+bool(true)
+allow_blank=true
+show_inputmessage=true
+show_errormessage=true
+error_style=1
+activeSheet $sheet=-1
 OK

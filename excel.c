@@ -6461,7 +6461,11 @@ EXCEL_METHOD(Sheet, addDataValidationDouble)
 	SheetHandle sheet;
 
 	zend_long type, op, row_first, row_last, col_first, col_last;
-	double val_1, val_2;
+	/* val_2 is optional. ZPP only writes through the pointer when the
+	 * caller actually passed the argument, so we need a defined initial
+	 * value — otherwise the unbetween-operator branch passes garbage to
+	 * xlSheetAddDataValidationDoubleEx for the unused slot. */
+	double val_1, val_2 = 0.0;
 	bool allow_blank = 1, hide_dropdown=0, show_inputmessage = 1, show_errormessage = 1;
 	zend_string *prompt_title = NULL, *prompt = NULL;
 	zend_string *error_title = NULL, *error = NULL;
