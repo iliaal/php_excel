@@ -495,6 +495,39 @@ static inline int php_excel_check_book_generation_throw(zval *parent_zv, uint64_
 	return 1;
 }
 
+/* Throw-on-error variants of the FROM_OBJECT macros. Used in constructors,
+ * where PHP ignores the return value of RETURN_FALSE and the caller would
+ * otherwise receive an uninitialized wrapper.
+ *
+ * Each macro fetches the handle, throws (and RETURN_THROWS) if the wrapper
+ * is uninitialized, and runs the same generation check that the normal
+ * accessors do. */
+#define SHEET_FROM_OBJECT_THROW(sheet, object) \
+	do { \
+		excel_sheet_object *_obj = Z_EXCEL_SHEET_OBJ_P(object); \
+		sheet = _obj->sheet; \
+		if (!sheet) { \
+			zend_throw_exception(NULL, "The sheet wasn't initialized", 0); \
+			RETURN_THROWS(); \
+		} \
+		if (!php_excel_check_book_generation_throw(&_obj->parent, _obj->book_generation)) { \
+			RETURN_THROWS(); \
+		} \
+	} while (0)
+
+#define AUTOFILTER_FROM_OBJECT_THROW(autofilter, object) \
+	do { \
+		excel_autofilter_object *_obj = Z_EXCEL_AUTOFILTER_OBJ_P(object); \
+		autofilter = _obj->autofilter; \
+		if (!autofilter) { \
+			zend_throw_exception(NULL, "The autofilter wasn't initialized", 0); \
+			RETURN_THROWS(); \
+		} \
+		if (!php_excel_check_book_generation_throw(&_obj->parent, _obj->book_generation)) { \
+			RETURN_THROWS(); \
+		} \
+	} while (0)
+
 static void excel_book_object_free_storage(zend_object *object)
 {
 	excel_book_object *intern = php_excel_book_object_fetch_object(object);
@@ -5773,10 +5806,10 @@ EXCEL_METHOD(AutoFilter, __construct)
 	zval *zsheet = NULL;
 
 	if (zend_parse_parameters(ZEND_NUM_ARGS(), "O", &zsheet, excel_ce_sheet) == FAILURE) {
-		return;
+		RETURN_THROWS();
 	}
 
-	SHEET_FROM_OBJECT(sheet, zsheet);
+	SHEET_FROM_OBJECT_THROW(sheet, zsheet);
 
 	obj = Z_EXCEL_AUTOFILTER_OBJ_P(object);
 
@@ -5991,10 +6024,10 @@ EXCEL_METHOD(FilterColumn, __construct)
 	zend_long colId;
 
 	if (zend_parse_parameters(ZEND_NUM_ARGS(), "Ol", &zautofilter, excel_ce_autofilter, &colId) == FAILURE) {
-		return;
+		RETURN_THROWS();
 	}
 
-	AUTOFILTER_FROM_OBJECT(autofilter, zautofilter);
+	AUTOFILTER_FROM_OBJECT_THROW(autofilter, zautofilter);
 
 	obj = Z_EXCEL_FILTERCOLUMN_OBJ_P(object);
 
@@ -7164,10 +7197,10 @@ EXCEL_METHOD(FormControl, __construct)
 	zend_long index;
 
 	if (zend_parse_parameters(ZEND_NUM_ARGS(), "Ol", &zsheet, excel_ce_sheet, &index) == FAILURE) {
-		return;
+		RETURN_THROWS();
 	}
 
-	SHEET_FROM_OBJECT(sheet, zsheet);
+	SHEET_FROM_OBJECT_THROW(sheet, zsheet);
 
 	obj = Z_EXCEL_FORMCONTROL_OBJ_P(object);
 
@@ -8072,11 +8105,11 @@ EXCEL_METHOD(ConditionalFormatting, __construct)
 	}
 #else
 	if (zend_parse_parameters(ZEND_NUM_ARGS(), "O", &zsheet, excel_ce_sheet) == FAILURE) {
-		return;
+		RETURN_THROWS();
 	}
 #endif
 
-	SHEET_FROM_OBJECT(sheet, zsheet);
+	SHEET_FROM_OBJECT_THROW(sheet, zsheet);
 
 	obj = Z_EXCEL_CONDITIONALFORMATTING_OBJ_P(object);
 
@@ -8466,13 +8499,25 @@ EXCEL_METHOD(Table, __construct)
 		zend_throw_exception(NULL, "Table name must not contain NUL bytes", 0);
 		RETURN_THROWS();
 	}
-	if (rowFirst < 0 || rowFirst > INT_MAX || rowLast < 0 || rowLast > INT_MAX
-			|| colFirst < 0 || colFirst > INT_MAX || colLast < 0 || colLast > INT_MAX) {
-		zend_throw_exception(NULL, "Row/column out of int range", 0);
-		RETURN_THROWS();
+	{
+		excel_book_object *_vb = php_excel_resolve_book_obj(zsheet);
+		zend_long _maxr = (_vb && _vb->is_xlsx) ? EXCEL_MAX_ROW_XLSX : EXCEL_MAX_ROW_XLS;
+		zend_long _maxc = (_vb && _vb->is_xlsx) ? EXCEL_MAX_COL_XLSX : EXCEL_MAX_COL_XLS;
+		if (rowFirst < 0 || rowFirst > _maxr || rowLast < 0 || rowLast > _maxr) {
+			zend_throw_exception_ex(NULL, 0,
+				"Invalid row range: first=" ZEND_LONG_FMT ", last=" ZEND_LONG_FMT,
+				rowFirst, rowLast);
+			RETURN_THROWS();
+		}
+		if (colFirst < 0 || colFirst > _maxc || colLast < 0 || colLast > _maxc) {
+			zend_throw_exception_ex(NULL, 0,
+				"Invalid column range: first=" ZEND_LONG_FMT ", last=" ZEND_LONG_FMT,
+				colFirst, colLast);
+			RETURN_THROWS();
+		}
 	}
 
-	SHEET_FROM_OBJECT(sheet, zsheet);
+	SHEET_FROM_OBJECT_THROW(sheet, zsheet);
 
 	obj = Z_EXCEL_TABLE_OBJ_P(object);
 

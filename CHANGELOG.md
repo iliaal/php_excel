@@ -107,6 +107,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   failed with `ArgumentCountError`. Bad-coordinate inputs now throw an
   exception (PHP ignores constructor return values, so `RETURN_FALSE`
   would have left the caller with an uninitialized wrapper).
+- `ExcelAutoFilter::__construct()`, `ExcelFilterColumn::__construct()`,
+  `ExcelConditionalFormatting::__construct()`, `ExcelTable::__construct()`,
+  and `ExcelFormControl::__construct()` now throw when handed a stale
+  parent (sheet or autofilter from a book that has been reloaded,
+  cleared, or reinitialized). Previously the underlying `*_FROM_OBJECT`
+  macros emitted a warning and `RETURN_FALSE`, but PHP ignores
+  constructor return values, so callers received an uninitialized
+  wrapper that failed only on first use.
 - `Sheet::horPageBreak()` and `Sheet::verPageBreak()` validate the page-
   break coordinate against the row/column axis of the workbook
   respectively. They previously accepted up to `INT_MAX`, so XLSX
