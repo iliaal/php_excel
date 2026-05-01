@@ -220,7 +220,7 @@ class ExcelSheet
     public function writeError(int $row, int $col, int $iError, ?ExcelFormat $format = null): mixed {}  // ZPP "lll|O!"
     public function removeComment(int $row, int $col): mixed {}  // ZPP "ll"
     public function addDataValidation(int $type, int $op, int $row_first, int $row_last, int $col_first, int $col_last, string $val_1, ?string $val_2 = null, bool $allow_blank = true, bool $hide_dropdown = false, bool $show_inputmessage = true, bool $show_errormessage = true, string $prompt_title = "", string $prompt = "", string $error_title = "", string $error = "", int $error_style = 1): bool {}  // ZPP "llllllS|S!bbbbSSSSl"
-    public function addDataValidationDouble(int $type, int $op, int $row_first, int $row_last, int $col_first, int $col_last, float $val_1, ?float $val_2 = null, bool $allow_blank = true, bool $hide_dropdown = false, bool $show_inputmessage = true, bool $show_errormessage = true, string $prompt_title = "", string $prompt = "", string $error_title = "", string $error = "", int $error_style = 1): bool {}  // ZPP "lllllld|z!bbbbSSSSl"
+    public function addDataValidationDouble(int $type, int $op, int $row_first, int $row_last, int $col_first, int $col_last, float $val_1, ?float $val_2 = null, bool $allow_blank = true, bool $hide_dropdown = false, bool $show_inputmessage = true, bool $show_errormessage = true, string $prompt_title = "", string $prompt = "", string $error_title = "", string $error = "", int $error_style = 1): bool {}  // FAST_ZPP llllllD|D!bbbbSSSSl
     public function removeDataValidations(): bool {}  // ZPP ""
     public function firstFilledRow(): int|false {}  // ZPP ""
     public function lastFilledRow(): int|false {}  // ZPP ""

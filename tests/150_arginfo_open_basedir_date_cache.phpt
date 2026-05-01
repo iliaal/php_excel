@@ -87,6 +87,17 @@ $bv = new ExcelBook(null, null, true);
 $sv = $bv->addSheet("V");
 var_dump($sv->addDataValidationDouble(0, ExcelSheet::VALIDATION_OP_EQUAL, 1, 1, 0, 0, 5.0));
 
+// Standard `d` coercion semantics on val_2: numeric strings, ints,
+// bools must coerce just like val_1 (which is a plain `d`). Arrays/
+// objects must TypeError. Only null counts as "not supplied".
+echo "val_2 numstring BETWEEN: ";
+var_dump($sv->addDataValidationDouble(0, ExcelSheet::VALIDATION_OP_BETWEEN, 10, 10, 0, 0, "1.5", "10.5"));
+echo "val_2 int BETWEEN: ";
+var_dump($sv->addDataValidationDouble(0, ExcelSheet::VALIDATION_OP_BETWEEN, 11, 11, 0, 0, 1, 10));
+echo "val_2 array TypeError: ";
+try { $sv->addDataValidationDouble(0, ExcelSheet::VALIDATION_OP_BETWEEN, 12, 12, 0, 0, 5.0, []); echo "no err\n"; }
+catch (TypeError $e) { echo "yes\n"; }
+
 // Reflection-driven callers replaying getDefaultValue() must not bypass
 // the BETWEEN/NOT-BETWEEN second-value guard. Stub default for $val_2
 // is now `null`, treated as "not supplied".
@@ -134,6 +145,9 @@ ExcelFormat: caught
 ExcelFont: caught
 ExcelSheet: caught
 bool(true)
+val_2 numstring BETWEEN: bool(true)
+val_2 int BETWEEN: bool(true)
+val_2 array TypeError: yes
 addDataValidation reflected BETWEEN: bool(false)
 addDataValidationDouble reflected BETWEEN: bool(false)
 allow_blank=true

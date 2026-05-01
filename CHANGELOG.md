@@ -52,8 +52,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `ZEND_NUM_ARGS()`, so a reflection-driven caller replaying
   `getDefaultValue()` (`""` for string, `0.0` for double) sneaked past
   the guard and produced a one-sided rule. Stub `$val_2` is now
-  `?string $val_2 = null` / `?float $val_2 = null`; the C accepts a
-  nullable zval for the double variant and decodes manually.
+  `?string $val_2 = null` / `?float $val_2 = null`. The double variant
+  uses FAST_ZPP `Z_PARAM_DOUBLE_OR_NULL` so PHP's standard `d`
+  coercion (numeric strings, bool, int) still applies to `$val_2`,
+  matching `$val_1`. Only explicit `null` (or omission) trips the
+  BETWEEN guard.
 - `Book::activeSheet()`'s stub default is now `-1` (the C "getter mode"
   sentinel). The previous default of `0` caused reflection-driven calls
   to silently switch the workbook back to sheet index 0 instead of just

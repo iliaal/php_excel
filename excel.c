@@ -6467,31 +6467,35 @@ EXCEL_METHOD(Sheet, addDataValidationDouble)
 
 	zend_long type, op, row_first, row_last, col_first, col_last;
 	double val_1, val_2 = 0.0;
-	zval *val_2_zv = NULL;
+	bool val_2_is_null = true;  /* "argument omitted" defaults to "no second value" */
 	bool allow_blank = 1, hide_dropdown=0, show_inputmessage = 1, show_errormessage = 1;
 	zend_string *prompt_title = NULL, *prompt = NULL;
 	zend_string *error_title = NULL, *error = NULL;
 	zend_long error_style = 1;
 
-	/* val_2 takes a nullable zval so reflection callers replaying the
-	 * stub default of `null` are distinguishable from explicit numeric
-	 * input. We then coerce to double or reject as needed. */
-	if (zend_parse_parameters(ZEND_NUM_ARGS(), "lllllld|z!bbbbSSSSl", &type, &op, &row_first, &row_last, \
-			&col_first, &col_last, &val_1, &val_2_zv, &allow_blank, &hide_dropdown, &show_inputmessage, \
-			&show_errormessage, &prompt_title, &prompt, &error_title, &error, &error_style) == FAILURE) {
-		RETURN_FALSE;
-	}
-
-	if (val_2_zv) {
-		switch (Z_TYPE_P(val_2_zv)) {
-			case IS_DOUBLE: val_2 = Z_DVAL_P(val_2_zv); break;
-			case IS_LONG:   val_2 = (double)Z_LVAL_P(val_2_zv); break;
-			case IS_NULL:   val_2_zv = NULL; break;  /* explicit null = not supplied */
-			default:
-				zend_argument_type_error(8, "must be of type float|null, %s given", zend_zval_value_name(val_2_zv));
-				RETURN_THROWS();
-		}
-	}
+	/* FAST_ZPP so val_2 keeps the standard `d` coercion path (numeric
+	 * strings, bool, int) while still distinguishing explicit null
+	 * (or omission) from a real value, which the BETWEEN guard needs. */
+	ZEND_PARSE_PARAMETERS_START(7, 17)
+		Z_PARAM_LONG(type)
+		Z_PARAM_LONG(op)
+		Z_PARAM_LONG(row_first)
+		Z_PARAM_LONG(row_last)
+		Z_PARAM_LONG(col_first)
+		Z_PARAM_LONG(col_last)
+		Z_PARAM_DOUBLE(val_1)
+		Z_PARAM_OPTIONAL
+		Z_PARAM_DOUBLE_OR_NULL(val_2, val_2_is_null)
+		Z_PARAM_BOOL(allow_blank)
+		Z_PARAM_BOOL(hide_dropdown)
+		Z_PARAM_BOOL(show_inputmessage)
+		Z_PARAM_BOOL(show_errormessage)
+		Z_PARAM_STR(prompt_title)
+		Z_PARAM_STR(prompt)
+		Z_PARAM_STR(error_title)
+		Z_PARAM_STR(error)
+		Z_PARAM_LONG(error_style)
+	ZEND_PARSE_PARAMETERS_END();
 
 	EXCEL_NUL_SAFE_STRING(prompt_title)
 	EXCEL_NUL_SAFE_STRING(prompt)
@@ -6500,7 +6504,7 @@ EXCEL_METHOD(Sheet, addDataValidationDouble)
 	EXCEL_VALIDATE_ROW_RANGE(row_first, row_last, object);
 	EXCEL_VALIDATE_COL_RANGE(col_first, col_last, object);
 
-	if ((op == VALIDATION_OP_BETWEEN || op == VALIDATION_OP_NOTBETWEEN) && !val_2_zv) {
+	if ((op == VALIDATION_OP_BETWEEN || op == VALIDATION_OP_NOTBETWEEN) && val_2_is_null) {
 		php_error_docref(NULL, E_WARNING, "The second value can not be null when used with (not) between operator.");
 		RETURN_FALSE;
 	}
