@@ -186,11 +186,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   instead of allocating a new format per cell. Five sequential AS_DATE
   writes used to grow `Book::getAllFormats()` by five entries; they now
   grow by one. Bulk date exports stay well below libxl's per-book
-  format-table cap. The cache is cleared whenever the book generation
-  is bumped (`load()`, `loadFile()`, `loadInfo()`, `loadInfoRaw()`,
-  `clear()`, `__construct()` reuse, `deleteSheet()`, `moveSheet()`),
-  so post-reset AS_DATE writes don't reuse the freed handle and still
-  record as dates.
+  format-table cap. The cache is cleared on book-state resets that
+  free libxl's format table (`load()`, `loadFile()`, `loadInfo()`,
+  `loadInfoRaw()`, `clear()`, `__construct()` reuse), so post-reset
+  AS_DATE writes don't reuse the freed handle and still record as
+  dates. Sheet-index shifts (`deleteSheet()`, `moveSheet()`) preserve
+  the cache because libxl preserves the format table across them.
 - `Sheet::horPageBreak()` and `Sheet::verPageBreak()` validate the page-
   break coordinate against the row/column axis of the workbook
   respectively. They previously accepted up to `INT_MAX`, so XLSX

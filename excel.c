@@ -478,12 +478,22 @@ static inline excel_book_object *php_excel_resolve_book_obj(zval *parent_zv) {
 		ZVAL_COPY(&(child_obj)->parent, parent_zv); \
 	} while (0)
 
-/* Invalidate every existing child wrapper of `book_zv`. Call after any libxl
- * operation that resets book state (load/clear) or shifts internal child
- * indices (delete/insert/copy/move sheet). Also drops the cached default
- * date format because libxl owns it and frees it during state resets;
- * dereferencing the stale handle would write garbage cells silently. */
+/* Bump the generation counter so existing child wrappers fail their
+ * stale-check. Use after libxl operations that shift internal child
+ * indices (deleteSheet, moveSheet) — formats remain valid, so the
+ * cached default date format must be preserved. */
 static inline void php_excel_book_bump_generation(zval *book_zv) {
+	excel_book_object *bobj = php_excel_book_object_fetch_object(Z_OBJ_P(book_zv));
+	bobj->generation++;
+}
+
+/* Full state reset: bump generation AND drop the cached default date
+ * format. Use after libxl operations that free the internal format
+ * table (load, loadFile, loadInfo, loadInfoRaw, clear, __construct
+ * reuse). Reusing the stale FormatHandle from default_date_format
+ * after one of these would silently write cells with no format,
+ * corrupting AS_DATE-typed output. */
+static inline void php_excel_book_reset_state(zval *book_zv) {
 	excel_book_object *bobj = php_excel_book_object_fetch_object(Z_OBJ_P(book_zv));
 	bobj->generation++;
 	bobj->default_date_format = NULL;
@@ -1018,7 +1028,7 @@ EXCEL_METHOD(Book, load)
 
 	BOOK_FROM_OBJECT(book, object);
 
-	php_excel_book_bump_generation(object);
+	php_excel_book_reset_state(object);
 	RETURN_BOOL(xlBookLoadRaw(book, ZSTR_VAL(data_zs), ZSTR_LEN(data_zs)));
 }
 /* }}} */
@@ -1048,7 +1058,7 @@ EXCEL_METHOD(Book, loadFile)
 	 * the wrapper machinery. */
 	if (!strstr(ZSTR_VAL(filename_zs), "://")
 	    && !php_check_open_basedir(ZSTR_VAL(filename_zs))) {
-		php_excel_book_bump_generation(object);
+		php_excel_book_reset_state(object);
 		RETURN_BOOL(xlBookLoad(book, ZSTR_VAL(filename_zs)));
 	}
 
@@ -1072,7 +1082,7 @@ EXCEL_METHOD(Book, loadFile)
 		RETURN_FALSE;
 	}
 
-	php_excel_book_bump_generation(object);
+	php_excel_book_reset_state(object);
 	RETVAL_BOOL(xlBookLoadRaw(book, ZSTR_VAL(contents), ZSTR_LEN(contents)));
 	zend_string_release(contents);
 }
@@ -2089,7 +2099,7 @@ EXCEL_METHOD(Book, loadInfo)
 
 	BOOK_FROM_OBJECT(book, object);
 
-	php_excel_book_bump_generation(object);
+	php_excel_book_reset_state(object);
 	RETURN_BOOL(xlBookLoadInfo(book, ZSTR_VAL(filename_zs)));
 }
 /* }}} */
@@ -2306,7 +2316,7 @@ EXCEL_METHOD(Book, loadInfoRaw)
 
 	BOOK_FROM_OBJECT(book, object);
 
-	php_excel_book_bump_generation(object);
+	php_excel_book_reset_state(object);
 	RETURN_BOOL(xlBookLoadInfoRaw(book, ZSTR_VAL(data), ZSTR_LEN(data)));
 }
 #endif
@@ -2370,7 +2380,7 @@ EXCEL_METHOD(Book, clear)
 
 	BOOK_FROM_OBJECT(book, object);
 
-	php_excel_book_bump_generation(object);
+	php_excel_book_reset_state(object);
 	xlBookClear(book);
 	RETURN_TRUE;
 }

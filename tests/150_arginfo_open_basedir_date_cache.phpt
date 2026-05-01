@@ -36,16 +36,28 @@ $after = count($bd->getAllFormats() ?: []);
 echo "format delta: " . ($after - $before) . "\n";
 
 // Re-scan: the cached default_date_format must be cleared on book-state
-// resets. Otherwise post-reset AS_DATE writes reuse a freed handle and
-// the cell records as a raw double instead of a date. Use __construct
-// reuse to drive the reset; load() and clear() take the same code path
-// (php_excel_book_bump_generation), but exercising them here triggers
-// pre-existing libxl-internal leaks that LSan flags during full-suite
-// runs.
+// resets, but NOT on sheet-index shifts where libxl preserves the
+// format table. __construct reuse exercises the reset path; moveSheet
+// exercises the preserved-cache path. load()/clear() share the reset
+// path but trigger pre-existing libxl-internal LSan reports on full
+// suite runs, so cover them via __construct reuse here.
 $bd->__construct(null, null, true);
 $sd2 = $bd->addSheet("D2");
 $sd2->write(1, 0, time(), null, ExcelFormat::AS_DATE);
 echo "isDate after __construct reuse: " . var_export($sd2->isDate(1, 0), true) . "\n";
+
+// moveSheet must preserve the cache.
+$bm = new ExcelBook(null, null, true);
+$am = $bm->addSheet("A");
+$bm->addSheet("B");
+$am->write(1, 0, time(), null, ExcelFormat::AS_DATE);
+$baseM = count($bm->getAllFormats() ?: []);
+$bm->moveSheet(1, 0);
+$bm->moveSheet(0, 1);
+$sM = $bm->getSheet(1);
+$sM->write(1, 0, time(), null, ExcelFormat::AS_DATE);
+$sM->write(2, 0, time(), null, ExcelFormat::AS_DATE);
+echo "format delta across 2 moveSheet + 2 date writes: " . (count($bm->getAllFormats() ?: []) - $baseM) . "\n";
 
 // CR-004: reflection defaults match C
 $r = new ReflectionMethod(ExcelSheet::class, "readRow");
@@ -78,6 +90,7 @@ bool(false)
 bool(false)
 format delta: 1
 isDate after __construct reuse: true
+format delta across 2 moveSheet + 2 date writes: 0
 readRow $start_col = 0
 readRow $end_column = -1
 readRow $read_formula = true
