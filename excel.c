@@ -120,6 +120,11 @@ typedef struct _excel_book_object {
 	 * xlCreateBook() (XLS, 65536x256). Used by EXCEL_VALIDATE_ROW_COL to
 	 * reject impossible coordinates per book type. */
 	bool is_xlsx;
+	/* Lazily-allocated default format used by IS_DATE writes when the
+	 * caller doesn't supply an explicit format, so bulk date exports
+	 * don't create one new format per cell and bloat the style table.
+	 * Reset along with `book` on __construct reuse. */
+	FormatHandle default_date_format;
 	zend_object std;
 } excel_book_object;
 
@@ -528,6 +533,16 @@ static inline int php_excel_check_book_generation_throw(zval *parent_zv, uint64_
 		} \
 	} while (0)
 
+#define BOOK_FROM_OBJECT_THROW(book, object) \
+	do { \
+		excel_book_object *_bobj = Z_EXCEL_BOOK_OBJ_P(object); \
+		book = _bobj->book; \
+		if (!book) { \
+			zend_throw_exception(NULL, "The book wasn't initialized", 0); \
+			RETURN_THROWS(); \
+		} \
+	} while (0)
+
 static void excel_book_object_free_storage(zend_object *object)
 {
 	excel_book_object *intern = php_excel_book_object_fetch_object(object);
@@ -551,6 +566,7 @@ static zend_object *excel_object_new_book(zend_class_entry *class_type)
 	intern->book = NULL;
 	intern->generation = 0;
 	intern->is_xlsx = false;
+	intern->default_date_format = NULL;
 	intern->std.handlers = &excel_object_handlers_book;
 
 	return &intern->std;
@@ -1820,6 +1836,7 @@ EXCEL_METHOD(Book, __construct)
 		}
 		obj->book = book;
 		obj->is_xlsx = new_excel;
+		obj->default_date_format = NULL;
 	}
 
 #if defined(HAVE_LIBXL_SETKEY)
@@ -2062,6 +2079,10 @@ EXCEL_METHOD(Book, loadInfo)
 
 	EXCEL_NON_EMPTY_STRING(filename_zs)
 	EXCEL_NUL_SAFE_STRING(filename_zs)
+
+	if (php_check_open_basedir(ZSTR_VAL(filename_zs))) {
+		RETURN_FALSE;
+	}
 
 	BOOK_FROM_OBJECT(book, object);
 
@@ -2577,10 +2598,10 @@ EXCEL_METHOD(Format, __construct)
 	zval *zbook;
 
 	if (zend_parse_parameters(ZEND_NUM_ARGS(), "O", &zbook, excel_ce_book) == FAILURE) {
-		return;
+		RETURN_THROWS();
 	}
 
-	BOOK_FROM_OBJECT(book, zbook);
+	BOOK_FROM_OBJECT_THROW(book, zbook);
 
 	obj = Z_EXCEL_FORMAT_OBJ_P(object);
 
@@ -2607,10 +2628,10 @@ EXCEL_METHOD(Font, __construct)
 	zval *zbook;
 
 	if (zend_parse_parameters(ZEND_NUM_ARGS(), "O", &zbook, excel_ce_book) == FAILURE) {
-		return;
+		RETURN_THROWS();
 	}
 
-	BOOK_FROM_OBJECT(book, zbook);
+	BOOK_FROM_OBJECT_THROW(book, zbook);
 
 	obj = Z_EXCEL_FONT_OBJ_P(object);
 
@@ -2952,7 +2973,7 @@ EXCEL_METHOD(Sheet, __construct)
 	zend_string *name_zs = NULL;
 
 	if (zend_parse_parameters(ZEND_NUM_ARGS(), "OS", &zbook, excel_ce_book, &name_zs) == FAILURE) {
-		return;
+		RETURN_THROWS();
 	}
 
 	if (!zbook) {
@@ -2968,7 +2989,7 @@ EXCEL_METHOD(Sheet, __construct)
 		RETURN_THROWS();
 	}
 
-	BOOK_FROM_OBJECT(book, zbook);
+	BOOK_FROM_OBJECT_THROW(book, zbook);
 
 	obj = Z_EXCEL_SHEET_OBJ_P(object);
 
@@ -3042,7 +3063,7 @@ EXCEL_METHOD(Sheet, setCellFormat)
 	zval *oformat;
 	zend_long row, col;
 
-	if (zend_parse_parameters(ZEND_NUM_ARGS(), "llo", &row, &col, &oformat, excel_ce_format) == FAILURE) {
+	if (zend_parse_parameters(ZEND_NUM_ARGS(), "llO", &row, &col, &oformat, excel_ce_format) == FAILURE) {
 		RETURN_FALSE;
 	}
 
@@ -3296,9 +3317,10 @@ EXCEL_METHOD(Sheet, read)
 }
 /* }}} */
 
-bool php_excel_write_cell(SheetHandle sheet, BookHandle book, int row, int col, zval *data, FormatHandle format, zend_long dtype)
+bool php_excel_write_cell(SheetHandle sheet, excel_book_object *book_obj, int row, int col, zval *data, FormatHandle format, zend_long dtype)
 {
 	zend_string *data_zs;
+	BookHandle book = book_obj->book;
 
 	try_again:
 	switch (Z_TYPE_P(data)) {
@@ -3319,9 +3341,16 @@ bool php_excel_write_cell(SheetHandle sheet, BookHandle book, int row, int col, 
 					return 0;
 				}
 				if (!format) {
-					FormatHandle fmt = xlBookAddFormat(book, NULL);
-					xlFormatSetNumFormat(fmt, NUMFORMAT_DATE);
-					return xlSheetWriteNum(sheet, row, col, dt, fmt);
+					if (!book_obj->default_date_format) {
+						/* Lazily create one shared date format and cache it
+						 * on the book so bulk date exports don't push the
+						 * style-table count up by one per cell. */
+						book_obj->default_date_format = xlBookAddFormat(book, NULL);
+						if (book_obj->default_date_format) {
+							xlFormatSetNumFormat(book_obj->default_date_format, NUMFORMAT_DATE);
+						}
+					}
+					return xlSheetWriteNum(sheet, row, col, dt, book_obj->default_date_format);
 				} else {
 					return xlSheetWriteNum(sheet, row, col, dt, format);
 				}
@@ -3408,9 +3437,12 @@ EXCEL_METHOD(Sheet, write)
 		FORMAT_FROM_OBJECT(format, oformat);
 	}
 
-	if (!php_excel_write_cell(sheet, book, row, col, data, oformat ? format : 0, dtype)) {
-		php_error_docref(NULL, E_WARNING, "Failed to write cell in row " ZEND_LONG_FMT ", column " ZEND_LONG_FMT " with error '%s'", row, col, xlBookErrorMessage(book));
-		RETURN_FALSE;
+	{
+		excel_book_object *book_obj = php_excel_resolve_book_obj(object);
+		if (!php_excel_write_cell(sheet, book_obj, row, col, data, oformat ? format : 0, dtype)) {
+			php_error_docref(NULL, E_WARNING, "Failed to write cell in row " ZEND_LONG_FMT ", column " ZEND_LONG_FMT " with error '%s'", row, col, xlBookErrorMessage(book));
+			RETURN_FALSE;
+		}
 	}
 
 	RETURN_TRUE;
@@ -3459,12 +3491,15 @@ EXCEL_METHOD(Sheet, writeRow)
 
 	i = col;
 
-	ZEND_HASH_FOREACH_VAL(Z_ARRVAL_P(data), element) {
-		if (!php_excel_write_cell(sheet, book, row, i++, element, (oformat ? format : 0), -1)) {
-			php_error_docref(NULL, E_WARNING, "Failed to write cell in row " ZEND_LONG_FMT ", column " ZEND_LONG_FMT " with error '%s'", row, i-1, xlBookErrorMessage(book));
-			RETURN_FALSE;
-		}
-	} ZEND_HASH_FOREACH_END();
+	{
+		excel_book_object *book_obj = php_excel_resolve_book_obj(object);
+		ZEND_HASH_FOREACH_VAL(Z_ARRVAL_P(data), element) {
+			if (!php_excel_write_cell(sheet, book_obj, row, i++, element, (oformat ? format : 0), -1)) {
+				php_error_docref(NULL, E_WARNING, "Failed to write cell in row " ZEND_LONG_FMT ", column " ZEND_LONG_FMT " with error '%s'", row, i-1, xlBookErrorMessage(book));
+				RETURN_FALSE;
+			}
+		} ZEND_HASH_FOREACH_END();
+	}
 
 	RETURN_TRUE;
 }
@@ -3508,12 +3543,15 @@ EXCEL_METHOD(Sheet, writeCol)
 
 	i = row;
 
-	ZEND_HASH_FOREACH_VAL(Z_ARRVAL_P(data), element) {
-		if (!php_excel_write_cell(sheet, book, i++, col, element, oformat ? format : 0, dtype)) {
-			php_error_docref(NULL, E_WARNING, "Failed to write cell in row " ZEND_LONG_FMT ", column " ZEND_LONG_FMT " with error '%s'", i-1, col, xlBookErrorMessage(book));
-			RETURN_FALSE;
-		}
-	} ZEND_HASH_FOREACH_END();
+	{
+		excel_book_object *book_obj = php_excel_resolve_book_obj(object);
+		ZEND_HASH_FOREACH_VAL(Z_ARRVAL_P(data), element) {
+			if (!php_excel_write_cell(sheet, book_obj, i++, col, element, oformat ? format : 0, dtype)) {
+				php_error_docref(NULL, E_WARNING, "Failed to write cell in row " ZEND_LONG_FMT ", column " ZEND_LONG_FMT " with error '%s'", i-1, col, xlBookErrorMessage(book));
+				RETURN_FALSE;
+			}
+		} ZEND_HASH_FOREACH_END();
+	}
 
 	RETURN_TRUE;
 }
@@ -5073,7 +5111,7 @@ EXCEL_METHOD(Book, insertSheet)
 	zend_string *name_zs = NULL;
 	zend_long index;
 
-	if (zend_parse_parameters(ZEND_NUM_ARGS(), "lS|o", &index, &name_zs, &shz) == FAILURE) {
+	if (zend_parse_parameters(ZEND_NUM_ARGS(), "lS|O!", &index, &name_zs, &shz, excel_ce_sheet) == FAILURE) {
 		RETURN_FALSE;
 	}
 
@@ -5811,7 +5849,7 @@ EXCEL_METHOD(Sheet, writeError)
 	zval *oformat = NULL;
 	FormatHandle format = NULL;
 
-	if (zend_parse_parameters(ZEND_NUM_ARGS(), "lll|o", &row, &col, &iError, &oformat, excel_ce_format) == FAILURE) {
+	if (zend_parse_parameters(ZEND_NUM_ARGS(), "lll|O!", &row, &col, &iError, &oformat, excel_ce_format) == FAILURE) {
 		RETURN_FALSE;
 	}
 
@@ -6308,6 +6346,10 @@ EXCEL_METHOD(Book, addPictureAsLink)
 
 	EXCEL_NON_EMPTY_STRING(filename)
 	EXCEL_NUL_SAFE_STRING(filename)
+
+	if (php_check_open_basedir(ZSTR_VAL(filename))) {
+		RETURN_FALSE;
+	}
 
 	BOOK_FROM_OBJECT(book, object);
 
@@ -7114,10 +7156,10 @@ EXCEL_METHOD(RichString, __construct)
 	zval *zbook;
 
 	if (zend_parse_parameters(ZEND_NUM_ARGS(), "O", &zbook, excel_ce_book) == FAILURE) {
-		return;
+		RETURN_THROWS();
 	}
 
-	BOOK_FROM_OBJECT(book, zbook);
+	BOOK_FROM_OBJECT_THROW(book, zbook);
 
 	obj = Z_EXCEL_RICHSTRING_OBJ_P(object);
 
@@ -7780,10 +7822,10 @@ EXCEL_METHOD(ConditionalFormat, __construct)
 	zval *zbook;
 
 	if (zend_parse_parameters(ZEND_NUM_ARGS(), "O", &zbook, excel_ce_book) == FAILURE) {
-		return;
+		RETURN_THROWS();
 	}
 
-	BOOK_FROM_OBJECT(book, zbook);
+	BOOK_FROM_OBJECT_THROW(book, zbook);
 
 	obj = Z_EXCEL_CONDITIONALFORMAT_OBJ_P(object);
 
@@ -8421,10 +8463,10 @@ EXCEL_METHOD(CoreProperties, __construct)
 	zval *zbook;
 
 	if (zend_parse_parameters(ZEND_NUM_ARGS(), "O", &zbook, excel_ce_book) == FAILURE) {
-		return;
+		RETURN_THROWS();
 	}
 
-	BOOK_FROM_OBJECT(book, zbook);
+	BOOK_FROM_OBJECT_THROW(book, zbook);
 
 	obj = Z_EXCEL_COREPROPERTIES_OBJ_P(object);
 

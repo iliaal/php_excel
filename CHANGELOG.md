@@ -45,6 +45,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   macros so a stale `ExcelAutoFilter`/`ExcelConditionalFormat`/
   `ExcelRichString` (after `Book::load()` etc.) raises a warning and
   returns `false` instead of dereferencing a freed libxl handle.
+- ZPP signatures for `Sheet::setCellFormat()`, `Sheet::writeError()`, and
+  `Book::copySheet()` were tightened from generic `o` to `O`/`O!` with the
+  expected class entry. Previously the methods accepted any object,
+  reaching the `*_FROM_OBJECT` macros with a `stdClass` and producing an
+  arginfo/ZPP fatal under debug PHP and undefined behaviour otherwise.
+  Calls now raise `TypeError` at the boundary as the stub advertises.
+- `Book::loadInfo()` and `Book::addPictureAsLink()` now run
+  `php_check_open_basedir()` before handing the path to libxl. The two
+  methods talked to libxl directly without a stream wrapper, so paths
+  outside `open_basedir` were readable / linkable into otherwise
+  permitted output workbooks.
+- `ExcelFormat::__construct()`, `ExcelFont::__construct()`,
+  `ExcelSheet::__construct()`, `ExcelRichString::__construct()`,
+  `ExcelConditionalFormat::__construct()`, and
+  `ExcelCoreProperties::__construct()` now throw when handed an
+  uninitialized `ExcelBook` (e.g. one obtained via
+  `ReflectionClass::newInstanceWithoutConstructor()`). Previously
+  `BOOK_FROM_OBJECT` warned and returned `false`, but PHP ignores
+  constructor return values, so the caller received an unusable child
+  wrapper that crashed only on first use.
 - `Sheet::writeRow()` and `Sheet::writeCol()` pre-validate the full target
   range before mutating any cell. An overflowing run (e.g. XLS
   `writeRow(1, [a, b], 255)` where col `255+1=256` is past the limit)
@@ -146,6 +166,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the stub (was `$row`). The C implementation has always parsed it as
   the column index; reflection and named arguments were misleading
   callers.
+- `Sheet::read()`, `Sheet::readRow()`, and `Sheet::readCol()` stub
+  defaults aligned with the C implementation. The stubs declared
+  `read_formula = false` and `end_column/end_row = 0`; the C parses
+  defaults are `1` (true) and `-1` ("read to last column/row"). Calling
+  these methods with no optional arguments behaves as the C has always
+  behaved, but reflection and static analysis now match.
 
 ### Performance
 - `Book::loadFile()`, `Book::save($path)`, and `Book::addPictureFromFile()`
@@ -155,6 +181,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   full in-memory buffer before handing the bytes to libxl, doubling peak
   memory for large files. Stream-wrapper paths (`phar://`, `php://`, etc.)
   still go through the original wrapper machinery.
+- `Sheet::write()` / `writeRow()` / `writeCol()` with `ExcelFormat::AS_DATE`
+  and no explicit format now share a single book-cached date format
+  instead of allocating a new format per cell. Five sequential AS_DATE
+  writes used to grow `Book::getAllFormats()` by five entries; they now
+  grow by one. Bulk date exports stay well below libxl's per-book
+  format-table cap.
 - `Sheet::horPageBreak()` and `Sheet::verPageBreak()` validate the page-
   break coordinate against the row/column axis of the workbook
   respectively. They previously accepted up to `INT_MAX`, so XLSX
