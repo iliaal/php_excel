@@ -480,10 +480,13 @@ static inline excel_book_object *php_excel_resolve_book_obj(zval *parent_zv) {
 
 /* Invalidate every existing child wrapper of `book_zv`. Call after any libxl
  * operation that resets book state (load/clear) or shifts internal child
- * indices (delete/insert/copy/move sheet). */
+ * indices (delete/insert/copy/move sheet). Also drops the cached default
+ * date format because libxl owns it and frees it during state resets;
+ * dereferencing the stale handle would write garbage cells silently. */
 static inline void php_excel_book_bump_generation(zval *book_zv) {
 	excel_book_object *bobj = php_excel_book_object_fetch_object(Z_OBJ_P(book_zv));
 	bobj->generation++;
+	bobj->default_date_format = NULL;
 }
 
 /* Throw-on-stale variant for code paths that cannot use RETURN_FALSE — most
