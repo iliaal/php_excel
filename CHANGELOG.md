@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed (semantics)
+- Optional getter/setter methods on `ExcelFormat` and `ExcelFont` now
+  treat explicit `null` as "getter mode" instead of silently mutating
+  state. Previously the `|l` ZPP weak-coerced `null` to `0`, fired the
+  setter, and reset the underlying slot — `$F->numberFormat(null)`
+  reset format `7` to `0` on a Format already pointed at format `7`,
+  and `$f->name(null)` reset `"Arial"` to `""` because `|S` weak-
+  coerced `null` to `""`. The new semantics: argument omitted or
+  `null` → getter; any non-null value → setter (range-checked against
+  the libxl `int` boundary). Affects `ExcelFormat::numberFormat`,
+  `horizontalAlign`, `verticalAlign`, `wrap`, `rotate`, `indent`,
+  `shrinkToFit`, `borderStyle`, `borderColor`, `borderLeftStyle`/
+  `Color`, `borderRightStyle`/`Color`, `borderTopStyle`/`Color`,
+  `borderBottomStyle`/`Color`, `borderDiagonalStyle`/`Color`,
+  `fillPattern`, `patternForegroundColor`, `patternBackgroundColor`,
+  `locked`, `hidden`, `ExcelFont::size`, `italics`, `strike`, `bold`,
+  `color`, `mode`, `underline`, `name`. Stubs and IDE reference docs
+  are updated accordingly (`?int $foo = null`, `?bool $foo = null`,
+  `?string $name = null`).
+
 ### Added
 - Comprehensive test coverage for FormControl (all 7 control types)
 - Tests for previously untested methods: Book::addPictureAsLink,
@@ -58,6 +78,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   and the dimensional / offset / pos arguments wrapped — a
   `pic_id = 2**32` call used to alias to picture index 0 and
   silently embed the wrong picture into the sheet.
+- Non-index integer setters on `ExcelFormat` and `ExcelFont`
+  (`numberFormat`, all `border*Style` / `border*Color`,
+  `fillPattern`, `pattern*Color`, `Font::size`, `Font::color`,
+  `Font::mode`, `Font::underline`, `rotate`, `indent`) now reject
+  values outside `[0, INT_MAX]` instead of silently truncating
+  on the implicit `int` cast — `numberFormat(2**32 + 1)` and
+  `Font::color(2**32 + 1)` previously both became `1`.
 - Stub argument types and runtime ZPP signatures for `Sheet::groupRows()`,
   `Sheet::groupCols()`, `Sheet::setPrintHeaders()`, and
   `ExcelFormat::wrap()` / `shrinkToFit()` / `locked()` / `hidden()` are

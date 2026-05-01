@@ -2429,16 +2429,22 @@ EXCEL_METHOD(Font, size)
 {
 	zval *object = ZEND_THIS;
 	FontHandle font;
-	zend_long size = -1;
+	zend_long size = 0;
+	bool size_is_null = 1;
 
-	if (zend_parse_parameters(ZEND_NUM_ARGS(), "|l", &size) == FAILURE) {
-		RETURN_FALSE;
-	}
+	ZEND_PARSE_PARAMETERS_START(0, 1)
+		Z_PARAM_OPTIONAL
+		Z_PARAM_LONG_OR_NULL(size, size_is_null)
+	ZEND_PARSE_PARAMETERS_END_EX(RETURN_FALSE);
 
 	FONT_FROM_OBJECT(font, object);
 
-	if (size > 0) {
-		xlFontSetSize(font, size);
+	if (!size_is_null && size > 0) {
+		if (size > INT_MAX) {
+			php_error_docref(NULL, E_WARNING, "Argument out of int range");
+			RETURN_FALSE;
+		}
+		xlFontSetSize(font, (int)size);
 	}
 
 	RETURN_LONG(xlFontSize(font));
@@ -2451,15 +2457,17 @@ EXCEL_METHOD(Font, italics)
 {
 	zval *object = ZEND_THIS;
 	FontHandle font;
-	bool italics;
+	bool italics = 0;
+	bool italics_is_null = 1;
 
-	if (zend_parse_parameters(ZEND_NUM_ARGS(), "|b", &italics) == FAILURE) {
-		RETURN_FALSE;
-	}
+	ZEND_PARSE_PARAMETERS_START(0, 1)
+		Z_PARAM_OPTIONAL
+		Z_PARAM_BOOL_OR_NULL(italics, italics_is_null)
+	ZEND_PARSE_PARAMETERS_END_EX(RETURN_FALSE);
 
 	FONT_FROM_OBJECT(font, object);
 
-	if (ZEND_NUM_ARGS()) {
+	if (!italics_is_null) {
 		xlFontSetItalic(font, italics);
 	}
 
@@ -2473,15 +2481,17 @@ EXCEL_METHOD(Font, strike)
 {
 	zval *object = ZEND_THIS;
 	FontHandle font;
-	bool strike;
+	bool strike = 0;
+	bool strike_is_null = 1;
 
-	if (zend_parse_parameters(ZEND_NUM_ARGS(), "|b", &strike) == FAILURE) {
-		RETURN_FALSE;
-	}
+	ZEND_PARSE_PARAMETERS_START(0, 1)
+		Z_PARAM_OPTIONAL
+		Z_PARAM_BOOL_OR_NULL(strike, strike_is_null)
+	ZEND_PARSE_PARAMETERS_END_EX(RETURN_FALSE);
 
 	FONT_FROM_OBJECT(font, object);
 
-	if (ZEND_NUM_ARGS()) {
+	if (!strike_is_null) {
 		xlFontSetStrikeOut(font, strike);
 	}
 
@@ -2495,15 +2505,17 @@ EXCEL_METHOD(Font, bold)
 {
 	zval *object = ZEND_THIS;
 	FontHandle font;
-	bool bold;
+	bool bold = 0;
+	bool bold_is_null = 1;
 
-	if (zend_parse_parameters(ZEND_NUM_ARGS(), "|b", &bold) == FAILURE) {
-		RETURN_FALSE;
-	}
+	ZEND_PARSE_PARAMETERS_START(0, 1)
+		Z_PARAM_OPTIONAL
+		Z_PARAM_BOOL_OR_NULL(bold, bold_is_null)
+	ZEND_PARSE_PARAMETERS_END_EX(RETURN_FALSE);
 
 	FONT_FROM_OBJECT(font, object);
 
-	if (ZEND_NUM_ARGS()) {
+	if (!bold_is_null) {
 		xlFontSetBold(font, bold);
 	}
 
@@ -2517,16 +2529,22 @@ EXCEL_METHOD(Font, color)
 {
 	zval *object = ZEND_THIS;
 	FontHandle font;
-	zend_long color;
+	zend_long color = 0;
+	bool color_is_null = 1;
 
-	if (zend_parse_parameters(ZEND_NUM_ARGS(), "|l", &color) == FAILURE) {
-		RETURN_FALSE;
-	}
+	ZEND_PARSE_PARAMETERS_START(0, 1)
+		Z_PARAM_OPTIONAL
+		Z_PARAM_LONG_OR_NULL(color, color_is_null)
+	ZEND_PARSE_PARAMETERS_END_EX(RETURN_FALSE);
 
 	FONT_FROM_OBJECT(font, object);
 
-	if (ZEND_NUM_ARGS()) {
-		xlFontSetColor(font, color);
+	if (!color_is_null) {
+		if (color < 0 || color > INT_MAX) {
+			php_error_docref(NULL, E_WARNING, "Argument out of int range");
+			RETURN_FALSE;
+		}
+		xlFontSetColor(font, (int)color);
 	}
 
 	RETURN_LONG(xlFontColor(font));
@@ -2539,16 +2557,22 @@ EXCEL_METHOD(Font, mode)
 {
 	zval *object = ZEND_THIS;
 	FontHandle font;
-	zend_long mode;
+	zend_long mode = 0;
+	bool mode_is_null = 1;
 
-	if (zend_parse_parameters(ZEND_NUM_ARGS(), "|l", &mode) == FAILURE) {
-		RETURN_FALSE;
-	}
+	ZEND_PARSE_PARAMETERS_START(0, 1)
+		Z_PARAM_OPTIONAL
+		Z_PARAM_LONG_OR_NULL(mode, mode_is_null)
+	ZEND_PARSE_PARAMETERS_END_EX(RETURN_FALSE);
 
 	FONT_FROM_OBJECT(font, object);
 
-	if (ZEND_NUM_ARGS()) {
-		xlFontSetScript(font, mode);
+	if (!mode_is_null) {
+		if (mode < 0 || mode > INT_MAX) {
+			php_error_docref(NULL, E_WARNING, "Argument out of int range");
+			RETURN_FALSE;
+		}
+		xlFontSetScript(font, (int)mode);
 	}
 
 	RETURN_LONG(xlFontScript(font));
@@ -2561,16 +2585,22 @@ EXCEL_METHOD(Font, underline)
 {
 	zval *object = ZEND_THIS;
 	FontHandle font;
-	zend_long underline;
+	zend_long underline = 0;
+	bool underline_is_null = 1;
 
-	if (zend_parse_parameters(ZEND_NUM_ARGS(), "|l", &underline) == FAILURE) {
-		RETURN_FALSE;
-	}
+	ZEND_PARSE_PARAMETERS_START(0, 1)
+		Z_PARAM_OPTIONAL
+		Z_PARAM_LONG_OR_NULL(underline, underline_is_null)
+	ZEND_PARSE_PARAMETERS_END_EX(RETURN_FALSE);
 
 	FONT_FROM_OBJECT(font, object);
 
-	if (ZEND_NUM_ARGS()) {
-		xlFontSetUnderline(font, underline);
+	if (!underline_is_null) {
+		if (underline < 0 || underline > INT_MAX) {
+			php_error_docref(NULL, E_WARNING, "Argument out of int range");
+			RETURN_FALSE;
+		}
+		xlFontSetUnderline(font, (int)underline);
 	}
 
 	RETURN_LONG(xlFontUnderline(font));
@@ -2585,9 +2615,12 @@ EXCEL_METHOD(Font, name)
 	FontHandle font;
 	zend_string *name_zs = NULL;
 
-	if (zend_parse_parameters(ZEND_NUM_ARGS(), "|S", &name_zs) == FAILURE) {
-		RETURN_FALSE;
-	}
+	/* null = getter; previously `|S` weak-coerced null to "" and reset
+	 * the font name to empty (e.g. name(null) reset "Arial" -> ""). */
+	ZEND_PARSE_PARAMETERS_START(0, 1)
+		Z_PARAM_OPTIONAL
+		Z_PARAM_STR_OR_NULL(name_zs)
+	ZEND_PARSE_PARAMETERS_END_EX(RETURN_FALSE);
 
 	EXCEL_NUL_SAFE_STRING(name_zs)
 
@@ -2713,17 +2746,28 @@ EXCEL_METHOD(Format, getFont)
 }
 /* }}} */
 
+/* Optional-setter macro: null or omitted => getter. Any int => setter,
+ * range-checked against the libxl int boundary. Without LONG_OR_NULL the
+ * stub-declared `mixed = null` got coerced to 0 and silently mutated the
+ * underlying format slot to 0 (e.g. numberFormat(null) reset format 7 -> 0).
+ */
 #define PHP_EXCEL_LONG_FORMAT_OPTION(func_name, write_only) \
 	{ \
 		FormatHandle format; \
 		zval *object = ZEND_THIS; \
-		zend_long data; \
-		if (zend_parse_parameters(ZEND_NUM_ARGS(), "|l", &data) == FAILURE) { \
-			RETURN_FALSE; \
-		} \
+		zend_long data = 0; \
+		bool data_is_null = 1; \
+		ZEND_PARSE_PARAMETERS_START(0, 1) \
+			Z_PARAM_OPTIONAL \
+			Z_PARAM_LONG_OR_NULL(data, data_is_null) \
+		ZEND_PARSE_PARAMETERS_END_EX(RETURN_FALSE); \
 		FORMAT_FROM_OBJECT(format, object); \
-		if (ZEND_NUM_ARGS()) { \
-			xlFormatSet ## func_name (format, data); \
+		if (!data_is_null) { \
+			if (data < 0 || data > INT_MAX) { \
+				php_error_docref(NULL, E_WARNING, "Argument out of int range"); \
+				RETURN_FALSE; \
+			} \
+			xlFormatSet ## func_name (format, (int)data); \
 		} \
 		if (!write_only) { \
 			RETURN_LONG(xlFormat ## func_name (format)); \
@@ -2736,12 +2780,14 @@ EXCEL_METHOD(Format, getFont)
 	{ \
 		FormatHandle format; \
 		zval *object = ZEND_THIS; \
-		bool data; \
-		if (zend_parse_parameters(ZEND_NUM_ARGS(), "|b", &data) == FAILURE) { \
-			RETURN_FALSE; \
-		} \
+		bool data = 0; \
+		bool data_is_null = 1; \
+		ZEND_PARSE_PARAMETERS_START(0, 1) \
+			Z_PARAM_OPTIONAL \
+			Z_PARAM_BOOL_OR_NULL(data, data_is_null) \
+		ZEND_PARSE_PARAMETERS_END_EX(RETURN_FALSE); \
 		FORMAT_FROM_OBJECT(format, object); \
-		if (ZEND_NUM_ARGS()) { \
+		if (!data_is_null) { \
 			xlFormatSet ## func_name (format, data); \
 		} \
 		RETURN_BOOL(xlFormat ## func_name (format)); \
@@ -2785,20 +2831,22 @@ EXCEL_METHOD(Format, rotate)
 {
 	FormatHandle format;
 	zval *object = ZEND_THIS;
-	zend_long angle;
+	zend_long angle = 0;
+	bool angle_is_null = 1;
 
-	if (zend_parse_parameters(ZEND_NUM_ARGS(), "|l", &angle) == FAILURE) {
-		RETURN_FALSE;
-	}
+	ZEND_PARSE_PARAMETERS_START(0, 1)
+		Z_PARAM_OPTIONAL
+		Z_PARAM_LONG_OR_NULL(angle, angle_is_null)
+	ZEND_PARSE_PARAMETERS_END_EX(RETURN_FALSE);
 
 	FORMAT_FROM_OBJECT(format, object);
 
-	if (ZEND_NUM_ARGS()) {
+	if (!angle_is_null) {
 		if (angle < 0 || (angle > 180 && angle != 255)) {
 			php_error_docref(NULL, E_WARNING, "Rotation can be a number between 0 and 180 or 255");
 			RETURN_FALSE;
 		}
-		xlFormatSetRotation(format, angle);
+		xlFormatSetRotation(format, (int)angle);
 	}
 
 	RETURN_LONG(xlFormatRotation(format));
@@ -2811,20 +2859,22 @@ EXCEL_METHOD(Format, indent)
 {
 	FormatHandle format;
 	zval *object = ZEND_THIS;
-	zend_long indent;
+	zend_long indent = 0;
+	bool indent_is_null = 1;
 
-	if (zend_parse_parameters(ZEND_NUM_ARGS(), "|l", &indent) == FAILURE) {
-		RETURN_FALSE;
-	}
+	ZEND_PARSE_PARAMETERS_START(0, 1)
+		Z_PARAM_OPTIONAL
+		Z_PARAM_LONG_OR_NULL(indent, indent_is_null)
+	ZEND_PARSE_PARAMETERS_END_EX(RETURN_FALSE);
 
 	FORMAT_FROM_OBJECT(format, object);
 
-	if (ZEND_NUM_ARGS()) {
+	if (!indent_is_null) {
 		if (indent < 0 || indent > 15) {
 			php_error_docref(NULL, E_WARNING, "Text indentation level must be less than or equal to 15");
 			RETURN_FALSE;
 		}
-		xlFormatSetIndent(format, indent);
+		xlFormatSetIndent(format, (int)indent);
 	}
 
 	RETURN_LONG(xlFormatIndent(format));

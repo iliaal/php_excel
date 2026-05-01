@@ -37,80 +37,80 @@ class ExcelFont
 	/**
 	* Get, or set the font size
 	*
-	* @param int $size (optional, default=null)
+	* @param ?int $size (optional) Null = getter mode.
 	* @return int|false The current font size
 	*/
-	public function size(int $size = null): int|false
+	public function size(?int $size = null): int|false
 	{
 	}
 
 	/**
 	* Get, or set the font name
 	*
-	* @param string $name (optional, default=null)
+	* @param ?string $name (optional) Null = getter mode.
 	* @return string|false
 	*/
-	public function name(string $name = null): string|false
+	public function name(?string $name = null): string|false
 	{
 	}
 
 	/**
 	* Get, or set the underline style
 	*
-	* @param int $underline_style (optional, default=null) One of ExcelFont::UNDERLINE_* constants
+	* @param ?int $underline_style (optional) One of ExcelFont::UNDERLINE_* constants. Null = getter mode.
 	* @return int|false
 	*/
-	public function underline(int $underline_style = null): int|false
+	public function underline(?int $underline_style = null): int|false
 	{
 	}
 
 	/**
 	* Get, or set the font script mode
 	*
-	* @param int $mode (optional, default=null) One of ExcelFont::NORMAL, ::SUBSCRIPT, or ::SUPERSCRIPT
+	* @param ?int $mode (optional) One of ExcelFont::NORMAL, ::SUBSCRIPT, or ::SUPERSCRIPT. Null = getter mode.
 	* @return int|false
 	*/
-	public function mode(int $mode = null): int|false
+	public function mode(?int $mode = null): int|false
 	{
 	}
 
 	/**
 	* Get, or set the font color
 	*
-	* @param int $color (optional, default=null) One of ExcelFormat::COLOR_* constants
+	* @param ?int $color (optional) One of ExcelFormat::COLOR_* constants. Null = getter mode.
 	* @return int|false
 	*/
-	public function color(int $color = null): int|false
+	public function color(?int $color = null): int|false
 	{
 	}
 
 	/**
 	* Get, or set if bold is on or off
 	*
-	* @param bool $bold (optional, default=null)
+	* @param ?bool $bold (optional) Null = getter mode.
 	* @return bool
 	*/
-	public function bold(bool $bold = null): bool
+	public function bold(?bool $bold = null): bool
 	{
 	}
 
 	/**
 	* Get, or set if strike-through is on or off
 	*
-	* @param bool $strike (optional, default=null)
+	* @param ?bool $strike (optional) Null = getter mode.
 	* @return bool
 	*/
-	public function strike(bool $strike = null): bool
+	public function strike(?bool $strike = null): bool
 	{
 	}
 
 	/**
 	* Get, or set if italics are on or off
 	*
-	* @param bool $italics (optional, default=null)
+	* @param ?bool $italics (optional) Null = getter mode.
 	* @return bool
 	*/
-	public function italics(bool $italics = null): bool
+	public function italics(?bool $italics = null): bool
 	{
 	}
 

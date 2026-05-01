@@ -203,10 +203,10 @@ class ExcelFormat
 	/**
 	* Get, or set the cell number format
 	*
-	* @param int $format (optional) One of ExcelFormat::NUMFORMAT_* constants
+	* @param ?int $format (optional) One of ExcelFormat::NUMFORMAT_* constants. Null = getter mode.
 	* @return int|false
 	*/
-	public function numberFormat($format = null): int|false
+	public function numberFormat(?int $format = null): int|false
 	{
 	}
 
@@ -217,7 +217,7 @@ class ExcelFormat
 	* @param int $align_mode (optional) One of ExcelFormat::ALIGNH_* constants
 	* @return int|false
 	*/
-	public function horizontalAlign($align_mode = null): int|false
+	public function horizontalAlign(?int $align_mode = null): int|false
 	{
 	}
 
@@ -228,7 +228,7 @@ class ExcelFormat
 	* @param int $align_mode (optional) One of ExcelFormat::ALIGNV_* constants
 	* @return int|false
 	*/
-	public function verticalAlign(int $align_mode = null): int|false
+	public function verticalAlign(?int $align_mode = null): int|false
 	{
 	}
 
@@ -238,27 +238,27 @@ class ExcelFormat
 	* @param bool $wrap (optional)
 	* @return bool
 	*/
-	public function wrap(bool $wrap = false): bool
+	public function wrap(?bool $wrap = null): bool
 	{
 	}
 
 	/**
 	* Get, or set the cell data rotation
 	*
-	* @param int $angle (optional) 0 to 90 (rotate left), 91 to 180 (rotate right), or 255 for vertical text
+	* @param ?int $angle (optional) 0 to 90 (rotate left), 91 to 180 (rotate right), or 255 for vertical text. Null = getter mode.
 	* @return int|false
 	*/
-	public function rotate(int $angle = null): int|false
+	public function rotate(?int $angle = null): int|false
 	{
 	}
 
 	/**
 	* Get, or set the cell text indentation level
 	*
-	* @param int $indent (optional) A number from 0-15
+	* @param ?int $indent (optional) A number from 0-15. Null = getter mode.
 	* @return int|false
 	*/
-	public function indent(int $indent = null): int|false
+	public function indent(?int $indent = null): int|false
 	{
 	}
 
@@ -268,7 +268,7 @@ class ExcelFormat
 	* @param bool $shrink (optional)
 	* @return bool
 	*/
-	public function shrinkToFit(bool $shrink = false): bool
+	public function shrinkToFit(?bool $shrink = null): bool
 	{
 	}
 
@@ -278,7 +278,7 @@ class ExcelFormat
 	* @param mixed $style (optional) One of ExcelFormat::BORDERSTYLE_* constants
 	* @return bool
 	*/
-	public function borderStyle($style = null): bool
+	public function borderStyle(?int $style = null): bool
 	{
 	}
 
@@ -288,7 +288,7 @@ class ExcelFormat
 	* @param mixed $color (optional) One of ExcelFormat::COLOR_* constants
 	* @return bool
 	*/
-	public function borderColor($color = null): bool
+	public function borderColor(?int $color = null): bool
 	{
 	}
 
@@ -298,7 +298,7 @@ class ExcelFormat
 	* @param mixed $style (optional) One of ExcelFormat::BORDERSTYLE_* constants
 	* @return int|false
 	*/
-	public function borderLeftStyle($style = null): int|false
+	public function borderLeftStyle(?int $style = null): int|false
 	{
 	}
 
@@ -308,7 +308,7 @@ class ExcelFormat
 	* @param mixed $color (optional) One of ExcelFormat::COLOR_* constants
 	* @return int|false
 	*/
-	public function borderLeftColor($color = null): int|false
+	public function borderLeftColor(?int $color = null): int|false
 	{
 	}
 
@@ -318,7 +318,7 @@ class ExcelFormat
 	* @param mixed $style (optional) One of ExcelFormat::BORDERSTYLE_* constants
 	* @return int|false
 	*/
-	public function borderRightStyle($style = null): int|false
+	public function borderRightStyle(?int $style = null): int|false
 	{
 	}
 
@@ -328,7 +328,7 @@ class ExcelFormat
 	* @param mixed $color (optional) One of ExcelFormat::COLOR_* constants
 	* @return int|false
 	*/
-	public function borderRightColor($color = null): int|false
+	public function borderRightColor(?int $color = null): int|false
 	{
 	}
 
@@ -338,7 +338,7 @@ class ExcelFormat
 	* @param mixed $style (optional) One of ExcelFormat::BORDERSTYLE_* constants
 	* @return int|false
 	*/
-	public function borderTopStyle($style = null): int|false
+	public function borderTopStyle(?int $style = null): int|false
 	{
 	}
 
@@ -348,7 +348,7 @@ class ExcelFormat
 	* @param mixed $color (optional) One of ExcelFormat::COLOR_* constants
 	* @return int|false
 	*/
-	public function borderTopColor($color = null): int|false
+	public function borderTopColor(?int $color = null): int|false
 	{
 	}
 
@@ -358,7 +358,7 @@ class ExcelFormat
 	* @param mixed $style (optional) One of ExcelFormat::BORDERSTYLE_* constants
 	* @return int|false
 	*/
-	public function borderBottomStyle($style = null): int|false
+	public function borderBottomStyle(?int $style = null): int|false
 	{
 	}
 
@@ -368,7 +368,7 @@ class ExcelFormat
 	* @param mixed $color (optional) One of ExcelFormat::COLOR_* constants
 	* @return int|false
 	*/
-	public function borderBottomColor($color = null): int|false
+	public function borderBottomColor(?int $color = null): int|false
 	{
 	}
 
@@ -378,7 +378,7 @@ class ExcelFormat
 	* @param mixed $style (optional) One of ExcelFormat::BORDERDIAGONAL_* constants
 	* @return int|false
 	*/
-	public function borderDiagonalStyle($style = null): int|false
+	public function borderDiagonalStyle(?int $style = null): int|false
 	{
 	}
 
@@ -388,7 +388,7 @@ class ExcelFormat
 	* @param mixed $color (optional) One of ExcelFormat::COLOR_* constants
 	* @return int|false
 	*/
-	public function borderDiagonalColor($color = null): int|false
+	public function borderDiagonalColor(?int $color = null): int|false
 	{
 	}
 
@@ -398,7 +398,7 @@ class ExcelFormat
 	* @param mixed $pattern (optional) One of ExcelFormat::FILLPATTERN_* constants
 	* @return int|false
 	*/
-	public function fillPattern($pattern = null): int|false
+	public function fillPattern(?int $pattern = null): int|false
 	{
 	}
 
@@ -408,7 +408,7 @@ class ExcelFormat
 	* @param mixed $color (optional) One of ExcelFormat::COLOR_* constants
 	* @return int|false
 	*/
-	public function patternForegroundColor($color = null): int|false
+	public function patternForegroundColor(?int $color = null): int|false
 	{
 	}
 
@@ -418,7 +418,7 @@ class ExcelFormat
 	* @param mixed $color (optional) One of ExcelFormat::COLOR_* constants
 	* @return int|false
 	*/
-	public function patternBackgroundColor($color = null): int|false
+	public function patternBackgroundColor(?int $color = null): int|false
 	{
 	}
 
@@ -428,7 +428,7 @@ class ExcelFormat
 	* @param bool $locked (optional)
 	* @return bool
 	*/
-	public function locked(bool $locked = false): bool
+	public function locked(?bool $locked = null): bool
 	{
 	}
 
@@ -438,7 +438,7 @@ class ExcelFormat
 	* @param bool $hidden (optional)
 	* @return bool
 	*/
-	public function hidden(bool $hidden = false): bool
+	public function hidden(?bool $hidden = null): bool
 	{
 	}
 

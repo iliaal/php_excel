@@ -230,6 +230,46 @@ echo "addPictureDim h 2**32: "; var_dump(@$sp->addPictureDim(1, 0, $pic_id, 100,
 echo "addPictureDim x_offset 2**32: "; var_dump(@$sp->addPictureDim(1, 0, $pic_id, 100, 100, 2 ** 32));
 echo "pictures after rejected calls: "; var_dump($sp->getNumPictures());
 
+// Re-scan: optional getter/setters on Format/Font must treat explicit
+// null as "getter mode", not as "set to 0/empty". Previously the |l
+// ZPP weak-coerced null to 0, ZEND_NUM_ARGS()=1 fired the setter, and
+// numberFormat(null) silently reset format 7 -> 0. Same mechanic
+// reset Font::name("Arial") -> "" via |S null coercion to "".
+$bo = new ExcelBook(null, null, true);
+$Fo = $bo->addFormat();
+$Fo->numberFormat(7);
+echo "numberFormat(null) returns: "; var_dump($Fo->numberFormat(null));
+echo "numberFormat after null: " . $Fo->numberFormat() . "\n";
+$Fo->rotate(45);
+echo "rotate(null) returns: "; var_dump($Fo->rotate(null));
+echo "rotate after null: " . $Fo->rotate() . "\n";
+$Fo->indent(3);
+echo "indent(null) returns: "; var_dump($Fo->indent(null));
+echo "indent after null: " . $Fo->indent() . "\n";
+$Fo->wrap(true);
+echo "wrap(null) returns: "; var_dump($Fo->wrap(null));
+echo "wrap after null: "; var_dump($Fo->wrap());
+
+$fo = $bo->addFont();
+$fo->name("Arial");
+echo "Font::name(null) returns: "; var_dump($fo->name(null));
+echo "Font::name after null: " . $fo->name() . "\n";
+$fo->color(0xFF0000);
+echo "Font::color(null) returns: "; var_dump($fo->color(null));
+echo "Font::color after null: " . $fo->color() . "\n";
+
+// Re-scan: non-index integer setters on Format/Font must reject values
+// that wrap on narrowing to libxl int. Previously numberFormat(2**32+1)
+// silently became format 1 and Font::color(2**32+1) became color 1.
+echo "Format::numberFormat(2**32+1): "; var_dump(@$Fo->numberFormat(2 ** 32 + 1));
+echo "numberFormat unchanged: " . $Fo->numberFormat() . "\n";
+echo "Font::color(2**32+1): "; var_dump(@$fo->color(2 ** 32 + 1));
+echo "color unchanged: " . $fo->color() . "\n";
+echo "Font::size(2**32+1): "; var_dump(@$fo->size(2 ** 32 + 1));
+echo "Format::rotate(2**32+1): "; var_dump(@$Fo->rotate(2 ** 32 + 1));
+echo "Format::borderLeftStyle(2**32+1): "; var_dump(@$Fo->borderLeftStyle(2 ** 32 + 1));
+echo "Format::patternForegroundColor(2**32+1): "; var_dump(@$Fo->patternForegroundColor(2 ** 32 + 1));
+
 // Doc files must match the C ZPP signatures so IDE-driven calls stop
 // type-confusing on the deprecated mixed/string/int forms.
 $docs = [
@@ -311,4 +351,24 @@ addPictureDim w 2**32: bool(false)
 addPictureDim h 2**32: bool(false)
 addPictureDim x_offset 2**32: bool(false)
 pictures after rejected calls: int(0)
+numberFormat(null) returns: int(7)
+numberFormat after null: 7
+rotate(null) returns: int(45)
+rotate after null: 45
+indent(null) returns: int(3)
+indent after null: 3
+wrap(null) returns: bool(true)
+wrap after null: bool(true)
+Font::name(null) returns: string(5) "Arial"
+Font::name after null: Arial
+Font::color(null) returns: int(16711680)
+Font::color after null: 16711680
+Format::numberFormat(2**32+1): bool(false)
+numberFormat unchanged: 7
+Font::color(2**32+1): bool(false)
+color unchanged: 16711680
+Font::size(2**32+1): bool(false)
+Format::rotate(2**32+1): bool(false)
+Format::borderLeftStyle(2**32+1): bool(false)
+Format::patternForegroundColor(2**32+1): bool(false)
 OK
