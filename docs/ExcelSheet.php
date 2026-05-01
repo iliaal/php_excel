@@ -444,7 +444,7 @@ class ExcelSheet
 	* @param int $pos (optional) One of ExcelBook::POSITION_* constants
 	* @return void
 	*/
-	public function addPictureScaled(int $row, int $column, int $pic_id, float $scale, int $x_offset = 0, int $y_offset = 0, int $pos = null)
+	public function addPictureScaled(int $row, int $column, int $pic_id, float $scale, int $x_offset = 0, int $y_offset = 0, int $pos = 0)
 	{
 	}
 
@@ -461,7 +461,7 @@ class ExcelSheet
 	* @param int $pos (optional) One of ExcelBook::POSITION_* constants
 	* @return void
 	*/
-	public function addPictureDim(int $row, int $column, int $pic_id, int $width, int $height, int $x_offset = 0, int $y_offset = 0, int $pos = null)
+	public function addPictureDim(int $row, int $column, int $pic_id, int $width, int $height, int $x_offset = 0, int $y_offset = 0, int $pos = 0)
 	{
 	}
 
