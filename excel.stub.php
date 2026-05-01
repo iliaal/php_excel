@@ -99,7 +99,7 @@ class ExcelSheet
     public function read(int $row, int $column, mixed &$format = null, bool $read_formula = false): mixed {}  // ZPP "ll|zb"
     public function write(int $row, int $column, mixed $data, ?ExcelFormat $format = null, int $datatype = 0): bool {}  // ZPP "llz|O!l"
     public function writeRow(int $row, array $data, int $start_column = 0, ?ExcelFormat $format = null): bool {}  // ZPP "la|lO!"
-    public function writeCol(int $row, array $data, int $start_row = 0, ?ExcelFormat $format = null, int $data_type = 0): bool {}  // ZPP "la|lO!l"
+    public function writeCol(int $column, array $data, int $start_row = 0, ?ExcelFormat $format = null, int $data_type = 0): bool {}  // ZPP "la|lO!l"
     public function isFormula(int $row, int $column): bool {}  // ZPP "ll"
     public function isDate(int $row, int $column): bool {}  // ZPP "ll"
     public function insertRow(int $row_first, int $row_last): bool {}  // ZPP "ll"

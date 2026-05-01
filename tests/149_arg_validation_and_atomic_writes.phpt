@@ -57,6 +57,19 @@ var_dump(@$xs->writeCol(0, ["a", "b"], 65535)); // start row 65535, 2 cells -> 6
 echo "cell at start: ";
 var_dump($xs->read(65535, 0));
 
+// Re-scan CR-001: extreme starts must not trigger signed overflow.
+// Validate-start-then-capacity ordering keeps the (max - start) math
+// safe under UBSan even for PHP_INT_MIN / PHP_INT_MAX inputs.
+var_dump(@$xs->writeRow(1, [], PHP_INT_MIN));
+var_dump(@$xs->writeRow(1, ["a", "b"], PHP_INT_MIN));
+var_dump(@$xs->writeRow(1, ["a", "b"], PHP_INT_MAX));
+var_dump(@$xs->writeCol(0, ["a", "b"], PHP_INT_MIN));
+var_dump(@$xs->writeCol(0, ["a", "b"], PHP_INT_MAX));
+
+// Re-scan CR-002: writeCol's first arg is a column, not a row.
+$r = new ReflectionMethod(ExcelSheet::class, "writeCol");
+echo "writeCol[0]: " . $r->getParameters()[0]->getName() . "\n";
+
 // CR-006: nullable parameters must accept explicit null
 $bookN = new ExcelBook(null, null, true);
 var_dump($bookN->addFont(null) instanceof ExcelFont);
@@ -79,6 +92,12 @@ bool(false)
 cell at start: string(0) ""
 bool(false)
 cell at start: string(0) ""
+bool(false)
+bool(false)
+bool(false)
+bool(false)
+bool(false)
+writeCol[0]: column
 bool(true)
 bool(true)
 bool(true)

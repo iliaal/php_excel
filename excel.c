@@ -3435,22 +3435,21 @@ EXCEL_METHOD(Sheet, writeRow)
 		RETURN_FALSE;
 	}
 
-	/* Pre-validate the END coordinate so an out-of-range run fails
-	 * before any cell is mutated, instead of partially writing then
-	 * returning false on the first overflowing column. */
+	/* Validate the start cell first so col is known to be in
+	 * 0..EXCEL_MAX_COL_XLSX before we do any signed arithmetic on it.
+	 * Then the (max - col) remaining-capacity computation is safe and
+	 * count <= remaining is the equivalent of (col + count - 1) <= max
+	 * without the signed-overflow risk on extreme starts. */
+	EXCEL_VALIDATE_ROW_COL(row, col, object);
 	{
 		zend_ulong count = zend_array_count(Z_ARRVAL_P(data));
-		zend_long end_col;
-		if (count > 0 && (zend_ulong)(EXCEL_MAX_COL_XLSX + 1) - (zend_ulong)col < count) {
+		excel_book_object *_vb = php_excel_resolve_book_obj(object);
+		zend_long _maxc = (_vb && _vb->is_xlsx) ? EXCEL_MAX_COL_XLSX : EXCEL_MAX_COL_XLS;
+		if (count > (zend_ulong)(_maxc - col + 1)) {
 			php_error_docref(NULL, E_WARNING,
 				"writeRow would overflow column range: start=" ZEND_LONG_FMT
 				", count=" ZEND_ULONG_FMT, col, count);
 			RETURN_FALSE;
-		}
-		end_col = col + (zend_long)count - 1;
-		EXCEL_VALIDATE_ROW_COL(row, col, object);
-		if (count > 0) {
-			EXCEL_VALIDATE_ROW_COL(row, end_col, object);
 		}
 	}
 	SHEET_AND_BOOK_FROM_OBJECT(sheet, book, object);
@@ -3471,7 +3470,7 @@ EXCEL_METHOD(Sheet, writeRow)
 }
 /* }}} */
 
-/* {{{ proto bool ExcelSheet::writeCol(int row, array data [, int start_row [, ExcelFormat format [, int datatype]]])
+/* {{{ proto bool ExcelSheet::writeCol(int column, array data [, int start_row [, ExcelFormat format [, int datatype]]])
 	Write an array of values into a column */
 EXCEL_METHOD(Sheet, writeCol)
 {
@@ -3490,19 +3489,16 @@ EXCEL_METHOD(Sheet, writeCol)
 		RETURN_FALSE;
 	}
 
+	EXCEL_VALIDATE_ROW_COL(row, col, object);
 	{
 		zend_ulong count = zend_array_count(Z_ARRVAL_P(data));
-		zend_long end_row;
-		if (count > 0 && (zend_ulong)(EXCEL_MAX_ROW_XLSX + 1) - (zend_ulong)row < count) {
+		excel_book_object *_vb = php_excel_resolve_book_obj(object);
+		zend_long _maxr = (_vb && _vb->is_xlsx) ? EXCEL_MAX_ROW_XLSX : EXCEL_MAX_ROW_XLS;
+		if (count > (zend_ulong)(_maxr - row + 1)) {
 			php_error_docref(NULL, E_WARNING,
 				"writeCol would overflow row range: start=" ZEND_LONG_FMT
 				", count=" ZEND_ULONG_FMT, row, count);
 			RETURN_FALSE;
-		}
-		end_row = row + (zend_long)count - 1;
-		EXCEL_VALIDATE_ROW_COL(row, col, object);
-		if (count > 0) {
-			EXCEL_VALIDATE_ROW_COL(end_row, col, object);
 		}
 	}
 	SHEET_AND_BOOK_FROM_OBJECT(sheet, book, object);

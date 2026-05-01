@@ -49,7 +49,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   range before mutating any cell. An overflowing run (e.g. XLS
   `writeRow(1, [a, b], 255)` where col `255+1=256` is past the limit)
   used to write the first cells and only fail on the overflowing one,
-  leaving partial data behind. Now it fails before any write.
+  leaving partial data behind. Now it fails before any write. The
+  start coordinate is validated before any signed arithmetic on it,
+  so extreme inputs (`PHP_INT_MIN` / `PHP_INT_MAX`) don't trip UBSan.
 - `Book::moveSheet()` bumps the book generation on success. Previously
   existing `ExcelSheet` wrappers silently retargeted to the wrong sheet
   when indices shifted under them.
@@ -140,6 +142,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   declared in the stub. ZPP was `|O` / `la|lO` (non-nullable), so
   passing the explicit `null` advertised by reflection raised
   `TypeError`. Switched to `|O!` / `la|lO!`.
+- `ExcelSheet::writeCol()`'s first argument is now named `$column` in
+  the stub (was `$row`). The C implementation has always parsed it as
+  the column index; reflection and named arguments were misleading
+  callers.
 
 ### Performance
 - `Book::loadFile()`, `Book::save($path)`, and `Book::addPictureFromFile()`
