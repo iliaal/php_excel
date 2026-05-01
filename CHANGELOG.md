@@ -34,6 +34,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   PHP 8.3 minimum.
 
 ### Fixed (correctness)
+- `Book::getSheet()`, `Book::deleteSheet()`, `Book::getSheetName()`,
+  `Book::sheetType()`, `Book::copySheet()`, `Book::setActiveSheet()`,
+  `Book::activeSheet()`, `Sheet::delHyperlink()`, `Sheet::merge()`,
+  and `Sheet::delMergeByIndex()` now reject sheet/index values that
+  exceed `INT_MAX` instead of silently wrapping when libxl narrows
+  to `int`. Previously `getSheet(2**32)` aliased to index `0` and
+  `deleteSheet(2**32)` deleted sheet `0`.
+- Stub argument types and runtime ZPP signatures for `Sheet::groupRows()`,
+  `Sheet::groupCols()`, `Sheet::setPrintHeaders()`, and
+  `ExcelFormat::wrap()` / `shrinkToFit()` / `locked()` / `hidden()` are
+  now consistent. The stubs declared `int`/`string`/`mixed` for
+  parameters the C parsed as `bool`, fataling under debug PHP's arginfo
+  / ZPP checker on calls like `setPrintHeaders(true)`.
+- `ExcelAutoFilter::__construct()` stub now requires the `ExcelSheet`
+  argument (was advertised as optional nullable). The C had always
+  required it; reflection-driven callers replaying the documented
+  default `null` got `TypeError`.
 - `Sheet::addDataValidationDouble()` left the optional `$val_2` parameter
   uninitialized when the caller used a non-(NOT)BETWEEN operator. The C
   declared `double val_1, val_2;` without a default, so the unused slot

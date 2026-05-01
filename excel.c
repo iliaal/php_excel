@@ -1156,9 +1156,7 @@ EXCEL_METHOD(Book, getSheet)
 		RETURN_FALSE;
 	}
 
-	if (sheet < 0) {
-		RETURN_FALSE;
-	}
+	EXCEL_VALIDATE_INT_RANGE(sheet)
 
 	BOOK_FROM_OBJECT(book, object);
 
@@ -1235,9 +1233,7 @@ EXCEL_METHOD(Book, deleteSheet)
 		RETURN_FALSE;
 	}
 
-	if (sheet < 0) {
-		RETURN_FALSE;
-	}
+	EXCEL_VALIDATE_INT_RANGE(sheet)
 
 	BOOK_FROM_OBJECT(book, object);
 
@@ -1264,6 +1260,11 @@ EXCEL_METHOD(Book, activeSheet)
 	zend_long res;
 
 	if (zend_parse_parameters(ZEND_NUM_ARGS(), "|l", &sheet) == FAILURE) {
+		RETURN_FALSE;
+	}
+
+	if (sheet < -1 || sheet > INT_MAX) {
+		php_error_docref(NULL, E_WARNING, "Argument out of int range");
 		RETURN_FALSE;
 	}
 
@@ -1330,9 +1331,7 @@ EXCEL_METHOD(Book, copySheet)
 		RETURN_FALSE;
 	}
 
-	if (num < 0) {
-		RETURN_FALSE;
-	}
+	EXCEL_VALIDATE_INT_RANGE(num)
 
 	EXCEL_NON_EMPTY_STRING(name_zs)
 	EXCEL_NUL_SAFE_STRING(name_zs)
@@ -1884,9 +1883,11 @@ EXCEL_METHOD(Book, setActiveSheet)
 	zval *object = ZEND_THIS;
 	zend_long id;
 
-	if (zend_parse_parameters(ZEND_NUM_ARGS(), "l", &id) == FAILURE || id < 0) {
+	if (zend_parse_parameters(ZEND_NUM_ARGS(), "l", &id) == FAILURE) {
 		RETURN_FALSE;
 	}
+
+	EXCEL_VALIDATE_INT_RANGE(id)
 
 	BOOK_FROM_OBJECT(book, object);
 
@@ -2118,9 +2119,7 @@ EXCEL_METHOD(Book, getSheetName)
 		RETURN_FALSE;
 	}
 
-	if (index < 0) {
-		RETURN_FALSE;
-	}
+	EXCEL_VALIDATE_INT_RANGE(index)
 
 	BOOK_FROM_OBJECT(book, object);
 
@@ -5340,9 +5339,7 @@ EXCEL_METHOD(Sheet, delHyperlink)
 		RETURN_FALSE;
 	}
 
-	if (index < 0) {
-		RETURN_FALSE;
-	}
+	EXCEL_VALIDATE_INT_RANGE(index)
 
 	SHEET_FROM_OBJECT(sheet, object);
 	RETURN_BOOL(xlSheetDelHyperlink(sheet, index));
@@ -5402,9 +5399,7 @@ EXCEL_METHOD(Sheet, merge)
 		RETURN_FALSE;
 	}
 
-	if (index < 0) {
-		RETURN_FALSE;
-	}
+	EXCEL_VALIDATE_INT_RANGE(index)
 
 	SHEET_FROM_OBJECT(sheet, object);
 
@@ -5432,9 +5427,7 @@ EXCEL_METHOD(Sheet, delMergeByIndex)
 		RETURN_FALSE;
 	}
 
-	if (index < 0) {
-		RETURN_FALSE;
-	}
+	EXCEL_VALIDATE_INT_RANGE(index)
 
 	SHEET_FROM_OBJECT(sheet, object);
 	RETURN_BOOL(xlSheetDelMergeByIndex(sheet, index));
@@ -5549,9 +5542,7 @@ EXCEL_METHOD(Book, sheetType)
 		RETURN_FALSE;
 	}
 
-	if (index < 0) {
-		RETURN_FALSE;
-	}
+	EXCEL_VALIDATE_INT_RANGE(index)
 
 	BOOK_FROM_OBJECT(book, object);
 	RETURN_LONG(xlBookSheetType(book, index));

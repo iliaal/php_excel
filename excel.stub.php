@@ -120,8 +120,8 @@ class ExcelSheet
     public function horPageBreak(int $row, bool $break): bool {}  // ZPP "lb"
     public function verPageBreak(int $col, bool $break): bool {}  // ZPP "lb"
     public function splitSheet(int $row, int $column): mixed {}  // ZPP "ll"
-    public function groupRows(int $start_row, int $end_row, int $collapse = 0): bool {}  // ZPP ""
-    public function groupCols(int $start_column, int $end_column, int $collapse = 0): bool {}  // ZPP ""
+    public function groupRows(int $start_row, int $end_row, bool $collapse = false): bool {}  // ZPP "ll|b"
+    public function groupCols(int $start_column, int $end_column, bool $collapse = false): bool {}  // ZPP "ll|b"
     public function clear(int $row_s, int $row_e, int $col_s, int $col_e): mixed {}  // ZPP "llll"
     public function copy(int $row, int $col, int $to_row, int $to_col): bool {}  // ZPP "llll"
     public function firstRow(): int|false {}  // ZPP ""
@@ -165,7 +165,7 @@ class ExcelSheet
     public function setMarginTop(mixed $value): mixed {}  // ZPP ""
     public function setMarginBottom(mixed $value): mixed {}  // ZPP ""
     public function printHeaders(): bool {}  // ZPP ""
-    public function setPrintHeaders(string $value): mixed {}  // ZPP ""
+    public function setPrintHeaders(bool $value): mixed {}  // ZPP "b"
     public function name(): string|null|false {}  // ZPP ""
     public function setName(string $name): mixed {}  // ZPP "S"
     public function setNamedRange(string $name, int $row, int $col, int $to_row, int $to_col, int $scope_id = 0): bool {}  // ZPP "Sllll|l"
@@ -277,10 +277,10 @@ class ExcelFormat
     public function numberFormat(mixed $format = null): int|false {}  // ZPP ""
     public function horizontalAlign(mixed $align_mode = null): int|false {}  // ZPP ""
     public function verticalAlign(int $align_mode = 0): int|false {}  // ZPP ""
-    public function wrap(int $wrap = 0): bool {}  // ZPP ""
+    public function wrap(bool $wrap = false): bool {}  // ZPP "|b"
     public function rotate(int $angle = 0): int|false {}  // ZPP "|l"
     public function indent(int $indent = 0): int|false {}  // ZPP "|l"
-    public function shrinkToFit(mixed $shrink = null): bool {}  // ZPP ""
+    public function shrinkToFit(bool $shrink = false): bool {}  // ZPP "|b"
     public function borderStyle(mixed $style = null): bool {}  // ZPP ""
     public function borderColor(mixed $color = null): bool {}  // ZPP ""
     public function borderLeftStyle(mixed $style = null): int|false {}  // ZPP ""
@@ -296,8 +296,8 @@ class ExcelFormat
     public function fillPattern(mixed $patern = null): int|false {}  // ZPP ""
     public function patternForegroundColor(mixed $color = null): int|false {}  // ZPP ""
     public function patternBackgroundColor(mixed $color = null): int|false {}  // ZPP ""
-    public function locked(mixed $locked = null): bool {}  // ZPP ""
-    public function hidden(mixed $hidden = null): bool {}  // ZPP ""
+    public function locked(bool $locked = false): bool {}  // ZPP "|b"
+    public function hidden(bool $hidden = false): bool {}  // ZPP "|b"
 }
 
 class ExcelFont
@@ -315,9 +315,9 @@ class ExcelFont
 
 class ExcelAutoFilter
 {
-    public function __construct(?ExcelSheet $sheet = null) {}  // ZPP "O"
+    public function __construct(ExcelSheet $sheet) {}  // ZPP "O"
     public function getRef(): array|false {}  // ZPP ""
-    public function setRef(int $row_first = 0, int $col_first = 0, int $row_last = 0, int $col_last = 0): mixed {}  // ZPP "llll"
+    public function setRef(int $row_first, int $col_first, int $row_last, int $col_last): mixed {}  // ZPP "llll"
     public function column(int $colId): ExcelFilterColumn|false {}  // ZPP "l"
     public function columnSize(): int|false {}  // ZPP ""
     public function columnByIndex(int $index): ExcelFilterColumn|false {}  // ZPP "l"

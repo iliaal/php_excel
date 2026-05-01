@@ -127,6 +127,29 @@ foreach ($rd->getParameters() as $p) {
 $ra = new ReflectionMethod(ExcelBook::class, "activeSheet");
 echo "activeSheet \$sheet=" . var_export($ra->getParameters()[0]->getDefaultValue(), true) . "\n";
 
+// Re-scan: zend_long sheet/index args must reject values that wrap on
+// narrowing to libxl int. 2^32 used to alias to index 0.
+$bb = new ExcelBook(null, null, true);
+$bb->addSheet("S0");
+$bb->addSheet("S1");
+var_dump(@$bb->getSheet(2 ** 32));
+var_dump(@$bb->getSheetName(2 ** 32));
+var_dump(@$bb->deleteSheet(2 ** 32));
+echo "after: " . $bb->getSheetName(0) . "\n";
+
+// Re-scan: stubs publishing int/string/mixed for params the C parses
+// as bool used to fatal under debug PHP arginfo/ZPP checks.
+$sb = $bb->addSheet("Sb");
+var_dump($sb->setPrintHeaders(true));
+var_dump($sb->groupRows(1, 2, true));
+$fb = $bb->addFormat();
+var_dump($fb->wrap(true));
+
+// Re-scan: ExcelAutoFilter::__construct argument is required, not
+// nullable optional.
+$ra = new ReflectionMethod(ExcelAutoFilter::class, "__construct");
+echo "AutoFilter ctor optional? " . var_export($ra->getParameters()[0]->isOptional(), true) . "\n";
+
 echo "OK\n";
 ?>
 --EXPECT--
@@ -155,4 +178,12 @@ show_inputmessage=true
 show_errormessage=true
 error_style=1
 activeSheet $sheet=-1
+bool(false)
+bool(false)
+bool(false)
+after: S0
+NULL
+bool(true)
+bool(true)
+AutoFilter ctor optional? false
 OK

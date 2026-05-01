@@ -1,5 +1,5 @@
-/* This is a generated file, edit the .stub.php file instead.
- * Stub hash: d7d2bdb20f036cb6403db495d9e970ff227d60a5 */
+/* This is a generated file, edit excel.stub.php instead.
+ * Stub hash: b141d299d79695056057ebb1770d532153fb929b */
 
 ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_ExcelBook_requiresKey, 0, 0, _IS_BOOL, 0)
 ZEND_END_ARG_INFO()
@@ -418,13 +418,13 @@ ZEND_END_ARG_INFO()
 ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_ExcelSheet_groupRows, 0, 2, _IS_BOOL, 0)
 	ZEND_ARG_TYPE_INFO(0, start_row, IS_LONG, 0)
 	ZEND_ARG_TYPE_INFO(0, end_row, IS_LONG, 0)
-	ZEND_ARG_TYPE_INFO_WITH_DEFAULT_VALUE(0, collapse, IS_LONG, 0, "0")
+	ZEND_ARG_TYPE_INFO_WITH_DEFAULT_VALUE(0, collapse, _IS_BOOL, 0, "false")
 ZEND_END_ARG_INFO()
 
 ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_ExcelSheet_groupCols, 0, 2, _IS_BOOL, 0)
 	ZEND_ARG_TYPE_INFO(0, start_column, IS_LONG, 0)
 	ZEND_ARG_TYPE_INFO(0, end_column, IS_LONG, 0)
-	ZEND_ARG_TYPE_INFO_WITH_DEFAULT_VALUE(0, collapse, IS_LONG, 0, "0")
+	ZEND_ARG_TYPE_INFO_WITH_DEFAULT_VALUE(0, collapse, _IS_BOOL, 0, "false")
 ZEND_END_ARG_INFO()
 
 ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_ExcelSheet_clear, 0, 4, IS_MIXED, 0)
@@ -546,9 +546,7 @@ ZEND_END_ARG_INFO()
 
 #define arginfo_class_ExcelSheet_printHeaders arginfo_class_ExcelBook_requiresKey
 
-ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_ExcelSheet_setPrintHeaders, 0, 1, IS_MIXED, 0)
-	ZEND_ARG_TYPE_INFO(0, value, IS_STRING, 0)
-ZEND_END_ARG_INFO()
+#define arginfo_class_ExcelSheet_setPrintHeaders arginfo_class_ExcelSheet_setDisplayGridlines
 
 #define arginfo_class_ExcelSheet_name arginfo_class_ExcelSheet_header
 
@@ -951,7 +949,7 @@ ZEND_BEGIN_ARG_WITH_RETURN_TYPE_MASK_EX(arginfo_class_ExcelFormat_verticalAlign,
 ZEND_END_ARG_INFO()
 
 ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_ExcelFormat_wrap, 0, 0, _IS_BOOL, 0)
-	ZEND_ARG_TYPE_INFO_WITH_DEFAULT_VALUE(0, wrap, IS_LONG, 0, "0")
+	ZEND_ARG_TYPE_INFO_WITH_DEFAULT_VALUE(0, wrap, _IS_BOOL, 0, "false")
 ZEND_END_ARG_INFO()
 
 ZEND_BEGIN_ARG_WITH_RETURN_TYPE_MASK_EX(arginfo_class_ExcelFormat_rotate, 0, 0, MAY_BE_LONG|MAY_BE_FALSE)
@@ -963,7 +961,7 @@ ZEND_BEGIN_ARG_WITH_RETURN_TYPE_MASK_EX(arginfo_class_ExcelFormat_indent, 0, 0, 
 ZEND_END_ARG_INFO()
 
 ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_ExcelFormat_shrinkToFit, 0, 0, _IS_BOOL, 0)
-	ZEND_ARG_TYPE_INFO_WITH_DEFAULT_VALUE(0, shrink, IS_MIXED, 0, "null")
+	ZEND_ARG_TYPE_INFO_WITH_DEFAULT_VALUE(0, shrink, _IS_BOOL, 0, "false")
 ZEND_END_ARG_INFO()
 
 ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_ExcelFormat_borderStyle, 0, 0, _IS_BOOL, 0)
@@ -1007,11 +1005,11 @@ ZEND_END_ARG_INFO()
 #define arginfo_class_ExcelFormat_patternBackgroundColor arginfo_class_ExcelFormat_borderLeftColor
 
 ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_ExcelFormat_locked, 0, 0, _IS_BOOL, 0)
-	ZEND_ARG_TYPE_INFO_WITH_DEFAULT_VALUE(0, locked, IS_MIXED, 0, "null")
+	ZEND_ARG_TYPE_INFO_WITH_DEFAULT_VALUE(0, locked, _IS_BOOL, 0, "false")
 ZEND_END_ARG_INFO()
 
 ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_ExcelFormat_hidden, 0, 0, _IS_BOOL, 0)
-	ZEND_ARG_TYPE_INFO_WITH_DEFAULT_VALUE(0, hidden, IS_MIXED, 0, "null")
+	ZEND_ARG_TYPE_INFO_WITH_DEFAULT_VALUE(0, hidden, _IS_BOOL, 0, "false")
 ZEND_END_ARG_INFO()
 
 ZEND_BEGIN_ARG_WITH_RETURN_TYPE_MASK_EX(arginfo_class_ExcelFont_size, 0, 0, MAY_BE_LONG|MAY_BE_FALSE)
@@ -1048,17 +1046,17 @@ ZEND_END_ARG_INFO()
 
 #define arginfo_class_ExcelFont___construct arginfo_class_ExcelFormat___construct
 
-ZEND_BEGIN_ARG_INFO_EX(arginfo_class_ExcelAutoFilter___construct, 0, 0, 0)
-	ZEND_ARG_OBJ_INFO_WITH_DEFAULT_VALUE(0, sheet, ExcelSheet, 1, "null")
+ZEND_BEGIN_ARG_INFO_EX(arginfo_class_ExcelAutoFilter___construct, 0, 0, 1)
+	ZEND_ARG_OBJ_INFO(0, sheet, ExcelSheet, 0)
 ZEND_END_ARG_INFO()
 
 #define arginfo_class_ExcelAutoFilter_getRef arginfo_class_ExcelBook_getAllFormats
 
-ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_ExcelAutoFilter_setRef, 0, 0, IS_MIXED, 0)
-	ZEND_ARG_TYPE_INFO_WITH_DEFAULT_VALUE(0, row_first, IS_LONG, 0, "0")
-	ZEND_ARG_TYPE_INFO_WITH_DEFAULT_VALUE(0, col_first, IS_LONG, 0, "0")
-	ZEND_ARG_TYPE_INFO_WITH_DEFAULT_VALUE(0, row_last, IS_LONG, 0, "0")
-	ZEND_ARG_TYPE_INFO_WITH_DEFAULT_VALUE(0, col_last, IS_LONG, 0, "0")
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_ExcelAutoFilter_setRef, 0, 4, IS_MIXED, 0)
+	ZEND_ARG_TYPE_INFO(0, row_first, IS_LONG, 0)
+	ZEND_ARG_TYPE_INFO(0, col_first, IS_LONG, 0)
+	ZEND_ARG_TYPE_INFO(0, row_last, IS_LONG, 0)
+	ZEND_ARG_TYPE_INFO(0, col_last, IS_LONG, 0)
 ZEND_END_ARG_INFO()
 
 ZEND_BEGIN_ARG_WITH_RETURN_OBJ_TYPE_MASK_EX(arginfo_class_ExcelAutoFilter_column, 0, 1, ExcelFilterColumn, MAY_BE_FALSE)

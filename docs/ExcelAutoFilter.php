@@ -17,9 +17,9 @@ class ExcelAutoFilter
 	* Create an AutoFilter within an Excel sheet
 	*
 	* @see ExcelSheet::autoFilter()
-	* @param ExcelSheet|null $sheet
+	* @param ExcelSheet $sheet
 	*/
-	public function __construct(?ExcelSheet $sheet = null)
+	public function __construct(ExcelSheet $sheet)
 	{
 	}
 
