@@ -45,6 +45,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `error_style=1`. The previous stub said `false`/`0`, so reflection-
   driven callers using `getDefaultValue()` got opposite behavior from
   the documented defaults.
+- `Sheet::addDataValidation()` and `Sheet::addDataValidationDouble()`
+  now treat `null` (and, for the string variant, an empty string) as
+  "second value not supplied". The check that BETWEEN/NOT-BETWEEN
+  operators require a second endpoint previously only looked at
+  `ZEND_NUM_ARGS()`, so a reflection-driven caller replaying
+  `getDefaultValue()` (`""` for string, `0.0` for double) sneaked past
+  the guard and produced a one-sided rule. Stub `$val_2` is now
+  `?string $val_2 = null` / `?float $val_2 = null`; the C accepts a
+  nullable zval for the double variant and decodes manually.
 - `Book::activeSheet()`'s stub default is now `-1` (the C "getter mode"
   sentinel). The previous default of `0` caused reflection-driven calls
   to silently switch the workbook back to sheet index 0 instead of just

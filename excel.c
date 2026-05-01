@@ -6417,7 +6417,7 @@ EXCEL_METHOD(Sheet, addDataValidation)
 	zend_string *error_title = NULL, *error = NULL;
 	zend_long error_style = 1;
 
-	if (zend_parse_parameters(ZEND_NUM_ARGS(), "llllllS|SbbbbSSSSl", &type, &op, &row_first, &row_last, \
+	if (zend_parse_parameters(ZEND_NUM_ARGS(), "llllllS|S!bbbbSSSSl", &type, &op, &row_first, &row_last, \
 			&col_first, &col_last, &val_1, &val_2, &allow_blank, &hide_dropdown, &show_inputmessage, \
 			&show_errormessage, &prompt_title, &prompt, &error_title, &error, &error_style) == FAILURE) {
 		RETURN_FALSE;
@@ -6436,7 +6436,12 @@ EXCEL_METHOD(Sheet, addDataValidation)
 	EXCEL_VALIDATE_ROW_RANGE(row_first, row_last, object);
 	EXCEL_VALIDATE_COL_RANGE(col_first, col_last, object);
 
-	if ((op == VALIDATION_OP_BETWEEN || op == VALIDATION_OP_NOTBETWEEN) && ZEND_NUM_ARGS() < 8) {
+	/* BETWEEN / NOT-BETWEEN need both endpoints. Reject not just "argument
+	 * was omitted" (ZEND_NUM_ARGS() < 8) but also explicit null and empty
+	 * string, so reflection callers replaying getDefaultValue() can't
+	 * accidentally produce a one-sided rule. */
+	if ((op == VALIDATION_OP_BETWEEN || op == VALIDATION_OP_NOTBETWEEN)
+	    && (ZEND_NUM_ARGS() < 8 || !val_2 || ZSTR_LEN(val_2) < 1)) {
 		php_error_docref(NULL, E_WARNING, "The second value can not be null when used with (not) between operator.");
 		RETURN_FALSE;
 	}
@@ -6461,20 +6466,31 @@ EXCEL_METHOD(Sheet, addDataValidationDouble)
 	SheetHandle sheet;
 
 	zend_long type, op, row_first, row_last, col_first, col_last;
-	/* val_2 is optional. ZPP only writes through the pointer when the
-	 * caller actually passed the argument, so we need a defined initial
-	 * value — otherwise the unbetween-operator branch passes garbage to
-	 * xlSheetAddDataValidationDoubleEx for the unused slot. */
 	double val_1, val_2 = 0.0;
+	zval *val_2_zv = NULL;
 	bool allow_blank = 1, hide_dropdown=0, show_inputmessage = 1, show_errormessage = 1;
 	zend_string *prompt_title = NULL, *prompt = NULL;
 	zend_string *error_title = NULL, *error = NULL;
 	zend_long error_style = 1;
 
-	if (zend_parse_parameters(ZEND_NUM_ARGS(), "lllllld|dbbbbSSSSl", &type, &op, &row_first, &row_last, \
-			&col_first, &col_last, &val_1, &val_2, &allow_blank, &hide_dropdown, &show_inputmessage, \
+	/* val_2 takes a nullable zval so reflection callers replaying the
+	 * stub default of `null` are distinguishable from explicit numeric
+	 * input. We then coerce to double or reject as needed. */
+	if (zend_parse_parameters(ZEND_NUM_ARGS(), "lllllld|z!bbbbSSSSl", &type, &op, &row_first, &row_last, \
+			&col_first, &col_last, &val_1, &val_2_zv, &allow_blank, &hide_dropdown, &show_inputmessage, \
 			&show_errormessage, &prompt_title, &prompt, &error_title, &error, &error_style) == FAILURE) {
 		RETURN_FALSE;
+	}
+
+	if (val_2_zv) {
+		switch (Z_TYPE_P(val_2_zv)) {
+			case IS_DOUBLE: val_2 = Z_DVAL_P(val_2_zv); break;
+			case IS_LONG:   val_2 = (double)Z_LVAL_P(val_2_zv); break;
+			case IS_NULL:   val_2_zv = NULL; break;  /* explicit null = not supplied */
+			default:
+				zend_argument_type_error(8, "must be of type float|null, %s given", zend_zval_value_name(val_2_zv));
+				RETURN_THROWS();
+		}
 	}
 
 	EXCEL_NUL_SAFE_STRING(prompt_title)
@@ -6484,7 +6500,7 @@ EXCEL_METHOD(Sheet, addDataValidationDouble)
 	EXCEL_VALIDATE_ROW_RANGE(row_first, row_last, object);
 	EXCEL_VALIDATE_COL_RANGE(col_first, col_last, object);
 
-	if ((op == VALIDATION_OP_BETWEEN || op == VALIDATION_OP_NOTBETWEEN) && ZEND_NUM_ARGS() < 8) {
+	if ((op == VALIDATION_OP_BETWEEN || op == VALIDATION_OP_NOTBETWEEN) && !val_2_zv) {
 		php_error_docref(NULL, E_WARNING, "The second value can not be null when used with (not) between operator.");
 		RETURN_FALSE;
 	}

@@ -222,7 +222,7 @@ class ExcelBook
 	* @param int $sheet_number (optional) If supplied, the 0-based worksheet number to set as active
 	* @return int|false 0-based active worksheet number
 	*/
-	public function activeSheet(int $sheet = null): int|false
+	public function activeSheet(int $sheet = -1): int|false
 	{
 	}
 

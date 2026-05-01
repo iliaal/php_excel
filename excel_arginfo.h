@@ -1,5 +1,5 @@
 /* This is a generated file, edit excel.stub.php instead.
- * Stub hash: 315eebe757ff0501edb25c3c268e1cae888614b7 */
+ * Stub hash: ce851f99c8a3153ca7b64be95417a6a610c15aca */
 
 ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_ExcelBook_requiresKey, 0, 0, _IS_BOOL, 0)
 ZEND_END_ARG_INFO()
@@ -743,7 +743,7 @@ ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_ExcelSheet_addDataValidati
 	ZEND_ARG_TYPE_INFO(0, col_first, IS_LONG, 0)
 	ZEND_ARG_TYPE_INFO(0, col_last, IS_LONG, 0)
 	ZEND_ARG_TYPE_INFO(0, val_1, IS_STRING, 0)
-	ZEND_ARG_TYPE_INFO_WITH_DEFAULT_VALUE(0, val_2, IS_STRING, 0, "\"\"")
+	ZEND_ARG_TYPE_INFO_WITH_DEFAULT_VALUE(0, val_2, IS_STRING, 1, "null")
 	ZEND_ARG_TYPE_INFO_WITH_DEFAULT_VALUE(0, allow_blank, _IS_BOOL, 0, "true")
 	ZEND_ARG_TYPE_INFO_WITH_DEFAULT_VALUE(0, hide_dropdown, _IS_BOOL, 0, "false")
 	ZEND_ARG_TYPE_INFO_WITH_DEFAULT_VALUE(0, show_inputmessage, _IS_BOOL, 0, "true")
@@ -763,7 +763,7 @@ ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_ExcelSheet_addDataValidati
 	ZEND_ARG_TYPE_INFO(0, col_first, IS_LONG, 0)
 	ZEND_ARG_TYPE_INFO(0, col_last, IS_LONG, 0)
 	ZEND_ARG_TYPE_INFO(0, val_1, IS_DOUBLE, 0)
-	ZEND_ARG_TYPE_INFO_WITH_DEFAULT_VALUE(0, val_2, IS_DOUBLE, 0, "0.0")
+	ZEND_ARG_TYPE_INFO_WITH_DEFAULT_VALUE(0, val_2, IS_DOUBLE, 1, "null")
 	ZEND_ARG_TYPE_INFO_WITH_DEFAULT_VALUE(0, allow_blank, _IS_BOOL, 0, "true")
 	ZEND_ARG_TYPE_INFO_WITH_DEFAULT_VALUE(0, hide_dropdown, _IS_BOOL, 0, "false")
 	ZEND_ARG_TYPE_INFO_WITH_DEFAULT_VALUE(0, show_inputmessage, _IS_BOOL, 0, "true")

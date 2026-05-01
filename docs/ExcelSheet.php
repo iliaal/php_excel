@@ -1502,7 +1502,7 @@ class ExcelSheet
 	* @param int $error_style (optional, default=VALIDATION_ERRSTYLE_WARNING)
 	* @return bool
 	*/
-	public function addDataValidation(int $type, int $op, int $row_first, int $row_last, int $col_first, int $col_last, string $val_1, string $val_2 = null, bool $allow_blank = true, bool $hide_dropdown = false, bool $show_inputmessage = true, bool $show_errormessage = true, string $prompt_title = '', string $prompt = '', string $error_title = '', string $error = '', int $error_style = 1): bool
+	public function addDataValidation(int $type, int $op, int $row_first, int $row_last, int $col_first, int $col_last, string $val_1, ?string $val_2 = null, bool $allow_blank = true, bool $hide_dropdown = false, bool $show_inputmessage = true, bool $show_errormessage = true, string $prompt_title = '', string $prompt = '', string $error_title = '', string $error = '', int $error_style = 1): bool
 	{
 	}
 
@@ -1528,7 +1528,7 @@ class ExcelSheet
 	* @param int $error_style (optional, default=VALIDATION_ERRSTYLE_WARNING)
 	* @return bool
 	*/
-	public function addDataValidationDouble(int $type, int $op, int $row_first, int $row_last, int $col_first, int $col_last, float $val_1, float $val_2 = null, bool $allow_blank = true, bool $hide_dropdown = false, bool $show_inputmessage = true, bool $show_errormessage = true, string $prompt_title = '', string $prompt = '', string $error_title = '', string $error = '', int $error_style = 1): bool
+	public function addDataValidationDouble(int $type, int $op, int $row_first, int $row_last, int $col_first, int $col_last, float $val_1, ?float $val_2 = null, bool $allow_blank = true, bool $hide_dropdown = false, bool $show_inputmessage = true, bool $show_errormessage = true, string $prompt_title = '', string $prompt = '', string $error_title = '', string $error = '', int $error_style = 1): bool
 	{
 	}
 

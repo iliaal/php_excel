@@ -85,7 +85,22 @@ foreach ([
 // we feed garbage into the unused slot.
 $bv = new ExcelBook(null, null, true);
 $sv = $bv->addSheet("V");
-var_dump($sv->addDataValidationDouble(0, 3, 1, 1, 0, 0, 5.0));  // EQUAL, 7 args
+var_dump($sv->addDataValidationDouble(0, ExcelSheet::VALIDATION_OP_EQUAL, 1, 1, 0, 0, 5.0));
+
+// Reflection-driven callers replaying getDefaultValue() must not bypass
+// the BETWEEN/NOT-BETWEEN second-value guard. Stub default for $val_2
+// is now `null`, treated as "not supplied".
+foreach (["addDataValidation", "addDataValidationDouble"] as $m) {
+    $r = new ReflectionMethod(ExcelSheet::class, $m);
+    $is_double = ($m === "addDataValidationDouble");
+    $args = [0, ExcelSheet::VALIDATION_OP_BETWEEN, 1, 1, 0, 0, $is_double ? 5.0 : "5"];
+    foreach ($r->getParameters() as $i => $p) {
+        if ($i < 7) continue;
+        if ($p->isDefaultValueAvailable()) $args[] = $p->getDefaultValue();
+    }
+    echo "$m reflected BETWEEN: ";
+    var_dump(@$r->invokeArgs($sv, $args));
+}
 
 // Re-scan: addDataValidation defaults in the stub must match C runtime
 // initialisation (allow_blank=true, show_*=true, error_style=1).
@@ -119,6 +134,8 @@ ExcelFormat: caught
 ExcelFont: caught
 ExcelSheet: caught
 bool(true)
+addDataValidation reflected BETWEEN: bool(false)
+addDataValidationDouble reflected BETWEEN: bool(false)
 allow_blank=true
 show_inputmessage=true
 show_errormessage=true
