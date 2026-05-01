@@ -211,6 +211,25 @@ echo "Sheet::hyperlink(-1): "; var_dump(@$sn->hyperlink(-1));
 // PHP_INT_MAX still narrows; it must be rejected the same way as 2**32.
 echo "Book::moveSheet(PHP_INT_MAX, 0): "; var_dump(@$bn->moveSheet(PHP_INT_MAX, 0));
 
+// Re-scan: addPictureScaled / addPictureDim still passed pic_id and the
+// optional dimensional / offset args straight from zend_long to libxl
+// int. pic_id = 2**32 used to alias to picture index 0 and mutate the
+// sheet. Each int boundary now rejects the wrap.
+$bp = new ExcelBook(null, null, true);
+$sp = $bp->addSheet("P");
+$png_data = "\x89PNG\r\n\x1a\n" .
+    "\x00\x00\x00\rIHDR\x00\x00\x00\x01\x00\x00\x00\x01\x08\x02\x00\x00\x00\x90wS\xde" .
+    "\x00\x00\x00\x0cIDATx\x9cc\xf8\xff\xff?\x00\x05\xfe\x02\xfe\xa3\x9bP\x07" .
+    "\x00\x00\x00\x00IEND\xaeB`\x82";
+$pic_id = $bp->addPictureFromString($png_data);
+echo "addPictureScaled pic 2**32: "; var_dump(@$sp->addPictureScaled(1, 0, 2 ** 32, 1.0));
+echo "addPictureScaled x_offset 2**32: "; var_dump(@$sp->addPictureScaled(1, 0, $pic_id, 1.0, 2 ** 32));
+echo "addPictureDim pic 2**32: "; var_dump(@$sp->addPictureDim(1, 0, 2 ** 32, 100, 100));
+echo "addPictureDim w 2**32: "; var_dump(@$sp->addPictureDim(1, 0, $pic_id, 2 ** 32, 100));
+echo "addPictureDim h 2**32: "; var_dump(@$sp->addPictureDim(1, 0, $pic_id, 100, 2 ** 32));
+echo "addPictureDim x_offset 2**32: "; var_dump(@$sp->addPictureDim(1, 0, $pic_id, 100, 100, 2 ** 32));
+echo "pictures after rejected calls: "; var_dump($sp->getNumPictures());
+
 // Doc files must match the C ZPP signatures so IDE-driven calls stop
 // type-confusing on the deprecated mixed/string/int forms.
 $docs = [
@@ -285,4 +304,11 @@ RichString::getText(2**32): bool(false)
 Book::conditionalFormat(-1): bool(false)
 Sheet::hyperlink(-1): bool(false)
 Book::moveSheet(PHP_INT_MAX, 0): bool(false)
+addPictureScaled pic 2**32: bool(false)
+addPictureScaled x_offset 2**32: bool(false)
+addPictureDim pic 2**32: bool(false)
+addPictureDim w 2**32: bool(false)
+addPictureDim h 2**32: bool(false)
+addPictureDim x_offset 2**32: bool(false)
+pictures after rejected calls: int(0)
 OK

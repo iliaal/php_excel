@@ -43,7 +43,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `Sheet::getPictureInfo()`, `Sheet::hyperlink()`, `Sheet::table()`,
   `Sheet::removePictureByIndex()`, `Sheet::formControl()`,
   `Sheet::getTableByIndex()`, `Sheet::conditionalFormatting()`,
-  `Sheet::removeConditionalFormatting()`, `AutoFilter::column()`,
+  `Sheet::removeConditionalFormatting()`, `Sheet::addPictureScaled()`,
+  `Sheet::addPictureDim()`, `AutoFilter::column()`,
   `AutoFilter::columnByIndex()`, `AutoFilter::setSort()`,
   `AutoFilter::addSort()`, `FilterColumn::__construct()`,
   `FilterColumn::filter()`, `RichString::getText()`,
@@ -52,7 +53,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `INT_MAX` instead of silently wrapping when libxl narrows to `int`.
   Previously `getSheet(2**32)` aliased to index `0` and
   `deleteSheet(2**32)` deleted sheet `0`; the same narrowing
-  applied to every other `zend_long`-to-libxl-`int` boundary.
+  applied to every other `zend_long`-to-libxl-`int` boundary,
+  including `addPictureScaled` / `addPictureDim` where `pic_id`
+  and the dimensional / offset / pos arguments wrapped — a
+  `pic_id = 2**32` call used to alias to picture index 0 and
+  silently embed the wrong picture into the sheet.
 - Stub argument types and runtime ZPP signatures for `Sheet::groupRows()`,
   `Sheet::groupCols()`, `Sheet::setPrintHeaders()`, and
   `ExcelFormat::wrap()` / `shrinkToFit()` / `locked()` / `hidden()` are

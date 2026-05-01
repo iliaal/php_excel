@@ -3923,6 +3923,10 @@ EXCEL_METHOD(Sheet, addPictureScaled)
 	}
 
 	EXCEL_VALIDATE_ROW_COL(row, col, object);
+	EXCEL_VALIDATE_INT_RANGE(pic_id)
+	EXCEL_VALIDATE_INT_RANGE(x_offset)
+	EXCEL_VALIDATE_INT_RANGE(y_offset)
+	EXCEL_VALIDATE_INT_RANGE(pos)
 	SHEET_FROM_OBJECT(sheet, object);
 
 	xlSheetSetPicture(sheet, row, col, pic_id, scale, x_offset, y_offset
@@ -3945,6 +3949,12 @@ EXCEL_METHOD(Sheet, addPictureDim)
 	}
 
 	EXCEL_VALIDATE_ROW_COL(row, col, object);
+	EXCEL_VALIDATE_INT_RANGE(pic_id)
+	EXCEL_VALIDATE_INT_RANGE(w)
+	EXCEL_VALIDATE_INT_RANGE(h)
+	EXCEL_VALIDATE_INT_RANGE(x_offset)
+	EXCEL_VALIDATE_INT_RANGE(y_offset)
+	EXCEL_VALIDATE_INT_RANGE(pos)
 	SHEET_FROM_OBJECT(sheet, object);
 
 	xlSheetSetPicture2(sheet, row, col, pic_id, w, h, x_offset, y_offset
