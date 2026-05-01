@@ -916,6 +916,28 @@ static zend_object *excel_object_new_table(zend_class_entry *class_type)
 		} \
 	} while (0)
 
+/* Single-axis validators for methods that take just one coordinate
+ * (colWidth/rowHeight/setRowHidden/setColHidden/colWidthPx/rowHeightPx/...). */
+#define EXCEL_VALIDATE_ROW(r, parent_zv) \
+	do { \
+		excel_book_object *_vb = php_excel_resolve_book_obj(parent_zv); \
+		zend_long _maxr = (_vb && _vb->is_xlsx) ? EXCEL_MAX_ROW_XLSX : EXCEL_MAX_ROW_XLS; \
+		if ((r) < 0 || (r) > _maxr) { \
+			php_error_docref(NULL, E_WARNING, "Invalid row: " ZEND_LONG_FMT, (zend_long)(r)); \
+			RETURN_FALSE; \
+		} \
+	} while (0)
+
+#define EXCEL_VALIDATE_COL(c, parent_zv) \
+	do { \
+		excel_book_object *_vb = php_excel_resolve_book_obj(parent_zv); \
+		zend_long _maxc = (_vb && _vb->is_xlsx) ? EXCEL_MAX_COL_XLSX : EXCEL_MAX_COL_XLS; \
+		if ((c) < 0 || (c) > _maxc) { \
+			php_error_docref(NULL, E_WARNING, "Invalid column: " ZEND_LONG_FMT, (zend_long)(c)); \
+			RETURN_FALSE; \
+		} \
+	} while (0)
+
 /* {{{ proto bool ExcelBook::requiresKey()
 	true if license key is required. */
 EXCEL_METHOD(Book, requiresKey)
@@ -3518,7 +3540,7 @@ EXCEL_METHOD(Sheet, removeCol)
 }
 /* }}} */
 
-#define PHP_EXCEL_SHEET_GET_DOUBLE_STATE(func_name) \
+#define PHP_EXCEL_SHEET_GET_DOUBLE_BY_COL(func_name) \
 	{ \
 		SheetHandle sheet; \
 		zval *object = ZEND_THIS; \
@@ -3526,6 +3548,20 @@ EXCEL_METHOD(Sheet, removeCol)
 		if (zend_parse_parameters(ZEND_NUM_ARGS(), "l", &val) == FAILURE) { \
 			RETURN_FALSE; \
 		} \
+		EXCEL_VALIDATE_COL(val, object); \
+		SHEET_FROM_OBJECT(sheet, object); \
+		RETURN_DOUBLE(xlSheet ## func_name (sheet, val)); \
+	}
+
+#define PHP_EXCEL_SHEET_GET_DOUBLE_BY_ROW(func_name) \
+	{ \
+		SheetHandle sheet; \
+		zval *object = ZEND_THIS; \
+		zend_long val; \
+		if (zend_parse_parameters(ZEND_NUM_ARGS(), "l", &val) == FAILURE) { \
+			RETURN_FALSE; \
+		} \
+		EXCEL_VALIDATE_ROW(val, object); \
 		SHEET_FROM_OBJECT(sheet, object); \
 		RETURN_DOUBLE(xlSheet ## func_name (sheet, val)); \
 	}
@@ -3534,7 +3570,7 @@ EXCEL_METHOD(Sheet, removeCol)
 	Returns the cell width */
 EXCEL_METHOD(Sheet, colWidth)
 {
-	PHP_EXCEL_SHEET_GET_DOUBLE_STATE(ColWidth)
+	PHP_EXCEL_SHEET_GET_DOUBLE_BY_COL(ColWidth)
 }
 /* }}} */
 
@@ -3542,7 +3578,7 @@ EXCEL_METHOD(Sheet, colWidth)
 	Returns the cell height */
 EXCEL_METHOD(Sheet, rowHeight)
 {
-	PHP_EXCEL_SHEET_GET_DOUBLE_STATE(RowHeight)
+	PHP_EXCEL_SHEET_GET_DOUBLE_BY_ROW(RowHeight)
 }
 /* }}} */
 
@@ -3829,7 +3865,7 @@ EXCEL_METHOD(Sheet, splitSheet)
 }
 /* }}} */
 
-#define PHP_EXCEL_SHEET_GROUP(func_name) \
+#define PHP_EXCEL_SHEET_GROUP_ROWS(func_name) \
 	{ \
 		SheetHandle sheet; \
 		zval *object = ZEND_THIS; \
@@ -3838,6 +3874,21 @@ EXCEL_METHOD(Sheet, splitSheet)
 		if (zend_parse_parameters(ZEND_NUM_ARGS(), "ll|b", &s, &e, &brk) == FAILURE) { \
 			RETURN_FALSE; \
 		} \
+		EXCEL_VALIDATE_ROW_RANGE(s, e, object); \
+		SHEET_FROM_OBJECT(sheet, object); \
+		RETURN_BOOL(xlSheet ## func_name (sheet, s, e, brk)); \
+	}
+
+#define PHP_EXCEL_SHEET_GROUP_COLS(func_name) \
+	{ \
+		SheetHandle sheet; \
+		zval *object = ZEND_THIS; \
+		zend_long s, e; \
+		bool brk = 0; \
+		if (zend_parse_parameters(ZEND_NUM_ARGS(), "ll|b", &s, &e, &brk) == FAILURE) { \
+			RETURN_FALSE; \
+		} \
+		EXCEL_VALIDATE_COL_RANGE(s, e, object); \
 		SHEET_FROM_OBJECT(sheet, object); \
 		RETURN_BOOL(xlSheet ## func_name (sheet, s, e, brk)); \
 	}
@@ -3846,7 +3897,7 @@ EXCEL_METHOD(Sheet, splitSheet)
 	Group rows from rowFirst to rowLast */
 EXCEL_METHOD(Sheet, groupRows)
 {
-	PHP_EXCEL_SHEET_GROUP(GroupRows)
+	PHP_EXCEL_SHEET_GROUP_ROWS(GroupRows)
 }
 /* }}} */
 
@@ -3854,7 +3905,7 @@ EXCEL_METHOD(Sheet, groupRows)
 	Group columns from colFirst to colLast */
 EXCEL_METHOD(Sheet, groupCols)
 {
-	PHP_EXCEL_SHEET_GROUP(GroupCols)
+	PHP_EXCEL_SHEET_GROUP_COLS(GroupCols)
 }
 /* }}} */
 
@@ -5278,10 +5329,7 @@ EXCEL_METHOD(Sheet, rowHidden)
 		RETURN_FALSE;
 	}
 
-	if (row < 0) {
-		RETURN_FALSE;
-	}
-
+	EXCEL_VALIDATE_ROW(row, object);
 	SHEET_FROM_OBJECT(sheet, object);
 	RETURN_BOOL(xlSheetRowHidden(sheet, row));
 }
@@ -5300,10 +5348,7 @@ EXCEL_METHOD(Sheet, setRowHidden)
 		RETURN_FALSE;
 	}
 
-	if (row < 0) {
-		RETURN_FALSE;
-	}
-
+	EXCEL_VALIDATE_ROW(row, object);
 	SHEET_FROM_OBJECT(sheet, object);
 	RETURN_BOOL(xlSheetSetRowHidden(sheet, row, hidden));
 }
@@ -5321,10 +5366,7 @@ EXCEL_METHOD(Sheet, colHidden)
 		RETURN_FALSE;
 	}
 
-	if (col < 0) {
-		RETURN_FALSE;
-	}
-
+	EXCEL_VALIDATE_COL(col, object);
 	SHEET_FROM_OBJECT(sheet, object);
 	RETURN_BOOL(xlSheetColHidden(sheet, col));
 }
@@ -5343,10 +5385,7 @@ EXCEL_METHOD(Sheet, setColHidden)
 		RETURN_FALSE;
 	}
 
-	if (col < 0) {
-		RETURN_FALSE;
-	}
-
+	EXCEL_VALIDATE_COL(col, object);
 	SHEET_FROM_OBJECT(sheet, object);
 	RETURN_BOOL(xlSheetSetColHidden(sheet, col, hidden));
 }
@@ -5415,20 +5454,22 @@ EXCEL_METHOD(Sheet, setAutoFitArea)
 		RETURN_FALSE;
 	}
 
-	if (rowFirst < 0) {
-		RETURN_FALSE;
-	}
-
-	if (colFirst < 0) {
-		RETURN_FALSE;
-	}
-
-	if (rowLast < -1) {
-		RETURN_FALSE;
-	}
-
-	if (colLast < -1) {
-		RETURN_FALSE;
+	{
+		excel_book_object *_vb = php_excel_resolve_book_obj(object);
+		zend_long _maxr = (_vb && _vb->is_xlsx) ? EXCEL_MAX_ROW_XLSX : EXCEL_MAX_ROW_XLS;
+		zend_long _maxc = (_vb && _vb->is_xlsx) ? EXCEL_MAX_COL_XLSX : EXCEL_MAX_COL_XLS;
+		/* libxl uses -1 for "no limit" on the *Last params, so allow that
+		 * sentinel; the *First params still must be 0..max. */
+		if (rowFirst < 0 || rowFirst > _maxr || colFirst < 0 || colFirst > _maxc
+		    || rowLast < -1 || rowLast > _maxr
+		    || colLast < -1 || colLast > _maxc) {
+			php_error_docref(NULL, E_WARNING,
+				"Invalid autofit area: rowFirst=" ZEND_LONG_FMT
+				", rowLast=" ZEND_LONG_FMT ", colFirst=" ZEND_LONG_FMT
+				", colLast=" ZEND_LONG_FMT,
+				rowFirst, rowLast, colFirst, colLast);
+			RETURN_FALSE;
+		}
 	}
 
 	SHEET_FROM_OBJECT(sheet, object);
@@ -5653,6 +5694,8 @@ EXCEL_METHOD(Sheet, addIgnoredError)
 		RETURN_FALSE;
 	}
 
+	EXCEL_VALIDATE_ROW_RANGE(rowFirst, rowLast, object);
+	EXCEL_VALIDATE_COL_RANGE(colFirst, colLast, object);
 	SHEET_FROM_OBJECT(sheet, object);
 
 	if (!xlSheetAddIgnoredError(sheet, rowFirst, colFirst, rowLast, colLast, iError)) {
@@ -6615,6 +6658,7 @@ EXCEL_METHOD(Sheet, colWidthPx)
 		RETURN_FALSE;
 	}
 
+	EXCEL_VALIDATE_COL(col, object);
 	SHEET_FROM_OBJECT(sheet, object);
 
 	RETURN_LONG(xlSheetColWidthPx(sheet, col));
@@ -6630,6 +6674,7 @@ EXCEL_METHOD(Sheet, rowHeightPx)
 		RETURN_FALSE;
 	}
 
+	EXCEL_VALIDATE_ROW(row, object);
 	SHEET_FROM_OBJECT(sheet, object);
 
 	RETURN_LONG(xlSheetRowHeightPx(sheet, row));
@@ -6648,6 +6693,7 @@ EXCEL_METHOD(Sheet, colFormat)
 		RETURN_FALSE;
 	}
 
+	EXCEL_VALIDATE_COL(col, object);
 	SHEET_AND_BOOK_FROM_OBJECT(sheet, book, object);
 
 	format = xlSheetColFormat(sheet, col);
@@ -6675,6 +6721,7 @@ EXCEL_METHOD(Sheet, rowFormat)
 		RETURN_FALSE;
 	}
 
+	EXCEL_VALIDATE_ROW(row, object);
 	SHEET_AND_BOOK_FROM_OBJECT(sheet, book, object);
 
 	format = xlSheetRowFormat(sheet, row);
@@ -7992,6 +8039,9 @@ EXCEL_METHOD(ConditionalFormatting, __construct)
 	if (zend_parse_parameters(ZEND_NUM_ARGS(), "Ollll", &zsheet, excel_ce_sheet, &rowFirst, &rowLast, &colFirst, &colLast) == FAILURE) {
 		return;
 	}
+
+	EXCEL_VALIDATE_ROW_RANGE(rowFirst, rowLast, zsheet);
+	EXCEL_VALIDATE_COL_RANGE(colFirst, colLast, zsheet);
 #else
 	if (zend_parse_parameters(ZEND_NUM_ARGS(), "O", &zsheet, excel_ce_sheet) == FAILURE) {
 		return;

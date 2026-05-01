@@ -59,6 +59,45 @@ if (method_exists("ExcelBook", "conditionalFormatSize")) {
     echo "bool(false)\nbool(false)\nbool(false)\n";
 }
 
+// Single-axis validators
+var_dump(@$s->setRowHidden(PHP_INT_MAX, true));
+var_dump(@$s->setColHidden(PHP_INT_MAX, true));
+var_dump(@$s->rowHidden(PHP_INT_MAX));
+var_dump(@$s->colHidden(PHP_INT_MAX));
+var_dump(@$s->colWidth(PHP_INT_MAX));
+var_dump(@$s->rowHeight(PHP_INT_MAX));
+var_dump(@$s->colWidthPx(PHP_INT_MAX));
+var_dump(@$s->rowHeightPx(PHP_INT_MAX));
+var_dump(@$s->colFormat(PHP_INT_MAX));
+var_dump(@$s->rowFormat(PHP_INT_MAX));
+var_dump(@$s->groupRows(0, PHP_INT_MAX));
+var_dump(@$s->groupCols(0, PHP_INT_MAX));
+
+// Setters
+var_dump(@$s->setAutoFitArea(PHP_INT_MAX, 0, 0, 0));
+var_dump(@$s->addIgnoredError(0, 0, 0, PHP_INT_MAX, 0));
+
+// XLS book — 70000 row out of XLS range
+$xls = new ExcelBook();
+$xs = $xls->addSheet("X");
+var_dump(@$xs->colWidth(300));   // 300 > 255 col limit on XLS
+var_dump(@$xs->rowHeight(70000));// 70000 > 65535 row limit on XLS
+var_dump(@$xs->setRowHidden(70000, true));
+var_dump(@$xs->setColHidden(300, true));
+
+// ExcelConditionalFormatting::__construct on 5.1.0+ takes 5 args
+if (method_exists("ExcelBook", "conditionalFormatSize")) {
+    $sheet2 = $b->addSheet("CF");
+    try {
+        $cf = new ExcelConditionalFormatting($sheet2, 1, 1, 0, 0);
+        echo "5-arg: ok\n";
+    } catch (Throwable $e) {
+        echo "5-arg: failed\n";
+    }
+} else {
+    echo "5-arg: ok\n";
+}
+
 echo "OK\n";
 ?>
 --EXPECT--
@@ -84,4 +123,23 @@ bool(false)
 bool(false)
 bool(false)
 bool(false)
+bool(false)
+bool(false)
+bool(false)
+bool(false)
+bool(false)
+bool(false)
+bool(false)
+bool(false)
+bool(false)
+bool(false)
+bool(false)
+bool(false)
+bool(false)
+bool(false)
+bool(false)
+bool(false)
+bool(false)
+bool(false)
+5-arg: ok
 OK

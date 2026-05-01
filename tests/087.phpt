@@ -12,11 +12,11 @@ date.timezone=America/Toronto
     $xs->setAutoFitArea(0, 0, 2, 2);
 
 
-    var_dump($xs->setAutoFitArea(-1, -1, -2, 0));
-    var_dump($xs->setAutoFitArea(0, -1, -2, 0));
-    var_dump($xs->setAutoFitArea(0, 0, -2, 0));
-    var_dump($xs->setAutoFitArea(0, 0, -1, 0));
-    var_dump($xs->setAutoFitArea(0, 0, -1, -1));
+    var_dump(@$xs->setAutoFitArea(-1, -1, -2, 0));
+    var_dump(@$xs->setAutoFitArea(0, -1, -2, 0));
+    var_dump(@$xs->setAutoFitArea(0, 0, -2, 0));
+    var_dump(@$xs->setAutoFitArea(0, 0, -1, 0));
+    var_dump(@$xs->setAutoFitArea(0, 0, -1, -1));
     var_dump($xs->setAutoFitArea(0, 0, 0, 0));
     var_dump($xs->setAutoFitArea(0, 1, 5, 7));
     var_dump($xs->setAutoFitArea(5, 7, 0, 0));

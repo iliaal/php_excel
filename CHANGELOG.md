@@ -93,8 +93,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `setColWidth()`, `setColPx()`, `setRowPx()`, `setBorder()`, `addTable()`,
   `setPrintRepeatRows()`, `setPrintRepeatCols()`,
   `addDataValidation()`/`addDataValidationDouble()`,
-  `AutoFilter::setRef()`, `Sheet::addConditionalFormatting()`, and
-  `ConditionalFormatting::addRange()`.
+  `AutoFilter::setRef()`, `Sheet::addConditionalFormatting()`,
+  `ConditionalFormatting::addRange()`,
+  `ConditionalFormatting::__construct()` (libxl 5.1.0+ 5-arg form),
+  `Sheet::colWidth()`, `rowHeight()`, `colWidthPx()`, `rowHeightPx()`,
+  `colFormat()`, `rowFormat()`, `rowHidden()`, `setRowHidden()`,
+  `colHidden()`, `setColHidden()`, `groupRows()`, `groupCols()`,
+  `setAutoFitArea()`, and `addIgnoredError()`.
+- `ExcelConditionalFormatting::__construct()` stub now exposes the
+  libxl-5.1.0+ 5-argument form via gen_stub `#if/#else` so reflection
+  reports the same shape that ZPP actually parses. Previously the stub
+  advertised a 1-argument constructor and instantiating it on libxl 5.1.0
+  failed with `ArgumentCountError`.
 - `Sheet::autoFilter()`, `Sheet::applyFilter()`, `Sheet::removeFilter()`, and
   `Sheet::splitInfo()` now call `ZEND_PARSE_PARAMETERS_NONE()` so calling
   them with extra arguments raises `ArgumentCountError` rather than a debug-

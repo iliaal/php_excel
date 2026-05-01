@@ -1,5 +1,5 @@
 /* This is a generated file, edit excel.stub.php instead.
- * Stub hash: 1952936763fab7b2f8b7c0fa6ef20da99d6dc8e7 */
+ * Stub hash: 34cbc2e83f7186a58ad2fa3df87de9fc7e09cf21 */
 
 ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_ExcelBook_requiresKey, 0, 0, _IS_BOOL, 0)
 ZEND_END_ARG_INFO()
@@ -1297,9 +1297,21 @@ ZEND_END_ARG_INFO()
 
 #define arginfo_class_ExcelConditionalFormat_setPatternBackgroundColor arginfo_class_ExcelFormControl_setChecked
 
+#if LIBXL_VERSION >= 0x05010000
+ZEND_BEGIN_ARG_INFO_EX(arginfo_class_ExcelConditionalFormatting___construct, 0, 0, 5)
+	ZEND_ARG_OBJ_INFO(0, sheet, ExcelSheet, 0)
+	ZEND_ARG_TYPE_INFO(0, rowFirst, IS_LONG, 0)
+	ZEND_ARG_TYPE_INFO(0, rowLast, IS_LONG, 0)
+	ZEND_ARG_TYPE_INFO(0, colFirst, IS_LONG, 0)
+	ZEND_ARG_TYPE_INFO(0, colLast, IS_LONG, 0)
+ZEND_END_ARG_INFO()
+#endif
+
+#if !(LIBXL_VERSION >= 0x05010000)
 ZEND_BEGIN_ARG_INFO_EX(arginfo_class_ExcelConditionalFormatting___construct, 0, 0, 1)
 	ZEND_ARG_OBJ_INFO(0, sheet, ExcelSheet, 0)
 ZEND_END_ARG_INFO()
+#endif
 
 ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_ExcelConditionalFormatting_addRange, 0, 4, _IS_BOOL, 0)
 	ZEND_ARG_TYPE_INFO(0, rowFirst, IS_LONG, 0)
@@ -1884,7 +1896,12 @@ ZEND_METHOD(ExcelConditionalFormat, patternForegroundColor);
 ZEND_METHOD(ExcelConditionalFormat, setPatternForegroundColor);
 ZEND_METHOD(ExcelConditionalFormat, patternBackgroundColor);
 ZEND_METHOD(ExcelConditionalFormat, setPatternBackgroundColor);
+#if LIBXL_VERSION >= 0x05010000
 ZEND_METHOD(ExcelConditionalFormatting, __construct);
+#endif
+#if !(LIBXL_VERSION >= 0x05010000)
+ZEND_METHOD(ExcelConditionalFormatting, __construct);
+#endif
 ZEND_METHOD(ExcelConditionalFormatting, addRange);
 ZEND_METHOD(ExcelConditionalFormatting, addRule);
 ZEND_METHOD(ExcelConditionalFormatting, addTopRule);
@@ -2361,7 +2378,12 @@ static const zend_function_entry class_ExcelConditionalFormat_methods[] = {
 };
 
 static const zend_function_entry class_ExcelConditionalFormatting_methods[] = {
+#if LIBXL_VERSION >= 0x05010000
 	ZEND_ME(ExcelConditionalFormatting, __construct, arginfo_class_ExcelConditionalFormatting___construct, ZEND_ACC_PUBLIC)
+#endif
+#if !(LIBXL_VERSION >= 0x05010000)
+	ZEND_ME(ExcelConditionalFormatting, __construct, arginfo_class_ExcelConditionalFormatting___construct, ZEND_ACC_PUBLIC)
+#endif
 	ZEND_ME(ExcelConditionalFormatting, addRange, arginfo_class_ExcelConditionalFormatting_addRange, ZEND_ACC_PUBLIC)
 	ZEND_ME(ExcelConditionalFormatting, addRule, arginfo_class_ExcelConditionalFormatting_addRule, ZEND_ACC_PUBLIC)
 	ZEND_ME(ExcelConditionalFormatting, addTopRule, arginfo_class_ExcelConditionalFormatting_addTopRule, ZEND_ACC_PUBLIC)

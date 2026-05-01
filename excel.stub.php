@@ -437,7 +437,11 @@ class ExcelConditionalFormat
 
 class ExcelConditionalFormatting
 {
+#if LIBXL_VERSION >= 0x05010000
+    public function __construct(ExcelSheet $sheet, int $rowFirst, int $rowLast, int $colFirst, int $colLast) {}  // ZPP "Ollll"
+#else
     public function __construct(ExcelSheet $sheet) {}  // ZPP "O"
+#endif
     public function addRange(int $rowFirst, int $rowLast, int $colFirst, int $colLast): bool {}  // ZPP "llll"
     public function addRule(int $type, ExcelConditionalFormat $cf, string $value, bool $stopIfTrue = false): bool {}  // ZPP "lOS|b"
     public function addTopRule(ExcelConditionalFormat $cf, int $value, bool $bottom, bool $percent, bool $stopIfTrue = false): bool {}  // ZPP "Olbb|b"
