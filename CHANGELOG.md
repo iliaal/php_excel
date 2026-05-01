@@ -34,6 +34,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   PHP 8.3 minimum.
 
 ### Security
+- `ExcelSheet::setColWidth()` and `setRowHeight()` now reject non-`ExcelFormat`
+  objects with `TypeError` instead of crashing. ZPP previously parsed the
+  optional format as a generic zval, so passing a scalar would feed garbage
+  to `FORMAT_FROM_OBJECT()` and segfault.
+- `Sheet::applyFilter2()`, `ConditionalFormatting::addRule()` /
+  `addTopRule()` / `addOpNumRule()` / `addOpStrRule()` /
+  `addAboveAverageRule()` / `addTimePeriodRule()`, and `Sheet::writeRichStr()`
+  now route their object arguments through the standard `*_FROM_OBJECT`
+  macros so a stale `ExcelAutoFilter`/`ExcelConditionalFormat`/
+  `ExcelRichString` (after `Book::load()` etc.) raises a warning and
+  returns `false` instead of dereferencing a freed libxl handle.
+- `Sheet::writeRow()` and `Sheet::writeCol()` pre-validate the full target
+  range before mutating any cell. An overflowing run (e.g. XLS
+  `writeRow(1, [a, b], 255)` where col `255+1=256` is past the limit)
+  used to write the first cells and only fail on the overflowing one,
+  leaving partial data behind. Now it fails before any write.
+- `Book::moveSheet()` bumps the book generation on success. Previously
+  existing `ExcelSheet` wrappers silently retargeted to the wrong sheet
+  when indices shifted under them.
+
 - Stale child wrapper crashes: an `ExcelSheet`/`ExcelFormat`/`ExcelFont`/etc.
   retained from before `Book::load()`, `Book::loadFile()`, `Book::loadInfo()`,
   `Book::loadInfoRaw()`, `Book::clear()`, `Book::deleteSheet()`, or a manual
@@ -115,6 +135,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   macros emitted a warning and `RETURN_FALSE`, but PHP ignores
   constructor return values, so callers received an uninitialized
   wrapper that failed only on first use.
+- `ExcelBook::addFont(null)`, `ExcelBook::addFormat(null)`, and
+  `ExcelSheet::writeRow(..., null)` now match the nullable arginfo
+  declared in the stub. ZPP was `|O` / `la|lO` (non-nullable), so
+  passing the explicit `null` advertised by reflection raised
+  `TypeError`. Switched to `|O!` / `la|lO!`.
+
+### Performance
+- `Book::loadFile()`, `Book::save($path)`, and `Book::addPictureFromFile()`
+  use libxl's direct path APIs (`xlBookLoad`/`xlBookSave`/`xlBookAddPicture`)
+  for plain filesystem paths that pass the `open_basedir` check. Previously
+  every call read or wrote the entire workbook through a PHP stream into a
+  full in-memory buffer before handing the bytes to libxl, doubling peak
+  memory for large files. Stream-wrapper paths (`phar://`, `php://`, etc.)
+  still go through the original wrapper machinery.
 - `Sheet::horPageBreak()` and `Sheet::verPageBreak()` validate the page-
   break coordinate against the row/column axis of the workbook
   respectively. They previously accepted up to `INT_MAX`, so XLSX

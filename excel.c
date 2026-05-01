@@ -1023,6 +1023,16 @@ EXCEL_METHOD(Book, loadFile)
 
 	BOOK_FROM_OBJECT(book, object);
 
+	/* For plain filesystem paths (no stream wrapper, passes open_basedir),
+	 * hand the path straight to libxl so we don't double-buffer the workbook
+	 * in PHP memory. Stream paths (phar://, php://, ...) still go through
+	 * the wrapper machinery. */
+	if (!strstr(ZSTR_VAL(filename_zs), "://")
+	    && !php_check_open_basedir(ZSTR_VAL(filename_zs))) {
+		php_excel_book_bump_generation(object);
+		RETURN_BOOL(xlBookLoad(book, ZSTR_VAL(filename_zs)));
+	}
+
 	stream = php_stream_open_wrapper(ZSTR_VAL(filename_zs), "rb", REPORT_ERRORS, NULL);
 
 	if (!stream) {
@@ -1068,6 +1078,13 @@ EXCEL_METHOD(Book, save)
 	}
 
 	BOOK_FROM_OBJECT(book, object);
+
+	/* Plain filesystem path: hand straight to libxl, no in-memory copy. */
+	if (filename_zs && ZSTR_LEN(filename_zs) > 0
+	    && !strstr(ZSTR_VAL(filename_zs), "://")
+	    && !php_check_open_basedir(ZSTR_VAL(filename_zs))) {
+		RETURN_BOOL(xlBookSave(book, ZSTR_VAL(filename_zs)));
+	}
 
 	if (!xlBookSaveRaw(book, (const char **) &contents, &len)) {
 		RETURN_FALSE;
@@ -1361,7 +1378,7 @@ EXCEL_METHOD(Book, addFont)
 	excel_font_object *fo;
 	zval *fob = NULL;
 
-	if (zend_parse_parameters(ZEND_NUM_ARGS(), "|O", &fob, excel_ce_font) == FAILURE) {
+	if (zend_parse_parameters(ZEND_NUM_ARGS(), "|O!", &fob, excel_ce_font) == FAILURE) {
 		RETURN_FALSE;
 	}
 
@@ -1394,7 +1411,7 @@ EXCEL_METHOD(Book, addFormat)
 	excel_format_object *fo;
 	zval *fob = NULL;
 
-	if (zend_parse_parameters(ZEND_NUM_ARGS(), "|O", &fob, excel_ce_format) == FAILURE) {
+	if (zend_parse_parameters(ZEND_NUM_ARGS(), "|O!", &fob, excel_ce_format) == FAILURE) {
 		RETURN_FALSE;
 	}
 
@@ -1871,6 +1888,12 @@ static void php_excel_add_picture(INTERNAL_FUNCTION_PARAMETERS, int mode) /* {{{
 		/* path-mode: data_zs is a filesystem path. NUL truncation here
 		 * silently opens a different file than the caller validated. */
 		EXCEL_NUL_SAFE_STRING(data_zs)
+		/* Plain filesystem path: skip the stream double-buffer. */
+		if (!strstr(ZSTR_VAL(data_zs), "://")
+		    && !php_check_open_basedir(ZSTR_VAL(data_zs))) {
+			ret = xlBookAddPicture(book, ZSTR_VAL(data_zs));
+			goto picture_done;
+		}
 		stream = php_stream_open_wrapper(ZSTR_VAL(data_zs), "rb", REPORT_ERRORS, NULL);
 
 		if (!stream) {
@@ -1890,6 +1913,7 @@ static void php_excel_add_picture(INTERNAL_FUNCTION_PARAMETERS, int mode) /* {{{
 		zend_string_release(contents);
 	}
 
+picture_done:
 	if (ret == -1) {
 		RETURN_FALSE;
 	} else {
@@ -3407,11 +3431,28 @@ EXCEL_METHOD(Sheet, writeRow)
 	zval *element;
 	zend_long i;
 
-	if (zend_parse_parameters(ZEND_NUM_ARGS(), "la|lO", &row, &data, &col, &oformat, excel_ce_format) == FAILURE) {
+	if (zend_parse_parameters(ZEND_NUM_ARGS(), "la|lO!", &row, &data, &col, &oformat, excel_ce_format) == FAILURE) {
 		RETURN_FALSE;
 	}
 
-	EXCEL_VALIDATE_ROW_COL(row, col, object);
+	/* Pre-validate the END coordinate so an out-of-range run fails
+	 * before any cell is mutated, instead of partially writing then
+	 * returning false on the first overflowing column. */
+	{
+		zend_ulong count = zend_array_count(Z_ARRVAL_P(data));
+		zend_long end_col;
+		if (count > 0 && (zend_ulong)(EXCEL_MAX_COL_XLSX + 1) - (zend_ulong)col < count) {
+			php_error_docref(NULL, E_WARNING,
+				"writeRow would overflow column range: start=" ZEND_LONG_FMT
+				", count=" ZEND_ULONG_FMT, col, count);
+			RETURN_FALSE;
+		}
+		end_col = col + (zend_long)count - 1;
+		EXCEL_VALIDATE_ROW_COL(row, col, object);
+		if (count > 0) {
+			EXCEL_VALIDATE_ROW_COL(row, end_col, object);
+		}
+	}
 	SHEET_AND_BOOK_FROM_OBJECT(sheet, book, object);
 	if (oformat) {
 		FORMAT_FROM_OBJECT(format, oformat);
@@ -3449,7 +3490,21 @@ EXCEL_METHOD(Sheet, writeCol)
 		RETURN_FALSE;
 	}
 
-	EXCEL_VALIDATE_ROW_COL(row, col, object);
+	{
+		zend_ulong count = zend_array_count(Z_ARRVAL_P(data));
+		zend_long end_row;
+		if (count > 0 && (zend_ulong)(EXCEL_MAX_ROW_XLSX + 1) - (zend_ulong)row < count) {
+			php_error_docref(NULL, E_WARNING,
+				"writeCol would overflow row range: start=" ZEND_LONG_FMT
+				", count=" ZEND_ULONG_FMT, row, count);
+			RETURN_FALSE;
+		}
+		end_row = row + (zend_long)count - 1;
+		EXCEL_VALIDATE_ROW_COL(row, col, object);
+		if (count > 0) {
+			EXCEL_VALIDATE_ROW_COL(end_row, col, object);
+		}
+	}
 	SHEET_AND_BOOK_FROM_OBJECT(sheet, book, object);
 	if (oformat) {
 		FORMAT_FROM_OBJECT(format, oformat);
@@ -3676,7 +3731,7 @@ EXCEL_METHOD(Sheet, setColWidth)
 		zval *f = NULL;
 		bool h = 0;
 
-		if (zend_parse_parameters(ZEND_NUM_ARGS(), "lld|bz", &s, &e, &width, &h, &f) == FAILURE) {
+		if (zend_parse_parameters(ZEND_NUM_ARGS(), "lld|bO!", &s, &e, &width, &h, &f, excel_ce_format) == FAILURE) {
 			RETURN_FALSE;
 		}
 
@@ -3711,7 +3766,7 @@ EXCEL_METHOD(Sheet, setRowHeight)
 		zval *f = NULL;
 		bool h = 0;
 
-		if (zend_parse_parameters(ZEND_NUM_ARGS(), "ld|zb", &row, &height, &f, &h) == FAILURE) {
+		if (zend_parse_parameters(ZEND_NUM_ARGS(), "ld|O!b", &row, &height, &f, excel_ce_format, &h) == FAILURE) {
 			RETURN_FALSE;
 		}
 
@@ -6289,6 +6344,10 @@ EXCEL_METHOD(Book, moveSheet)
 		RETURN_FALSE;
 	}
 
+	/* Existing Sheet wrappers point at libxl handles by index; moving a
+	 * sheet shifts internal indices so the wrappers silently retarget to
+	 * a different sheet. Bump generation to invalidate them. */
+	php_excel_book_bump_generation(object);
 	RETURN_TRUE;
 }
 /* }}} */
@@ -6492,6 +6551,7 @@ EXCEL_METHOD(Sheet, writeRichStr)
 	zval *zrs;
 	zval *zfmt = NULL;
 	FormatHandle format = NULL;
+	RichStringHandle rs;
 
 	if (zend_parse_parameters(ZEND_NUM_ARGS(), "llO|O!", &row, &col, &zrs, excel_ce_richstring, &zfmt, excel_ce_format) == FAILURE) {
 		RETURN_FALSE;
@@ -6499,13 +6559,12 @@ EXCEL_METHOD(Sheet, writeRichStr)
 
 	EXCEL_VALIDATE_ROW_COL(row, col, object);
 	SHEET_FROM_OBJECT(sheet, object);
-
-	excel_richstring_object *rso = Z_EXCEL_RICHSTRING_OBJ_P(zrs);
+	RICHSTRING_FROM_OBJECT(rs, zrs);
 	if (zfmt) {
 		FORMAT_FROM_OBJECT(format, zfmt);
 	}
 
-	RETURN_BOOL(xlSheetWriteRichStr(sheet, row, col, rso->richstring, format));
+	RETURN_BOOL(xlSheetWriteRichStr(sheet, row, col, rs, format));
 }
 
 EXCEL_METHOD(Sheet, formControlSize)
@@ -6944,15 +7003,16 @@ EXCEL_METHOD(Sheet, applyFilter2)
 	zval *object = ZEND_THIS;
 	SheetHandle sheet;
 	zval *zaf;
+	AutoFilterHandle autofilter;
 
 	if (zend_parse_parameters(ZEND_NUM_ARGS(), "O", &zaf, excel_ce_autofilter) == FAILURE) {
 		RETURN_FALSE;
 	}
 
 	SHEET_FROM_OBJECT(sheet, object);
+	AUTOFILTER_FROM_OBJECT(autofilter, zaf);
 
-	excel_autofilter_object *afo = Z_EXCEL_AUTOFILTER_OBJ_P(zaf);
-	xlSheetApplyFilter2(sheet, afo->autofilter);
+	xlSheetApplyFilter2(sheet, autofilter);
 	RETURN_TRUE;
 }
 
@@ -8150,6 +8210,7 @@ EXCEL_METHOD(ConditionalFormatting, addRule)
 {
 	zval *object = ZEND_THIS;
 	ConditionalFormattingHandle cfing;
+	ConditionalFormatHandle cf;
 	zend_long type;
 	zval *zcf;
 	zend_string *value;
@@ -8162,9 +8223,9 @@ EXCEL_METHOD(ConditionalFormatting, addRule)
 	EXCEL_NUL_SAFE_STRING(value)
 
 	CONDITIONALFORMATTING_FROM_OBJECT(cfing, object);
+	CONDITIONALFORMAT_FROM_OBJECT(cf, zcf);
 
-	excel_conditionalformat_object *cfo = Z_EXCEL_CONDITIONALFORMAT_OBJ_P(zcf);
-	xlConditionalFormattingAddRule(cfing, type, cfo->conditionalformat, ZSTR_VAL(value), stopIfTrue);
+	xlConditionalFormattingAddRule(cfing, type, cf, ZSTR_VAL(value), stopIfTrue);
 	RETURN_TRUE;
 }
 
@@ -8172,6 +8233,7 @@ EXCEL_METHOD(ConditionalFormatting, addTopRule)
 {
 	zval *object = ZEND_THIS;
 	ConditionalFormattingHandle cfing;
+	ConditionalFormatHandle cf;
 	zval *zcf;
 	zend_long value;
 	bool bottom, percent, stopIfTrue = 0;
@@ -8181,9 +8243,9 @@ EXCEL_METHOD(ConditionalFormatting, addTopRule)
 	}
 
 	CONDITIONALFORMATTING_FROM_OBJECT(cfing, object);
+	CONDITIONALFORMAT_FROM_OBJECT(cf, zcf);
 
-	excel_conditionalformat_object *cfo = Z_EXCEL_CONDITIONALFORMAT_OBJ_P(zcf);
-	xlConditionalFormattingAddTopRule(cfing, cfo->conditionalformat, value, bottom, percent, stopIfTrue);
+	xlConditionalFormattingAddTopRule(cfing, cf, value, bottom, percent, stopIfTrue);
 	RETURN_TRUE;
 }
 
@@ -8191,6 +8253,7 @@ EXCEL_METHOD(ConditionalFormatting, addOpNumRule)
 {
 	zval *object = ZEND_THIS;
 	ConditionalFormattingHandle cfing;
+	ConditionalFormatHandle cf;
 	zend_long op;
 	zval *zcf;
 	double v1, v2;
@@ -8201,9 +8264,9 @@ EXCEL_METHOD(ConditionalFormatting, addOpNumRule)
 	}
 
 	CONDITIONALFORMATTING_FROM_OBJECT(cfing, object);
+	CONDITIONALFORMAT_FROM_OBJECT(cf, zcf);
 
-	excel_conditionalformat_object *cfo = Z_EXCEL_CONDITIONALFORMAT_OBJ_P(zcf);
-	xlConditionalFormattingAddOpNumRule(cfing, op, cfo->conditionalformat, v1, v2, stopIfTrue);
+	xlConditionalFormattingAddOpNumRule(cfing, op, cf, v1, v2, stopIfTrue);
 	RETURN_TRUE;
 }
 
@@ -8211,6 +8274,7 @@ EXCEL_METHOD(ConditionalFormatting, addOpStrRule)
 {
 	zval *object = ZEND_THIS;
 	ConditionalFormattingHandle cfing;
+	ConditionalFormatHandle cf;
 	zend_long op;
 	zval *zcf;
 	zend_string *v1, *v2;
@@ -8224,9 +8288,9 @@ EXCEL_METHOD(ConditionalFormatting, addOpStrRule)
 	EXCEL_NUL_SAFE_STRING(v2)
 
 	CONDITIONALFORMATTING_FROM_OBJECT(cfing, object);
+	CONDITIONALFORMAT_FROM_OBJECT(cf, zcf);
 
-	excel_conditionalformat_object *cfo = Z_EXCEL_CONDITIONALFORMAT_OBJ_P(zcf);
-	xlConditionalFormattingAddOpStrRule(cfing, op, cfo->conditionalformat, ZSTR_VAL(v1), ZSTR_VAL(v2), stopIfTrue);
+	xlConditionalFormattingAddOpStrRule(cfing, op, cf, ZSTR_VAL(v1), ZSTR_VAL(v2), stopIfTrue);
 	RETURN_TRUE;
 }
 
@@ -8234,6 +8298,7 @@ EXCEL_METHOD(ConditionalFormatting, addAboveAverageRule)
 {
 	zval *object = ZEND_THIS;
 	ConditionalFormattingHandle cfing;
+	ConditionalFormatHandle cf;
 	zval *zcf;
 	bool above, equal;
 	zend_long stdDev;
@@ -8244,9 +8309,9 @@ EXCEL_METHOD(ConditionalFormatting, addAboveAverageRule)
 	}
 
 	CONDITIONALFORMATTING_FROM_OBJECT(cfing, object);
+	CONDITIONALFORMAT_FROM_OBJECT(cf, zcf);
 
-	excel_conditionalformat_object *cfo = Z_EXCEL_CONDITIONALFORMAT_OBJ_P(zcf);
-	xlConditionalFormattingAddAboveAverageRule(cfing, cfo->conditionalformat, above, equal, stdDev, stopIfTrue);
+	xlConditionalFormattingAddAboveAverageRule(cfing, cf, above, equal, stdDev, stopIfTrue);
 	RETURN_TRUE;
 }
 
@@ -8254,6 +8319,7 @@ EXCEL_METHOD(ConditionalFormatting, addTimePeriodRule)
 {
 	zval *object = ZEND_THIS;
 	ConditionalFormattingHandle cfing;
+	ConditionalFormatHandle cf;
 	zval *zcf;
 	zend_long timePeriod;
 	bool stopIfTrue = 0;
@@ -8263,9 +8329,9 @@ EXCEL_METHOD(ConditionalFormatting, addTimePeriodRule)
 	}
 
 	CONDITIONALFORMATTING_FROM_OBJECT(cfing, object);
+	CONDITIONALFORMAT_FROM_OBJECT(cf, zcf);
 
-	excel_conditionalformat_object *cfo = Z_EXCEL_CONDITIONALFORMAT_OBJ_P(zcf);
-	xlConditionalFormattingAddTimePeriodRule(cfing, cfo->conditionalformat, timePeriod, stopIfTrue);
+	xlConditionalFormattingAddTimePeriodRule(cfing, cf, timePeriod, stopIfTrue);
 	RETURN_TRUE;
 }
 

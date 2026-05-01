@@ -1,0 +1,85 @@
+--TEST--
+Scalar format type checks, stale-arg validation, moveSheet generation, atomic writeRow/writeCol, nullable arginfo
+--SKIPIF--
+<?php if (!extension_loaded("excel")) print "skip"; ?>
+--FILE--
+<?php
+$b = new ExcelBook(null, null, true);
+$s = $b->addSheet("S");
+
+// CR-001: scalar format must raise TypeError, not crash
+foreach ([
+    "setColWidth"  => fn() => $s->setColWidth(0, 5, 10.0, false, "not a format"),
+    "setRowHeight" => fn() => $s->setRowHeight(1, 15.0, "not a format"),
+] as $name => $call) {
+    try { $call(); echo "$name: NO ERROR\n"; }
+    catch (TypeError $e) { echo "$name: TypeError\n"; }
+}
+
+// CR-002: stale object arguments must be detected before libxl call
+$staleSheet = $s;
+$staleAF = $staleSheet->autoFilter();
+$staleRS = $b->addRichString();
+$staleCF = $b->addConditionalFormat();
+$cfingForRules = $staleSheet->addConditionalFormatting(1, 3, 0, 0);
+
+$b2 = new ExcelBook(null, null, true);
+$b2->addSheet("T");
+$raw = $b2->save();
+var_dump($b->load($raw));
+
+$s2 = $b->addSheet("S2");
+var_dump(@$s2->applyFilter2($staleAF));
+var_dump(@$s2->writeRichStr(1, 0, $staleRS));
+
+$cfing2 = $s2->addConditionalFormatting(1, 3, 0, 0);
+var_dump(@$cfing2->addRule(1, $staleCF, "A1"));
+
+// CR-003: moveSheet must invalidate sheet wrappers
+$b = new ExcelBook(null, null, true);
+$a = $b->addSheet("A");
+$bs = $b->addSheet("B");
+echo "before: ", $bs->name(), "\n";
+$b->moveSheet(1, 0);
+try {
+    echo "after: ", @$bs->name(), "\n";
+} catch (Throwable $e) {
+    echo "after: ", $e->getMessage(), "\n";
+}
+
+// CR-004: writeRow / writeCol must reject overflowing run before any write
+$xls = new ExcelBook();
+$xs = $xls->addSheet("X");
+var_dump(@$xs->writeRow(1, ["a", "b"], 255));   // start col 255, 2 cells -> 256 (>255)
+echo "cell at start: ";
+var_dump($xs->read(1, 255));                    // must still be empty (no partial write)
+var_dump(@$xs->writeCol(0, ["a", "b"], 65535)); // start row 65535, 2 cells -> 65536
+echo "cell at start: ";
+var_dump($xs->read(65535, 0));
+
+// CR-006: nullable parameters must accept explicit null
+$bookN = new ExcelBook(null, null, true);
+var_dump($bookN->addFont(null) instanceof ExcelFont);
+var_dump($bookN->addFormat(null) instanceof ExcelFormat);
+$sheetN = $bookN->addSheet("N");
+var_dump($sheetN->writeRow(1, ["x"], 0, null));
+
+echo "OK\n";
+?>
+--EXPECT--
+setColWidth: TypeError
+setRowHeight: TypeError
+bool(true)
+bool(false)
+bool(false)
+bool(false)
+before: B
+after: 
+bool(false)
+cell at start: string(0) ""
+bool(false)
+cell at start: string(0) ""
+bool(true)
+bool(true)
+bool(true)
+OK

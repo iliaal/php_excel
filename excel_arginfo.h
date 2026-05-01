@@ -1,5 +1,5 @@
-/* This is a generated file, edit excel.stub.php instead.
- * Stub hash: 34cbc2e83f7186a58ad2fa3df87de9fc7e09cf21 */
+/* This is a generated file, edit the .stub.php file instead.
+ * Stub hash: 31ba8a3df45efcbe40b4946cbdd11841e115ff78 */
 
 ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_ExcelBook_requiresKey, 0, 0, _IS_BOOL, 0)
 ZEND_END_ARG_INFO()
@@ -362,7 +362,7 @@ ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_ExcelSheet_setRowHeight, 0
 	ZEND_ARG_TYPE_INFO(0, row, IS_LONG, 0)
 	ZEND_ARG_TYPE_INFO(0, height, IS_DOUBLE, 0)
 	ZEND_ARG_OBJ_INFO_WITH_DEFAULT_VALUE(0, format, ExcelFormat, 1, "null")
-	ZEND_ARG_TYPE_INFO_WITH_DEFAULT_VALUE(0, hidden, _IS_BOOL, 1, "null")
+	ZEND_ARG_TYPE_INFO_WITH_DEFAULT_VALUE(0, hidden, _IS_BOOL, 0, "false")
 ZEND_END_ARG_INFO()
 
 ZEND_BEGIN_ARG_WITH_RETURN_TYPE_MASK_EX(arginfo_class_ExcelSheet_getMerge, 0, 2, MAY_BE_ARRAY|MAY_BE_FALSE)
