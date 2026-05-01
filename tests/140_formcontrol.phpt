@@ -121,7 +121,7 @@ echo "gb name: " . $gb->name() . "\n";
 
 // === Edge cases ===
 var_dump($sheet->formControl($count));
-var_dump($sheet->formControl(-1));
+var_dump(@$sheet->formControl(-1));
 
 echo "OK\n";
 ?>

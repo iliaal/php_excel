@@ -2344,6 +2344,8 @@ EXCEL_METHOD(Book, conditionalFormat)
 		RETURN_FALSE;
 	}
 
+	EXCEL_VALIDATE_INT_RANGE(index)
+
 	BOOK_FROM_OBJECT(book, object);
 
 	ConditionalFormatHandle cfh = xlBookConditionalFormat(book, index);
@@ -4881,6 +4883,8 @@ EXCEL_METHOD(Sheet, getIndexRange)
 		RETURN_FALSE;
 	}
 
+	EXCEL_VALIDATE_INT_RANGE(index)
+
 	SHEET_FROM_OBJECT(sheet, object);
 	if (xlSheetNamedRange(sheet, (int)index, &rf, &rl, &cf, &cl, &scope_out, &hidden)) {
 		array_init(return_value);
@@ -4922,6 +4926,8 @@ EXCEL_METHOD(Sheet, getVerPageBreak)
 		RETURN_FALSE;
 	}
 
+	EXCEL_VALIDATE_INT_RANGE(index)
+
 	SHEET_FROM_OBJECT(sheet, object);
 	RETURN_LONG(xlSheetGetVerPageBreak(sheet, index));
 }
@@ -4952,6 +4958,8 @@ EXCEL_METHOD(Sheet, getHorPageBreak)
 	if (zend_parse_parameters(ZEND_NUM_ARGS(), "l", &index) == FAILURE) {
 		RETURN_FALSE;
 	}
+
+	EXCEL_VALIDATE_INT_RANGE(index)
 
 	SHEET_FROM_OBJECT(sheet, object);
 	RETURN_LONG(xlSheetGetHorPageBreak(sheet, index));
@@ -4985,6 +4993,8 @@ EXCEL_METHOD(Sheet, getPictureInfo)
 	if (zend_parse_parameters(ZEND_NUM_ARGS(), "l", &index) == FAILURE) {
 		RETURN_FALSE;
 	}
+
+	EXCEL_VALIDATE_INT_RANGE(index)
 
 	SHEET_FROM_OBJECT(sheet, object);
 
@@ -5084,6 +5094,8 @@ EXCEL_METHOD(Book, getPicture)
 	if (zend_parse_parameters(ZEND_NUM_ARGS(), "l", &index) == FAILURE) {
 		RETURN_FALSE;
 	}
+
+	EXCEL_VALIDATE_INT_RANGE(index)
 
 	BOOK_FROM_OBJECT(book, object);
 
@@ -5309,6 +5321,8 @@ EXCEL_METHOD(Sheet, hyperlink)
 	if (zend_parse_parameters(ZEND_NUM_ARGS(), "l", &index) == FAILURE) {
 		RETURN_FALSE;
 	}
+
+	EXCEL_VALIDATE_INT_RANGE(index)
 
 	SHEET_FROM_OBJECT(sheet, object);
 
@@ -5723,6 +5737,8 @@ EXCEL_METHOD(Sheet, table)
 		RETURN_FALSE;
 	}
 
+	EXCEL_VALIDATE_INT_RANGE(index)
+
 	SHEET_FROM_OBJECT(sheet, object);
 
 	if (!(name = xlSheetTable(sheet, index, &rowFirst, &rowLast, &colFirst, &colLast, &headerRowCount, &totalsRowCount))) {
@@ -5974,6 +5990,8 @@ EXCEL_METHOD(AutoFilter, column)
 		RETURN_FALSE;
 	}
 
+	EXCEL_VALIDATE_INT_RANGE(colId)
+
 	AUTOFILTER_FROM_OBJECT(autofilter, object);
 
 	FilterColumnHandle fch = xlAutoFilterColumn(autofilter, colId);
@@ -6011,6 +6029,8 @@ EXCEL_METHOD(AutoFilter, columnByIndex)
 	if (zend_parse_parameters(ZEND_NUM_ARGS(), "l", &index) == FAILURE) {
 		RETURN_FALSE;
 	}
+
+	EXCEL_VALIDATE_INT_RANGE(index)
 
 	AUTOFILTER_FROM_OBJECT(autofilter, object);
 
@@ -6079,6 +6099,8 @@ EXCEL_METHOD(AutoFilter, setSort)
 		RETURN_FALSE;
 	}
 
+	EXCEL_VALIDATE_INT_RANGE(columnIndex)
+
 	AUTOFILTER_FROM_OBJECT(autofilter, object);
 
 	if (!xlAutoFilterSetSort(autofilter, columnIndex, descending)) {
@@ -6100,6 +6122,8 @@ EXCEL_METHOD(AutoFilter, addSort)
 		RETURN_FALSE;
 	}
 
+	EXCEL_VALIDATE_INT_RANGE(columnIndex)
+
 	AUTOFILTER_FROM_OBJECT(autofilter, object);
 
 	RETURN_BOOL(xlAutoFilterAddSort(autofilter, columnIndex, descending));
@@ -6117,6 +6141,11 @@ EXCEL_METHOD(FilterColumn, __construct)
 	zend_long colId;
 
 	if (zend_parse_parameters(ZEND_NUM_ARGS(), "Ol", &zautofilter, excel_ce_autofilter, &colId) == FAILURE) {
+		RETURN_THROWS();
+	}
+
+	if (colId < 0 || colId > INT_MAX) {
+		zend_throw_exception(NULL, "Argument out of int range", 0);
 		RETURN_THROWS();
 	}
 
@@ -6187,6 +6216,8 @@ EXCEL_METHOD(FilterColumn, filter)
 	if (zend_parse_parameters(ZEND_NUM_ARGS(), "l", &filterIndex) == FAILURE) {
 		RETURN_FALSE;
 	}
+
+	EXCEL_VALIDATE_INT_RANGE(filterIndex)
 
 	FILTERCOLUMN_FROM_OBJECT(filtercolumn, object);
 
@@ -6380,6 +6411,9 @@ EXCEL_METHOD(Book, moveSheet)
 		RETURN_FALSE;
 	}
 
+	EXCEL_VALIDATE_INT_RANGE(src_index)
+	EXCEL_VALIDATE_INT_RANGE(dest_index)
+
 	BOOK_FROM_OBJECT(book, object);
 
 	if (!xlBookMoveSheet(book, src_index, dest_index)) {
@@ -6571,6 +6605,8 @@ EXCEL_METHOD(Sheet, removePictureByIndex)
 		RETURN_FALSE;
 	}
 
+	EXCEL_VALIDATE_INT_RANGE(index)
+
 	SHEET_FROM_OBJECT(sheet, object);
 
 	RETURN_BOOL(xlSheetRemovePictureByIndex(sheet, index));
@@ -6656,6 +6692,8 @@ EXCEL_METHOD(Sheet, formControl)
 	if (zend_parse_parameters(ZEND_NUM_ARGS(), "l", &index) == FAILURE) {
 		RETURN_FALSE;
 	}
+
+	EXCEL_VALIDATE_INT_RANGE(index)
 
 	SHEET_FROM_OBJECT(sheet, object);
 
@@ -7050,6 +7088,8 @@ EXCEL_METHOD(Sheet, getTableByIndex)
 		RETURN_FALSE;
 	}
 
+	EXCEL_VALIDATE_INT_RANGE(index)
+
 	SHEET_FROM_OBJECT(sheet, object);
 
 	th = xlSheetGetTableByIndex(sheet, index);
@@ -7131,6 +7171,8 @@ EXCEL_METHOD(Sheet, conditionalFormatting)
 		RETURN_FALSE;
 	}
 
+	EXCEL_VALIDATE_INT_RANGE(index)
+
 	SHEET_FROM_OBJECT(sheet, object);
 
 	cfh = xlSheetConditionalFormatting(sheet, index);
@@ -7154,6 +7196,8 @@ EXCEL_METHOD(Sheet, removeConditionalFormatting)
 	if (zend_parse_parameters(ZEND_NUM_ARGS(), "l", &index) == FAILURE) {
 		RETURN_FALSE;
 	}
+
+	EXCEL_VALIDATE_INT_RANGE(index)
 
 	SHEET_FROM_OBJECT(sheet, object);
 
@@ -7274,6 +7318,8 @@ EXCEL_METHOD(RichString, getText)
 		RETURN_FALSE;
 	}
 
+	EXCEL_VALIDATE_INT_RANGE(index)
+
 	RICHSTRING_FROM_OBJECT(rs, object);
 
 	text = xlRichStringGetText(rs, index, &font);
@@ -7323,6 +7369,11 @@ EXCEL_METHOD(FormControl, __construct)
 	zend_long index;
 
 	if (zend_parse_parameters(ZEND_NUM_ARGS(), "Ol", &zsheet, excel_ce_sheet, &index) == FAILURE) {
+		RETURN_THROWS();
+	}
+
+	if (index < 0 || index > INT_MAX) {
+		zend_throw_exception(NULL, "Argument out of int range", 0);
 		RETURN_THROWS();
 	}
 
@@ -7557,6 +7608,7 @@ EXCEL_METHOD(FormControl, item)
 	if (zend_parse_parameters(ZEND_NUM_ARGS(), "l", &index) == FAILURE) {
 		RETURN_FALSE;
 	}
+	EXCEL_VALIDATE_INT_RANGE(index)
 	FORMCONTROL_FROM_OBJECT(fc, object);
 	result = xlFormControlItem(fc, index);
 	PE_RETURN_IS_STRING(result)
@@ -8860,6 +8912,7 @@ EXCEL_METHOD(Table, columnName)
 	if (zend_parse_parameters(ZEND_NUM_ARGS(), "l", &index) == FAILURE) {
 		RETURN_FALSE;
 	}
+	EXCEL_VALIDATE_INT_RANGE(index)
 	TABLE_FROM_OBJECT(table, object);
 	result = xlTableColumnName(table, index);
 	PE_RETURN_IS_STRING(result)

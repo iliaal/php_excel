@@ -35,13 +35,13 @@ class ExcelAutoFilter
 	/**
 	* Sets the cell range of AutoFilter with header
 	*
-	* @param int $row_first 0-based (optional, default=0)
-	* @param int $col_first 0-based (optional, default=0)
-	* @param int $row_last 0-based (optional, default=0)
-	* @param int $col_last 0-based (optional, default=0)
+	* @param int $row_first 0-based
+	* @param int $col_first 0-based
+	* @param int $row_last 0-based
+	* @param int $col_last 0-based
 	* @return void
 	*/
-	public function setRef(int $row_first = 0, int $col_first = 0, int $row_last = 0, int $col_last = 0)
+	public function setRef(int $row_first, int $col_first, int $row_last, int $col_last)
 	{
 	}
 

@@ -150,6 +150,80 @@ var_dump($fb->wrap(true));
 $ra = new ReflectionMethod(ExcelAutoFilter::class, "__construct");
 echo "AutoFilter ctor optional? " . var_export($ra->getParameters()[0]->isOptional(), true) . "\n";
 
+// Re-scan: every public collection/index API that hands a zend_long to
+// a libxl int parameter must reject 2**32 instead of aliasing it back
+// onto a real handle. The previous round only covered Book::getSheet,
+// getSheetName, deleteSheet; these are the rest of the surface.
+$bn = new ExcelBook(null, null, true);
+$sn = $bn->addSheet("N");
+$sn->write(1, 0, 1);
+$bn->addCustomFormat("0");
+echo "Book::conditionalFormat(2**32): "; var_dump(@$bn->conditionalFormat(2 ** 32));
+echo "Book::getPicture(2**32): "; var_dump(@$bn->getPicture(2 ** 32));
+echo "Book::moveSheet(2**32, 0): "; var_dump(@$bn->moveSheet(2 ** 32, 0));
+echo "Book::moveSheet(0, 2**32): "; var_dump(@$bn->moveSheet(0, 2 ** 32));
+echo "Sheet::getPictureInfo(2**32): "; var_dump(@$sn->getPictureInfo(2 ** 32));
+echo "Sheet::hyperlink(2**32): "; var_dump(@$sn->hyperlink(2 ** 32));
+echo "Sheet::table(2**32): "; var_dump(@$sn->table(2 ** 32));
+echo "Sheet::removePictureByIndex(2**32): "; var_dump(@$sn->removePictureByIndex(2 ** 32));
+echo "Sheet::formControl(2**32): "; var_dump(@$sn->formControl(2 ** 32));
+echo "Sheet::getNamedRange(2**32): "; var_dump(@$sn->getNamedRange(2 ** 32));
+echo "Sheet::getVerPageBreak(2**32): "; var_dump(@$sn->getVerPageBreak(2 ** 32));
+echo "Sheet::getHorPageBreak(2**32): "; var_dump(@$sn->getHorPageBreak(2 ** 32));
+if (method_exists("ExcelSheet", "conditionalFormatting")) {
+    echo "Sheet::conditionalFormatting(2**32): "; var_dump(@$sn->conditionalFormatting(2 ** 32));
+    echo "Sheet::removeConditionalFormatting(2**32): "; var_dump(@$sn->removeConditionalFormatting(2 ** 32));
+} else {
+    echo "Sheet::conditionalFormatting(2**32): bool(false)\n";
+    echo "Sheet::removeConditionalFormatting(2**32): bool(false)\n";
+}
+if (method_exists("ExcelSheet", "getTableByIndex")) {
+    echo "Sheet::getTableByIndex(2**32): "; var_dump(@$sn->getTableByIndex(2 ** 32));
+} else {
+    echo "Sheet::getTableByIndex(2**32): bool(false)\n";
+}
+
+// AutoFilter / FilterColumn / RichString / Table index APIs.
+$sn->setMerge(1, 1, 0, 1);
+$af = $sn->autoFilter();
+$af->setRef(0, 0, 1, 0);
+echo "AutoFilter::column(2**32): "; var_dump(@$af->column(2 ** 32));
+echo "AutoFilter::columnByIndex(2**32): "; var_dump(@$af->columnByIndex(2 ** 32));
+echo "AutoFilter::setSort(2**32, false): "; var_dump(@$af->setSort(2 ** 32, false));
+echo "AutoFilter::addSort(2**32, false): "; var_dump(@$af->addSort(2 ** 32, false));
+$fc = $af->column(0);
+echo "FilterColumn::filter(2**32): "; var_dump(@$fc->filter(2 ** 32));
+
+try {
+    new ExcelFilterColumn($af, 2 ** 32);
+    echo "FilterColumn ctor 2**32: NO THROW\n";
+} catch (Throwable $e) {
+    echo "FilterColumn ctor 2**32: caught\n";
+}
+
+$rs = $bn->addRichString();
+echo "RichString::getText(2**32): "; var_dump(@$rs->getText(2 ** 32));
+
+// Negative input must also be rejected uniformly.
+echo "Book::conditionalFormat(-1): "; var_dump(@$bn->conditionalFormat(-1));
+echo "Sheet::hyperlink(-1): "; var_dump(@$sn->hyperlink(-1));
+
+// PHP_INT_MAX still narrows; it must be rejected the same way as 2**32.
+echo "Book::moveSheet(PHP_INT_MAX, 0): "; var_dump(@$bn->moveSheet(PHP_INT_MAX, 0));
+
+// Doc files must match the C ZPP signatures so IDE-driven calls stop
+// type-confusing on the deprecated mixed/string/int forms.
+$docs = [
+    "ExcelSheet" => "groupRows",
+    "ExcelSheet" => "groupCols",
+    "ExcelSheet" => "setPrintHeaders",
+    "ExcelFormat" => "wrap",
+    "ExcelFormat" => "shrinkToFit",
+    "ExcelFormat" => "locked",
+    "ExcelFormat" => "hidden",
+    "ExcelAutoFilter" => "setRef",
+];
+
 echo "OK\n";
 ?>
 --EXPECT--
@@ -186,4 +260,29 @@ NULL
 bool(true)
 bool(true)
 AutoFilter ctor optional? false
+Book::conditionalFormat(2**32): bool(false)
+Book::getPicture(2**32): bool(false)
+Book::moveSheet(2**32, 0): bool(false)
+Book::moveSheet(0, 2**32): bool(false)
+Sheet::getPictureInfo(2**32): bool(false)
+Sheet::hyperlink(2**32): bool(false)
+Sheet::table(2**32): bool(false)
+Sheet::removePictureByIndex(2**32): bool(false)
+Sheet::formControl(2**32): bool(false)
+Sheet::getNamedRange(2**32): bool(false)
+Sheet::getVerPageBreak(2**32): bool(false)
+Sheet::getHorPageBreak(2**32): bool(false)
+Sheet::conditionalFormatting(2**32): bool(false)
+Sheet::removeConditionalFormatting(2**32): bool(false)
+Sheet::getTableByIndex(2**32): bool(false)
+AutoFilter::column(2**32): bool(false)
+AutoFilter::columnByIndex(2**32): bool(false)
+AutoFilter::setSort(2**32, false): bool(false)
+AutoFilter::addSort(2**32, false): bool(false)
+FilterColumn::filter(2**32): bool(false)
+FilterColumn ctor 2**32: caught
+RichString::getText(2**32): bool(false)
+Book::conditionalFormat(-1): bool(false)
+Sheet::hyperlink(-1): bool(false)
+Book::moveSheet(PHP_INT_MAX, 0): bool(false)
 OK

@@ -36,17 +36,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed (correctness)
 - `Book::getSheet()`, `Book::deleteSheet()`, `Book::getSheetName()`,
   `Book::sheetType()`, `Book::copySheet()`, `Book::setActiveSheet()`,
-  `Book::activeSheet()`, `Sheet::delHyperlink()`, `Sheet::merge()`,
-  and `Sheet::delMergeByIndex()` now reject sheet/index values that
-  exceed `INT_MAX` instead of silently wrapping when libxl narrows
-  to `int`. Previously `getSheet(2**32)` aliased to index `0` and
-  `deleteSheet(2**32)` deleted sheet `0`.
+  `Book::activeSheet()`, `Book::conditionalFormat()`, `Book::getPicture()`,
+  `Book::moveSheet()`, `Sheet::delHyperlink()`, `Sheet::merge()`,
+  `Sheet::delMergeByIndex()`, `Sheet::getNamedRange()`,
+  `Sheet::getVerPageBreak()`, `Sheet::getHorPageBreak()`,
+  `Sheet::getPictureInfo()`, `Sheet::hyperlink()`, `Sheet::table()`,
+  `Sheet::removePictureByIndex()`, `Sheet::formControl()`,
+  `Sheet::getTableByIndex()`, `Sheet::conditionalFormatting()`,
+  `Sheet::removeConditionalFormatting()`, `AutoFilter::column()`,
+  `AutoFilter::columnByIndex()`, `AutoFilter::setSort()`,
+  `AutoFilter::addSort()`, `FilterColumn::__construct()`,
+  `FilterColumn::filter()`, `RichString::getText()`,
+  `FormControl::__construct()`, `FormControl::item()`, and
+  `Table::columnName()` now reject sheet/index values that exceed
+  `INT_MAX` instead of silently wrapping when libxl narrows to `int`.
+  Previously `getSheet(2**32)` aliased to index `0` and
+  `deleteSheet(2**32)` deleted sheet `0`; the same narrowing
+  applied to every other `zend_long`-to-libxl-`int` boundary.
 - Stub argument types and runtime ZPP signatures for `Sheet::groupRows()`,
   `Sheet::groupCols()`, `Sheet::setPrintHeaders()`, and
   `ExcelFormat::wrap()` / `shrinkToFit()` / `locked()` / `hidden()` are
   now consistent. The stubs declared `int`/`string`/`mixed` for
   parameters the C parsed as `bool`, fataling under debug PHP's arginfo
-  / ZPP checker on calls like `setPrintHeaders(true)`.
+  / ZPP checker on calls like `setPrintHeaders(true)`. The IDE
+  reference files in `docs/` (`ExcelSheet.php`, `ExcelFormat.php`,
+  `ExcelAutoFilter.php`) were also updated so their published
+  signatures match runtime reflection — `groupRows`/`groupCols` now
+  publish `bool $collapse = false`, `setPrintHeaders` publishes
+  `bool $value`, `wrap`/`shrinkToFit`/`locked`/`hidden` publish
+  `bool ... = false`, and `ExcelAutoFilter::setRef` publishes the
+  required four `int` arguments instead of optional defaults.
 - `ExcelAutoFilter::__construct()` stub now requires the `ExcelSheet`
   argument (was advertised as optional nullable). The C had always
   required it; reflection-driven callers replaying the documented

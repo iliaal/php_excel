@@ -503,10 +503,10 @@ class ExcelSheet
 	*
 	* @param int $start_row 0-based row number
 	* @param int $end_row 0-based row number
-	* @param int $collapse (optional, default=false)
+	* @param bool $collapse (optional, default=false)
 	* @return bool
 	*/
-	public function groupRows(int $start_row, int $end_row, int $collapse = 0): bool
+	public function groupRows(int $start_row, int $end_row, bool $collapse = false): bool
 	{
 	}
 
@@ -515,10 +515,10 @@ class ExcelSheet
 	*
 	* @param int $start_column 0-based column number
 	* @param int $end_column 0-based column number
-	* @param int $collapse (optional, default=false)
+	* @param bool $collapse (optional, default=false)
 	* @return bool
 	*/
-	public function groupCols(int $start_column, int $end_column, int $collapse = 0): bool
+	public function groupCols(int $start_column, int $end_column, bool $collapse = false): bool
 	{
 	}
 
@@ -882,10 +882,10 @@ class ExcelSheet
 	/**
 	* Sets a flag to indicate row and column headers should be printed
 	*
-	* @param string $value
+	* @param bool $value
 	* @return void
 	*/
-	public function setPrintHeaders(string $value)
+	public function setPrintHeaders(bool $value)
 	{
 	}
 

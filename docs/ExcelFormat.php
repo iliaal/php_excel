@@ -235,10 +235,10 @@ class ExcelFormat
 	/**
 	* Get, or set the cell text wrapping
 	*
-	* @param int $wrap (optional)
+	* @param bool $wrap (optional)
 	* @return bool
 	*/
-	public function wrap(int $wrap = null): bool
+	public function wrap(bool $wrap = false): bool
 	{
 	}
 
@@ -265,10 +265,10 @@ class ExcelFormat
 	/**
 	* Get, or set whether the cell is shrink-to-fit
 	*
-	* @param mixed $shrink (optional)
+	* @param bool $shrink (optional)
 	* @return bool
 	*/
-	public function shrinkToFit($shrink = null): bool
+	public function shrinkToFit(bool $shrink = false): bool
 	{
 	}
 
@@ -425,20 +425,20 @@ class ExcelFormat
 	/**
 	* Get, or set whether a cell is locked
 	*
-	* @param mixed $locked (optional)
+	* @param bool $locked (optional)
 	* @return bool
 	*/
-	public function locked($locked = null): bool
+	public function locked(bool $locked = false): bool
 	{
 	}
 
 	/**
 	* Get, or set whether the cell is hidden
 	*
-	* @param mixed $hidden (optional)
+	* @param bool $hidden (optional)
 	* @return bool
 	*/
-	public function hidden($hidden = null): bool
+	public function hidden(bool $hidden = false): bool
 	{
 	}
 
