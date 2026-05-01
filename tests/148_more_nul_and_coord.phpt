@@ -85,17 +85,35 @@ var_dump(@$xs->rowHeight(70000));// 70000 > 65535 row limit on XLS
 var_dump(@$xs->setRowHidden(70000, true));
 var_dump(@$xs->setColHidden(300, true));
 
-// ExcelConditionalFormatting::__construct on 5.1.0+ takes 5 args
+// Page-break coordinate validation (CR-002)
+var_dump(@$s->horPageBreak(1048576, true));   // XLSX: row > max
+var_dump(@$s->verPageBreak(16384, true));     // XLSX: col > max
+var_dump(@$xs->horPageBreak(70000, true));    // XLS: row > max
+var_dump(@$xs->verPageBreak(300, true));      // XLS: col > max
+
+// addHyperlink workbook-aware (CR-003)
+var_dump(@$s->addHyperlink("http://x", 1048576, 1048576, 0, 0));  // XLSX: row > max
+var_dump(@$xs->addHyperlink("http://x", 70000, 70000, 0, 0));     // XLS: row > max
+var_dump(@$xs->addHyperlink("http://x", 0, 0, 300, 300));         // XLS: col > max
+
+// ExcelConditionalFormatting::__construct on 5.1.0+ now throws on bad coords (CR-001)
 if (method_exists("ExcelBook", "conditionalFormatSize")) {
     $sheet2 = $b->addSheet("CF");
     try {
         $cf = new ExcelConditionalFormatting($sheet2, 1, 1, 0, 0);
-        echo "5-arg: ok\n";
+        echo "5-arg valid: ok\n";
     } catch (Throwable $e) {
-        echo "5-arg: failed\n";
+        echo "5-arg valid: failed\n";
+    }
+    try {
+        new ExcelConditionalFormatting($sheet2, PHP_INT_MAX, PHP_INT_MAX, 0, 0);
+        echo "5-arg bad: no throw (BUG)\n";
+    } catch (Exception $e) {
+        echo "5-arg bad: caught\n";
     }
 } else {
-    echo "5-arg: ok\n";
+    echo "5-arg valid: ok\n";
+    echo "5-arg bad: caught\n";
 }
 
 echo "OK\n";
@@ -141,5 +159,13 @@ bool(false)
 bool(false)
 bool(false)
 bool(false)
-5-arg: ok
+bool(false)
+bool(false)
+bool(false)
+bool(false)
+bool(false)
+bool(false)
+bool(false)
+5-arg valid: ok
+5-arg bad: caught
 OK

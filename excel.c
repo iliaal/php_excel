@@ -3817,7 +3817,7 @@ EXCEL_METHOD(Sheet, addPictureDim)
 }
 /* }}} */
 
-#define PHP_EXCEL_SHEET_SET_BREAK(func_name) \
+#define PHP_EXCEL_SHEET_SET_ROW_BREAK(func_name) \
 	{ \
 		SheetHandle sheet; \
 		zval *object = ZEND_THIS; \
@@ -3826,6 +3826,21 @@ EXCEL_METHOD(Sheet, addPictureDim)
 		if (zend_parse_parameters(ZEND_NUM_ARGS(), "lb", &val, &brk) == FAILURE) { \
 			RETURN_FALSE; \
 		} \
+		EXCEL_VALIDATE_ROW(val, object); \
+		SHEET_FROM_OBJECT(sheet, object); \
+		RETURN_BOOL(xlSheet ## func_name (sheet, val, brk)); \
+	}
+
+#define PHP_EXCEL_SHEET_SET_COL_BREAK(func_name) \
+	{ \
+		SheetHandle sheet; \
+		zval *object = ZEND_THIS; \
+		zend_long val; \
+		bool brk; \
+		if (zend_parse_parameters(ZEND_NUM_ARGS(), "lb", &val, &brk) == FAILURE) { \
+			RETURN_FALSE; \
+		} \
+		EXCEL_VALIDATE_COL(val, object); \
 		SHEET_FROM_OBJECT(sheet, object); \
 		RETURN_BOOL(xlSheet ## func_name (sheet, val, brk)); \
 	}
@@ -3834,7 +3849,7 @@ EXCEL_METHOD(Sheet, addPictureDim)
 	Set/Remove horizontal page break */
 EXCEL_METHOD(Sheet, horPageBreak)
 {
-	PHP_EXCEL_SHEET_SET_BREAK(SetHorPageBreak)
+	PHP_EXCEL_SHEET_SET_ROW_BREAK(SetHorPageBreak)
 }
 /* }}} */
 
@@ -3842,7 +3857,7 @@ EXCEL_METHOD(Sheet, horPageBreak)
 	Set/Remove vertical page break */
 EXCEL_METHOD(Sheet, verPageBreak)
 {
-	PHP_EXCEL_SHEET_SET_BREAK(SetVerPageBreak)
+	PHP_EXCEL_SHEET_SET_COL_BREAK(SetVerPageBreak)
 }
 /* }}} */
 
@@ -4493,10 +4508,8 @@ EXCEL_METHOD(Sheet, setNamedRange)
 		php_error_docref(NULL, E_WARNING, "The range column start cannot be greater than column end.");
 		RETURN_FALSE;
 	}
-	EXCEL_VALIDATE_INT_RANGE(row);
-	EXCEL_VALIDATE_INT_RANGE(to_row);
-	EXCEL_VALIDATE_INT_RANGE(col);
-	EXCEL_VALIDATE_INT_RANGE(to_col);
+	EXCEL_VALIDATE_ROW_RANGE(row, to_row, object);
+	EXCEL_VALIDATE_COL_RANGE(col, to_col, object);
 
 	SHEET_FROM_OBJECT(sheet, object);
 
@@ -5216,10 +5229,8 @@ EXCEL_METHOD(Sheet, addHyperlink)
 
 	EXCEL_NON_EMPTY_STRING(val_zs)
 	EXCEL_NUL_SAFE_STRING(val_zs)
-	EXCEL_VALIDATE_INT_RANGE(row_first);
-	EXCEL_VALIDATE_INT_RANGE(row_last);
-	EXCEL_VALIDATE_INT_RANGE(col_first);
-	EXCEL_VALIDATE_INT_RANGE(col_last);
+	EXCEL_VALIDATE_ROW_RANGE(row_first, row_last, object);
+	EXCEL_VALIDATE_COL_RANGE(col_first, col_last, object);
 
 	SHEET_FROM_OBJECT(sheet, object);
 
@@ -8037,11 +8048,28 @@ EXCEL_METHOD(ConditionalFormatting, __construct)
 	zend_long rowFirst, rowLast, colFirst, colLast;
 
 	if (zend_parse_parameters(ZEND_NUM_ARGS(), "Ollll", &zsheet, excel_ce_sheet, &rowFirst, &rowLast, &colFirst, &colLast) == FAILURE) {
-		return;
+		RETURN_THROWS();
 	}
 
-	EXCEL_VALIDATE_ROW_RANGE(rowFirst, rowLast, zsheet);
-	EXCEL_VALIDATE_COL_RANGE(colFirst, colLast, zsheet);
+	{
+		/* PHP ignores constructor return values, so throw on bad coordinates
+		 * instead of leaving the caller with an uninitialized wrapper. */
+		excel_book_object *_vb = php_excel_resolve_book_obj(zsheet);
+		zend_long _maxr = (_vb && _vb->is_xlsx) ? EXCEL_MAX_ROW_XLSX : EXCEL_MAX_ROW_XLS;
+		zend_long _maxc = (_vb && _vb->is_xlsx) ? EXCEL_MAX_COL_XLSX : EXCEL_MAX_COL_XLS;
+		if (rowFirst < 0 || rowFirst > _maxr || rowLast < 0 || rowLast > _maxr) {
+			zend_throw_exception_ex(NULL, 0,
+				"Invalid row range: first=" ZEND_LONG_FMT ", last=" ZEND_LONG_FMT,
+				rowFirst, rowLast);
+			RETURN_THROWS();
+		}
+		if (colFirst < 0 || colFirst > _maxc || colLast < 0 || colLast > _maxc) {
+			zend_throw_exception_ex(NULL, 0,
+				"Invalid column range: first=" ZEND_LONG_FMT ", last=" ZEND_LONG_FMT,
+				colFirst, colLast);
+			RETURN_THROWS();
+		}
+	}
 #else
 	if (zend_parse_parameters(ZEND_NUM_ARGS(), "O", &zsheet, excel_ce_sheet) == FAILURE) {
 		return;

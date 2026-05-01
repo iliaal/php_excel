@@ -104,7 +104,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   libxl-5.1.0+ 5-argument form via gen_stub `#if/#else` so reflection
   reports the same shape that ZPP actually parses. Previously the stub
   advertised a 1-argument constructor and instantiating it on libxl 5.1.0
-  failed with `ArgumentCountError`.
+  failed with `ArgumentCountError`. Bad-coordinate inputs now throw an
+  exception (PHP ignores constructor return values, so `RETURN_FALSE`
+  would have left the caller with an uninitialized wrapper).
+- `Sheet::horPageBreak()` and `Sheet::verPageBreak()` validate the page-
+  break coordinate against the row/column axis of the workbook
+  respectively. They previously accepted up to `INT_MAX`, so XLSX
+  `horPageBreak(1048576)` and XLS `verPageBreak(300)` would succeed and
+  silently produce a no-op break.
+- `Sheet::addHyperlink()` and `Sheet::setNamedRange()` now use the
+  workbook-aware row- and column-range validators instead of the generic
+  `INT_MAX` check, matching the rest of the range-taking sheet methods.
 - `Sheet::autoFilter()`, `Sheet::applyFilter()`, `Sheet::removeFilter()`, and
   `Sheet::splitInfo()` now call `ZEND_PARSE_PARAMETERS_NONE()` so calling
   them with extra arguments raises `ArgumentCountError` rather than a debug-
