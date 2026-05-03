@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.1] - 2026-05-03
+
 ### Changed (semantics)
 - Optional getter/setter methods on `ExcelFormat` and `ExcelFont` now
   treat explicit `null` as "getter mode" instead of silently mutating
@@ -542,5 +544,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.8] - 2010-08-01
 	* Initial Release
 
-[Unreleased]: https://github.com/iliaal/php_excel/compare/v2.0.0...HEAD
+[Unreleased]: https://github.com/iliaal/php_excel/compare/2.0.1...HEAD
+[2.0.1]: https://github.com/iliaal/php_excel/releases/tag/2.0.1
 [2.0.0]: https://github.com/iliaal/php_excel/releases/tag/v2.0.0
