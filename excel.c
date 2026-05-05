@@ -87,7 +87,7 @@ PHP_INI_END()
 		excel_ce_ ## c_name->create_object = excel_object_new_ ## c_name; \
 		memcpy(&excel_object_handlers_ ## c_name, zend_get_std_object_handlers(), sizeof(zend_object_handlers)); \
 		excel_ce_ ## c_name->default_object_handlers = &excel_object_handlers_ ## c_name; \
-		excel_object_handlers_ ## c_name .offset = XtOffsetOf(excel_ ## c_name ## _object, std); \
+		excel_object_handlers_ ## c_name .offset = offsetof(excel_ ## c_name ## _object, std); \
 		excel_object_handlers_ ## c_name .free_obj = excel_ ## c_name ## _object_free_storage; \
 		excel_object_handlers_ ## c_name .clone_obj = clone; \
 	}
@@ -129,7 +129,7 @@ typedef struct _excel_book_object {
 } excel_book_object;
 
 static inline excel_book_object *php_excel_book_object_fetch_object(zend_object *obj) {
-	return (excel_book_object *)((char *)(obj) - XtOffsetOf(excel_book_object, std));
+	return (excel_book_object *)((char *)(obj) - offsetof(excel_book_object, std));
 }
 
 #define Z_EXCEL_BOOK_OBJ_P(zv) php_excel_book_object_fetch_object(Z_OBJ_P(zv));
@@ -153,7 +153,7 @@ typedef struct _excel_sheet_object {
 } excel_sheet_object;
 
 static inline excel_sheet_object *php_excel_sheet_object_fetch_object(zend_object *obj) {
-	return (excel_sheet_object *)((char *)(obj) - XtOffsetOf(excel_sheet_object, std));
+	return (excel_sheet_object *)((char *)(obj) - offsetof(excel_sheet_object, std));
 }
 
 #define Z_EXCEL_SHEET_OBJ_P(zv) php_excel_sheet_object_fetch_object(Z_OBJ_P(zv));
@@ -190,7 +190,7 @@ typedef struct _excel_font_object {
 } excel_font_object;
 
 static inline excel_font_object *php_excel_font_object_fetch_object(zend_object *obj) {
-	return (excel_font_object *)((char *)(obj) - XtOffsetOf(excel_font_object, std));
+	return (excel_font_object *)((char *)(obj) - offsetof(excel_font_object, std));
 }
 #define Z_EXCEL_FONT_OBJ_P(zv) php_excel_font_object_fetch_object(Z_OBJ_P(zv));
 
@@ -247,7 +247,7 @@ typedef struct _excel_format_object {
 } excel_format_object;
 
 static inline excel_format_object *php_excel_format_object_fetch_object(zend_object *obj) {
-	return (excel_format_object *)((char *)(obj) - XtOffsetOf(excel_format_object, std));
+	return (excel_format_object *)((char *)(obj) - offsetof(excel_format_object, std));
 }
 #define Z_EXCEL_FORMAT_OBJ_P(zv) php_excel_format_object_fetch_object(Z_OBJ_P(zv));
 
@@ -260,7 +260,7 @@ typedef struct _excel_autofilter_object {
 } excel_autofilter_object;
 
 static inline excel_autofilter_object *php_excel_autofilter_object_fetch_object(zend_object *obj) {
-	return (excel_autofilter_object *)((char *)(obj) - XtOffsetOf(excel_autofilter_object, std));
+	return (excel_autofilter_object *)((char *)(obj) - offsetof(excel_autofilter_object, std));
 }
 #define Z_EXCEL_AUTOFILTER_OBJ_P(zv) php_excel_autofilter_object_fetch_object(Z_OBJ_P(zv));
 
@@ -273,7 +273,7 @@ typedef struct _excel_filtercolumn_object {
 } excel_filtercolumn_object;
 
 static inline excel_filtercolumn_object *php_excel_filtercolumn_object_fetch_object(zend_object *obj) {
-	return (excel_filtercolumn_object *)((char *)(obj) - XtOffsetOf(excel_filtercolumn_object, std));
+	return (excel_filtercolumn_object *)((char *)(obj) - offsetof(excel_filtercolumn_object, std));
 }
 #define Z_EXCEL_FILTERCOLUMN_OBJ_P(zv) php_excel_filtercolumn_object_fetch_object(Z_OBJ_P(zv));
 
@@ -286,7 +286,7 @@ typedef struct _excel_richstring_object {
 } excel_richstring_object;
 
 static inline excel_richstring_object *php_excel_richstring_object_fetch_object(zend_object *obj) {
-	return (excel_richstring_object *)((char *)(obj) - XtOffsetOf(excel_richstring_object, std));
+	return (excel_richstring_object *)((char *)(obj) - offsetof(excel_richstring_object, std));
 }
 #define Z_EXCEL_RICHSTRING_OBJ_P(zv) php_excel_richstring_object_fetch_object(Z_OBJ_P(zv));
 
@@ -310,7 +310,7 @@ typedef struct _excel_formcontrol_object {
 } excel_formcontrol_object;
 
 static inline excel_formcontrol_object *php_excel_formcontrol_object_fetch_object(zend_object *obj) {
-	return (excel_formcontrol_object *)((char *)(obj) - XtOffsetOf(excel_formcontrol_object, std));
+	return (excel_formcontrol_object *)((char *)(obj) - offsetof(excel_formcontrol_object, std));
 }
 #define Z_EXCEL_FORMCONTROL_OBJ_P(zv) php_excel_formcontrol_object_fetch_object(Z_OBJ_P(zv));
 
@@ -334,7 +334,7 @@ typedef struct _excel_conditionalformat_object {
 } excel_conditionalformat_object;
 
 static inline excel_conditionalformat_object *php_excel_conditionalformat_object_fetch_object(zend_object *obj) {
-	return (excel_conditionalformat_object *)((char *)(obj) - XtOffsetOf(excel_conditionalformat_object, std));
+	return (excel_conditionalformat_object *)((char *)(obj) - offsetof(excel_conditionalformat_object, std));
 }
 #define Z_EXCEL_CONDITIONALFORMAT_OBJ_P(zv) php_excel_conditionalformat_object_fetch_object(Z_OBJ_P(zv));
 
@@ -358,7 +358,7 @@ typedef struct _excel_conditionalformatting_object {
 } excel_conditionalformatting_object;
 
 static inline excel_conditionalformatting_object *php_excel_conditionalformatting_object_fetch_object(zend_object *obj) {
-	return (excel_conditionalformatting_object *)((char *)(obj) - XtOffsetOf(excel_conditionalformatting_object, std));
+	return (excel_conditionalformatting_object *)((char *)(obj) - offsetof(excel_conditionalformatting_object, std));
 }
 #define Z_EXCEL_CONDITIONALFORMATTING_OBJ_P(zv) php_excel_conditionalformatting_object_fetch_object(Z_OBJ_P(zv));
 
@@ -382,7 +382,7 @@ typedef struct _excel_coreproperties_object {
 } excel_coreproperties_object;
 
 static inline excel_coreproperties_object *php_excel_coreproperties_object_fetch_object(zend_object *obj) {
-	return (excel_coreproperties_object *)((char *)(obj) - XtOffsetOf(excel_coreproperties_object, std));
+	return (excel_coreproperties_object *)((char *)(obj) - offsetof(excel_coreproperties_object, std));
 }
 #define Z_EXCEL_COREPROPERTIES_OBJ_P(zv) php_excel_coreproperties_object_fetch_object(Z_OBJ_P(zv));
 
@@ -406,7 +406,7 @@ typedef struct _excel_table_object {
 } excel_table_object;
 
 static inline excel_table_object *php_excel_table_object_fetch_object(zend_object *obj) {
-	return (excel_table_object *)((char *)(obj) - XtOffsetOf(excel_table_object, std));
+	return (excel_table_object *)((char *)(obj) - offsetof(excel_table_object, std));
 }
 #define Z_EXCEL_TABLE_OBJ_P(zv) php_excel_table_object_fetch_object(Z_OBJ_P(zv));
 
