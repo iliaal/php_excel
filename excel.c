@@ -1617,7 +1617,7 @@ EXCEL_METHOD(Book, packDateValues)
 		RETURN_FALSE;
 	}
 	if (sec < 0 || sec > 59) {
-		php_error_docref(NULL, E_WARNING, "Invalid '" ZEND_LONG_FMT " value for second", sec);
+		php_error_docref(NULL, E_WARNING, "Invalid '" ZEND_LONG_FMT "' value for second", sec);
 		RETURN_FALSE;
 	}
 
