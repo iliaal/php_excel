@@ -1,7 +1,7 @@
 --TEST--
 Excel date pack/unpack tests
---SKIPIF--
-<?php if (!extension_loaded("excel")) print "skip"; ?>
+--EXTENSIONS--
+excel
 --FILE--
 <?php
 	// LibXL converts date components to/from timestamps using the OS

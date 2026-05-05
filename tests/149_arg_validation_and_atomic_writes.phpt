@@ -1,7 +1,7 @@
 --TEST--
 Scalar format type checks, stale-arg validation, moveSheet generation, atomic writeRow/writeCol, nullable arginfo
---SKIPIF--
-<?php if (!extension_loaded("excel")) print "skip"; ?>
+--EXTENSIONS--
+excel
 --FILE--
 <?php
 $b = new ExcelBook(null, null, true);

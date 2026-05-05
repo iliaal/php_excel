@@ -2,9 +2,10 @@
 setCellFormat() tests
 --INI--
 date.timezone=America/Toronto
+--EXTENSIONS--
+excel
 --SKIPIF--
 <?php
-	if (!extension_loaded("excel")) print "skip";
 	$x = new ExcelBook();
 	if (!method_exists($x->addSheet("a"), "setCellFormat")) print "skip";
 ?>

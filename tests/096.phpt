@@ -1,7 +1,7 @@
 --TEST--
 Book::writeRow() with reference
---SKIPIF--
-<?php if (!extension_loaded("excel")) print "skip"; ?>
+--EXTENSIONS--
+excel
 --FILE--
 <?php
 	$data = array (

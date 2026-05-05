@@ -1,7 +1,9 @@
 --TEST--
 Book: setPassword, dpiAwareness, loadInfoRaw, errorCode, conditionalFormatSize, clear (libxl 5.x)
+--EXTENSIONS--
+excel
 --SKIPIF--
-<?php if (!extension_loaded("excel") || !method_exists('ExcelBook', 'setPassword')) print "skip"; ?>
+<?php if (!method_exists('ExcelBook', 'setPassword')) print "skip"; ?>
 --FILE--
 <?php
 $book = new ExcelBook(null, null, true);

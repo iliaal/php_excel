@@ -1,7 +1,9 @@
 --TEST--
 Book::isTemplate() / Book::setTemplate()
+--EXTENSIONS--
+excel
 --SKIPIF--
-<?php if (!extension_loaded("excel") || !in_array('isTemplate', get_class_methods('ExcelBook'))) print "skip"; ?>
+<?php if (!in_array('isTemplate', get_class_methods('ExcelBook'))) print "skip"; ?>
 --FILE--
 <?php 
 	$x = new ExcelBook();

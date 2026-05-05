@@ -1,7 +1,7 @@
 --TEST--
 ExcelSheet::read/readRow/readCol with read_formula parameter
---SKIPIF--
-<?php if (!extension_loaded("excel")) print "skip"; ?>
+--EXTENSIONS--
+excel
 --FILE--
 <?php
 $book = new ExcelBook(null, null, true);

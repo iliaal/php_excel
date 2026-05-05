@@ -1,7 +1,7 @@
 --TEST--
 Sheet: addIgnoredError 1-arg mode, setColWidth format+hidden, setRowHeight format+hidden
---SKIPIF--
-<?php if (!extension_loaded("excel")) print "skip"; ?>
+--EXTENSIONS--
+excel
 --FILE--
 <?php
 $book = new ExcelBook(null, null, true);

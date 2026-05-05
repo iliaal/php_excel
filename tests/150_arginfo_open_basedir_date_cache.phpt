@@ -1,7 +1,7 @@
 --TEST--
 Strict object types, open_basedir on loadInfo/addPictureAsLink, cached date format, throw on uninitialized book
---SKIPIF--
-<?php if (!extension_loaded("excel")) print "skip"; ?>
+--EXTENSIONS--
+excel
 --FILE--
 <?php
 $b = new ExcelBook(null, null, true);

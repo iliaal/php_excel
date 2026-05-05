@@ -1,7 +1,7 @@
 --TEST--
 A bug with using readRow/writeRow combination to handle NULL values
---SKIPIF--
-<?php if (!extension_loaded("excel")) print "skip"; ?>
+--EXTENSIONS--
+excel
 --FILE--
 <?php 
 $book = new ExcelBook();

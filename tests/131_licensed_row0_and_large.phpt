@@ -1,7 +1,9 @@
 --TEST--
 Licensed: row 0 access and large cell count (>300)
+--EXTENSIONS--
+excel
 --SKIPIF--
-<?php if (!extension_loaded("excel") || !ExcelBook::requiresKey() || !ini_get("excel.license_name") || !ini_get("excel.license_key")) print "skip"; ?>
+<?php if (!ExcelBook::requiresKey() || !ini_get("excel.license_name") || !ini_get("excel.license_key")) print "skip"; ?>
 --FILE--
 <?php
 $book = new ExcelBook(null, null, true);

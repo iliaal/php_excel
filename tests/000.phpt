@@ -2,8 +2,10 @@
 LibXL licensed version vs trial version test
 --INI--
 date.timezone=America/Toronto
+--EXTENSIONS--
+excel
 --SKIPIF--
-<?php if (!extension_loaded("excel") || !ExcelBook::requiresKey()) print "skip"; ?>
+<?php if (!ExcelBook::requiresKey()) print "skip"; ?>
 --FILE--
 <?php
     $data = array("foo");

@@ -1,7 +1,7 @@
 --TEST--
 Excel date pack/unpack overflow tests
---SKIPIF--
-<?php if (!extension_loaded("excel")) print "skip"; ?>
+--EXTENSIONS--
+excel
 --FILE--
 <?php 
 	$x = new ExcelBook();

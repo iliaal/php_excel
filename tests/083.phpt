@@ -1,7 +1,7 @@
 --TEST--
 Sheet::__construct()
---SKIPIF--
-<?php if (!extension_loaded("excel")) print "skip"; ?>
+--EXTENSIONS--
+excel
 --FILE--
 <?php
 

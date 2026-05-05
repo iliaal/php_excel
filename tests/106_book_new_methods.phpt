@@ -1,7 +1,9 @@
 --TEST--
 New Book methods: calcMode, setCalcMode, addFormatFromStyle, removeVBA, removePrinterSettings, dpiAwareness, setDpiAwareness, removeAllPhonetics
+--EXTENSIONS--
+excel
 --SKIPIF--
-<?php if (!extension_loaded("excel") || !method_exists("ExcelBook", "dpiAwareness")) print "skip"; ?>
+<?php if (!method_exists("ExcelBook", "dpiAwareness")) print "skip"; ?>
 --FILE--
 <?php
 $book = new ExcelBook(null, null, true);

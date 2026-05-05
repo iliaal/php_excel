@@ -1,7 +1,7 @@
 --TEST--
 Verify serialization is blocked for all Excel classes
---SKIPIF--
-<?php if (!extension_loaded("excel")) print "skip"; ?>
+--EXTENSIONS--
+excel
 --FILE--
 <?php
 $classes = [

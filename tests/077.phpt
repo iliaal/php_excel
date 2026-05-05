@@ -1,7 +1,9 @@
 --TEST--
 Test the ExcelSheet::splitInfo() method introduced in libxl 3.6.0.
+--EXTENSIONS--
+excel
 --SKIPIF--
-<?php if (!extension_loaded("excel") || !in_array('splitInfo', get_class_methods('ExcelSheet'))) print "skip"; ?>
+<?php if (!in_array('splitInfo', get_class_methods('ExcelSheet'))) print "skip"; ?>
 --FILE--
 <?php 
 $book = new ExcelBook();

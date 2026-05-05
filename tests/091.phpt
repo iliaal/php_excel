@@ -1,7 +1,7 @@
 --TEST--
 test Book::save() and Book::loadFile()
---SKIPIF--
-<?php if (!extension_loaded("excel")) print "skip"; ?>
+--EXTENSIONS--
+excel
 --FILE--
 <?php
 

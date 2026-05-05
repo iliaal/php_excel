@@ -1,7 +1,7 @@
 --TEST--
 Book: isDate1904, setDate1904, getActiveSheet, getSheetName, load, loadInfo
---SKIPIF--
-<?php if (!extension_loaded("excel")) print "skip"; ?>
+--EXTENSIONS--
+excel
 --FILE--
 <?php
 $book = new ExcelBook(null, null, true);

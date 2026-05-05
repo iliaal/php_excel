@@ -1,7 +1,7 @@
 --TEST--
 No-argument sheet methods reject extra arguments with ArgumentCountError
---SKIPIF--
-<?php if (!extension_loaded("excel")) print "skip"; ?>
+--EXTENSIONS--
+excel
 --FILE--
 <?php
 $b = new ExcelBook(null, null, true);

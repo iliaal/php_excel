@@ -1,7 +1,7 @@
 --TEST--
 Integration: create invoice workbook with fonts, formats, formulas, dates, save/reload/verify
---SKIPIF--
-<?php if (!extension_loaded("excel")) print "skip"; ?>
+--EXTENSIONS--
+excel
 --FILE--
 <?php
 $book = new ExcelBook(null, null, true);

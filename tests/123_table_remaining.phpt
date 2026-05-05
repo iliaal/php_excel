@@ -1,7 +1,7 @@
 --TEST--
 Table: setRef, setColumnName, showColumnStripes, setShowColumnStripes, showFirstColumn, setShowFirstColumn, showLastColumn, setShowLastColumn
---SKIPIF--
-<?php if (!extension_loaded("excel")) print "skip"; ?>
+--EXTENSIONS--
+excel
 --FILE--
 <?php
 $book = new ExcelBook(null, null, true);

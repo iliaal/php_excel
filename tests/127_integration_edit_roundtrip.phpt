@@ -1,7 +1,7 @@
 --TEST--
 Integration: save workbook, reload, modify cells, save again, verify modifications
---SKIPIF--
-<?php if (!extension_loaded("excel")) print "skip"; ?>
+--EXTENSIONS--
+excel
 --FILE--
 <?php
 // Step 1: Create and save

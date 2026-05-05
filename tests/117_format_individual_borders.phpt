@@ -1,7 +1,7 @@
 --TEST--
 Format: borderLeftStyle/Color, borderRightStyle/Color, borderTopStyle/Color, borderBottomStyle/Color
---SKIPIF--
-<?php if (!extension_loaded("excel")) print "skip"; ?>
+--EXTENSIONS--
+excel
 --FILE--
 <?php
 $book = new ExcelBook(null, null, true);

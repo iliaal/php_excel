@@ -1,7 +1,7 @@
 --TEST--
 Coordinate validation rejects out-of-range row/column per book type
---SKIPIF--
-<?php if (!extension_loaded("excel")) print "skip"; ?>
+--EXTENSIONS--
+excel
 --FILE--
 <?php
 // XLSX: 1048576 rows x 16384 cols

@@ -1,7 +1,7 @@
 --TEST--
 Sheet: marginLeft/Right/Top/Bottom and setMarginLeft/Right/Top/Bottom
---SKIPIF--
-<?php if (!extension_loaded("excel")) print "skip"; ?>
+--EXTENSIONS--
+excel
 --FILE--
 <?php
 $book = new ExcelBook(null, null, true);

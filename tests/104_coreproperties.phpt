@@ -1,7 +1,7 @@
 --TEST--
 ExcelCoreProperties: get/set title, subject, creator, tags, categories, comments, createdAsDouble, removeAll (xlsx only)
---SKIPIF--
-<?php if (!extension_loaded("excel")) print "skip"; ?>
+--EXTENSIONS--
+excel
 --FILE--
 <?php
 $book = new ExcelBook(null, null, true);

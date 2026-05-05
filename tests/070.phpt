@@ -1,7 +1,9 @@
 --TEST--
 Sheet::addrToRowCol() / Sheet::rowColToAddr()
+--EXTENSIONS--
+excel
 --SKIPIF--
-<?php if (!extension_loaded("excel") || !in_array('addrToRowCol', get_class_methods('ExcelSheet'))) print "skip"; ?>
+<?php if (!in_array('addrToRowCol', get_class_methods('ExcelSheet'))) print "skip"; ?>
 --FILE--
 <?php 
 	$x = new ExcelBook();

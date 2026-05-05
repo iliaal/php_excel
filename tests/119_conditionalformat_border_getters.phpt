@@ -1,7 +1,7 @@
 --TEST--
 ConditionalFormat: border getters (borderLeft/Right/Top/Bottom, borderLeftColor/RightColor/TopColor/BottomColor), customNumFormat
---SKIPIF--
-<?php if (!extension_loaded("excel")) print "skip"; ?>
+--EXTENSIONS--
+excel
 --FILE--
 <?php
 $book = new ExcelBook(null, null, true);

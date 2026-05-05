@@ -1,7 +1,7 @@
 --TEST--
 Sheet::write***() auto date format
---SKIPIF--
-<?php if (!extension_loaded("excel")) print "skip"; ?>
+--EXTENSIONS--
+excel
 --FILE--
 <?php
 $book = new ExcelBook();

@@ -1,7 +1,7 @@
 --TEST--
 Stale child wrappers refuse to use libxl handles after invalidating book operations
---SKIPIF--
-<?php if (!extension_loaded("excel")) print "skip"; ?>
+--EXTENSIONS--
+excel
 --FILE--
 <?php
 // load() invalidates existing sheet wrappers

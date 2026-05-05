@@ -1,7 +1,7 @@
 --TEST--
 Test the SKIP_NULLS options, that skips null when writing data
---SKIPIF--
-<?php if (!extension_loaded("excel")) print "skip"; ?>
+--EXTENSIONS--
+excel
 --FILE--
 <?php 
 $book = new ExcelBook();

@@ -1,7 +1,7 @@
 --TEST--
 FormControl: read properties, setters, item manipulation on all control types
---SKIPIF--
-<?php if (!extension_loaded("excel")) print "skip"; ?>
+--EXTENSIONS--
+excel
 --FILE--
 <?php
 $book = new ExcelBook(null, null, true);

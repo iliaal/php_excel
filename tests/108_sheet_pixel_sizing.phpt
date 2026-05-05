@@ -1,7 +1,7 @@
 --TEST--
 Sheet pixel-based sizing: setColPx, setRowPx, colWidthPx, rowHeightPx
---SKIPIF--
-<?php if (!extension_loaded("excel")) print "skip"; ?>
+--EXTENSIONS--
+excel
 --FILE--
 <?php
 $book = new ExcelBook(null, null, true);

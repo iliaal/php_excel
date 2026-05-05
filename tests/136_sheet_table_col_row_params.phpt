@@ -1,7 +1,7 @@
 --TEST--
 Sheet: addTable hasHeaders/style params, setColPx/setRowPx format+hidden, writeRichStr with format, setAutoFitArea no-arg reset
---SKIPIF--
-<?php if (!extension_loaded("excel")) print "skip"; ?>
+--EXTENSIONS--
+excel
 --FILE--
 <?php
 $book = new ExcelBook(null, null, true);

@@ -2,8 +2,8 @@
 ExcelSheet::setAutoFitArea(), ExcelSheet::printRepeatCols(), ExcelSheet::printRepeatRows(), ExcelSheet::printArea()
 --INI--
 date.timezone=America/Toronto
---SKIPIF--
-<?php if (!extension_loaded("excel")) print "skip"; ?>
+--EXTENSIONS--
+excel
 --FILE--
 <?php 
     $xb = new ExcelBook(null, null, true);

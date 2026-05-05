@@ -1,7 +1,7 @@
 --TEST--
 ExcelBook optional parameters: addFont copy, addFormat copy, save buffer, getSheet default, activeSheet setter
---SKIPIF--
-<?php if (!extension_loaded("excel")) print "skip"; ?>
+--EXTENSIONS--
+excel
 --FILE--
 <?php
 

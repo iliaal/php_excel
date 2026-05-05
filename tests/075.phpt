@@ -1,7 +1,9 @@
 --TEST--
 Test the ExcelSheet::hyperlinkSize(), ExcelSheet::hyperlink(), ExcelSheet::delHyperlink(), ExcelSheet::addHyperlink() methods introduced in libxl 3.6.0.
+--EXTENSIONS--
+excel
 --SKIPIF--
-<?php if (!extension_loaded("excel") || !in_array('hyperlinkSize', get_class_methods('ExcelSheet'))) print "skip"; ?>
+<?php if (!in_array('hyperlinkSize', get_class_methods('ExcelSheet'))) print "skip"; ?>
 --FILE--
 <?php 
 $book = new ExcelBook();

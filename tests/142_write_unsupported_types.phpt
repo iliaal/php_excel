@@ -1,7 +1,7 @@
 --TEST--
 Sheet::write/writeRow/writeCol return false for unsupported zval types
---SKIPIF--
-<?php if (!extension_loaded("excel")) print "skip"; ?>
+--EXTENSIONS--
+excel
 --FILE--
 <?php
 $b = new ExcelBook(null, null, true);

@@ -1,7 +1,7 @@
 --TEST--
 ExcelTable: addTable, name, setName, ref, columnSize, columnName, style, showRowStripes, getTableByName, getTableByIndex (xlsx only)
---SKIPIF--
-<?php if (!extension_loaded("excel")) print "skip"; ?>
+--EXTENSIONS--
+excel
 --FILE--
 <?php
 $book = new ExcelBook(null, null, true);

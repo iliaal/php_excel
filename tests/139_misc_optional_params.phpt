@@ -1,7 +1,7 @@
 --TEST--
 Misc optional params: Format::borderColor setter, FilterColumn::setCustomFilter 2-arg, RichString::addFont copy, Sheet::addTable with TABLESTYLE constant
---SKIPIF--
-<?php if (!extension_loaded("excel")) print "skip"; ?>
+--EXTENSIONS--
+excel
 --FILE--
 <?php
 // --- Format::borderColor($color) setter mode ---

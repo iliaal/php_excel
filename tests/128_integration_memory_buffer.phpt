@@ -1,7 +1,7 @@
 --TEST--
 Integration: save to memory buffer, load from memory buffer
---SKIPIF--
-<?php if (!extension_loaded("excel")) print "skip"; ?>
+--EXTENSIONS--
+excel
 --FILE--
 <?php
 $book = new ExcelBook(null, null, true);

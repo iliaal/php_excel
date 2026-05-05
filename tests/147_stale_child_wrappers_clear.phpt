@@ -1,7 +1,9 @@
 --TEST--
 Book::clear() invalidates existing child wrappers (libxl 5.1.0+)
+--EXTENSIONS--
+excel
 --SKIPIF--
-<?php if (!extension_loaded("excel") || !method_exists("ExcelBook", "clear")) print "skip"; ?>
+<?php if (!method_exists("ExcelBook", "clear")) print "skip"; ?>
 --FILE--
 <?php
 $b = new ExcelBook(null, null, true);

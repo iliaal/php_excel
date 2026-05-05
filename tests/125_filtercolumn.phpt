@@ -1,7 +1,7 @@
 --TEST--
 FilterColumn: index, filterType, filterSize, filter, addFilter, clear, getTop10, setTop10, getCustomFilter, setCustomFilter; AutoFilter::columnByIndex
---SKIPIF--
-<?php if (!extension_loaded("excel")) print "skip"; ?>
+--EXTENSIONS--
+excel
 --FILE--
 <?php
 $book = new ExcelBook(null, null, true);

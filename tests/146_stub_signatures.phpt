@@ -1,7 +1,7 @@
 --TEST--
 Reflection-based check that ZPP-affected stubs match implementation
---SKIPIF--
-<?php if (!extension_loaded("excel")) print "skip"; ?>
+--EXTENSIONS--
+excel
 --FILE--
 <?php
 $cases = [

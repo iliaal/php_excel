@@ -1,7 +1,7 @@
 --TEST--
 NUL guards on color-scale formula rules and addDataValidationDouble; coordinate validation on rowColToAddr/setActiveCell/setPrintArea/setMerge/clear/copy/etc.
---SKIPIF--
-<?php if (!extension_loaded("excel")) print "skip"; ?>
+--EXTENSIONS--
+excel
 --FILE--
 <?php
 $b = new ExcelBook(null, null, true);

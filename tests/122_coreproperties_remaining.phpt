@@ -1,7 +1,7 @@
 --TEST--
 CoreProperties: created, setCreated, modified, setModified, lastModifiedBy, setLastModifiedBy, modifiedAsDouble, setModifiedAsDouble
---SKIPIF--
-<?php if (!extension_loaded("excel")) print "skip"; ?>
+--EXTENSIONS--
+excel
 --FILE--
 <?php
 $book = new ExcelBook(null, null, true);

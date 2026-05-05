@@ -1,7 +1,7 @@
 --TEST--
 A bug that casues numberic fields with custom formats to be dectected as dates
---SKIPIF--
-<?php if (!extension_loaded("excel")) print "skip"; ?>
+--EXTENSIONS--
+excel
 --FILE--
 <?php 
 $book = new ExcelBook();

@@ -1,7 +1,7 @@
 --TEST--
 NUL-safe string and int-range guards on libxl boundary
---SKIPIF--
-<?php if (!extension_loaded("excel")) print "skip"; ?>
+--EXTENSIONS--
+excel
 --FILE--
 <?php
 $book = new ExcelBook(null, null, true);

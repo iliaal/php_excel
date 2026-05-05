@@ -2,8 +2,8 @@
 Area Clear
 --INI--
 date.timezone=America/Toronto
---SKIPIF--
-<?php if (!extension_loaded("excel")) print "skip"; ?>
+--EXTENSIONS--
+excel
 --FILE--
 <?php 
 	$x = new ExcelBook();

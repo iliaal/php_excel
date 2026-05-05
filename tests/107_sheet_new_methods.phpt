@@ -1,7 +1,7 @@
 --TEST--
 New Sheet methods: firstFilledRow/lastFilledRow/Col, tabColor, setTabRgbColor/getTabRgbColor, activeCell, selectionRange, colWidthPx, rowHeightPx, setBorder, hyperlinkIndex
---SKIPIF--
-<?php if (!extension_loaded("excel")) print "skip"; ?>
+--EXTENSIONS--
+excel
 --FILE--
 <?php
 $book = new ExcelBook(null, null, true);

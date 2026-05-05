@@ -1,7 +1,7 @@
 --TEST--
 Integration: multiple sheets, copySheet, deleteSheet, sheet manipulation
---SKIPIF--
-<?php if (!extension_loaded("excel")) print "skip"; ?>
+--EXTENSIONS--
+excel
 --FILE--
 <?php
 $book = new ExcelBook(null, null, true);

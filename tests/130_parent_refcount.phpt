@@ -1,7 +1,7 @@
 --TEST--
 Parent object reference counting: child objects keep parents alive after unset
---SKIPIF--
-<?php if (!extension_loaded("excel")) print "skip"; ?>
+--EXTENSIONS--
+excel
 --FILE--
 <?php
 // ExcelSheet keeps ExcelBook alive

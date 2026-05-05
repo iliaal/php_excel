@@ -2,9 +2,10 @@
 colorPack()/colorUnpack() tests
 --INI--
 date.timezone=America/Toronto
+--EXTENSIONS--
+excel
 --SKIPIF--
 <?php
-	if (!extension_loaded("excel")) print "skip";
 	if (!method_exists(new ExcelBook(), "colorPack")) print "skip";
 ?>
 --FILE--

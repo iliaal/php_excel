@@ -1,7 +1,7 @@
 --TEST--
 ExcelRichString: create, addFont, addText, textSize, getText, write/read
---SKIPIF--
-<?php if (!extension_loaded("excel")) print "skip"; ?>
+--EXTENSIONS--
+excel
 --FILE--
 <?php
 $book = new ExcelBook(null, null, true);

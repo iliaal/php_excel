@@ -1,7 +1,7 @@
 --TEST--
 NUL guards on cell writes, sheet name lookup, file paths, and license args
---SKIPIF--
-<?php if (!extension_loaded("excel")) print "skip"; ?>
+--EXTENSIONS--
+excel
 --FILE--
 <?php
 $b = new ExcelBook(null, null, true);

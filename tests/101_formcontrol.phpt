@@ -1,7 +1,7 @@
 --TEST--
 ExcelFormControl: formControlSize on empty sheet
---SKIPIF--
-<?php if (!extension_loaded("excel")) print "skip"; ?>
+--EXTENSIONS--
+excel
 --FILE--
 <?php
 $book = new ExcelBook(null, null, true);
