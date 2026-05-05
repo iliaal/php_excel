@@ -1609,15 +1609,15 @@ EXCEL_METHOD(Book, packDateValues)
 	// if it is a date or just a time - hout, min & sec must be checked
 
 	if (hour < 0 || hour > 23) {
-		php_error_docref(NULL, E_WARNING, "Invalid '%ld' value for hour", hour);
+		php_error_docref(NULL, E_WARNING, "Invalid '" ZEND_LONG_FMT "' value for hour", hour);
 		RETURN_FALSE;
 	}
 	if (min < 0 || min > 59) {
-		php_error_docref(NULL, E_WARNING, "Invalid '%ld' value for minute", min);
+		php_error_docref(NULL, E_WARNING, "Invalid '" ZEND_LONG_FMT "' value for minute", min);
 		RETURN_FALSE;
 	}
 	if (sec < 0 || sec > 59) {
-		php_error_docref(NULL, E_WARNING, "Invalid '%ld' value for second", sec);
+		php_error_docref(NULL, E_WARNING, "Invalid '" ZEND_LONG_FMT "' value for second", sec);
 		RETURN_FALSE;
 	}
 
@@ -1625,15 +1625,15 @@ EXCEL_METHOD(Book, packDateValues)
 	// is every value=0 - it's okay for generating a time
 	if (year != 0 || month != 0 || day != 0) {
 		if (year < 1) {
-			php_error_docref(NULL, E_WARNING, "Invalid '%ld' value for year", year);
+			php_error_docref(NULL, E_WARNING, "Invalid '" ZEND_LONG_FMT "' value for year", year);
 			RETURN_FALSE;
 		}
 		if (month < 1 || month > 12) {
-			php_error_docref(NULL, E_WARNING, "Invalid '%ld' value for month", month);
+			php_error_docref(NULL, E_WARNING, "Invalid '" ZEND_LONG_FMT "' value for month", month);
 			RETURN_FALSE;
 		}
 		if (day < 1 || day > 31) {
-			php_error_docref(NULL, E_WARNING, "Invalid '%ld' value for day", day);
+			php_error_docref(NULL, E_WARNING, "Invalid '" ZEND_LONG_FMT "' value for day", day);
 			RETURN_FALSE;
 		}
 	}
@@ -2014,13 +2014,13 @@ EXCEL_METHOD(Book, colorPack)
 	}
 
 	if (r < 0 || r > 255) {
-		php_error_docref(NULL, E_WARNING, "Invalid '%ld' value for color red", r);
+		php_error_docref(NULL, E_WARNING, "Invalid '" ZEND_LONG_FMT "' value for color red", r);
 		RETURN_FALSE;
 	} else if (g < 0 || g > 255) {
-		php_error_docref(NULL, E_WARNING, "Invalid '%ld' value for color green", g);
+		php_error_docref(NULL, E_WARNING, "Invalid '" ZEND_LONG_FMT "' value for color green", g);
 		RETURN_FALSE;
 	} else if (b < 0 || b > 255) {
-		php_error_docref(NULL, E_WARNING, "Invalid '%ld' value for color blue", b);
+		php_error_docref(NULL, E_WARNING, "Invalid '" ZEND_LONG_FMT "' value for color blue", b);
 		RETURN_FALSE;
 	}
 
@@ -2044,7 +2044,7 @@ EXCEL_METHOD(Book, colorUnpack)
 	}
 
 	if (color <= 0) {
-		php_error_docref(NULL, E_WARNING, "Invalid '%ld' value for color code", color);
+		php_error_docref(NULL, E_WARNING, "Invalid '" ZEND_LONG_FMT "' value for color code", color);
 		RETURN_FALSE;
 	}
 
@@ -3224,13 +3224,13 @@ EXCEL_METHOD(Sheet, readRow)
 	SHEET_AND_BOOK_FROM_OBJECT(sheet, book, object);
 
 	if (row < 0 || row > xlSheetLastRow(sheet)) {
-		php_error_docref(NULL, E_WARNING, "Invalid row number '%ld'", row);
+		php_error_docref(NULL, E_WARNING, "Invalid row number '" ZEND_LONG_FMT "'", row);
 		RETURN_FALSE;
 	}
 
 	lc = xlSheetLastCol(sheet);
 	if (col_start < 0 || col_start > lc) {
-		php_error_docref(NULL, E_WARNING, "Invalid starting column number '%ld'", col_start);
+		php_error_docref(NULL, E_WARNING, "Invalid starting column number '" ZEND_LONG_FMT "'", col_start);
 		RETURN_FALSE;
 	}
 
@@ -3239,7 +3239,7 @@ EXCEL_METHOD(Sheet, readRow)
 	}
 
 	if (col_end < col_start || col_end > lc) {
-		php_error_docref(NULL, E_WARNING, "Invalid ending column number '%ld'", col_end);
+		php_error_docref(NULL, E_WARNING, "Invalid ending column number '" ZEND_LONG_FMT "'", col_end);
 		RETURN_FALSE;
 	}
 
@@ -3292,13 +3292,13 @@ EXCEL_METHOD(Sheet, readCol)
 	SHEET_AND_BOOK_FROM_OBJECT(sheet, book, object);
 
 	if (col < 0 || col > xlSheetLastCol(sheet)) {
-		php_error_docref(NULL, E_WARNING, "Invalid column number '%ld'", col);
+		php_error_docref(NULL, E_WARNING, "Invalid column number '" ZEND_LONG_FMT "'", col);
 		RETURN_FALSE;
 	}
 
 	lc = xlSheetLastRow(sheet);
 	if (row_start < 0 || row_start > lc) {
-		php_error_docref(NULL, E_WARNING, "Invalid starting row number '%ld'", row_start);
+		php_error_docref(NULL, E_WARNING, "Invalid starting row number '" ZEND_LONG_FMT "'", row_start);
 		RETURN_FALSE;
 	}
 
@@ -3307,7 +3307,7 @@ EXCEL_METHOD(Sheet, readCol)
 	}
 
 	if (row_end < row_start || row_end > lc) {
-		php_error_docref(NULL, E_WARNING, "Invalid ending row number '%ld'", row_end);
+		php_error_docref(NULL, E_WARNING, "Invalid ending row number '" ZEND_LONG_FMT "'", row_end);
 		RETURN_FALSE;
 	}
 
