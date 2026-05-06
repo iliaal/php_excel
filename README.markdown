@@ -122,6 +122,7 @@ Companion native PHP extensions for high-throughput PHP workloads:
 
 - **[mdparser](https://github.com/iliaal/mdparser)**: native CommonMark + GFM markdown parser. 15-30× faster than pure-PHP libraries (Parsedown, cebe, michelf). Powered by cmark-gfm.
 - **[php_clickhouse](https://github.com/iliaal/php_clickhouse)**: native ClickHouse client speaking the wire protocol directly. Picks up where SeasClick left off.
+- **[fastchart](https://github.com/iliaal/fastchart)**: native chart-rendering extension. 19 chart types behind one fluent OO API; composes with caller-owned `\GdImage` canvases.
 
 ## 📚 Read more
 
