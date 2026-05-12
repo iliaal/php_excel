@@ -85,7 +85,7 @@ PHP_INI_END()
 		excel_ce_ ## c_name = register_class_Excel ## name(); \
 		excel_ce_ ## c_name->ce_flags |= ZEND_ACC_NOT_SERIALIZABLE; \
 		excel_ce_ ## c_name->create_object = excel_object_new_ ## c_name; \
-		memcpy(&excel_object_handlers_ ## c_name, zend_get_std_object_handlers(), sizeof(zend_object_handlers)); \
+		excel_object_handlers_ ## c_name = *zend_get_std_object_handlers(); \
 		excel_ce_ ## c_name->default_object_handlers = &excel_object_handlers_ ## c_name; \
 		excel_object_handlers_ ## c_name .offset = offsetof(excel_ ## c_name ## _object, std); \
 		excel_object_handlers_ ## c_name .free_obj = excel_ ## c_name ## _object_free_storage; \
