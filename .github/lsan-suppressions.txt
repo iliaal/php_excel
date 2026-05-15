@@ -1,0 +1,16 @@
+# LeakSanitizer suppressions for php_excel CI.
+#
+# Format: "leak:<substring>" — substring must appear in any frame of
+# the leak's stack trace.
+#
+# This file is intentionally empty at landing — php_excel's leak surface
+# has not surfaced any process-lifetime allocations under the ASan
+# CI job to date. Entries are added narrowly as known-good leaks are
+# identified (e.g. vendored-library MINIT singletons). Prefer adding
+# a narrow entry here over flipping ASAN_OPTIONS detect_leaks=0 in
+# .github/workflows/tests.yml — see
+# ~/ai/wiki/debugging/asan-php-extension.md for the recipe.
+#
+# To audit a new leak locally:
+#   ASAN_OPTIONS=detect_leaks=1 LSAN_OPTIONS=fast_unwind_on_malloc=0 \
+#     <asan-php> -d extension=php_excel.so -r '<repro>'
