@@ -9451,9 +9451,9 @@ PHP_MINFO_FUNCTION(excel)
 
 	php_info_print_table_start();
 	php_info_print_table_header(2, "excel support", "enabled");
-	php_info_print_table_header(2, "Excel Version", PHP_EXCEL_VERSION);
+	php_info_print_table_row(2, "Excel Version", PHP_EXCEL_VERSION);
 	snprintf(temp_api, sizeof(temp_api), "%x", LIBXL_VERSION);
-	php_info_print_table_header(2, "LibXL Version", temp_api);
+	php_info_print_table_row(2, "LibXL Version", temp_api);
 	php_info_print_table_end();
 }
 /* }}} */
