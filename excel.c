@@ -469,6 +469,19 @@ static inline excel_book_object *php_excel_resolve_book_obj(zval *parent_zv) {
 		} \
 	} while (0)
 
+/* Preresolved variant of CHECK_BOOK_GENERATION. resolve_book_obj(child) and
+ * resolve_book_obj(&child->parent) return the same owning book, so single-cell
+ * hot paths can resolve the book once and feed it to both the stale check and
+ * the coordinate-limit lookups instead of walking the parent chain each time. */
+#define CHECK_BOOK_GENERATION_PR(child_obj, vb) \
+	do { \
+		if (!(vb) || !(vb)->book || (vb)->generation != (child_obj)->book_generation) { \
+			php_error_docref(NULL, E_WARNING, \
+				"Underlying ExcelBook handle is stale (parent was reloaded, cleared, or reinitialized)"); \
+			RETURN_FALSE; \
+		} \
+	} while (0)
+
 /* Stamp child wrapper with current book generation and copy parent zval.
  * Use at every child creation site instead of a bare ZVAL_COPY(&x->parent, p). */
 #define EXCEL_INIT_PARENT(child_obj, parent_zv) \
@@ -942,6 +955,20 @@ static zend_object *excel_object_new_table(zend_class_entry *class_type)
 		excel_book_object *_vb = php_excel_resolve_book_obj(parent_zv); \
 		zend_long _maxr = (_vb && _vb->is_xlsx) ? EXCEL_MAX_ROW_XLSX : EXCEL_MAX_ROW_XLS; \
 		zend_long _maxc = (_vb && _vb->is_xlsx) ? EXCEL_MAX_COL_XLSX : EXCEL_MAX_COL_XLS; \
+		if ((r) < 0 || (r) > _maxr || (c) < 0 || (c) > _maxc) { \
+			php_error_docref(NULL, E_WARNING, \
+				"Invalid coordinates: row=" ZEND_LONG_FMT ", column=" ZEND_LONG_FMT, \
+				(zend_long)(r), (zend_long)(c)); \
+			RETURN_FALSE; \
+		} \
+	} while (0)
+
+/* Preresolved variant: the caller has already resolved the owning book object
+ * (see CHECK_BOOK_GENERATION_PR). Identical limits and error message, no walk. */
+#define EXCEL_VALIDATE_ROW_COL_PR(r, c, vb) \
+	do { \
+		zend_long _maxr = ((vb) && (vb)->is_xlsx) ? EXCEL_MAX_ROW_XLSX : EXCEL_MAX_ROW_XLS; \
+		zend_long _maxc = ((vb) && (vb)->is_xlsx) ? EXCEL_MAX_COL_XLSX : EXCEL_MAX_COL_XLS; \
 		if ((r) < 0 || (r) > _maxr || (c) < 0 || (c) > _maxc) { \
 			php_error_docref(NULL, E_WARNING, \
 				"Invalid coordinates: row=" ZEND_LONG_FMT ", column=" ZEND_LONG_FMT, \
@@ -3344,6 +3371,8 @@ EXCEL_METHOD(Sheet, readCol)
 EXCEL_METHOD(Sheet, read)
 {
 	zval *object = ZEND_THIS;
+	excel_sheet_object *sheet_obj;
+	excel_book_object *book_obj;
 	SheetHandle sheet;
 	BookHandle book;
 	zend_long row, col;
@@ -3355,8 +3384,19 @@ EXCEL_METHOD(Sheet, read)
 		RETURN_FALSE;
 	}
 
-	EXCEL_VALIDATE_ROW_COL(row, col, object);
-	SHEET_AND_BOOK_FROM_OBJECT(sheet, book, object);
+	/* Resolve the owning book once and reuse it for the coordinate limits and
+	 * the stale-generation check (previously two parent-chain walks). */
+	book_obj = php_excel_resolve_book_obj(object);
+	EXCEL_VALIDATE_ROW_COL_PR(row, col, book_obj);
+
+	sheet_obj = Z_EXCEL_SHEET_OBJ_P(object);
+	sheet = sheet_obj->sheet;
+	book = sheet_obj->book;
+	if (!sheet) {
+		php_error_docref(NULL, E_WARNING, "The sheet wasn't initialized");
+		RETURN_FALSE;
+	}
+	CHECK_BOOK_GENERATION_PR(sheet_obj, book_obj);
 
 	if (oformat) {
 		ZVAL_DEREF(oformat);
@@ -3483,6 +3523,8 @@ bool php_excel_write_cell(SheetHandle sheet, excel_book_object *book_obj, int ro
 EXCEL_METHOD(Sheet, write)
 {
 	zval *object = ZEND_THIS;
+	excel_sheet_object *sheet_obj;
+	excel_book_object *book_obj;
 	SheetHandle sheet;
 	BookHandle book;
 	FormatHandle format;
@@ -3495,18 +3537,28 @@ EXCEL_METHOD(Sheet, write)
 		RETURN_FALSE;
 	}
 
-	EXCEL_VALIDATE_ROW_COL(row, col, object);
-	SHEET_AND_BOOK_FROM_OBJECT(sheet, book, object);
+	/* Resolve the owning book once and reuse it for the coordinate limits, the
+	 * stale-generation check, and the write (previously three separate
+	 * parent-chain walks per single-cell write). */
+	book_obj = php_excel_resolve_book_obj(object);
+	EXCEL_VALIDATE_ROW_COL_PR(row, col, book_obj);
+
+	sheet_obj = Z_EXCEL_SHEET_OBJ_P(object);
+	sheet = sheet_obj->sheet;
+	book = sheet_obj->book;
+	if (!sheet) {
+		php_error_docref(NULL, E_WARNING, "The sheet wasn't initialized");
+		RETURN_FALSE;
+	}
+	CHECK_BOOK_GENERATION_PR(sheet_obj, book_obj);
+
 	if (oformat) {
 		FORMAT_FROM_OBJECT(format, oformat);
 	}
 
-	{
-		excel_book_object *book_obj = php_excel_resolve_book_obj(object);
-		if (!php_excel_write_cell(sheet, book_obj, row, col, data, oformat ? format : 0, dtype)) {
-			php_error_docref(NULL, E_WARNING, "Failed to write cell in row " ZEND_LONG_FMT ", column " ZEND_LONG_FMT " with error '%s'", row, col, xlBookErrorMessage(book));
-			RETURN_FALSE;
-		}
+	if (!php_excel_write_cell(sheet, book_obj, row, col, data, oformat ? format : 0, dtype)) {
+		php_error_docref(NULL, E_WARNING, "Failed to write cell in row " ZEND_LONG_FMT ", column " ZEND_LONG_FMT " with error '%s'", row, col, xlBookErrorMessage(book));
+		RETURN_FALSE;
 	}
 
 	RETURN_TRUE;
