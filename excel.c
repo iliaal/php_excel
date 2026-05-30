@@ -45,15 +45,6 @@
 #define xlSheetSetBorder xlSheetSetBorderA
 #endif
 
-static zend_long xlFormatBorder(FormatHandle f)
-{
-	return 1;
-}
-static zend_long xlFormatBorderColor(FormatHandle f)
-{
-	return 1;
-}
-
 #define PHP_EXCEL_DATE 1
 #define PHP_EXCEL_FORMULA 2
 #define PHP_EXCEL_NUMERIC_STRING 3
@@ -2751,7 +2742,7 @@ EXCEL_METHOD(Format, getFont)
  * stub-declared `mixed = null` got coerced to 0 and silently mutated the
  * underlying format slot to 0 (e.g. numberFormat(null) reset format 7 -> 0).
  */
-#define PHP_EXCEL_LONG_FORMAT_OPTION(func_name, write_only) \
+#define PHP_EXCEL_LONG_FORMAT_OPTION(func_name) \
 	{ \
 		FormatHandle format; \
 		zval *object = ZEND_THIS; \
@@ -2769,11 +2760,32 @@ EXCEL_METHOD(Format, getFont)
 			} \
 			xlFormatSet ## func_name (format, (int)data); \
 		} \
-		if (!write_only) { \
-			RETURN_LONG(xlFormat ## func_name (format)); \
-		} else { \
-			RETURN_TRUE; \
+		RETURN_LONG(xlFormat ## func_name (format)); \
+	}
+
+/* Write-only variant for setters whose libxl getter does not exist
+ * (xlFormatSetBorder / xlFormatSetBorderColor have no xlFormatBorder /
+ * xlFormatBorderColor counterpart). Returns true on success instead of
+ * reading the value back, so no fake getter shim is needed. */
+#define PHP_EXCEL_LONG_FORMAT_OPTION_WRITEONLY(func_name) \
+	{ \
+		FormatHandle format; \
+		zval *object = ZEND_THIS; \
+		zend_long data = 0; \
+		bool data_is_null = 1; \
+		ZEND_PARSE_PARAMETERS_START(0, 1) \
+			Z_PARAM_OPTIONAL \
+			Z_PARAM_LONG_OR_NULL(data, data_is_null) \
+		ZEND_PARSE_PARAMETERS_END_EX(RETURN_FALSE); \
+		FORMAT_FROM_OBJECT(format, object); \
+		if (!data_is_null) { \
+			if (data < 0 || data > INT_MAX) { \
+				php_error_docref(NULL, E_WARNING, "Argument out of int range"); \
+				RETURN_FALSE; \
+			} \
+			xlFormatSet ## func_name (format, (int)data); \
 		} \
+		RETURN_TRUE; \
 	}
 
 #define PHP_EXCEL_BOOL_FORMAT_OPTION(func_name) \
@@ -2797,7 +2809,7 @@ EXCEL_METHOD(Format, getFont)
 	Get or set the cell number format */
 EXCEL_METHOD(Format, numberFormat)
 {
-	PHP_EXCEL_LONG_FORMAT_OPTION(NumFormat, 0);
+	PHP_EXCEL_LONG_FORMAT_OPTION(NumFormat);
 }
 /* }}} */
 
@@ -2805,7 +2817,7 @@ EXCEL_METHOD(Format, numberFormat)
 	Get or set the cell horizontal alignment */
 EXCEL_METHOD(Format, horizontalAlign)
 {
-	PHP_EXCEL_LONG_FORMAT_OPTION(AlignH, 0);
+	PHP_EXCEL_LONG_FORMAT_OPTION(AlignH);
 }
 /* }}} */
 
@@ -2813,7 +2825,7 @@ EXCEL_METHOD(Format, horizontalAlign)
 	Get or set the cell vertical alignment */
 EXCEL_METHOD(Format, verticalAlign)
 {
-	PHP_EXCEL_LONG_FORMAT_OPTION(AlignV, 0);
+	PHP_EXCEL_LONG_FORMAT_OPTION(AlignV);
 }
 /* }}} */
 
@@ -2893,7 +2905,7 @@ EXCEL_METHOD(Format, shrinkToFit)
 	Get or set the cell border */
 EXCEL_METHOD(Format, borderStyle)
 {
-	PHP_EXCEL_LONG_FORMAT_OPTION(Border, 1);
+	PHP_EXCEL_LONG_FORMAT_OPTION_WRITEONLY(Border);
 }
 /* }}} */
 
@@ -2901,7 +2913,7 @@ EXCEL_METHOD(Format, borderStyle)
 	Get or set the cell color */
 EXCEL_METHOD(Format, borderColor)
 {
-	PHP_EXCEL_LONG_FORMAT_OPTION(BorderColor, 1);
+	PHP_EXCEL_LONG_FORMAT_OPTION_WRITEONLY(BorderColor);
 }
 /* }}} */
 
@@ -2909,7 +2921,7 @@ EXCEL_METHOD(Format, borderColor)
 	Get or set the cell left border */
 EXCEL_METHOD(Format, borderLeftStyle)
 {
-	PHP_EXCEL_LONG_FORMAT_OPTION(BorderLeft, 0);
+	PHP_EXCEL_LONG_FORMAT_OPTION(BorderLeft);
 }
 /* }}} */
 
@@ -2917,7 +2929,7 @@ EXCEL_METHOD(Format, borderLeftStyle)
 	Get or set the cell left color */
 EXCEL_METHOD(Format, borderLeftColor)
 {
-	PHP_EXCEL_LONG_FORMAT_OPTION(BorderLeftColor, 0);
+	PHP_EXCEL_LONG_FORMAT_OPTION(BorderLeftColor);
 }
 /* }}} */
 
@@ -2925,7 +2937,7 @@ EXCEL_METHOD(Format, borderLeftColor)
 	Get or set the cell right border */
 EXCEL_METHOD(Format, borderRightStyle)
 {
-	PHP_EXCEL_LONG_FORMAT_OPTION(BorderRight, 0);
+	PHP_EXCEL_LONG_FORMAT_OPTION(BorderRight);
 }
 /* }}} */
 
@@ -2933,7 +2945,7 @@ EXCEL_METHOD(Format, borderRightStyle)
 	Get or set the cell right color */
 EXCEL_METHOD(Format, borderRightColor)
 {
-	PHP_EXCEL_LONG_FORMAT_OPTION(BorderRightColor, 0);
+	PHP_EXCEL_LONG_FORMAT_OPTION(BorderRightColor);
 }
 /* }}} */
 
@@ -2941,7 +2953,7 @@ EXCEL_METHOD(Format, borderRightColor)
 	Get or set the cell top border */
 EXCEL_METHOD(Format, borderTopStyle)
 {
-	PHP_EXCEL_LONG_FORMAT_OPTION(BorderTop, 0);
+	PHP_EXCEL_LONG_FORMAT_OPTION(BorderTop);
 }
 /* }}} */
 
@@ -2949,7 +2961,7 @@ EXCEL_METHOD(Format, borderTopStyle)
 	Get or set the cell top color */
 EXCEL_METHOD(Format, borderTopColor)
 {
-	PHP_EXCEL_LONG_FORMAT_OPTION(BorderTopColor, 0);
+	PHP_EXCEL_LONG_FORMAT_OPTION(BorderTopColor);
 }
 /* }}} */
 
@@ -2957,7 +2969,7 @@ EXCEL_METHOD(Format, borderTopColor)
 	Get or set the cell bottom border */
 EXCEL_METHOD(Format, borderBottomStyle)
 {
-	PHP_EXCEL_LONG_FORMAT_OPTION(BorderBottom, 0);
+	PHP_EXCEL_LONG_FORMAT_OPTION(BorderBottom);
 }
 /* }}} */
 
@@ -2965,7 +2977,7 @@ EXCEL_METHOD(Format, borderBottomStyle)
 	Get or set the cell bottom color */
 EXCEL_METHOD(Format, borderBottomColor)
 {
-	PHP_EXCEL_LONG_FORMAT_OPTION(BorderBottomColor, 0);
+	PHP_EXCEL_LONG_FORMAT_OPTION(BorderBottomColor);
 }
 /* }}} */
 
@@ -2973,7 +2985,7 @@ EXCEL_METHOD(Format, borderBottomColor)
 	Get or set the cell diagonal border */
 EXCEL_METHOD(Format, borderDiagonalStyle)
 {
-	PHP_EXCEL_LONG_FORMAT_OPTION(BorderDiagonal, 0);
+	PHP_EXCEL_LONG_FORMAT_OPTION(BorderDiagonal);
 }
 /* }}} */
 
@@ -2981,7 +2993,7 @@ EXCEL_METHOD(Format, borderDiagonalStyle)
 	Get or set the cell diagonal color */
 EXCEL_METHOD(Format, borderDiagonalColor)
 {
-	PHP_EXCEL_LONG_FORMAT_OPTION(BorderDiagonalColor, 0);
+	PHP_EXCEL_LONG_FORMAT_OPTION(BorderDiagonalColor);
 }
 /* }}} */
 
@@ -2989,7 +3001,7 @@ EXCEL_METHOD(Format, borderDiagonalColor)
 	Get or set the cell fill pattern */
 EXCEL_METHOD(Format, fillPattern)
 {
-	PHP_EXCEL_LONG_FORMAT_OPTION(FillPattern, 0);
+	PHP_EXCEL_LONG_FORMAT_OPTION(FillPattern);
 }
 /* }}} */
 
@@ -2997,7 +3009,7 @@ EXCEL_METHOD(Format, fillPattern)
 	Get or set the cell pattern foreground color */
 EXCEL_METHOD(Format, patternForegroundColor)
 {
-	PHP_EXCEL_LONG_FORMAT_OPTION(PatternForegroundColor, 0);
+	PHP_EXCEL_LONG_FORMAT_OPTION(PatternForegroundColor);
 }
 /* }}} */
 
@@ -3005,7 +3017,7 @@ EXCEL_METHOD(Format, patternForegroundColor)
 	Get or set the cell pattern background color */
 EXCEL_METHOD(Format, patternBackgroundColor)
 {
-	PHP_EXCEL_LONG_FORMAT_OPTION(PatternBackgroundColor, 0);
+	PHP_EXCEL_LONG_FORMAT_OPTION(PatternBackgroundColor);
 }
 /* }}} */
 
