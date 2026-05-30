@@ -1878,16 +1878,17 @@ EXCEL_METHOD(Book, __construct)
 		key_len = strlen(key);
 	}
 
-	if (!name || name_len < 1 || !key || key_len < 1) {
-		RETURN_FALSE;
+	/* Apply a license key only when both a name and key are available
+	 * (passed explicitly, or sourced from the INI settings above). A
+	 * missing license is not a construction error: the workbook has
+	 * already been created and is usable, and PHP ignores constructor
+	 * return values anyway -- the previous RETURN_FALSE here was dead,
+	 * misleading code. Explicitly-passed NUL-bearing arguments are
+	 * already rejected at the top of the constructor; INI-sourced values
+	 * are NUL-free by construction (their length came from strlen()). */
+	if (name && name_len >= 1 && key && key_len >= 1) {
+		xlBookSetKey(book, name, key);
 	}
-
-	if (name_len != strlen(name) || key_len != strlen(key)) {
-		php_error_docref(NULL, E_WARNING, "License name/key must not contain NUL bytes");
-		RETURN_FALSE;
-	}
-
-	xlBookSetKey(book, name, key);
 
 #endif
 }
