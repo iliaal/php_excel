@@ -1998,6 +1998,7 @@ EXCEL_METHOD(Book, setRGBMode)
 	BOOK_FROM_OBJECT(book, object);
 
 	xlBookSetRgbMode(book, val);
+	RETURN_TRUE;
 }
 /* }}} */
 
@@ -5136,6 +5137,7 @@ EXCEL_METHOD(Book, setRefR1C1)
 
 	BOOK_FROM_OBJECT(book, object);
 	xlBookSetRefR1C1A(book, (int)active);
+	RETURN_TRUE;
 }
 /* }}} */
 
@@ -5251,6 +5253,7 @@ EXCEL_METHOD(Book, setTemplate)
 
 	BOOK_FROM_OBJECT(book, object);
 	xlBookSetTemplate(book, (int)mode);
+	RETURN_TRUE;
 }
 /* }}} */
 
