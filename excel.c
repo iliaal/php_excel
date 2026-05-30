@@ -3273,6 +3273,11 @@ EXCEL_METHOD(Sheet, readRow)
 		RETURN_FALSE;
 	}
 
+	/* xlSheetLastCol() returns the last used column index plus one
+	 * (exclusive), so the unspecified-end default (-1) maps to the last
+	 * used column. The bounds checks deliberately allow col_start/col_end
+	 * up to lastCol() inclusive (one past the last used column); such reads
+	 * just return empty cells, so the leniency is harmless. */
 	if (col_end == -1) {
 		col_end = lc - 1;
 	}
@@ -3341,6 +3346,11 @@ EXCEL_METHOD(Sheet, readCol)
 		RETURN_FALSE;
 	}
 
+	/* xlSheetLastRow() returns the last used row index plus one (exclusive),
+	 * so the unspecified-end default (-1) maps to the last used row. The
+	 * bounds checks deliberately allow row_start/row_end up to lastRow()
+	 * inclusive (one past the last used row); such reads just return empty
+	 * cells, so the leniency is harmless. */
 	if (row_end == -1) {
 		row_end = lc - 1;
 	}
