@@ -1,5 +1,5 @@
-/* This is a generated file, edit excel.stub.php instead.
- * Stub hash: 8c546b57b96bdd16d137e96d7bb59f398f719ad3 */
+/* This is a generated file, edit the .stub.php file instead.
+ * Stub hash: 70df1f29feec62ca750c421d98caf15d9bd1ef1c */
 
 ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_ExcelBook_requiresKey, 0, 0, _IS_BOOL, 0)
 ZEND_END_ARG_INFO()
@@ -121,7 +121,7 @@ ZEND_END_ARG_INFO()
 
 #define arginfo_class_ExcelBook_rgbMode arginfo_class_ExcelBook_requiresKey
 
-ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_ExcelBook_setRGBMode, 0, 1, IS_MIXED, 0)
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_ExcelBook_setRGBMode, 0, 1, _IS_BOOL, 0)
 	ZEND_ARG_TYPE_INFO(0, mode, _IS_BOOL, 0)
 ZEND_END_ARG_INFO()
 
@@ -208,7 +208,7 @@ ZEND_END_ARG_INFO()
 
 #define arginfo_class_ExcelBook_getRefR1C1 arginfo_class_ExcelBook_requiresKey
 
-ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_ExcelBook_setRefR1C1, 0, 1, IS_MIXED, 0)
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_ExcelBook_setRefR1C1, 0, 1, _IS_BOOL, 0)
 	ZEND_ARG_TYPE_INFO(0, active, _IS_BOOL, 0)
 ZEND_END_ARG_INFO()
 
