@@ -1860,16 +1860,17 @@ EXCEL_METHOD(Book, __construct)
 		key_len = strlen(key);
 	}
 
-	if (!name || name_len < 1 || !key || key_len < 1) {
-		RETURN_FALSE;
+	/* A license is optional: without one libxl runs in trial mode. PHP
+	 * ignores constructor return values, so a bare RETURN_FALSE here is
+	 * dead and misleading (the book has already been created and assigned).
+	 * Just skip key registration when no usable license is present. */
+	if (name && name_len >= 1 && key && key_len >= 1) {
+		if (name_len != strlen(name) || key_len != strlen(key)) {
+			php_error_docref(NULL, E_WARNING, "License name/key must not contain NUL bytes");
+		} else {
+			xlBookSetKey(book, name, key);
+		}
 	}
-
-	if (name_len != strlen(name) || key_len != strlen(key)) {
-		php_error_docref(NULL, E_WARNING, "License name/key must not contain NUL bytes");
-		RETURN_FALSE;
-	}
-
-	xlBookSetKey(book, name, key);
 
 #endif
 }
