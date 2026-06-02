@@ -5898,6 +5898,12 @@ EXCEL_METHOD(Sheet, setProtect)
 	}
 
 	EXCEL_NUL_SAFE_STRING(password_zs)
+	/* PROT_DEFAULT == -1 is the "use libxl default protection" sentinel;
+	 * otherwise enhancedProtection is a bitmask that must fit in int. */
+	if (enhancedProtection < -1 || enhancedProtection > INT_MAX) {
+		php_error_docref(NULL, E_WARNING, "Argument out of int range");
+		RETURN_FALSE;
+	}
 
 	SHEET_FROM_OBJECT(sheet, object);
 
@@ -6035,6 +6041,7 @@ EXCEL_METHOD(Sheet, addIgnoredError)
 
 	EXCEL_VALIDATE_ROW_RANGE(rowFirst, rowLast, object);
 	EXCEL_VALIDATE_COL_RANGE(colFirst, colLast, object);
+	EXCEL_VALIDATE_INT_RANGE(iError)
 	SHEET_FROM_OBJECT(sheet, object);
 
 	if (!xlSheetAddIgnoredError(sheet, rowFirst, colFirst, rowLast, colLast, iError)) {
@@ -6060,6 +6067,7 @@ EXCEL_METHOD(Sheet, writeError)
 	}
 
 	EXCEL_VALIDATE_ROW_COL(row, col, object);
+	EXCEL_VALIDATE_INT_RANGE(iError)
 
 	SHEET_FROM_OBJECT(sheet, object);
 
@@ -6656,6 +6664,10 @@ EXCEL_METHOD(Sheet, addDataValidation)
 		RETURN_FALSE;
 	}
 
+	EXCEL_VALIDATE_INT_RANGE(type)
+	EXCEL_VALIDATE_INT_RANGE(op)
+	EXCEL_VALIDATE_INT_RANGE(error_style)
+
 	if (!val_1 || ZSTR_LEN(val_1) < 1) {
 		php_error_docref(NULL, E_WARNING, "The first value can not be empty.");
 		RETURN_FALSE;
@@ -6736,6 +6748,9 @@ EXCEL_METHOD(Sheet, addDataValidationDouble)
 	EXCEL_NUL_SAFE_STRING(error)
 	EXCEL_VALIDATE_ROW_RANGE(row_first, row_last, object);
 	EXCEL_VALIDATE_COL_RANGE(col_first, col_last, object);
+	EXCEL_VALIDATE_INT_RANGE(type)
+	EXCEL_VALIDATE_INT_RANGE(op)
+	EXCEL_VALIDATE_INT_RANGE(error_style)
 
 	if ((op == VALIDATION_OP_BETWEEN || op == VALIDATION_OP_NOTBETWEEN) && val_2_is_null) {
 		php_error_docref(NULL, E_WARNING, "The second value can not be null when used with (not) between operator.");
@@ -7301,6 +7316,7 @@ EXCEL_METHOD(Sheet, addTable)
 	EXCEL_NUL_SAFE_STRING(name)
 	EXCEL_VALIDATE_ROW_RANGE(rowFirst, rowLast, object);
 	EXCEL_VALIDATE_COL_RANGE(colFirst, colLast, object);
+	EXCEL_VALIDATE_INT_RANGE(style)
 
 	SHEET_FROM_OBJECT(sheet, object);
 
@@ -8629,6 +8645,7 @@ EXCEL_METHOD(ConditionalFormatting, addRule)
 		RETURN_FALSE;
 	}
 
+	EXCEL_VALIDATE_INT_RANGE(type)
 	EXCEL_NUL_SAFE_STRING(value)
 
 	CONDITIONALFORMATTING_FROM_OBJECT(cfing, object);
@@ -8652,6 +8669,8 @@ EXCEL_METHOD(ConditionalFormatting, addTopRule)
 		RETURN_FALSE;
 	}
 
+	EXCEL_VALIDATE_INT_RANGE(value)
+
 	CONDITIONALFORMATTING_FROM_OBJECT(cfing, object);
 	CONDITIONALFORMAT_FROM_OBJECT(cf, zcf);
 	EXCEL_REQUIRE_SAME_BOOK(zcf, object);
@@ -8673,6 +8692,8 @@ EXCEL_METHOD(ConditionalFormatting, addOpNumRule)
 	if (zend_parse_parameters(ZEND_NUM_ARGS(), "lOdd|b", &op, &zcf, excel_ce_conditionalformat, &v1, &v2, &stopIfTrue) == FAILURE) {
 		RETURN_FALSE;
 	}
+
+	EXCEL_VALIDATE_INT_RANGE(op)
 
 	CONDITIONALFORMATTING_FROM_OBJECT(cfing, object);
 	CONDITIONALFORMAT_FROM_OBJECT(cf, zcf);
@@ -8696,6 +8717,7 @@ EXCEL_METHOD(ConditionalFormatting, addOpStrRule)
 		RETURN_FALSE;
 	}
 
+	EXCEL_VALIDATE_INT_RANGE(op)
 	EXCEL_NUL_SAFE_STRING(v1)
 	EXCEL_NUL_SAFE_STRING(v2)
 
@@ -8721,6 +8743,8 @@ EXCEL_METHOD(ConditionalFormatting, addAboveAverageRule)
 		RETURN_FALSE;
 	}
 
+	EXCEL_VALIDATE_INT_RANGE(stdDev)
+
 	CONDITIONALFORMATTING_FROM_OBJECT(cfing, object);
 	CONDITIONALFORMAT_FROM_OBJECT(cf, zcf);
 	EXCEL_REQUIRE_SAME_BOOK(zcf, object);
@@ -8742,6 +8766,8 @@ EXCEL_METHOD(ConditionalFormatting, addTimePeriodRule)
 		RETURN_FALSE;
 	}
 
+	EXCEL_VALIDATE_INT_RANGE(timePeriod)
+
 	CONDITIONALFORMATTING_FROM_OBJECT(cfing, object);
 	CONDITIONALFORMAT_FROM_OBJECT(cf, zcf);
 	EXCEL_REQUIRE_SAME_BOOK(zcf, object);
@@ -8762,6 +8788,11 @@ EXCEL_METHOD(ConditionalFormatting, add2ColorScaleRule)
 		RETURN_FALSE;
 	}
 
+	EXCEL_VALIDATE_INT_RANGE(minColor)
+	EXCEL_VALIDATE_INT_RANGE(maxColor)
+	EXCEL_VALIDATE_INT_RANGE(minType)
+	EXCEL_VALIDATE_INT_RANGE(maxType)
+
 	CONDITIONALFORMATTING_FROM_OBJECT(cfing, object);
 
 	xlConditionalFormattingAdd2ColorScaleRule(cfing, minColor, maxColor, minType, minVal, maxType, maxVal, stopIfTrue);
@@ -8780,6 +8811,10 @@ EXCEL_METHOD(ConditionalFormatting, add2ColorScaleFormulaRule)
 		RETURN_FALSE;
 	}
 
+	EXCEL_VALIDATE_INT_RANGE(minColor)
+	EXCEL_VALIDATE_INT_RANGE(maxColor)
+	EXCEL_VALIDATE_INT_RANGE(minType)
+	EXCEL_VALIDATE_INT_RANGE(maxType)
 	EXCEL_NUL_SAFE_STRING(minVal)
 	EXCEL_NUL_SAFE_STRING(maxVal)
 
@@ -8801,6 +8836,13 @@ EXCEL_METHOD(ConditionalFormatting, add3ColorScaleRule)
 		RETURN_FALSE;
 	}
 
+	EXCEL_VALIDATE_INT_RANGE(minColor)
+	EXCEL_VALIDATE_INT_RANGE(midColor)
+	EXCEL_VALIDATE_INT_RANGE(maxColor)
+	EXCEL_VALIDATE_INT_RANGE(minType)
+	EXCEL_VALIDATE_INT_RANGE(midType)
+	EXCEL_VALIDATE_INT_RANGE(maxType)
+
 	CONDITIONALFORMATTING_FROM_OBJECT(cfing, object);
 
 	xlConditionalFormattingAdd3ColorScaleRule(cfing, minColor, midColor, maxColor, minType, minVal, midType, midVal, maxType, maxVal, stopIfTrue);
@@ -8819,6 +8861,12 @@ EXCEL_METHOD(ConditionalFormatting, add3ColorScaleFormulaRule)
 		RETURN_FALSE;
 	}
 
+	EXCEL_VALIDATE_INT_RANGE(minColor)
+	EXCEL_VALIDATE_INT_RANGE(midColor)
+	EXCEL_VALIDATE_INT_RANGE(maxColor)
+	EXCEL_VALIDATE_INT_RANGE(minType)
+	EXCEL_VALIDATE_INT_RANGE(midType)
+	EXCEL_VALIDATE_INT_RANGE(maxType)
 	EXCEL_NUL_SAFE_STRING(minVal)
 	EXCEL_NUL_SAFE_STRING(midVal)
 	EXCEL_NUL_SAFE_STRING(maxVal)
@@ -8996,6 +9044,11 @@ EXCEL_METHOD(Table, __construct)
 				colFirst, colLast);
 			RETURN_THROWS();
 		}
+	}
+
+	if (style < 0 || style > INT_MAX) {
+		zend_throw_exception(NULL, "Table style out of int range", 0);
+		RETURN_THROWS();
 	}
 
 	SHEET_FROM_OBJECT_THROW(sheet, zsheet);
