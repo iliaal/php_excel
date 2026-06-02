@@ -33,10 +33,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   rule methods now return `false` with a warning instead. Template-copy
   methods (`ExcelBook::addFormat`/`addFont`/`insertSheet`) still accept a
   handle from another book by design.
-- Reject out-of-range values in libxl integer/RGB setters instead of silently
-  truncating the 64-bit argument to `int`. `ExcelSheet::setZoom`/`setZoomPrint`/
-  `setPaper`/`setPrintFit`/`setBorder` now require values in `int` range, and
-  `setTabRgbColor` requires each component in 0-255.
+- Reject out-of-range values in libxl integer/enum/RGB setters instead of
+  silently truncating the 64-bit argument to `int`. This is a complete sweep of
+  every public `int`/enum setter, not only the `ExcelSheet` ones:
+  `ExcelSheet` (`setZoom`, `setZoomPrint`, `setPaper`, `setPrintFit`,
+  `setBorder`, `setColPx`/`setRowPx` pixel sizes, `setTabColor`,
+  `setRightToLeft`, `writeComment` width/height), `ExcelBook` (`setCalcMode`,
+  `setDefaultFont` size), `ExcelConditionalFormat` (all `setBorder*`,
+  `setNumFormat`, `setFillPattern`, `setPattern*Color`), `ExcelFormControl`
+  (`setChecked`, `setDropLines`, `setDx`, `setFirstButton`, `setHoriz`,
+  `setInc`, `setMax`, `setMin`, `setSel`), `ExcelTable::setStyle`, and
+  `ExcelFilterColumn::setCustomFilter` operators. `ExcelSheet::setTabRgbColor`
+  requires each component in 0-255. (`ExcelFormat`/`ExcelFont` setters already
+  range-checked.)
 
 ### Changed
 - Tightened the published parameter types for several `ExcelSheet` setters that

@@ -1817,7 +1817,7 @@ EXCEL_METHOD(Book, setDefaultFont)
 	zend_long font_size;
 	zend_string *font_zs = NULL;
 
-	if (zend_parse_parameters(ZEND_NUM_ARGS(), "Sl", &font_zs, &font_size) == FAILURE || font_size < 1) {
+	if (zend_parse_parameters(ZEND_NUM_ARGS(), "Sl", &font_zs, &font_size) == FAILURE || font_size < 1 || font_size > INT_MAX) {
 		RETURN_FALSE;
 	}
 
@@ -2223,6 +2223,8 @@ EXCEL_METHOD(Book, setCalcMode)
 		RETURN_FALSE;
 	}
 
+	EXCEL_VALIDATE_INT_RANGE(mode)
+
 	BOOK_FROM_OBJECT(book, object);
 
 	xlBookSetCalcMode(book, mode);
@@ -2342,6 +2344,7 @@ EXCEL_METHOD(Book, setDpiAwareness)
 	if (zend_parse_parameters(ZEND_NUM_ARGS(), "l", &val) == FAILURE) {
 		RETURN_FALSE;
 	}
+	EXCEL_VALIDATE_INT_RANGE(val)
 
 	BOOK_FROM_OBJECT(book, object);
 
@@ -3919,6 +3922,8 @@ EXCEL_METHOD(Sheet, writeComment)
 		EXCEL_NUL_SAFE_STRING(val_zs)
 		EXCEL_NUL_SAFE_STRING(auth_zs)
 		EXCEL_VALIDATE_ROW_COL(r, c, object);
+		EXCEL_VALIDATE_INT_RANGE(w)
+		EXCEL_VALIDATE_INT_RANGE(h)
 
 		SHEET_FROM_OBJECT(sheet, object);
 
@@ -5397,6 +5402,8 @@ EXCEL_METHOD(Sheet, setRightToLeft)
 		RETURN_FALSE;
 	}
 
+	EXCEL_VALIDATE_INT_RANGE(mode)
+
 	SHEET_FROM_OBJECT(sheet, object);
 	xlSheetSetRightToLeft(sheet, (int)mode);
 }
@@ -5944,6 +5951,8 @@ EXCEL_METHOD(Sheet, setTabColor)
 	if (zend_parse_parameters(ZEND_NUM_ARGS(), "|l", &color) == FAILURE) {
 		RETURN_FALSE;
 	}
+
+	EXCEL_VALIDATE_INT_RANGE(color)
 
 	SHEET_FROM_OBJECT(sheet, object);
 
@@ -6520,6 +6529,14 @@ EXCEL_METHOD(FilterColumn, setCustomFilter)
 	bool andOp = 0;
 
 	if (zend_parse_parameters(ZEND_NUM_ARGS(), "lS|lSb", &op1, &v1, &op2, &v2, &andOp) == FAILURE) {
+		RETURN_FALSE;
+	}
+
+	EXCEL_VALIDATE_INT_RANGE(op1)
+	/* op2 == -1 is the "no second criterion" sentinel; otherwise it is an
+	 * operator enum that must fit in int. */
+	if (op2 < -1 || op2 > INT_MAX) {
+		php_error_docref(NULL, E_WARNING, "Argument out of int range");
 		RETURN_FALSE;
 	}
 
@@ -7203,6 +7220,7 @@ EXCEL_METHOD(Sheet, setColPx)
 	}
 
 	EXCEL_VALIDATE_COL_RANGE(colFirst, colLast, object);
+	EXCEL_VALIDATE_INT_RANGE(widthPx)
 	SHEET_FROM_OBJECT(sheet, object);
 
 	if (f) {
@@ -7234,6 +7252,7 @@ EXCEL_METHOD(Sheet, setRowPx)
 			RETURN_FALSE;
 		}
 	}
+	EXCEL_VALIDATE_INT_RANGE(heightPx)
 	SHEET_FROM_OBJECT(sheet, object);
 
 	if (f) {
@@ -7667,6 +7686,7 @@ EXCEL_METHOD(FormControl, setChecked)
 	if (zend_parse_parameters(ZEND_NUM_ARGS(), "l", &val) == FAILURE) {
 		RETURN_FALSE;
 	}
+	EXCEL_VALIDATE_INT_RANGE(val)
 	FORMCONTROL_FROM_OBJECT(fc, object);
 	xlFormControlSetChecked(fc, val);
 	RETURN_TRUE;
@@ -7928,6 +7948,7 @@ EXCEL_METHOD(FormControl, setDropLines)
 	if (zend_parse_parameters(ZEND_NUM_ARGS(), "l", &val) == FAILURE) {
 		RETURN_FALSE;
 	}
+	EXCEL_VALIDATE_INT_RANGE(val)
 	FORMCONTROL_FROM_OBJECT(fc, object);
 	xlFormControlSetDropLines(fc, val);
 	RETURN_TRUE;
@@ -7949,6 +7970,7 @@ EXCEL_METHOD(FormControl, setDx)
 	if (zend_parse_parameters(ZEND_NUM_ARGS(), "l", &val) == FAILURE) {
 		RETURN_FALSE;
 	}
+	EXCEL_VALIDATE_INT_RANGE(val)
 	FORMCONTROL_FROM_OBJECT(fc, object);
 	xlFormControlSetDx(fc, val);
 	RETURN_TRUE;
@@ -8012,6 +8034,7 @@ EXCEL_METHOD(FormControl, setInc)
 	if (zend_parse_parameters(ZEND_NUM_ARGS(), "l", &val) == FAILURE) {
 		RETURN_FALSE;
 	}
+	EXCEL_VALIDATE_INT_RANGE(val)
 	FORMCONTROL_FROM_OBJECT(fc, object);
 	xlFormControlSetInc(fc, val);
 	RETURN_TRUE;
@@ -8033,6 +8056,7 @@ EXCEL_METHOD(FormControl, setMax)
 	if (zend_parse_parameters(ZEND_NUM_ARGS(), "l", &val) == FAILURE) {
 		RETURN_FALSE;
 	}
+	EXCEL_VALIDATE_INT_RANGE(val)
 	FORMCONTROL_FROM_OBJECT(fc, object);
 	xlFormControlSetMax(fc, val);
 	RETURN_TRUE;
@@ -8054,6 +8078,7 @@ EXCEL_METHOD(FormControl, setMin)
 	if (zend_parse_parameters(ZEND_NUM_ARGS(), "l", &val) == FAILURE) {
 		RETURN_FALSE;
 	}
+	EXCEL_VALIDATE_INT_RANGE(val)
 	FORMCONTROL_FROM_OBJECT(fc, object);
 	xlFormControlSetMin(fc, val);
 	RETURN_TRUE;
@@ -8099,6 +8124,7 @@ EXCEL_METHOD(FormControl, setSel)
 	if (zend_parse_parameters(ZEND_NUM_ARGS(), "l", &val) == FAILURE) {
 		RETURN_FALSE;
 	}
+	EXCEL_VALIDATE_INT_RANGE(val)
 	FORMCONTROL_FROM_OBJECT(fc, object);
 	xlFormControlSetSel(fc, val);
 	RETURN_TRUE;
@@ -8211,6 +8237,7 @@ EXCEL_METHOD(ConditionalFormat, setNumFormat)
 	if (zend_parse_parameters(ZEND_NUM_ARGS(), "l", &val) == FAILURE) {
 		RETURN_FALSE;
 	}
+	EXCEL_VALIDATE_INT_RANGE(val)
 	CONDITIONALFORMAT_FROM_OBJECT(cf, object);
 	xlConditionalFormatSetNumFormat(cf, val);
 	RETURN_TRUE;
@@ -8248,6 +8275,7 @@ EXCEL_METHOD(ConditionalFormat, setBorder)
 	if (zend_parse_parameters(ZEND_NUM_ARGS(), "l", &val) == FAILURE) {
 		RETURN_FALSE;
 	}
+	EXCEL_VALIDATE_INT_RANGE(val)
 	CONDITIONALFORMAT_FROM_OBJECT(cf, object);
 	xlConditionalFormatSetBorder(cf, val);
 	RETURN_TRUE;
@@ -8261,6 +8289,7 @@ EXCEL_METHOD(ConditionalFormat, setBorderColor)
 	if (zend_parse_parameters(ZEND_NUM_ARGS(), "l", &val) == FAILURE) {
 		RETURN_FALSE;
 	}
+	EXCEL_VALIDATE_INT_RANGE(val)
 	CONDITIONALFORMAT_FROM_OBJECT(cf, object);
 	xlConditionalFormatSetBorderColor(cf, val);
 	RETURN_TRUE;
@@ -8282,6 +8311,7 @@ EXCEL_METHOD(ConditionalFormat, setBorderLeft)
 	if (zend_parse_parameters(ZEND_NUM_ARGS(), "l", &val) == FAILURE) {
 		RETURN_FALSE;
 	}
+	EXCEL_VALIDATE_INT_RANGE(val)
 	CONDITIONALFORMAT_FROM_OBJECT(cf, object);
 	xlConditionalFormatSetBorderLeft(cf, val);
 	RETURN_TRUE;
@@ -8303,6 +8333,7 @@ EXCEL_METHOD(ConditionalFormat, setBorderRight)
 	if (zend_parse_parameters(ZEND_NUM_ARGS(), "l", &val) == FAILURE) {
 		RETURN_FALSE;
 	}
+	EXCEL_VALIDATE_INT_RANGE(val)
 	CONDITIONALFORMAT_FROM_OBJECT(cf, object);
 	xlConditionalFormatSetBorderRight(cf, val);
 	RETURN_TRUE;
@@ -8324,6 +8355,7 @@ EXCEL_METHOD(ConditionalFormat, setBorderTop)
 	if (zend_parse_parameters(ZEND_NUM_ARGS(), "l", &val) == FAILURE) {
 		RETURN_FALSE;
 	}
+	EXCEL_VALIDATE_INT_RANGE(val)
 	CONDITIONALFORMAT_FROM_OBJECT(cf, object);
 	xlConditionalFormatSetBorderTop(cf, val);
 	RETURN_TRUE;
@@ -8345,6 +8377,7 @@ EXCEL_METHOD(ConditionalFormat, setBorderBottom)
 	if (zend_parse_parameters(ZEND_NUM_ARGS(), "l", &val) == FAILURE) {
 		RETURN_FALSE;
 	}
+	EXCEL_VALIDATE_INT_RANGE(val)
 	CONDITIONALFORMAT_FROM_OBJECT(cf, object);
 	xlConditionalFormatSetBorderBottom(cf, val);
 	RETURN_TRUE;
@@ -8366,6 +8399,7 @@ EXCEL_METHOD(ConditionalFormat, setBorderLeftColor)
 	if (zend_parse_parameters(ZEND_NUM_ARGS(), "l", &val) == FAILURE) {
 		RETURN_FALSE;
 	}
+	EXCEL_VALIDATE_INT_RANGE(val)
 	CONDITIONALFORMAT_FROM_OBJECT(cf, object);
 	xlConditionalFormatSetBorderLeftColor(cf, val);
 	RETURN_TRUE;
@@ -8387,6 +8421,7 @@ EXCEL_METHOD(ConditionalFormat, setBorderRightColor)
 	if (zend_parse_parameters(ZEND_NUM_ARGS(), "l", &val) == FAILURE) {
 		RETURN_FALSE;
 	}
+	EXCEL_VALIDATE_INT_RANGE(val)
 	CONDITIONALFORMAT_FROM_OBJECT(cf, object);
 	xlConditionalFormatSetBorderRightColor(cf, val);
 	RETURN_TRUE;
@@ -8408,6 +8443,7 @@ EXCEL_METHOD(ConditionalFormat, setBorderTopColor)
 	if (zend_parse_parameters(ZEND_NUM_ARGS(), "l", &val) == FAILURE) {
 		RETURN_FALSE;
 	}
+	EXCEL_VALIDATE_INT_RANGE(val)
 	CONDITIONALFORMAT_FROM_OBJECT(cf, object);
 	xlConditionalFormatSetBorderTopColor(cf, val);
 	RETURN_TRUE;
@@ -8429,6 +8465,7 @@ EXCEL_METHOD(ConditionalFormat, setBorderBottomColor)
 	if (zend_parse_parameters(ZEND_NUM_ARGS(), "l", &val) == FAILURE) {
 		RETURN_FALSE;
 	}
+	EXCEL_VALIDATE_INT_RANGE(val)
 	CONDITIONALFORMAT_FROM_OBJECT(cf, object);
 	xlConditionalFormatSetBorderBottomColor(cf, val);
 	RETURN_TRUE;
@@ -8450,6 +8487,7 @@ EXCEL_METHOD(ConditionalFormat, setFillPattern)
 	if (zend_parse_parameters(ZEND_NUM_ARGS(), "l", &val) == FAILURE) {
 		RETURN_FALSE;
 	}
+	EXCEL_VALIDATE_INT_RANGE(val)
 	CONDITIONALFORMAT_FROM_OBJECT(cf, object);
 	xlConditionalFormatSetFillPattern(cf, val);
 	RETURN_TRUE;
@@ -8471,6 +8509,7 @@ EXCEL_METHOD(ConditionalFormat, setPatternForegroundColor)
 	if (zend_parse_parameters(ZEND_NUM_ARGS(), "l", &val) == FAILURE) {
 		RETURN_FALSE;
 	}
+	EXCEL_VALIDATE_INT_RANGE(val)
 	CONDITIONALFORMAT_FROM_OBJECT(cf, object);
 	xlConditionalFormatSetPatternForegroundColor(cf, val);
 	RETURN_TRUE;
@@ -8492,6 +8531,7 @@ EXCEL_METHOD(ConditionalFormat, setPatternBackgroundColor)
 	if (zend_parse_parameters(ZEND_NUM_ARGS(), "l", &val) == FAILURE) {
 		RETURN_FALSE;
 	}
+	EXCEL_VALIDATE_INT_RANGE(val)
 	CONDITIONALFORMAT_FROM_OBJECT(cf, object);
 	xlConditionalFormatSetPatternBackgroundColor(cf, val);
 	RETURN_TRUE;
@@ -9082,6 +9122,7 @@ EXCEL_METHOD(Table, setStyle)
 	if (zend_parse_parameters(ZEND_NUM_ARGS(), "l", &val) == FAILURE) {
 		RETURN_FALSE;
 	}
+	EXCEL_VALIDATE_INT_RANGE(val)
 	TABLE_FROM_OBJECT(table, object);
 	xlTableSetStyle(table, val);
 	RETURN_TRUE;

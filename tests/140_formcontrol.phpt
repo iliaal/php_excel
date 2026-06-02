@@ -123,6 +123,12 @@ echo "gb name: " . $gb->name() . "\n";
 var_dump($sheet->formControl($count));
 var_dump(@$sheet->formControl(-1));
 
+// Out-of-int-range setter args are rejected before reaching libxl.
+echo "sb setMin(PHP_INT_MAX): " . var_export(@$sb->setMin(PHP_INT_MAX), true) . "\n";
+echo "sb setMax(-1): " . var_export(@$sb->setMax(-1), true) . "\n";
+echo "sb setInc(PHP_INT_MAX): " . var_export(@$sb->setInc(PHP_INT_MAX), true) . "\n";
+echo "sb setMin(0) valid: " . var_export($sb->setMin(0), true) . "\n";
+
 echo "OK\n";
 ?>
 --EXPECT--
@@ -191,4 +197,8 @@ gb type: 4
 gb name: Group Box 7
 bool(false)
 bool(false)
+sb setMin(PHP_INT_MAX): false
+sb setMax(-1): false
+sb setInc(PHP_INT_MAX): false
+sb setMin(0) valid: true
 OK
