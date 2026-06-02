@@ -74,9 +74,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   (`bool`), `setMarginLeft`/`setMarginRight`/`setMarginTop`/`setMarginBottom`
   (`float`), and `setHeader`/`setFooter` (`string`, `float`). Reflection and
   static analysis now report the real signatures.
-- `ExcelAutoFilter::getSort()` accepts an optional zero-based sort
-  `$level` argument (libxl 5.2.0+), reflecting libxl's added multi-level
-  sort read support. Calls with no argument behave as before.
 
 ## [2.0.1] - 2026-05-03
 

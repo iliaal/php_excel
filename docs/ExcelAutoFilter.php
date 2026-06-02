@@ -86,10 +86,9 @@ class ExcelAutoFilter
 	/**
 	* Gets the zero-based index of sorted column in AutoFilter and its sort order
 	*
-	* @param int $level Zero-based sort level for multi-level sorts (libxl 5.2.0+; ignored on older libxl)
 	* @return array|false Array with keys "column_index"(int), "descending"(bool)
 	*/
-	public function getSort(int $level = 0): array|false
+	public function getSort(): array|false
 	{
 	}
 

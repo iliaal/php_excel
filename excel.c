@@ -6283,23 +6283,10 @@ EXCEL_METHOD(AutoFilter, getSort)
 	zval *object = ZEND_THIS;
 	AutoFilterHandle autofilter;
 	int columnIndex, descending;
-#if LIBXL_VERSION >= 0x05020000
-	zend_long level = 0;
-
-	if (zend_parse_parameters(ZEND_NUM_ARGS(), "|l", &level) == FAILURE) {
-		RETURN_FALSE;
-	}
-
-	EXCEL_VALIDATE_INT_RANGE(level)
-#endif
 
 	AUTOFILTER_FROM_OBJECT(autofilter, object);
 
-#if LIBXL_VERSION >= 0x05020000
-	if (!xlAutoFilterGetSort(autofilter, &columnIndex, &descending, (int)level)) {
-#else
 	if (!xlAutoFilterGetSort(autofilter, &columnIndex, &descending)) {
-#endif
 		RETURN_FALSE;
 	}
 

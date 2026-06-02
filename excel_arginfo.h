@@ -1,5 +1,5 @@
 /* This is a generated file, edit excel.stub.php instead.
- * Stub hash: befa694e536a0e5f8a5c2b6273219d6fce81f953 */
+ * Stub hash: 2915134b4096207716e894d08f3ad81b76be6f70 */
 
 ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_ExcelBook_requiresKey, 0, 0, _IS_BOOL, 0)
 ZEND_END_ARG_INFO()
@@ -1076,16 +1076,7 @@ ZEND_END_ARG_INFO()
 
 #define arginfo_class_ExcelAutoFilter_getSortRange arginfo_class_ExcelBook_getAllFormats
 
-#if LIBXL_VERSION >= 0x05020000
-ZEND_BEGIN_ARG_WITH_RETURN_TYPE_MASK_EX(arginfo_class_ExcelAutoFilter_getSort, 0, 0, MAY_BE_ARRAY|MAY_BE_FALSE)
-	ZEND_ARG_TYPE_INFO_WITH_DEFAULT_VALUE(0, level, IS_LONG, 0, "0")
-ZEND_END_ARG_INFO()
-#endif
-
-#if !(LIBXL_VERSION >= 0x05020000)
-ZEND_BEGIN_ARG_WITH_RETURN_TYPE_MASK_EX(arginfo_class_ExcelAutoFilter_getSort, 0, 0, MAY_BE_ARRAY|MAY_BE_FALSE)
-ZEND_END_ARG_INFO()
-#endif
+#define arginfo_class_ExcelAutoFilter_getSort arginfo_class_ExcelBook_getAllFormats
 
 ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_ExcelAutoFilter_setSort, 0, 2, _IS_BOOL, 0)
 	ZEND_ARG_TYPE_INFO(0, columnIndex, IS_LONG, 0)
@@ -1824,12 +1815,7 @@ ZEND_METHOD(ExcelAutoFilter, column);
 ZEND_METHOD(ExcelAutoFilter, columnSize);
 ZEND_METHOD(ExcelAutoFilter, columnByIndex);
 ZEND_METHOD(ExcelAutoFilter, getSortRange);
-#if LIBXL_VERSION >= 0x05020000
 ZEND_METHOD(ExcelAutoFilter, getSort);
-#endif
-#if !(LIBXL_VERSION >= 0x05020000)
-ZEND_METHOD(ExcelAutoFilter, getSort);
-#endif
 ZEND_METHOD(ExcelAutoFilter, setSort);
 ZEND_METHOD(ExcelAutoFilter, addSort);
 ZEND_METHOD(ExcelFilterColumn, __construct);
@@ -2299,12 +2285,7 @@ static const zend_function_entry class_ExcelAutoFilter_methods[] = {
 	ZEND_ME(ExcelAutoFilter, columnSize, arginfo_class_ExcelAutoFilter_columnSize, ZEND_ACC_PUBLIC)
 	ZEND_ME(ExcelAutoFilter, columnByIndex, arginfo_class_ExcelAutoFilter_columnByIndex, ZEND_ACC_PUBLIC)
 	ZEND_ME(ExcelAutoFilter, getSortRange, arginfo_class_ExcelAutoFilter_getSortRange, ZEND_ACC_PUBLIC)
-#if LIBXL_VERSION >= 0x05020000
 	ZEND_ME(ExcelAutoFilter, getSort, arginfo_class_ExcelAutoFilter_getSort, ZEND_ACC_PUBLIC)
-#endif
-#if !(LIBXL_VERSION >= 0x05020000)
-	ZEND_ME(ExcelAutoFilter, getSort, arginfo_class_ExcelAutoFilter_getSort, ZEND_ACC_PUBLIC)
-#endif
 	ZEND_ME(ExcelAutoFilter, setSort, arginfo_class_ExcelAutoFilter_setSort, ZEND_ACC_PUBLIC)
 	ZEND_ME(ExcelAutoFilter, addSort, arginfo_class_ExcelAutoFilter_addSort, ZEND_ACC_PUBLIC)
 	ZEND_FE_END

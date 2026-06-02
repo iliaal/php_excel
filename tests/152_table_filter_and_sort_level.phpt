@@ -1,5 +1,5 @@
 --TEST--
-Table::isAutoFilter, Table::removeFilter and AutoFilter::getSort($level) (libxl 5.2.0+)
+Table::isAutoFilter and Table::removeFilter (libxl 5.2.0+)
 --EXTENSIONS--
 excel
 --SKIPIF--
@@ -19,23 +19,10 @@ echo "isAutoFilter (initial): "; var_dump($table->isAutoFilter());
 echo "removeFilter (): ";        var_dump($table->removeFilter());
 echo "isAutoFilter (removed): "; var_dump($table->isAutoFilter());
 
-// AutoFilter::getSort() gained an optional sort level in 5.2.
-$af = $sheet->autoFilter();
-$af->setRef(1, 3, 0, 1);
-var_dump($af->setSort(0, false));
-$sort = $af->getSort(0);
-echo "getSort(0) column_index: " . $sort["column_index"] . "\n";
-echo "getSort(0) descending: "   . $sort["descending"]   . "\n";
-echo "getSort(5) (no such level): "; var_dump($af->getSort(5));
-
 echo "OK\n";
 ?>
 --EXPECT--
 isAutoFilter (initial): bool(true)
 removeFilter (): bool(true)
 isAutoFilter (removed): bool(false)
-bool(true)
-getSort(0) column_index: 0
-getSort(0) descending: 0
-getSort(5) (no such level): bool(false)
 OK

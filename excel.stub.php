@@ -326,11 +326,7 @@ class ExcelAutoFilter
     public function columnSize(): int|false {}  // ZPP ""
     public function columnByIndex(int $index): ExcelFilterColumn|false {}  // ZPP "l"
     public function getSortRange(): array|false {}  // ZPP ""
-#if LIBXL_VERSION >= 0x05020000
-    public function getSort(int $level = 0): array|false {}  // ZPP "|l"
-#else
     public function getSort(): array|false {}  // ZPP ""
-#endif
     public function setSort(int $columnIndex, bool $descending): bool {}  // ZPP "lb"
     public function addSort(int $columnIndex, bool $descending): bool {}  // ZPP "lb"
 }
