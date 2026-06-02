@@ -31,6 +31,12 @@ echo "writeComment(huge width):   "; var_dump(@$s->writeComment(1, 0, "x", "a", 
 echo "setCalcMode(PHP_INT_MAX):   "; var_dump(@$b->setCalcMode(PHP_INT_MAX));
 echo "setDefaultFont(huge size):  "; var_dump(@$b->setDefaultFont("Arial", PHP_INT_MAX));
 
+echo "--- ExcelBook int boundaries -> rejected ---\n";
+echo "colorUnpack(4294967296):    "; var_dump(@$b->colorUnpack(4294967296));
+echo "colorUnpack(PHP_INT_MAX):   "; var_dump(@$b->colorUnpack(PHP_INT_MAX));
+echo "addFormatFromStyle(2**32):  "; var_dump(@$b->addFormatFromStyle(4294967296));
+echo "packDateValues(huge year):  "; var_dump(@$b->packDateValues(PHP_INT_MAX, 1, 1, 0, 0, 0));
+
 echo "--- ConditionalFormat / Table setters -> rejected ---\n";
 $cf = $b->addConditionalFormat();
 echo "CF setBorder(PHP_INT_MAX):  "; var_dump(@$cf->setBorder(PHP_INT_MAX));
@@ -50,6 +56,8 @@ echo "setTabColor(1):             "; var_dump($s->setTabColor(1));
 echo "setCalcMode(0):             "; var_dump($b->setCalcMode(0));
 echo "CF setBorder(1):            "; var_dump($cf->setBorder(1));
 echo "Table setStyle(1):          "; var_dump($t->setStyle(1));
+echo "addFormatFromStyle(0):      "; var_dump($b->addFormatFromStyle(0) instanceof ExcelFormat);
+echo "packDateValues(2024):       "; var_dump(is_float($b->packDateValues(2024, 6, 1, 12, 0, 0)));
 
 echo "OK\n";
 ?>
@@ -75,6 +83,11 @@ setRightToLeft(PHP_INT_MAX):bool(false)
 writeComment(huge width):   bool(false)
 setCalcMode(PHP_INT_MAX):   bool(false)
 setDefaultFont(huge size):  bool(false)
+--- ExcelBook int boundaries -> rejected ---
+colorUnpack(4294967296):    bool(false)
+colorUnpack(PHP_INT_MAX):   bool(false)
+addFormatFromStyle(2**32):  bool(false)
+packDateValues(huge year):  bool(false)
 --- ConditionalFormat / Table setters -> rejected ---
 CF setBorder(PHP_INT_MAX):  bool(false)
 CF setBorderColor(-1):      bool(false)
@@ -91,4 +104,6 @@ setTabColor(1):             bool(true)
 setCalcMode(0):             bool(true)
 CF setBorder(1):            bool(true)
 Table setStyle(1):          bool(true)
+addFormatFromStyle(0):      bool(true)
+packDateValues(2024):       bool(true)
 OK

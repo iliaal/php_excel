@@ -1670,7 +1670,7 @@ EXCEL_METHOD(Book, packDateValues)
 	// check date only if there are values
 	// is every value=0 - it's okay for generating a time
 	if (year != 0 || month != 0 || day != 0) {
-		if (year < 1) {
+		if (year < 1 || year > INT_MAX) {
 			php_error_docref(NULL, E_WARNING, "Invalid '" ZEND_LONG_FMT "' value for year", year);
 			RETURN_FALSE;
 		}
@@ -2091,7 +2091,7 @@ EXCEL_METHOD(Book, colorUnpack)
 		RETURN_FALSE;
 	}
 
-	if (color <= 0) {
+	if (color <= 0 || color > INT_MAX) {
 		php_error_docref(NULL, E_WARNING, "Invalid '" ZEND_LONG_FMT "' value for color code", color);
 		RETURN_FALSE;
 	}
@@ -2265,6 +2265,8 @@ EXCEL_METHOD(Book, addFormatFromStyle)
 	if (zend_parse_parameters(ZEND_NUM_ARGS(), "l", &style) == FAILURE) {
 		RETURN_FALSE;
 	}
+
+	EXCEL_VALIDATE_INT_RANGE(style)
 
 	BOOK_FROM_OBJECT(book, object);
 

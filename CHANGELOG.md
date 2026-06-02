@@ -45,6 +45,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     `setDropLines`, `setDx`, `setFirstButton`, `setHoriz`, `setInc`, `setMax`,
     `setMin`, `setSel`), `ExcelTable::setStyle`, and
     `ExcelFilterColumn::setCustomFilter` operators.
+  - Other `ExcelBook` int boundaries: `colorUnpack` (colour index — now also
+    upper-bounded), `addFormatFromStyle` (builtin-style id), and
+    `packDateValues` (year upper bound; month/day/time were already checked).
   - Add/rule/constructor APIs: `ExcelSheet::addDataValidation`/
     `addDataValidationDouble` (type/op/error-style), `addIgnoredError`,
     `addTable` (style), the `ExcelConditionalFormatting` rule methods
