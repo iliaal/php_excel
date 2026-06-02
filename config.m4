@@ -76,10 +76,11 @@ if test "$PHP_EXCEL" != "no"; then
     -L$EXCEL_LIBDIR
   ])
 
+  dnl Feature probe only: the include path and -lxl link flag are already
+  dnl added by the xlCreateBookCA check above. Re-adding them here would
+  dnl duplicate -I/-L/-lxl/-rpath in EXCEL_SHARED_LIBADD.
   PHP_CHECK_LIBRARY(xl, xlBookSetKeyA,
   [
-    PHP_ADD_INCLUDE($EXCEL_INCDIR)
-    PHP_ADD_LIBRARY_WITH_PATH(xl, $EXCEL_LIBDIR, EXCEL_SHARED_LIBADD)
     AC_DEFINE(HAVE_LIBXL_SETKEY,1,[ ])
   ],[],[
     -L$EXCEL_LIBDIR

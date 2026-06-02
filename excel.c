@@ -450,6 +450,26 @@ static inline excel_book_object *php_excel_resolve_book_obj(zval *parent_zv) {
 	return NULL;
 }
 
+/* libxl Format/Font/RichString/AutoFilter/ConditionalFormat handles are scoped
+ * to the workbook that created them — they index into that book's internal
+ * tables. Applying one to a different workbook's sheet/cell/rule silently
+ * produces wrong output and dangles once the source book is freed. Reject a
+ * child-wrapper argument whose owning book differs from the target's. Returns 1
+ * when both resolve to the same ExcelBook, 0 otherwise. (Template-copy methods
+ * such as Book::addFormat/addFont and Book::insertSheet legitimately accept a
+ * handle from another book and must NOT use this guard.) */
+static zend_always_inline int php_excel_same_book(zval *arg_zv, zval *target_zv) {
+	excel_book_object *ba = php_excel_resolve_book_obj(arg_zv);
+	excel_book_object *bb = php_excel_resolve_book_obj(target_zv);
+	return ba && bb && ba == bb;
+}
+
+#define EXCEL_REQUIRE_SAME_BOOK(arg_zv, target_zv) \
+	if (!php_excel_same_book((arg_zv), (target_zv))) { \
+		php_error_docref(NULL, E_WARNING, "Argument belongs to a different ExcelBook"); \
+		RETURN_FALSE; \
+	}
+
 #define CHECK_BOOK_GENERATION(child_obj) \
 	do { \
 		excel_book_object *_b = php_excel_resolve_book_obj(&(child_obj)->parent); \
@@ -930,6 +950,14 @@ static zend_object *excel_object_new_table(zend_class_entry *class_type)
 #define EXCEL_VALIDATE_INT_RANGE(arg) \
 	if ((arg) < 0 || (arg) > INT_MAX) { \
 		php_error_docref(NULL, E_WARNING, "Argument out of int range"); \
+		RETURN_FALSE; \
+	}
+
+/* RGB component setters take an int per channel; only 0-255 is meaningful.
+ * Out-of-range values silently corrupt the colour, so reject them. */
+#define EXCEL_VALIDATE_RGB(arg) \
+	if ((arg) < 0 || (arg) > 255) { \
+		php_error_docref(NULL, E_WARNING, "RGB component out of range (0-255)"); \
 		RETURN_FALSE; \
 	}
 
@@ -2729,6 +2757,7 @@ EXCEL_METHOD(Format, setFont)
 
 	FORMAT_FROM_OBJECT(format, object);
 	FONT_FROM_OBJECT(font, zfont);
+	EXCEL_REQUIRE_SAME_BOOK(zfont, object);
 
 	if (!xlFormatSetFont(format, font)) {
 		RETURN_FALSE;
@@ -3175,6 +3204,7 @@ EXCEL_METHOD(Sheet, setCellFormat)
 	EXCEL_VALIDATE_ROW_COL(row, col, object);
 	SHEET_FROM_OBJECT(sheet, object);
 	FORMAT_FROM_OBJECT(format, oformat);
+	EXCEL_REQUIRE_SAME_BOOK(oformat, object);
 
 	xlSheetSetCellFormat(sheet, row, col, format);
 }
@@ -3578,6 +3608,7 @@ EXCEL_METHOD(Sheet, write)
 
 	if (oformat) {
 		FORMAT_FROM_OBJECT(format, oformat);
+		EXCEL_REQUIRE_SAME_BOOK(oformat, object);
 	}
 
 	if (!php_excel_write_cell(sheet, book_obj, row, col, data, oformat ? format : 0, dtype)) {
@@ -3627,6 +3658,7 @@ EXCEL_METHOD(Sheet, writeRow)
 	SHEET_AND_BOOK_FROM_OBJECT(sheet, book, object);
 	if (oformat) {
 		FORMAT_FROM_OBJECT(format, oformat);
+		EXCEL_REQUIRE_SAME_BOOK(oformat, object);
 	}
 
 	i = col;
@@ -3679,6 +3711,7 @@ EXCEL_METHOD(Sheet, writeCol)
 	SHEET_AND_BOOK_FROM_OBJECT(sheet, book, object);
 	if (oformat) {
 		FORMAT_FROM_OBJECT(format, oformat);
+		EXCEL_REQUIRE_SAME_BOOK(oformat, object);
 	}
 
 	i = row;
@@ -3914,6 +3947,7 @@ EXCEL_METHOD(Sheet, setColWidth)
 
 		if (f) {
 			FORMAT_FROM_OBJECT(format, f);
+			EXCEL_REQUIRE_SAME_BOOK(f, object);
 		}
 
 		if (e < s) {
@@ -3956,6 +3990,7 @@ EXCEL_METHOD(Sheet, setRowHeight)
 
 		if (f) {
 			FORMAT_FROM_OBJECT(format, f);
+			EXCEL_REQUIRE_SAME_BOOK(f, object);
 		}
 
 		if (height < 0) {
@@ -4270,6 +4305,7 @@ EXCEL_METHOD(Sheet, copy)
 		if (zend_parse_parameters(ZEND_NUM_ARGS(), "l", &val) == FAILURE) { \
 			RETURN_FALSE; \
 		} \
+		EXCEL_VALIDATE_INT_RANGE(val) \
 		SHEET_FROM_OBJECT(sheet, object); \
 		xlSheet ## func_name (sheet, val); \
 	}
@@ -4943,6 +4979,9 @@ EXCEL_METHOD(Sheet, setPrintFit)
 	if (zend_parse_parameters(ZEND_NUM_ARGS(), "ll", &wPages, &hPages) == FAILURE) {
 		RETURN_FALSE;
 	}
+
+	EXCEL_VALIDATE_INT_RANGE(wPages)
+	EXCEL_VALIDATE_INT_RANGE(hPages)
 
 	SHEET_FROM_OBJECT(sheet, object);
 	xlSheetSetPrintFit(sheet, wPages, hPages);
@@ -6017,6 +6056,7 @@ EXCEL_METHOD(Sheet, writeError)
 
 	if (oformat) {
 		FORMAT_FROM_OBJECT(format, oformat);
+		EXCEL_REQUIRE_SAME_BOOK(oformat, object);
 	}
 
 	xlSheetWriteError(sheet, row, col, iError, format);
@@ -6862,8 +6902,10 @@ EXCEL_METHOD(Sheet, writeRichStr)
 	EXCEL_VALIDATE_ROW_COL(row, col, object);
 	SHEET_FROM_OBJECT(sheet, object);
 	RICHSTRING_FROM_OBJECT(rs, zrs);
+	EXCEL_REQUIRE_SAME_BOOK(zrs, object);
 	if (zfmt) {
 		FORMAT_FROM_OBJECT(format, zfmt);
+		EXCEL_REQUIRE_SAME_BOOK(zfmt, object);
 	}
 
 	RETURN_BOOL(xlSheetWriteRichStr(sheet, row, col, rs, format));
@@ -7033,6 +7075,10 @@ EXCEL_METHOD(Sheet, setTabRgbColor)
 		RETURN_FALSE;
 	}
 
+	EXCEL_VALIDATE_RGB(r)
+	EXCEL_VALIDATE_RGB(g)
+	EXCEL_VALIDATE_RGB(b)
+
 	SHEET_FROM_OBJECT(sheet, object);
 
 	xlSheetSetTabRgbColor(sheet, r, g, b);
@@ -7161,6 +7207,7 @@ EXCEL_METHOD(Sheet, setColPx)
 
 	if (f) {
 		FORMAT_FROM_OBJECT(format, f);
+		EXCEL_REQUIRE_SAME_BOOK(f, object);
 	}
 
 	RETURN_BOOL(xlSheetSetColPx(sheet, colFirst, colLast, widthPx, format, hidden));
@@ -7191,6 +7238,7 @@ EXCEL_METHOD(Sheet, setRowPx)
 
 	if (f) {
 		FORMAT_FROM_OBJECT(format, f);
+		EXCEL_REQUIRE_SAME_BOOK(f, object);
 	}
 
 	RETURN_BOOL(xlSheetSetRowPx(sheet, row, heightPx, format, hidden));
@@ -7208,6 +7256,8 @@ EXCEL_METHOD(Sheet, setBorder)
 
 	EXCEL_VALIDATE_ROW_RANGE(rowFirst, rowLast, object);
 	EXCEL_VALIDATE_COL_RANGE(colFirst, colLast, object);
+	EXCEL_VALIDATE_INT_RANGE(borderStyle)
+	EXCEL_VALIDATE_INT_RANGE(borderColor)
 	SHEET_FROM_OBJECT(sheet, object);
 
 	RETURN_BOOL(xlSheetSetBorder(sheet, rowFirst, rowLast, colFirst, colLast, borderStyle, borderColor));
@@ -7317,6 +7367,7 @@ EXCEL_METHOD(Sheet, applyFilter2)
 
 	SHEET_FROM_OBJECT(sheet, object);
 	AUTOFILTER_FROM_OBJECT(autofilter, zaf);
+	EXCEL_REQUIRE_SAME_BOOK(zaf, object);
 
 	xlSheetApplyFilter2(sheet, autofilter);
 	RETURN_TRUE;
@@ -8542,6 +8593,7 @@ EXCEL_METHOD(ConditionalFormatting, addRule)
 
 	CONDITIONALFORMATTING_FROM_OBJECT(cfing, object);
 	CONDITIONALFORMAT_FROM_OBJECT(cf, zcf);
+	EXCEL_REQUIRE_SAME_BOOK(zcf, object);
 
 	xlConditionalFormattingAddRule(cfing, type, cf, ZSTR_VAL(value), stopIfTrue);
 	RETURN_TRUE;
@@ -8562,6 +8614,7 @@ EXCEL_METHOD(ConditionalFormatting, addTopRule)
 
 	CONDITIONALFORMATTING_FROM_OBJECT(cfing, object);
 	CONDITIONALFORMAT_FROM_OBJECT(cf, zcf);
+	EXCEL_REQUIRE_SAME_BOOK(zcf, object);
 
 	xlConditionalFormattingAddTopRule(cfing, cf, value, bottom, percent, stopIfTrue);
 	RETURN_TRUE;
@@ -8583,6 +8636,7 @@ EXCEL_METHOD(ConditionalFormatting, addOpNumRule)
 
 	CONDITIONALFORMATTING_FROM_OBJECT(cfing, object);
 	CONDITIONALFORMAT_FROM_OBJECT(cf, zcf);
+	EXCEL_REQUIRE_SAME_BOOK(zcf, object);
 
 	xlConditionalFormattingAddOpNumRule(cfing, op, cf, v1, v2, stopIfTrue);
 	RETURN_TRUE;
@@ -8607,6 +8661,7 @@ EXCEL_METHOD(ConditionalFormatting, addOpStrRule)
 
 	CONDITIONALFORMATTING_FROM_OBJECT(cfing, object);
 	CONDITIONALFORMAT_FROM_OBJECT(cf, zcf);
+	EXCEL_REQUIRE_SAME_BOOK(zcf, object);
 
 	xlConditionalFormattingAddOpStrRule(cfing, op, cf, ZSTR_VAL(v1), ZSTR_VAL(v2), stopIfTrue);
 	RETURN_TRUE;
@@ -8628,6 +8683,7 @@ EXCEL_METHOD(ConditionalFormatting, addAboveAverageRule)
 
 	CONDITIONALFORMATTING_FROM_OBJECT(cfing, object);
 	CONDITIONALFORMAT_FROM_OBJECT(cf, zcf);
+	EXCEL_REQUIRE_SAME_BOOK(zcf, object);
 
 	xlConditionalFormattingAddAboveAverageRule(cfing, cf, above, equal, stdDev, stopIfTrue);
 	RETURN_TRUE;
@@ -8648,6 +8704,7 @@ EXCEL_METHOD(ConditionalFormatting, addTimePeriodRule)
 
 	CONDITIONALFORMATTING_FROM_OBJECT(cfing, object);
 	CONDITIONALFORMAT_FROM_OBJECT(cf, zcf);
+	EXCEL_REQUIRE_SAME_BOOK(zcf, object);
 
 	xlConditionalFormattingAddTimePeriodRule(cfing, cf, timePeriod, stopIfTrue);
 	RETURN_TRUE;

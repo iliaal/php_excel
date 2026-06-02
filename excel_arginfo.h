@@ -1,5 +1,5 @@
 /* This is a generated file, edit excel.stub.php instead.
- * Stub hash: e3c9135eefb2b2f18f5f4cbab4e1aecdf786c0e9 */
+ * Stub hash: befa694e536a0e5f8a5c2b6273219d6fce81f953 */
 
 ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_ExcelBook_requiresKey, 0, 0, _IS_BOOL, 0)
 ZEND_END_ARG_INFO()
@@ -478,27 +478,25 @@ ZEND_BEGIN_ARG_WITH_RETURN_TYPE_MASK_EX(arginfo_class_ExcelSheet_addrToRowCol, 0
 	ZEND_ARG_TYPE_INFO(0, cell_reference, IS_STRING, 0)
 ZEND_END_ARG_INFO()
 
-ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_ExcelSheet_setPrintGridlines, 0, 1, IS_MIXED, 0)
-	ZEND_ARG_TYPE_INFO(0, value, IS_MIXED, 0)
-ZEND_END_ARG_INFO()
+#define arginfo_class_ExcelSheet_setPrintGridlines arginfo_class_ExcelSheet_setDisplayGridlines
 
 #define arginfo_class_ExcelSheet_zoom arginfo_class_ExcelBook_sheetCount
 
 #define arginfo_class_ExcelSheet_zoomPrint arginfo_class_ExcelBook_sheetCount
 
-#define arginfo_class_ExcelSheet_setZoom arginfo_class_ExcelSheet_setPrintGridlines
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_ExcelSheet_setZoom, 0, 1, IS_MIXED, 0)
+	ZEND_ARG_TYPE_INFO(0, value, IS_LONG, 0)
+ZEND_END_ARG_INFO()
 
-#define arginfo_class_ExcelSheet_setZoomPrint arginfo_class_ExcelSheet_setPrintGridlines
+#define arginfo_class_ExcelSheet_setZoomPrint arginfo_class_ExcelSheet_setZoom
 
-#define arginfo_class_ExcelSheet_setLandscape arginfo_class_ExcelSheet_setPrintGridlines
+#define arginfo_class_ExcelSheet_setLandscape arginfo_class_ExcelSheet_setDisplayGridlines
 
 #define arginfo_class_ExcelSheet_landscape arginfo_class_ExcelBook_requiresKey
 
 #define arginfo_class_ExcelSheet_paper arginfo_class_ExcelBook_sheetCount
 
-ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_ExcelSheet_setPaper, 0, 1, IS_MIXED, 0)
-	ZEND_ARG_TYPE_INFO(0, value, IS_LONG, 0)
-ZEND_END_ARG_INFO()
+#define arginfo_class_ExcelSheet_setPaper arginfo_class_ExcelSheet_setZoom
 
 ZEND_BEGIN_ARG_WITH_RETURN_TYPE_MASK_EX(arginfo_class_ExcelSheet_header, 0, 0, MAY_BE_STRING|MAY_BE_NULL|MAY_BE_FALSE)
 ZEND_END_ARG_INFO()
@@ -506,13 +504,13 @@ ZEND_END_ARG_INFO()
 #define arginfo_class_ExcelSheet_footer arginfo_class_ExcelSheet_header
 
 ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_ExcelSheet_setHeader, 0, 2, _IS_BOOL, 0)
-	ZEND_ARG_TYPE_INFO(0, header, IS_MIXED, 0)
-	ZEND_ARG_TYPE_INFO(0, margin, IS_MIXED, 0)
+	ZEND_ARG_TYPE_INFO(0, header, IS_STRING, 0)
+	ZEND_ARG_TYPE_INFO(0, margin, IS_DOUBLE, 0)
 ZEND_END_ARG_INFO()
 
 ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_ExcelSheet_setFooter, 0, 2, _IS_BOOL, 0)
-	ZEND_ARG_TYPE_INFO(0, footer, IS_MIXED, 0)
-	ZEND_ARG_TYPE_INFO(0, margin, IS_MIXED, 0)
+	ZEND_ARG_TYPE_INFO(0, footer, IS_STRING, 0)
+	ZEND_ARG_TYPE_INFO(0, margin, IS_DOUBLE, 0)
 ZEND_END_ARG_INFO()
 
 ZEND_BEGIN_ARG_WITH_RETURN_TYPE_MASK_EX(arginfo_class_ExcelSheet_headerMargin, 0, 0, MAY_BE_DOUBLE|MAY_BE_FALSE)
@@ -524,9 +522,9 @@ ZEND_END_ARG_INFO()
 
 #define arginfo_class_ExcelSheet_vcenter arginfo_class_ExcelBook_requiresKey
 
-#define arginfo_class_ExcelSheet_setHCenter arginfo_class_ExcelSheet_setPrintGridlines
+#define arginfo_class_ExcelSheet_setHCenter arginfo_class_ExcelSheet_setDisplayGridlines
 
-#define arginfo_class_ExcelSheet_setVCenter arginfo_class_ExcelSheet_setPrintGridlines
+#define arginfo_class_ExcelSheet_setVCenter arginfo_class_ExcelSheet_setDisplayGridlines
 
 #define arginfo_class_ExcelSheet_marginLeft arginfo_class_ExcelSheet_headerMargin
 
@@ -536,13 +534,15 @@ ZEND_END_ARG_INFO()
 
 #define arginfo_class_ExcelSheet_marginBottom arginfo_class_ExcelSheet_headerMargin
 
-#define arginfo_class_ExcelSheet_setMarginLeft arginfo_class_ExcelSheet_setPrintGridlines
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_ExcelSheet_setMarginLeft, 0, 1, IS_MIXED, 0)
+	ZEND_ARG_TYPE_INFO(0, value, IS_DOUBLE, 0)
+ZEND_END_ARG_INFO()
 
-#define arginfo_class_ExcelSheet_setMarginRight arginfo_class_ExcelSheet_setPrintGridlines
+#define arginfo_class_ExcelSheet_setMarginRight arginfo_class_ExcelSheet_setMarginLeft
 
-#define arginfo_class_ExcelSheet_setMarginTop arginfo_class_ExcelSheet_setPrintGridlines
+#define arginfo_class_ExcelSheet_setMarginTop arginfo_class_ExcelSheet_setMarginLeft
 
-#define arginfo_class_ExcelSheet_setMarginBottom arginfo_class_ExcelSheet_setPrintGridlines
+#define arginfo_class_ExcelSheet_setMarginBottom arginfo_class_ExcelSheet_setMarginLeft
 
 #define arginfo_class_ExcelSheet_printHeaders arginfo_class_ExcelBook_requiresKey
 

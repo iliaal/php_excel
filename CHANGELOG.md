@@ -22,7 +22,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `ExcelTable::isAutoFilter()` — whether the table has an autofilter.
   - `ExcelTable::removeFilter()` — remove the table's autofilter.
 
+### Fixed
+- Reject child-wrapper handles from a different `ExcelBook`. libxl
+  Format/Font/RichString/AutoFilter/ConditionalFormat handles are scoped to
+  the workbook that created them; applying one to another workbook silently
+  produced wrong output and could dangle once the source book was freed.
+  `ExcelSheet::write`/`writeRow`/`writeCol`/`setCellFormat`/`writeError`/
+  `setColWidth`/`setRowHeight`/`setColPx`/`setRowPx`/`writeRichStr`/
+  `applyFilter2`, `ExcelFormat::setFont`, and the `ExcelConditionalFormatting`
+  rule methods now return `false` with a warning instead. Template-copy
+  methods (`ExcelBook::addFormat`/`addFont`/`insertSheet`) still accept a
+  handle from another book by design.
+- Reject out-of-range values in libxl integer/RGB setters instead of silently
+  truncating the 64-bit argument to `int`. `ExcelSheet::setZoom`/`setZoomPrint`/
+  `setPaper`/`setPrintFit`/`setBorder` now require values in `int` range, and
+  `setTabRgbColor` requires each component in 0-255.
+
 ### Changed
+- Tightened the published parameter types for several `ExcelSheet` setters that
+  were declared `mixed` but parse a concrete scalar: `setZoom`/`setZoomPrint`
+  (`int`), `setPrintGridlines`/`setLandscape`/`setHCenter`/`setVCenter`
+  (`bool`), `setMarginLeft`/`setMarginRight`/`setMarginTop`/`setMarginBottom`
+  (`float`), and `setHeader`/`setFooter` (`string`, `float`). Reflection and
+  static analysis now report the real signatures.
 - `ExcelAutoFilter::getSort()` accepts an optional zero-based sort
   `$level` argument (libxl 5.2.0+), reflecting libxl's added multi-level
   sort read support. Calls with no argument behave as before.

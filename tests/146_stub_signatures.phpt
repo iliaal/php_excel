@@ -27,6 +27,18 @@ $cases[] = [ExcelConditionalFormatting::class, "addOpStrRule", 5, ["int", "Excel
 $cases[] = [ExcelConditionalFormatting::class, "addAboveAverageRule", 5, ["ExcelConditionalFormat", "bool", "bool", "int", "bool"]];
 $cases[] = [ExcelConditionalFormatting::class, "addTimePeriodRule", 3, ["ExcelConditionalFormat", "int", "bool"]];
 
+// Setters whose stubs were tightened from mixed to the concrete scalar the C ZPP parses.
+$cases[] = [ExcelSheet::class, "setZoom", 1, ["int"]];
+$cases[] = [ExcelSheet::class, "setZoomPrint", 1, ["int"]];
+$cases[] = [ExcelSheet::class, "setPrintGridlines", 1, ["bool"]];
+$cases[] = [ExcelSheet::class, "setLandscape", 1, ["bool"]];
+$cases[] = [ExcelSheet::class, "setHCenter", 1, ["bool"]];
+$cases[] = [ExcelSheet::class, "setVCenter", 1, ["bool"]];
+$cases[] = [ExcelSheet::class, "setMarginLeft", 1, ["float"]];
+$cases[] = [ExcelSheet::class, "setMarginBottom", 1, ["float"]];
+$cases[] = [ExcelSheet::class, "setHeader", 2, ["string", "float"]];
+$cases[] = [ExcelSheet::class, "setFooter", 2, ["string", "float"]];
+
 foreach ($cases as [$cls, $m, $count, $types]) {
     $r = new ReflectionMethod($cls, $m);
     if ($r->getNumberOfParameters() !== $count) {
@@ -72,5 +84,15 @@ ExcelConditionalFormatting::addOpNumRule: OK
 ExcelConditionalFormatting::addOpStrRule: OK
 ExcelConditionalFormatting::addAboveAverageRule: OK
 ExcelConditionalFormatting::addTimePeriodRule: OK
+ExcelSheet::setZoom: OK
+ExcelSheet::setZoomPrint: OK
+ExcelSheet::setPrintGridlines: OK
+ExcelSheet::setLandscape: OK
+ExcelSheet::setHCenter: OK
+ExcelSheet::setVCenter: OK
+ExcelSheet::setMarginLeft: OK
+ExcelSheet::setMarginBottom: OK
+ExcelSheet::setHeader: OK
+ExcelSheet::setFooter: OK
 insertRow(1,1,false): ArgumentCountError
 OK
