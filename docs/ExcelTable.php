@@ -96,6 +96,24 @@ class ExcelTable
 	}
 
 	/**
+	* Returns whether the table has an autofilter (only for xlsx files, libxl 5.2.0+)
+	*
+	* @return bool
+	*/
+	public function isAutoFilter(): bool
+	{
+	}
+
+	/**
+	* Removes the table's autofilter (only for xlsx files, libxl 5.2.0+)
+	*
+	* @return bool
+	*/
+	public function removeFilter(): bool
+	{
+	}
+
+	/**
 	* Returns the table style
 	*
 	* @return int One of ExcelTable::TABLESTYLE_* constants

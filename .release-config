@@ -8,13 +8,15 @@ build_matrix:
   - PHP-8.3
   - PHP-8.4
   - PHP-8.5
-configure_base: "--with-excel --with-libxl-incdir=$HOME/ai/libxl-5.1.0/include_c --with-libxl-libdir=$HOME/ai/libxl-5.1.0/lib64"
+configure_base: "--with-excel --with-libxl-incdir=$HOME/ai/libxl-5.2.0/include_c --with-libxl-libdir=$HOME/ai/libxl-5.2.0/lib64"
 
 test_env:
-  LD_LIBRARY_PATH: "$HOME/ai/libxl-5.1.0/lib64"
+  LD_LIBRARY_PATH: "$HOME/ai/libxl-5.2.0/lib64"
 
-# Build (no test) against minimum supported libxl to verify version-guard ifdefs
+# Build (no test) against older libxl to verify version-guard ifdefs compile
 extra_lib_matrix:
+  - name: "libxl 5.1.0"
+    flags: "--with-excel --with-libxl-incdir=$HOME/ai/libxl-5.1.0/include_c --with-libxl-libdir=$HOME/ai/libxl-5.1.0/lib64"
   - name: "libxl 4.6.0 (minimum)"
     flags: "--with-excel --with-libxl-incdir=$HOME/ai/libxl-4.6.0/include_c --with-libxl-libdir=$HOME/ai/libxl-4.6.0/lib64"
 

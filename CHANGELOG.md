@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- libxl 5.2.0 support. New methods, available when built against
+  libxl 5.2.0 or newer:
+  - `ExcelSheet::dataValidationSize()` — number of data validations on
+    the sheet.
+  - `ExcelSheet::dataValidation(int $index)` — read a data validation by
+    zero-based index, returned as an associative array (`type`, `op`,
+    `row_first`, `row_last`, `col_first`, `col_last`, `value1`,
+    `value2`); `false` for an out-of-range index. Note: libxl only
+    surfaces validations parsed from xlsx files written by Excel (or
+    another standards-compliant writer), not those added in the same
+    session via `addDataValidation()`.
+  - `ExcelTable::isAutoFilter()` — whether the table has an autofilter.
+  - `ExcelTable::removeFilter()` — remove the table's autofilter.
+
+### Changed
+- `ExcelAutoFilter::getSort()` accepts an optional zero-based sort
+  `$level` argument (libxl 5.2.0+), reflecting libxl's added multi-level
+  sort read support. Calls with no argument behave as before.
+
 ## [2.0.1] - 2026-05-03
 
 ### Changed (semantics)

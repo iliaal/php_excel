@@ -1,5 +1,5 @@
-/* This is a generated file, edit the .stub.php file instead.
- * Stub hash: 70df1f29feec62ca750c421d98caf15d9bd1ef1c */
+/* This is a generated file, edit excel.stub.php instead.
+ * Stub hash: e3c9135eefb2b2f18f5f4cbab4e1aecdf786c0e9 */
 
 ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_ExcelBook_requiresKey, 0, 0, _IS_BOOL, 0)
 ZEND_END_ARG_INFO()
@@ -775,6 +775,15 @@ ZEND_END_ARG_INFO()
 
 #define arginfo_class_ExcelSheet_removeDataValidations arginfo_class_ExcelBook_requiresKey
 
+#if LIBXL_VERSION >= 0x05020000
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_ExcelSheet_dataValidationSize, 0, 0, IS_LONG, 0)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_MASK_EX(arginfo_class_ExcelSheet_dataValidation, 0, 1, MAY_BE_ARRAY|MAY_BE_FALSE)
+	ZEND_ARG_TYPE_INFO(0, index, IS_LONG, 0)
+ZEND_END_ARG_INFO()
+#endif
+
 #define arginfo_class_ExcelSheet_firstFilledRow arginfo_class_ExcelBook_sheetCount
 
 #define arginfo_class_ExcelSheet_lastFilledRow arginfo_class_ExcelBook_sheetCount
@@ -1067,7 +1076,16 @@ ZEND_END_ARG_INFO()
 
 #define arginfo_class_ExcelAutoFilter_getSortRange arginfo_class_ExcelBook_getAllFormats
 
-#define arginfo_class_ExcelAutoFilter_getSort arginfo_class_ExcelBook_getAllFormats
+#if LIBXL_VERSION >= 0x05020000
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_MASK_EX(arginfo_class_ExcelAutoFilter_getSort, 0, 0, MAY_BE_ARRAY|MAY_BE_FALSE)
+	ZEND_ARG_TYPE_INFO_WITH_DEFAULT_VALUE(0, level, IS_LONG, 0, "0")
+ZEND_END_ARG_INFO()
+#endif
+
+#if !(LIBXL_VERSION >= 0x05020000)
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_MASK_EX(arginfo_class_ExcelAutoFilter_getSort, 0, 0, MAY_BE_ARRAY|MAY_BE_FALSE)
+ZEND_END_ARG_INFO()
+#endif
 
 ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_ExcelAutoFilter_setSort, 0, 2, _IS_BOOL, 0)
 	ZEND_ARG_TYPE_INFO(0, columnIndex, IS_LONG, 0)
@@ -1477,6 +1495,13 @@ ZEND_END_ARG_INFO()
 
 #define arginfo_class_ExcelTable_autoFilter arginfo_class_ExcelFormControl_objectType
 
+#if LIBXL_VERSION >= 0x05020000
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_ExcelTable_isAutoFilter, 0, 0, _IS_BOOL, 0)
+ZEND_END_ARG_INFO()
+
+#define arginfo_class_ExcelTable_removeFilter arginfo_class_ExcelTable_isAutoFilter
+#endif
+
 #define arginfo_class_ExcelTable_style arginfo_class_ExcelFormControl_objectType
 
 #define arginfo_class_ExcelTable_setStyle arginfo_class_ExcelFormControl_setChecked
@@ -1710,6 +1735,10 @@ ZEND_METHOD(ExcelSheet, removeComment);
 ZEND_METHOD(ExcelSheet, addDataValidation);
 ZEND_METHOD(ExcelSheet, addDataValidationDouble);
 ZEND_METHOD(ExcelSheet, removeDataValidations);
+#if LIBXL_VERSION >= 0x05020000
+ZEND_METHOD(ExcelSheet, dataValidationSize);
+ZEND_METHOD(ExcelSheet, dataValidation);
+#endif
 ZEND_METHOD(ExcelSheet, firstFilledRow);
 ZEND_METHOD(ExcelSheet, lastFilledRow);
 ZEND_METHOD(ExcelSheet, firstFilledCol);
@@ -1795,7 +1824,12 @@ ZEND_METHOD(ExcelAutoFilter, column);
 ZEND_METHOD(ExcelAutoFilter, columnSize);
 ZEND_METHOD(ExcelAutoFilter, columnByIndex);
 ZEND_METHOD(ExcelAutoFilter, getSortRange);
+#if LIBXL_VERSION >= 0x05020000
 ZEND_METHOD(ExcelAutoFilter, getSort);
+#endif
+#if !(LIBXL_VERSION >= 0x05020000)
+ZEND_METHOD(ExcelAutoFilter, getSort);
+#endif
 ZEND_METHOD(ExcelAutoFilter, setSort);
 ZEND_METHOD(ExcelAutoFilter, addSort);
 ZEND_METHOD(ExcelFilterColumn, __construct);
@@ -1937,6 +1971,10 @@ ZEND_METHOD(ExcelTable, setName);
 ZEND_METHOD(ExcelTable, ref);
 ZEND_METHOD(ExcelTable, setRef);
 ZEND_METHOD(ExcelTable, autoFilter);
+#if LIBXL_VERSION >= 0x05020000
+ZEND_METHOD(ExcelTable, isAutoFilter);
+ZEND_METHOD(ExcelTable, removeFilter);
+#endif
 ZEND_METHOD(ExcelTable, style);
 ZEND_METHOD(ExcelTable, setStyle);
 ZEND_METHOD(ExcelTable, showRowStripes);
@@ -2160,6 +2198,10 @@ static const zend_function_entry class_ExcelSheet_methods[] = {
 	ZEND_ME(ExcelSheet, addDataValidation, arginfo_class_ExcelSheet_addDataValidation, ZEND_ACC_PUBLIC)
 	ZEND_ME(ExcelSheet, addDataValidationDouble, arginfo_class_ExcelSheet_addDataValidationDouble, ZEND_ACC_PUBLIC)
 	ZEND_ME(ExcelSheet, removeDataValidations, arginfo_class_ExcelSheet_removeDataValidations, ZEND_ACC_PUBLIC)
+#if LIBXL_VERSION >= 0x05020000
+	ZEND_ME(ExcelSheet, dataValidationSize, arginfo_class_ExcelSheet_dataValidationSize, ZEND_ACC_PUBLIC)
+	ZEND_ME(ExcelSheet, dataValidation, arginfo_class_ExcelSheet_dataValidation, ZEND_ACC_PUBLIC)
+#endif
 	ZEND_ME(ExcelSheet, firstFilledRow, arginfo_class_ExcelSheet_firstFilledRow, ZEND_ACC_PUBLIC)
 	ZEND_ME(ExcelSheet, lastFilledRow, arginfo_class_ExcelSheet_lastFilledRow, ZEND_ACC_PUBLIC)
 	ZEND_ME(ExcelSheet, firstFilledCol, arginfo_class_ExcelSheet_firstFilledCol, ZEND_ACC_PUBLIC)
@@ -2257,7 +2299,12 @@ static const zend_function_entry class_ExcelAutoFilter_methods[] = {
 	ZEND_ME(ExcelAutoFilter, columnSize, arginfo_class_ExcelAutoFilter_columnSize, ZEND_ACC_PUBLIC)
 	ZEND_ME(ExcelAutoFilter, columnByIndex, arginfo_class_ExcelAutoFilter_columnByIndex, ZEND_ACC_PUBLIC)
 	ZEND_ME(ExcelAutoFilter, getSortRange, arginfo_class_ExcelAutoFilter_getSortRange, ZEND_ACC_PUBLIC)
+#if LIBXL_VERSION >= 0x05020000
 	ZEND_ME(ExcelAutoFilter, getSort, arginfo_class_ExcelAutoFilter_getSort, ZEND_ACC_PUBLIC)
+#endif
+#if !(LIBXL_VERSION >= 0x05020000)
+	ZEND_ME(ExcelAutoFilter, getSort, arginfo_class_ExcelAutoFilter_getSort, ZEND_ACC_PUBLIC)
+#endif
 	ZEND_ME(ExcelAutoFilter, setSort, arginfo_class_ExcelAutoFilter_setSort, ZEND_ACC_PUBLIC)
 	ZEND_ME(ExcelAutoFilter, addSort, arginfo_class_ExcelAutoFilter_addSort, ZEND_ACC_PUBLIC)
 	ZEND_FE_END
@@ -2427,6 +2474,10 @@ static const zend_function_entry class_ExcelTable_methods[] = {
 	ZEND_ME(ExcelTable, ref, arginfo_class_ExcelTable_ref, ZEND_ACC_PUBLIC)
 	ZEND_ME(ExcelTable, setRef, arginfo_class_ExcelTable_setRef, ZEND_ACC_PUBLIC)
 	ZEND_ME(ExcelTable, autoFilter, arginfo_class_ExcelTable_autoFilter, ZEND_ACC_PUBLIC)
+#if LIBXL_VERSION >= 0x05020000
+	ZEND_ME(ExcelTable, isAutoFilter, arginfo_class_ExcelTable_isAutoFilter, ZEND_ACC_PUBLIC)
+	ZEND_ME(ExcelTable, removeFilter, arginfo_class_ExcelTable_removeFilter, ZEND_ACC_PUBLIC)
+#endif
 	ZEND_ME(ExcelTable, style, arginfo_class_ExcelTable_style, ZEND_ACC_PUBLIC)
 	ZEND_ME(ExcelTable, setStyle, arginfo_class_ExcelTable_setStyle, ZEND_ACC_PUBLIC)
 	ZEND_ME(ExcelTable, showRowStripes, arginfo_class_ExcelTable_showRowStripes, ZEND_ACC_PUBLIC)

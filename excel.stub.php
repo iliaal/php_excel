@@ -222,6 +222,10 @@ class ExcelSheet
     public function addDataValidation(int $type, int $op, int $row_first, int $row_last, int $col_first, int $col_last, string $val_1, ?string $val_2 = null, bool $allow_blank = true, bool $hide_dropdown = false, bool $show_inputmessage = true, bool $show_errormessage = true, string $prompt_title = "", string $prompt = "", string $error_title = "", string $error = "", int $error_style = 1): bool {}  // ZPP "llllllS|S!bbbbSSSSl"
     public function addDataValidationDouble(int $type, int $op, int $row_first, int $row_last, int $col_first, int $col_last, float $val_1, ?float $val_2 = null, bool $allow_blank = true, bool $hide_dropdown = false, bool $show_inputmessage = true, bool $show_errormessage = true, string $prompt_title = "", string $prompt = "", string $error_title = "", string $error = "", int $error_style = 1): bool {}  // FAST_ZPP llllllD|D!bbbbSSSSl
     public function removeDataValidations(): bool {}  // ZPP ""
+#if LIBXL_VERSION >= 0x05020000
+    public function dataValidationSize(): int {}  // ZPP ""
+    public function dataValidation(int $index): array|false {}  // ZPP "l"
+#endif
     public function firstFilledRow(): int|false {}  // ZPP ""
     public function lastFilledRow(): int|false {}  // ZPP ""
     public function firstFilledCol(): int|false {}  // ZPP ""
@@ -322,7 +326,11 @@ class ExcelAutoFilter
     public function columnSize(): int|false {}  // ZPP ""
     public function columnByIndex(int $index): ExcelFilterColumn|false {}  // ZPP "l"
     public function getSortRange(): array|false {}  // ZPP ""
+#if LIBXL_VERSION >= 0x05020000
+    public function getSort(int $level = 0): array|false {}  // ZPP "|l"
+#else
     public function getSort(): array|false {}  // ZPP ""
+#endif
     public function setSort(int $columnIndex, bool $descending): bool {}  // ZPP "lb"
     public function addSort(int $columnIndex, bool $descending): bool {}  // ZPP "lb"
 }
@@ -494,6 +502,10 @@ class ExcelTable
     public function ref(): mixed {}  // ZPP ""
     public function setRef(string $value): bool {}  // ZPP "S"
     public function autoFilter(): mixed {}  // ZPP ""
+#if LIBXL_VERSION >= 0x05020000
+    public function isAutoFilter(): bool {}  // ZPP ""
+    public function removeFilter(): bool {}  // ZPP ""
+#endif
     public function style(): mixed {}  // ZPP ""
     public function setStyle(int $value): bool {}  // ZPP "l"
     public function showRowStripes(): mixed {}  // ZPP ""

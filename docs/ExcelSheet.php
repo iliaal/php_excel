@@ -1542,6 +1542,30 @@ class ExcelSheet
 	}
 
 	/**
+	* Returns the number of data validations in the sheet (only for xlsx files, libxl 5.2.0+)
+	*
+	* @return int
+	*/
+	public function dataValidationSize(): int
+	{
+	}
+
+	/**
+	* Returns the data validation at the 0-based index as an associative array with
+	* keys type, op, row_first, row_last, col_first, col_last, value1, value2; false
+	* for an out-of-range index (only for xlsx files, libxl 5.2.0+).
+	*
+	* libxl only surfaces validations parsed from files written by Excel or another
+	* standards-compliant writer, not those added via addDataValidation() in the same session.
+	*
+	* @param int $index
+	* @return array|false
+	*/
+	public function dataValidation(int $index): array|false
+	{
+	}
+
+	/**
 	* Returns the 0-based first filled row in the sheet
 	*
 	* @return int|false
