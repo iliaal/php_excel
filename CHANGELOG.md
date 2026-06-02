@@ -46,8 +46,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     `setMin`, `setSel`), `ExcelTable::setStyle`, and
     `ExcelFilterColumn::setCustomFilter` operators.
   - Other `ExcelBook` int boundaries: `colorUnpack` (colour index — now also
-    upper-bounded), `addFormatFromStyle` (builtin-style id), and
-    `packDateValues` (year upper bound; month/day/time were already checked).
+    upper-bounded), `addFormatFromStyle` (builtin-style id), `packDateValues`
+    (year upper bound; month/day/time were already checked), and
+    `getCustomFormat` (id — had a `< 1` check but no upper bound).
+  - Named-range scope: `ExcelSheet::setNamedRange`, `delNamedRange`, and
+    `getNamedRange` passed `scope_id` to libxl unchecked, so a 64-bit value
+    could alias the `SCOPE_WORKBOOK (-1)` sentinel or a different sheet after
+    narrowing. Now bounded to `[SCOPE_UNDEFINED (-2), INT_MAX]`, preserving both
+    documented scope sentinels.
   - Add/rule/constructor APIs: `ExcelSheet::addDataValidation`/
     `addDataValidationDouble` (type/op/error-style), `addIgnoredError`,
     `addTable` (style), the `ExcelConditionalFormatting` rule methods

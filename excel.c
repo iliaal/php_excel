@@ -961,6 +961,16 @@ static zend_object *excel_object_new_table(zend_class_entry *class_type)
 		RETURN_FALSE; \
 	}
 
+/* Named-range scope crosses into a libxl int. SCOPE_UNDEFINED (-2) and
+ * SCOPE_WORKBOOK (-1) are valid sentinels; a real sheet scope is 0..INT_MAX.
+ * Reject anything outside [-2, INT_MAX] so a 64-bit value can't alias a
+ * sentinel or a different sheet after narrowing. */
+#define EXCEL_VALIDATE_SCOPE(arg) \
+	if ((arg) < SCOPE_UNDEFINED || (arg) > INT_MAX) { \
+		php_error_docref(NULL, E_WARNING, "Scope id out of range"); \
+		RETURN_FALSE; \
+	}
+
 /* Coordinate validation for sheet read/write paths. Limits depend on book
  * type: XLSX is 1048576 rows x 16384 cols; XLS is 65536 rows x 256 cols.
  * libxl write paths reject out-of-range writes themselves, but read paths
@@ -1585,7 +1595,7 @@ EXCEL_METHOD(Book, getCustomFormat)
 		RETURN_FALSE;
 	}
 
-	if (id < 1) {
+	if (id < 1 || id > INT_MAX) {
 		RETURN_FALSE;
 	}
 
@@ -4825,6 +4835,7 @@ EXCEL_METHOD(Sheet, setNamedRange)
 	}
 	EXCEL_VALIDATE_ROW_RANGE(row, to_row, object);
 	EXCEL_VALIDATE_COL_RANGE(col, to_col, object);
+	EXCEL_VALIDATE_SCOPE(scope_id)
 
 	SHEET_FROM_OBJECT(sheet, object);
 
@@ -4850,6 +4861,7 @@ EXCEL_METHOD(Sheet, delNamedRange)
 		RETURN_FALSE;
 	}
 	EXCEL_NUL_SAFE_STRING(val_zs)
+	EXCEL_VALIDATE_SCOPE(scope_id)
 
 	SHEET_FROM_OBJECT(sheet, object);
 
@@ -5035,6 +5047,7 @@ EXCEL_METHOD(Sheet, getNamedRange)
 
 	EXCEL_NON_EMPTY_STRING(name_zs)
 	EXCEL_NUL_SAFE_STRING(name_zs)
+	EXCEL_VALIDATE_SCOPE(scope_id)
 
 	SHEET_FROM_OBJECT(sheet, object);
 

@@ -36,6 +36,16 @@ echo "colorUnpack(4294967296):    "; var_dump(@$b->colorUnpack(4294967296));
 echo "colorUnpack(PHP_INT_MAX):   "; var_dump(@$b->colorUnpack(PHP_INT_MAX));
 echo "addFormatFromStyle(2**32):  "; var_dump(@$b->addFormatFromStyle(4294967296));
 echo "packDateValues(huge year):  "; var_dump(@$b->packDateValues(PHP_INT_MAX, 1, 1, 0, 0, 0));
+$cfid = $b->addCustomFormat("0.000");
+echo "getCustomFormat(2**32+id):  "; var_dump(@$b->getCustomFormat(4294967296 + $cfid));
+
+echo "--- named-range scope aliasing -> rejected, sentinels preserved ---\n";
+$s->setNamedRange("rng", 1, 3, 0, 2); // name, row, to_row, col, to_col
+echo "getNamedRange(huge scope):  "; var_dump(@$s->getNamedRange("rng", 4294967295));
+echo "setNamedRange(huge scope):  "; var_dump(@$s->setNamedRange("r2", 1, 3, 0, 2, 4294967296));
+echo "delNamedRange(huge scope):  "; var_dump(@$s->delNamedRange("rng", 4294967296));
+echo "getNamedRange(default):     "; var_dump(is_array(@$s->getNamedRange("rng")));
+echo "getNamedRange(SCOPE_WORKBOOK):"; var_dump(is_array(@$s->getNamedRange("rng", ExcelBook::SCOPE_WORKBOOK)));
 
 echo "--- ConditionalFormat / Table setters -> rejected ---\n";
 $cf = $b->addConditionalFormat();
@@ -88,6 +98,13 @@ colorUnpack(4294967296):    bool(false)
 colorUnpack(PHP_INT_MAX):   bool(false)
 addFormatFromStyle(2**32):  bool(false)
 packDateValues(huge year):  bool(false)
+getCustomFormat(2**32+id):  bool(false)
+--- named-range scope aliasing -> rejected, sentinels preserved ---
+getNamedRange(huge scope):  bool(false)
+setNamedRange(huge scope):  bool(false)
+delNamedRange(huge scope):  bool(false)
+getNamedRange(default):     bool(true)
+getNamedRange(SCOPE_WORKBOOK):bool(true)
 --- ConditionalFormat / Table setters -> rejected ---
 CF setBorder(PHP_INT_MAX):  bool(false)
 CF setBorderColor(-1):      bool(false)
