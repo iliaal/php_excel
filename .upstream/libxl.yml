@@ -1,8 +1,10 @@
 # /release-ext library-freshness gate. Schema: ~/.claude/commands/release-ext.md
-# detected from .release-config (--with-libxl-libdir=$HOME/ai/libxl-5.1.0/lib64)
+# detected from .release-config (--with-libxl-libdir=$HOME/ai/libxl-5.2.0/lib64)
 
-pinned: 5.1.0
+pinned: 5.2.0
 resolver: html
 url: https://www.libxl.com/download.html
-version_regex: "libxl-lin-([0-9]+\\.[0-9]+\\.[0-9]+)\\.tar\\.gz"
-note: "Closed-source commercial; download page is the only version source. Linked, not vendored."
+# Download filenames carry an optional 4th build component (e.g.
+# libxl-lin-5.2.0.1.tar.gz); capture only the X.Y.Z SDK version (LIBXL_VERSION).
+version_regex: "libxl-lin-([0-9]+\\.[0-9]+\\.[0-9]+)(?:\\.[0-9]+)?\\.tar\\.gz"
+note: "Closed-source commercial; download page is the only version source. Linked, not vendored. 5.2.0 added in this release; built+tested on PHP 8.3/8.4/8.5, guard-compiled against 5.1.0 and 4.6.0."
