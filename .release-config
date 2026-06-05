@@ -5,6 +5,8 @@ version_macro: PHP_EXCEL_VERSION
 version_file: excel.c
 repo: iliaal/php_excel
 build_matrix:
+  - PHP-8.1
+  - PHP-8.2
   - PHP-8.3
   - PHP-8.4
   - PHP-8.5

@@ -14,10 +14,10 @@ PHP_ARG_ENABLE(excel-dev, whether to enable developer build flags,
 
 if test "$PHP_EXCEL" != "no"; then
 
-  dnl Check minimum PHP version (8.3.0 = 80300)
+  dnl Check minimum PHP version (8.1.0 = 80100)
   PHP_VERSION_ID=$($PHP_CONFIG --vernum)
-  if test "$PHP_VERSION_ID" -lt "80300"; then
-    AC_MSG_ERROR([php_excel requires PHP 8.3.0 or later (found $PHP_VERSION_ID)])
+  if test "$PHP_VERSION_ID" -lt "80100"; then
+    AC_MSG_ERROR([php_excel requires PHP 8.1.0 or later (found $PHP_VERSION_ID)])
   fi
 
   SEARCH_PATH="/usr/local /usr"
