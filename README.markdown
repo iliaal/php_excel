@@ -9,7 +9,7 @@
 
 ![php_excel: 7-10× faster Excel I/O for PHP](images/php_excel-hero.jpg)
 
-Native C extension for reading and writing Excel files in PHP, powered by [LibXL](http://www.libxl.com/). 7-10× faster than PhpSpreadsheet with substantially lower memory pressure. Full XLS and XLSX support: rich text, conditional formatting, formulas, autofilters, form controls, embedded charts, and structured tables. PHP 8.3+ minimum. 2.0 ground-up modernization shipped April 2026.
+Native C extension for reading and writing Excel files in PHP, powered by [LibXL](http://www.libxl.com/). 7-10× faster than PhpSpreadsheet with substantially lower memory pressure. Full XLS and XLSX support: rich text, conditional formatting, formulas, autofilters, form controls, embedded charts, and structured tables. PHP 8.1+ minimum. 2.0 ground-up modernization shipped April 2026.
 
 ## 🚀 Install
 

@@ -68,6 +68,16 @@ PHP_INI_BEGIN()
 PHP_INI_END()
 
 /* {{{ OO init/structure stuff */
+/* default_object_handlers is a class-entry field added in PHP 8.3; on
+ * 8.1/8.2 each create_object handler sets intern->std.handlers directly,
+ * which is the correct per-object mechanism there. */
+#if PHP_VERSION_ID >= 80300
+#define EXCEL_SET_DEFAULT_OBJECT_HANDLERS(c_name) \
+	excel_ce_ ## c_name->default_object_handlers = &excel_object_handlers_ ## c_name
+#else
+#define EXCEL_SET_DEFAULT_OBJECT_HANDLERS(c_name) ((void)0)
+#endif
+
 /* Class registration uses the gen_stub-generated register_class_*()
  * functions from excel_arginfo.h; this macro layers on create_object,
  * NOT_SERIALIZABLE, and per-class object_handlers. */
@@ -77,7 +87,7 @@ PHP_INI_END()
 		excel_ce_ ## c_name->ce_flags |= ZEND_ACC_NOT_SERIALIZABLE; \
 		excel_ce_ ## c_name->create_object = excel_object_new_ ## c_name; \
 		memcpy(&excel_object_handlers_ ## c_name, zend_get_std_object_handlers(), sizeof(zend_object_handlers)); \
-		excel_ce_ ## c_name->default_object_handlers = &excel_object_handlers_ ## c_name; \
+		EXCEL_SET_DEFAULT_OBJECT_HANDLERS(c_name); \
 		excel_object_handlers_ ## c_name .offset = offsetof(excel_ ## c_name ## _object, std); \
 		excel_object_handlers_ ## c_name .free_obj = excel_ ## c_name ## _object_free_storage; \
 		excel_object_handlers_ ## c_name .clone_obj = clone; \
