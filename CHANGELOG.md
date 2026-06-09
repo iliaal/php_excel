@@ -10,6 +10,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - PHP 8.1 support (lowered the minimum from 8.3).
 
+### Fixed
+- excel.skip_empty was backed by an int global while OnUpdateLong stores a
+  zend_long; the setting read as 0 on big-endian 64-bit. The field is now
+  zend_long.
+
 ## [2.1.0] - 2026-06-01
 
 ### Added
