@@ -63,9 +63,9 @@ array(4) {
   ["row_start"]=>
   int(0)
   ["col_start"]=>
-  int(3)
-  ["row_end"]=>
   int(0)
+  ["row_end"]=>
+  int(3)
   ["col_end"]=>
   int(7)
 }

@@ -135,7 +135,7 @@ class ExcelSheet
     public function isHidden(): bool {}  // ZPP ""
     public function getTopLeftView(): array|false {}  // ZPP ""
     public function setTopLeftView(int $row, int $column): bool {}  // ZPP "ll"
-    public function rowColToAddr(int $row, int $column, bool $row_relative = false, bool $col_relative = false): string|false {}  // ZPP "ll|bb"
+    public function rowColToAddr(int $row, int $column, bool $row_relative = true, bool $col_relative = true): string|false {}  // ZPP "ll|bb"
     public function addrToRowCol(string $cell_reference): array|false {}  // ZPP "S"
     public function setPrintGridlines(bool $value): mixed {}  // ZPP "b"
     public function zoom(): int|false {}  // ZPP ""
@@ -168,8 +168,8 @@ class ExcelSheet
     public function setPrintHeaders(bool $value): mixed {}  // ZPP "b"
     public function name(): string|null|false {}  // ZPP ""
     public function setName(string $name): mixed {}  // ZPP "S"
-    public function setNamedRange(string $name, int $row, int $col, int $to_row, int $to_col, int $scope_id = 0): bool {}  // ZPP "Sllll|l"
-    public function delNamedRange(string $name, int $scope_id = 0): bool {}  // ZPP "S|l"
+    public function setNamedRange(string $name, int $row_first, int $row_last, int $col_first, int $col_last, int $scope_id = -1): bool {}  // ZPP "Sllll|l"
+    public function delNamedRange(string $name, int $scope_id = -1): bool {}  // ZPP "S|l"
     public function setPrintRepeatRows(int $row_start, int $row_end): bool {}  // ZPP "ll"
     public function setPrintRepeatCols(int $col_start, int $col_end): bool {}  // ZPP "ll"
     public function getGroupSummaryBelow(): bool {}  // ZPP ""
@@ -178,7 +178,7 @@ class ExcelSheet
     public function setGroupSummaryRight(bool $direction): bool {}  // ZPP "b"
     public function setPrintFit(int $wPages, int $hPages): bool {}  // ZPP "ll"
     public function getPrintFit(): array|false {}  // ZPP ""
-    public function getNamedRange(string $name, int $scope_id = 0): array|false {}  // ZPP "S|l"
+    public function getNamedRange(string $name, int $scope_id = -1): array|false {}  // ZPP "S|l"
     public function getIndexRange(int $index): array|false {}  // ZPP "l"
     public function namedRangeSize(): int|false {}  // ZPP ""
     public function getVerPageBreak(int $index): int|false {}  // ZPP "l"
@@ -206,11 +206,11 @@ class ExcelSheet
     public function colHidden(int $col): bool {}  // ZPP "l"
     public function setColHidden(int $col, bool $hidden): bool {}  // ZPP "lb"
     public function isLicensed(): bool {}  // ZPP ""
-    public function setAutoFitArea(int $row_start = 0, int $row_end = 0, int $col_start = 0, int $col_end = 0): bool {}  // ZPP "|llll"
+    public function setAutoFitArea(int $row_start = 0, int $row_end = -1, int $col_start = 0, int $col_end = -1): bool {}  // ZPP "|llll"
     public function printRepeatRows(): array|false {}  // ZPP ""
     public function printRepeatCols(): array|false {}  // ZPP ""
     public function printArea(): array|false {}  // ZPP ""
-    public function setProtect(bool $value, string $password = "", int $enhancedProtection = 0): bool {}  // ZPP "b|Sl"
+    public function setProtect(bool $value, string $password = "", int $enhancedProtection = -1): bool {}  // ZPP "b|Sl"
     public function table(int $index): array|false {}  // ZPP "l"
     public function setTabColor(int $color = 0): bool {}  // ZPP "|l"
     public function autoFilter(): ExcelAutoFilter|false {}  // ZPP ""
@@ -223,7 +223,7 @@ class ExcelSheet
     public function addDataValidationDouble(int $type, int $op, int $row_first, int $row_last, int $col_first, int $col_last, float $val_1, ?float $val_2 = null, bool $allow_blank = true, bool $hide_dropdown = false, bool $show_inputmessage = true, bool $show_errormessage = true, string $prompt_title = "", string $prompt = "", string $error_title = "", string $error = "", int $error_style = 1): bool {}  // FAST_ZPP llllllD|D!bbbbSSSSl
     public function removeDataValidations(): bool {}  // ZPP ""
 #if LIBXL_VERSION >= 0x05020000
-    public function dataValidationSize(): int {}  // ZPP ""
+    public function dataValidationSize(): int|false {}  // ZPP ""
     public function dataValidation(int $index): array|false {}  // ZPP "l"
 #endif
     public function firstFilledRow(): int|false {}  // ZPP ""
@@ -253,7 +253,7 @@ class ExcelSheet
     public function setColPx(int $colFirst, int $colLast, int $widthPx, ?ExcelFormat $format = null, bool $hidden = false): bool {}  // ZPP "lll|O!b"
     public function setRowPx(int $row, int $heightPx, ?ExcelFormat $format = null, bool $hidden = false): bool {}  // ZPP "ll|O!b"
     public function setBorder(int $rowFirst, int $rowLast, int $colFirst, int $colLast, int $borderStyle, int $borderColor): bool {}  // ZPP "llllll"
-    public function addTable(string $name, int $rowFirst, int $rowLast, int $colFirst, int $colLast, bool $hasHeaders = false, int $style = 0): ExcelTable|false {}  // ZPP "Sllll|bl"
+    public function addTable(string $name, int $rowFirst, int $rowLast, int $colFirst, int $colLast, bool $hasHeaders = true, int $style = 0): ExcelTable|false {}  // ZPP "Sllll|bl"
     public function getTableByName(string $name): ExcelTable|false {}  // ZPP "S"
     public function getTableByIndex(int $index): ExcelTable|false {}  // ZPP "l"
     public function applyFilter2(ExcelAutoFilter $autoFilter): bool {}  // ZPP "O"
@@ -340,9 +340,9 @@ class ExcelFilterColumn
     public function filter(int $index): string|false {}  // ZPP "l"
     public function addFilter(string $filterValue): bool {}  // ZPP "S"
     public function getTop10(): array|false {}  // ZPP ""
-    public function setTop10(float $value, bool $top = false, bool $percent = false): bool {}  // ZPP "dbb"
+    public function setTop10(float $value, bool $top = true, bool $percent = false): bool {}  // ZPP "d|bb"
     public function getCustomFilter(): array|false {}  // ZPP ""
-    public function setCustomFilter(int $operator_1, string $value_1, int $operator_2 = 0, string $value_2 = "", bool $andOp = false): bool {}  // ZPP "lS|lSb"
+    public function setCustomFilter(int $operator_1, string $value_1, int $operator_2 = -1, ?string $value_2 = null, bool $andOp = false): bool {}  // ZPP "lS|lS!b"
     public function clear(): bool {}  // ZPP ""
 }
 
@@ -464,24 +464,25 @@ class ExcelCoreProperties
     public function __construct(ExcelBook $book) {}  // ZPP "O"
     /* String getter/setter pairs from COREPROPERTIES_STRING_GETTER /
      * COREPROPERTIES_STRING_SETTER C macros (PE_RETURN_IS_STRING returns
-     * NULL when the libxl call returns null, hence ?string). */
-    public function title(): ?string {}
+     * NULL when the libxl call returns null; COREPROPERTIES_FROM_OBJECT
+     * returns false on an uninitialized handle or stale parent book). */
+    public function title(): string|null|false {}
     public function setTitle(string $value): bool {}
-    public function subject(): ?string {}
+    public function subject(): string|null|false {}
     public function setSubject(string $value): bool {}
-    public function creator(): ?string {}
+    public function creator(): string|null|false {}
     public function setCreator(string $value): bool {}
-    public function lastModifiedBy(): ?string {}
+    public function lastModifiedBy(): string|null|false {}
     public function setLastModifiedBy(string $value): bool {}
-    public function created(): ?string {}
+    public function created(): string|null|false {}
     public function setCreated(string $value): bool {}
-    public function modified(): ?string {}
+    public function modified(): string|null|false {}
     public function setModified(string $value): bool {}
-    public function tags(): ?string {}
+    public function tags(): string|null|false {}
     public function setTags(string $value): bool {}
-    public function categories(): ?string {}
+    public function categories(): string|null|false {}
     public function setCategories(string $value): bool {}
-    public function comments(): ?string {}
+    public function comments(): string|null|false {}
     public function setComments(string $value): bool {}
     public function createdAsDouble(): mixed {}
     public function setCreatedAsDouble(float $value): bool {}

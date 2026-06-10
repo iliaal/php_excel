@@ -23,6 +23,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Methods on wrappers derived from a subclassed Excel class (e.g. class
   MyBook extends ExcelBook) failed with a spurious "handle is stale" warning;
   the book resolver now walks the parent chain with instanceof checks.
+- ExcelSheet::printArea() returned rowLast as col_start and colFirst as
+  row_end; the libxl call passed the output pointers in the wrong order.
+- ExcelSheet::setNamedRange() declared its parameters as (row, col, to_row,
+  to_col) while the implementation reads (row_first, row_last, col_first,
+  col_last); the signature now matches, fixing named-argument callers.
+- ExcelFilterColumn::setTop10() required all three arguments despite the
+  declared defaults; $top and $percent are now optional ($top defaults true).
+- ExcelFilterColumn::setCustomFilter() now accepts null for $value_2 and
+  declares the -1/null no-second-criterion defaults; passing the previously
+  documented defaults (0, "") warned and failed.
+- ExcelFont::name() crashed on a null name from libxl; it now returns false.
+- Declared defaults corrected to match behavior: addTable() $hasHeaders
+  (true), rowColToAddr() relatives (true), named-range $scope_id (-1,
+  workbook scope), setProtect() $enhancedProtection (-1, libxl default),
+  setAutoFitArea() ends (-1, no limit).
+- Return types corrected for the stale-book error path:
+  dataValidationSize() is int|false, the nine ExcelCoreProperties string
+  getters are string|null|false.
+- The module now unregisters its INI entries at shutdown; previously they
+  stayed registered after a dl-unload and dangled.
 
 ## [2.1.0] - 2026-06-01
 

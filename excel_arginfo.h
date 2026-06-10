@@ -1,5 +1,5 @@
 /* This is a generated file, edit excel.stub.php instead.
- * Stub hash: 4ced8acbfee45d08b53d424f414299e02dac5e54 */
+ * Stub hash: d91e87df7471590cc01c96b533fb7b82b93ed4ec */
 
 ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_ExcelBook_requiresKey, 0, 0, _IS_BOOL, 0)
 ZEND_END_ARG_INFO()
@@ -470,8 +470,8 @@ ZEND_END_ARG_INFO()
 ZEND_BEGIN_ARG_WITH_RETURN_TYPE_MASK_EX(arginfo_class_ExcelSheet_rowColToAddr, 0, 2, MAY_BE_STRING|MAY_BE_FALSE)
 	ZEND_ARG_TYPE_INFO(0, row, IS_LONG, 0)
 	ZEND_ARG_TYPE_INFO(0, column, IS_LONG, 0)
-	ZEND_ARG_TYPE_INFO_WITH_DEFAULT_VALUE(0, row_relative, _IS_BOOL, 0, "false")
-	ZEND_ARG_TYPE_INFO_WITH_DEFAULT_VALUE(0, col_relative, _IS_BOOL, 0, "false")
+	ZEND_ARG_TYPE_INFO_WITH_DEFAULT_VALUE(0, row_relative, _IS_BOOL, 0, "true")
+	ZEND_ARG_TYPE_INFO_WITH_DEFAULT_VALUE(0, col_relative, _IS_BOOL, 0, "true")
 ZEND_END_ARG_INFO()
 
 ZEND_BEGIN_ARG_WITH_RETURN_TYPE_MASK_EX(arginfo_class_ExcelSheet_addrToRowCol, 0, 1, MAY_BE_ARRAY|MAY_BE_FALSE)
@@ -556,16 +556,16 @@ ZEND_END_ARG_INFO()
 
 ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_ExcelSheet_setNamedRange, 0, 5, _IS_BOOL, 0)
 	ZEND_ARG_TYPE_INFO(0, name, IS_STRING, 0)
-	ZEND_ARG_TYPE_INFO(0, row, IS_LONG, 0)
-	ZEND_ARG_TYPE_INFO(0, col, IS_LONG, 0)
-	ZEND_ARG_TYPE_INFO(0, to_row, IS_LONG, 0)
-	ZEND_ARG_TYPE_INFO(0, to_col, IS_LONG, 0)
-	ZEND_ARG_TYPE_INFO_WITH_DEFAULT_VALUE(0, scope_id, IS_LONG, 0, "0")
+	ZEND_ARG_TYPE_INFO(0, row_first, IS_LONG, 0)
+	ZEND_ARG_TYPE_INFO(0, row_last, IS_LONG, 0)
+	ZEND_ARG_TYPE_INFO(0, col_first, IS_LONG, 0)
+	ZEND_ARG_TYPE_INFO(0, col_last, IS_LONG, 0)
+	ZEND_ARG_TYPE_INFO_WITH_DEFAULT_VALUE(0, scope_id, IS_LONG, 0, "-1")
 ZEND_END_ARG_INFO()
 
 ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_ExcelSheet_delNamedRange, 0, 1, _IS_BOOL, 0)
 	ZEND_ARG_TYPE_INFO(0, name, IS_STRING, 0)
-	ZEND_ARG_TYPE_INFO_WITH_DEFAULT_VALUE(0, scope_id, IS_LONG, 0, "0")
+	ZEND_ARG_TYPE_INFO_WITH_DEFAULT_VALUE(0, scope_id, IS_LONG, 0, "-1")
 ZEND_END_ARG_INFO()
 
 ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_ExcelSheet_setPrintRepeatRows, 0, 2, _IS_BOOL, 0)
@@ -597,7 +597,7 @@ ZEND_END_ARG_INFO()
 
 ZEND_BEGIN_ARG_WITH_RETURN_TYPE_MASK_EX(arginfo_class_ExcelSheet_getNamedRange, 0, 1, MAY_BE_ARRAY|MAY_BE_FALSE)
 	ZEND_ARG_TYPE_INFO(0, name, IS_STRING, 0)
-	ZEND_ARG_TYPE_INFO_WITH_DEFAULT_VALUE(0, scope_id, IS_LONG, 0, "0")
+	ZEND_ARG_TYPE_INFO_WITH_DEFAULT_VALUE(0, scope_id, IS_LONG, 0, "-1")
 ZEND_END_ARG_INFO()
 
 #define arginfo_class_ExcelSheet_getIndexRange arginfo_class_ExcelBook_getPicture
@@ -683,9 +683,9 @@ ZEND_END_ARG_INFO()
 
 ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_ExcelSheet_setAutoFitArea, 0, 0, _IS_BOOL, 0)
 	ZEND_ARG_TYPE_INFO_WITH_DEFAULT_VALUE(0, row_start, IS_LONG, 0, "0")
-	ZEND_ARG_TYPE_INFO_WITH_DEFAULT_VALUE(0, row_end, IS_LONG, 0, "0")
+	ZEND_ARG_TYPE_INFO_WITH_DEFAULT_VALUE(0, row_end, IS_LONG, 0, "-1")
 	ZEND_ARG_TYPE_INFO_WITH_DEFAULT_VALUE(0, col_start, IS_LONG, 0, "0")
-	ZEND_ARG_TYPE_INFO_WITH_DEFAULT_VALUE(0, col_end, IS_LONG, 0, "0")
+	ZEND_ARG_TYPE_INFO_WITH_DEFAULT_VALUE(0, col_end, IS_LONG, 0, "-1")
 ZEND_END_ARG_INFO()
 
 #define arginfo_class_ExcelSheet_printRepeatRows arginfo_class_ExcelBook_getAllFormats
@@ -697,7 +697,7 @@ ZEND_END_ARG_INFO()
 ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_ExcelSheet_setProtect, 0, 1, _IS_BOOL, 0)
 	ZEND_ARG_TYPE_INFO(0, value, _IS_BOOL, 0)
 	ZEND_ARG_TYPE_INFO_WITH_DEFAULT_VALUE(0, password, IS_STRING, 0, "\"\"")
-	ZEND_ARG_TYPE_INFO_WITH_DEFAULT_VALUE(0, enhancedProtection, IS_LONG, 0, "0")
+	ZEND_ARG_TYPE_INFO_WITH_DEFAULT_VALUE(0, enhancedProtection, IS_LONG, 0, "-1")
 ZEND_END_ARG_INFO()
 
 #define arginfo_class_ExcelSheet_table arginfo_class_ExcelBook_getPicture
@@ -776,7 +776,7 @@ ZEND_END_ARG_INFO()
 #define arginfo_class_ExcelSheet_removeDataValidations arginfo_class_ExcelBook_requiresKey
 
 #if LIBXL_VERSION >= 0x05020000
-ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_ExcelSheet_dataValidationSize, 0, 0, IS_LONG, 0)
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_MASK_EX(arginfo_class_ExcelSheet_dataValidationSize, 0, 0, MAY_BE_LONG|MAY_BE_FALSE)
 ZEND_END_ARG_INFO()
 
 ZEND_BEGIN_ARG_WITH_RETURN_TYPE_MASK_EX(arginfo_class_ExcelSheet_dataValidation, 0, 1, MAY_BE_ARRAY|MAY_BE_FALSE)
@@ -892,7 +892,7 @@ ZEND_BEGIN_ARG_WITH_RETURN_OBJ_TYPE_MASK_EX(arginfo_class_ExcelSheet_addTable, 0
 	ZEND_ARG_TYPE_INFO(0, rowLast, IS_LONG, 0)
 	ZEND_ARG_TYPE_INFO(0, colFirst, IS_LONG, 0)
 	ZEND_ARG_TYPE_INFO(0, colLast, IS_LONG, 0)
-	ZEND_ARG_TYPE_INFO_WITH_DEFAULT_VALUE(0, hasHeaders, _IS_BOOL, 0, "false")
+	ZEND_ARG_TYPE_INFO_WITH_DEFAULT_VALUE(0, hasHeaders, _IS_BOOL, 0, "true")
 	ZEND_ARG_TYPE_INFO_WITH_DEFAULT_VALUE(0, style, IS_LONG, 0, "0")
 ZEND_END_ARG_INFO()
 
@@ -1106,7 +1106,7 @@ ZEND_END_ARG_INFO()
 
 ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_ExcelFilterColumn_setTop10, 0, 1, _IS_BOOL, 0)
 	ZEND_ARG_TYPE_INFO(0, value, IS_DOUBLE, 0)
-	ZEND_ARG_TYPE_INFO_WITH_DEFAULT_VALUE(0, top, _IS_BOOL, 0, "false")
+	ZEND_ARG_TYPE_INFO_WITH_DEFAULT_VALUE(0, top, _IS_BOOL, 0, "true")
 	ZEND_ARG_TYPE_INFO_WITH_DEFAULT_VALUE(0, percent, _IS_BOOL, 0, "false")
 ZEND_END_ARG_INFO()
 
@@ -1115,8 +1115,8 @@ ZEND_END_ARG_INFO()
 ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_ExcelFilterColumn_setCustomFilter, 0, 2, _IS_BOOL, 0)
 	ZEND_ARG_TYPE_INFO(0, operator_1, IS_LONG, 0)
 	ZEND_ARG_TYPE_INFO(0, value_1, IS_STRING, 0)
-	ZEND_ARG_TYPE_INFO_WITH_DEFAULT_VALUE(0, operator_2, IS_LONG, 0, "0")
-	ZEND_ARG_TYPE_INFO_WITH_DEFAULT_VALUE(0, value_2, IS_STRING, 0, "\"\"")
+	ZEND_ARG_TYPE_INFO_WITH_DEFAULT_VALUE(0, operator_2, IS_LONG, 0, "-1")
+	ZEND_ARG_TYPE_INFO_WITH_DEFAULT_VALUE(0, value_2, IS_STRING, 1, "null")
 	ZEND_ARG_TYPE_INFO_WITH_DEFAULT_VALUE(0, andOp, _IS_BOOL, 0, "false")
 ZEND_END_ARG_INFO()
 
@@ -1416,40 +1416,39 @@ ZEND_END_ARG_INFO()
 
 #define arginfo_class_ExcelCoreProperties___construct arginfo_class_ExcelFormat___construct
 
-ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_ExcelCoreProperties_title, 0, 0, IS_STRING, 1)
-ZEND_END_ARG_INFO()
+#define arginfo_class_ExcelCoreProperties_title arginfo_class_ExcelSheet_header
 
 #define arginfo_class_ExcelCoreProperties_setTitle arginfo_class_ExcelFormControl_setFmlaGroup
 
-#define arginfo_class_ExcelCoreProperties_subject arginfo_class_ExcelCoreProperties_title
+#define arginfo_class_ExcelCoreProperties_subject arginfo_class_ExcelSheet_header
 
 #define arginfo_class_ExcelCoreProperties_setSubject arginfo_class_ExcelFormControl_setFmlaGroup
 
-#define arginfo_class_ExcelCoreProperties_creator arginfo_class_ExcelCoreProperties_title
+#define arginfo_class_ExcelCoreProperties_creator arginfo_class_ExcelSheet_header
 
 #define arginfo_class_ExcelCoreProperties_setCreator arginfo_class_ExcelFormControl_setFmlaGroup
 
-#define arginfo_class_ExcelCoreProperties_lastModifiedBy arginfo_class_ExcelCoreProperties_title
+#define arginfo_class_ExcelCoreProperties_lastModifiedBy arginfo_class_ExcelSheet_header
 
 #define arginfo_class_ExcelCoreProperties_setLastModifiedBy arginfo_class_ExcelFormControl_setFmlaGroup
 
-#define arginfo_class_ExcelCoreProperties_created arginfo_class_ExcelCoreProperties_title
+#define arginfo_class_ExcelCoreProperties_created arginfo_class_ExcelSheet_header
 
 #define arginfo_class_ExcelCoreProperties_setCreated arginfo_class_ExcelFormControl_setFmlaGroup
 
-#define arginfo_class_ExcelCoreProperties_modified arginfo_class_ExcelCoreProperties_title
+#define arginfo_class_ExcelCoreProperties_modified arginfo_class_ExcelSheet_header
 
 #define arginfo_class_ExcelCoreProperties_setModified arginfo_class_ExcelFormControl_setFmlaGroup
 
-#define arginfo_class_ExcelCoreProperties_tags arginfo_class_ExcelCoreProperties_title
+#define arginfo_class_ExcelCoreProperties_tags arginfo_class_ExcelSheet_header
 
 #define arginfo_class_ExcelCoreProperties_setTags arginfo_class_ExcelFormControl_setFmlaGroup
 
-#define arginfo_class_ExcelCoreProperties_categories arginfo_class_ExcelCoreProperties_title
+#define arginfo_class_ExcelCoreProperties_categories arginfo_class_ExcelSheet_header
 
 #define arginfo_class_ExcelCoreProperties_setCategories arginfo_class_ExcelFormControl_setFmlaGroup
 
-#define arginfo_class_ExcelCoreProperties_comments arginfo_class_ExcelCoreProperties_title
+#define arginfo_class_ExcelCoreProperties_comments arginfo_class_ExcelSheet_header
 
 #define arginfo_class_ExcelCoreProperties_setComments arginfo_class_ExcelFormControl_setFmlaGroup
 

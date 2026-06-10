@@ -2703,7 +2703,13 @@ EXCEL_METHOD(Font, name)
 		xlFontSetName(font, ZSTR_VAL(name_zs));
 	}
 
-	RETURN_STRING((char *)xlFontName(font));
+	{
+		const char *fn = xlFontName(font);
+		if (!fn) {
+			RETURN_FALSE;
+		}
+		RETURN_STRING((char *)fn);
+	}
 }
 /* }}} */
 
@@ -4816,7 +4822,7 @@ EXCEL_METHOD(Sheet, setName)
 }
 /* }}} */
 
-/* {{{ proto bool ExcelSheet::setNamedRange(string name, int row, int col, int to_row, int to_col [, int scope_id])
+/* {{{ proto bool ExcelSheet::setNamedRange(string name, int row_first, int row_last, int col_first, int col_last [, int scope_id])
 	Create a named range */
 EXCEL_METHOD(Sheet, setNamedRange)
 {
@@ -5895,7 +5901,7 @@ EXCEL_METHOD(Sheet, printArea)
 
 	SHEET_FROM_OBJECT(sheet, object);
 
-	if (!xlSheetPrintArea(sheet, &rowFirst, &colFirst, &rowLast, &colLast)) {
+	if (!xlSheetPrintArea(sheet, &rowFirst, &rowLast, &colFirst, &colLast)) {
 		RETURN_FALSE;
 	}
 
@@ -6502,7 +6508,7 @@ EXCEL_METHOD(FilterColumn, setTop10)
 	double value;
 	bool top = 1, percent = 0;
 
-	if (zend_parse_parameters(ZEND_NUM_ARGS(), "dbb", &value, &top, &percent) == FAILURE) {
+	if (zend_parse_parameters(ZEND_NUM_ARGS(), "d|bb", &value, &top, &percent) == FAILURE) {
 		RETURN_FALSE;
 	}
 
@@ -6548,7 +6554,7 @@ EXCEL_METHOD(FilterColumn, setCustomFilter)
 	zend_string *v1 = NULL, *v2 = NULL;
 	bool andOp = 0;
 
-	if (zend_parse_parameters(ZEND_NUM_ARGS(), "lS|lSb", &op1, &v1, &op2, &v2, &andOp) == FAILURE) {
+	if (zend_parse_parameters(ZEND_NUM_ARGS(), "lS|lS!b", &op1, &v1, &op2, &v2, &andOp) == FAILURE) {
 		RETURN_FALSE;
 	}
 
@@ -9765,6 +9771,15 @@ PHP_MINIT_FUNCTION(excel)
 }
 /* }}} */
 
+/* {{{ PHP_MSHUTDOWN_FUNCTION
+ */
+PHP_MSHUTDOWN_FUNCTION(excel)
+{
+	UNREGISTER_INI_ENTRIES();
+	return SUCCESS;
+}
+/* }}} */
+
 /* {{{ PHP_MINFO_FUNCTION
  */
 PHP_MINFO_FUNCTION(excel)
@@ -9802,7 +9817,7 @@ zend_module_entry excel_module_entry = {
 	"excel",
 	excel_functions,
 	PHP_MINIT(excel),
-	NULL,
+	PHP_MSHUTDOWN(excel),
 	NULL,
 	NULL,
 	PHP_MINFO(excel),
