@@ -48,6 +48,7 @@
 #define PHP_EXCEL_DATE 1
 #define PHP_EXCEL_FORMULA 2
 #define PHP_EXCEL_NUMERIC_STRING 3
+#define PHP_EXCEL_TEXT 4
 
 #define PHP_EXCEL_VERSION "2.1.0"
 
@@ -3558,10 +3559,18 @@ bool php_excel_write_cell(SheetHandle sheet, excel_book_object *book_obj, int ro
 				php_error_docref(NULL, E_WARNING, "Cell string must not contain NUL bytes");
 				return 0;
 			}
+			/* AS_TEXT writes the value verbatim: no quote-prefix stripping, no
+			 * formula promotion, no numeric coercion, no skip_empty. This is
+			 * the safe dtype for untrusted input (formula injection). */
+			if (dtype == PHP_EXCEL_TEXT) {
+				return xlSheetWriteStr(sheet, row, col, (const char*) ZSTR_VAL(data_zs), format);
+			}
 			if (Z_STRLEN_P(data) > 0 && '\'' == Z_STRVAL_P(data)[0]) {
 				return xlSheetWriteStr(sheet, row, col, (const char*) ZSTR_VAL(data_zs) + 1, format);
 			}
-			if (Z_STRLEN_P(data) > 0 && '=' == Z_STRVAL_P(data)[0]) {
+			/* Implicit '=' formula promotion applies only when no dtype was
+			 * passed; an explicit dtype is honored as given. */
+			if (dtype == -1 && Z_STRLEN_P(data) > 0 && '=' == Z_STRVAL_P(data)[0]) {
 				dtype = PHP_EXCEL_FORMULA;
 			}
 			if (dtype == PHP_EXCEL_FORMULA) {
@@ -9355,6 +9364,7 @@ PHP_MINIT_FUNCTION(excel)
 
 	REGISTER_EXCEL_CLASS_CONST_LONG(format, "AS_DATE", PHP_EXCEL_DATE);
 	REGISTER_EXCEL_CLASS_CONST_LONG(format, "AS_FORMULA", PHP_EXCEL_FORMULA);
+	REGISTER_EXCEL_CLASS_CONST_LONG(format, "AS_TEXT", PHP_EXCEL_TEXT);
 	REGISTER_EXCEL_CLASS_CONST_LONG(format, "AS_NUMERIC_STRING", PHP_EXCEL_NUMERIC_STRING);
 
 	REGISTER_EXCEL_CLASS_CONST_LONG(format, "COLOR_BLACK", COLOR_BLACK);

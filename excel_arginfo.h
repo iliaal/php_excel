@@ -1,5 +1,5 @@
 /* This is a generated file, edit excel.stub.php instead.
- * Stub hash: d91e87df7471590cc01c96b533fb7b82b93ed4ec */
+ * Stub hash: 683951affc69785393ed57fed2e5427875311c4a */
 
 ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_ExcelBook_requiresKey, 0, 0, _IS_BOOL, 0)
 ZEND_END_ARG_INFO()
@@ -289,7 +289,7 @@ ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_ExcelSheet_write, 0, 3, _I
 	ZEND_ARG_TYPE_INFO(0, column, IS_LONG, 0)
 	ZEND_ARG_TYPE_INFO(0, data, IS_MIXED, 0)
 	ZEND_ARG_OBJ_INFO_WITH_DEFAULT_VALUE(0, format, ExcelFormat, 1, "null")
-	ZEND_ARG_TYPE_INFO_WITH_DEFAULT_VALUE(0, datatype, IS_LONG, 0, "0")
+	ZEND_ARG_TYPE_INFO_WITH_DEFAULT_VALUE(0, datatype, IS_LONG, 0, "-1")
 ZEND_END_ARG_INFO()
 
 ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_ExcelSheet_writeRow, 0, 2, _IS_BOOL, 0)
@@ -304,7 +304,7 @@ ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_ExcelSheet_writeCol, 0, 2,
 	ZEND_ARG_TYPE_INFO(0, data, IS_ARRAY, 0)
 	ZEND_ARG_TYPE_INFO_WITH_DEFAULT_VALUE(0, start_row, IS_LONG, 0, "0")
 	ZEND_ARG_OBJ_INFO_WITH_DEFAULT_VALUE(0, format, ExcelFormat, 1, "null")
-	ZEND_ARG_TYPE_INFO_WITH_DEFAULT_VALUE(0, data_type, IS_LONG, 0, "0")
+	ZEND_ARG_TYPE_INFO_WITH_DEFAULT_VALUE(0, data_type, IS_LONG, 0, "-1")
 ZEND_END_ARG_INFO()
 
 ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_ExcelSheet_isFormula, 0, 2, _IS_BOOL, 0)

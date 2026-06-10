@@ -9,6 +9,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - PHP 8.1 support (lowered the minimum from 8.3).
+- ExcelFormat::AS_TEXT data type for ExcelSheet::write()/writeCol(): writes
+  the string verbatim with no leading-quote stripping, no implicit formula
+  promotion, and no numeric coercion. Use it when writing untrusted input to
+  prevent formula injection.
+
+### Changed
+- The implicit "leading '=' becomes a formula" promotion now applies only
+  when no data type argument is passed; an explicitly passed type (e.g.
+  AS_NUMERIC_STRING) is honored instead of being overridden.
 
 ### Fixed
 - excel.skip_empty was backed by an int global while OnUpdateLong stores a
