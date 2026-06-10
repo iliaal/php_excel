@@ -1,5 +1,5 @@
 /* This is a generated file, edit excel.stub.php instead.
- * Stub hash: 2915134b4096207716e894d08f3ad81b76be6f70 */
+ * Stub hash: 4ced8acbfee45d08b53d424f414299e02dac5e54 */
 
 ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_ExcelBook_requiresKey, 0, 0, _IS_BOOL, 0)
 ZEND_END_ARG_INFO()
@@ -1059,8 +1059,8 @@ ZEND_END_ARG_INFO()
 
 ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_ExcelAutoFilter_setRef, 0, 4, IS_MIXED, 0)
 	ZEND_ARG_TYPE_INFO(0, row_first, IS_LONG, 0)
-	ZEND_ARG_TYPE_INFO(0, col_first, IS_LONG, 0)
 	ZEND_ARG_TYPE_INFO(0, row_last, IS_LONG, 0)
+	ZEND_ARG_TYPE_INFO(0, col_first, IS_LONG, 0)
 	ZEND_ARG_TYPE_INFO(0, col_last, IS_LONG, 0)
 ZEND_END_ARG_INFO()
 

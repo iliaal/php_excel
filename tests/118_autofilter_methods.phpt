@@ -21,7 +21,9 @@ var_dump($af instanceof ExcelAutoFilter);
 $af->setRef(1, 3, 0, 1);
 $ref = $af->getRef();
 var_dump($ref["row_first"]);
+var_dump($ref["row_last"]);
 var_dump($ref["col_first"]);
+var_dump($ref["col_last"]);
 
 // setSort / getSort
 var_dump($af->setSort(0, false));
@@ -48,6 +50,8 @@ echo "OK\n";
 bool(true)
 int(1)
 int(3)
+int(0)
+int(1)
 bool(true)
 int(0)
 int(0)

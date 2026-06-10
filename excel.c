@@ -429,29 +429,29 @@ static inline excel_book_object *php_excel_resolve_book_obj(zval *parent_zv) {
 	int hops = 0;
 	while (parent_zv && Z_TYPE_P(parent_zv) == IS_OBJECT && hops++ < 8) {
 		zend_class_entry *ce = Z_OBJCE_P(parent_zv);
-		if (ce == excel_ce_book) {
+		if (instanceof_function(ce, excel_ce_book)) {
 			return php_excel_book_object_fetch_object(Z_OBJ_P(parent_zv));
-		} else if (ce == excel_ce_sheet) {
+		} else if (instanceof_function(ce, excel_ce_sheet)) {
 			parent_zv = &php_excel_sheet_object_fetch_object(Z_OBJ_P(parent_zv))->parent;
-		} else if (ce == excel_ce_format) {
+		} else if (instanceof_function(ce, excel_ce_format)) {
 			parent_zv = &php_excel_format_object_fetch_object(Z_OBJ_P(parent_zv))->parent;
-		} else if (ce == excel_ce_font) {
+		} else if (instanceof_function(ce, excel_ce_font)) {
 			parent_zv = &php_excel_font_object_fetch_object(Z_OBJ_P(parent_zv))->parent;
-		} else if (ce == excel_ce_autofilter) {
+		} else if (instanceof_function(ce, excel_ce_autofilter)) {
 			parent_zv = &php_excel_autofilter_object_fetch_object(Z_OBJ_P(parent_zv))->parent;
-		} else if (ce == excel_ce_filtercolumn) {
+		} else if (instanceof_function(ce, excel_ce_filtercolumn)) {
 			parent_zv = &php_excel_filtercolumn_object_fetch_object(Z_OBJ_P(parent_zv))->parent;
-		} else if (ce == excel_ce_richstring) {
+		} else if (instanceof_function(ce, excel_ce_richstring)) {
 			parent_zv = &php_excel_richstring_object_fetch_object(Z_OBJ_P(parent_zv))->parent;
-		} else if (ce == excel_ce_formcontrol) {
+		} else if (instanceof_function(ce, excel_ce_formcontrol)) {
 			parent_zv = &php_excel_formcontrol_object_fetch_object(Z_OBJ_P(parent_zv))->parent;
-		} else if (ce == excel_ce_conditionalformat) {
+		} else if (instanceof_function(ce, excel_ce_conditionalformat)) {
 			parent_zv = &php_excel_conditionalformat_object_fetch_object(Z_OBJ_P(parent_zv))->parent;
-		} else if (ce == excel_ce_conditionalformatting) {
+		} else if (instanceof_function(ce, excel_ce_conditionalformatting)) {
 			parent_zv = &php_excel_conditionalformatting_object_fetch_object(Z_OBJ_P(parent_zv))->parent;
-		} else if (ce == excel_ce_coreproperties) {
+		} else if (instanceof_function(ce, excel_ce_coreproperties)) {
 			parent_zv = &php_excel_coreproperties_object_fetch_object(Z_OBJ_P(parent_zv))->parent;
-		} else if (ce == excel_ce_table) {
+		} else if (instanceof_function(ce, excel_ce_table)) {
 			parent_zv = &php_excel_table_object_fetch_object(Z_OBJ_P(parent_zv))->parent;
 		} else {
 			return NULL;
@@ -6165,7 +6165,7 @@ EXCEL_METHOD(AutoFilter, getRef)
 
 	AUTOFILTER_FROM_OBJECT(autofilter, object);
 
-	if (!xlAutoFilterGetRef(autofilter, &rowFirst, &colFirst, &rowLast, &colLast)) {
+	if (!xlAutoFilterGetRef(autofilter, &rowFirst, &rowLast, &colFirst, &colLast)) {
 		RETURN_FALSE;
 	}
 

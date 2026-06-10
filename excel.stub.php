@@ -321,7 +321,7 @@ class ExcelAutoFilter
 {
     public function __construct(ExcelSheet $sheet) {}  // ZPP "O"
     public function getRef(): array|false {}  // ZPP ""
-    public function setRef(int $row_first, int $col_first, int $row_last, int $col_last): mixed {}  // ZPP "llll"
+    public function setRef(int $row_first, int $row_last, int $col_first, int $col_last): mixed {}  // ZPP "llll"
     public function column(int $colId): ExcelFilterColumn|false {}  // ZPP "l"
     public function columnSize(): int|false {}  // ZPP ""
     public function columnByIndex(int $index): ExcelFilterColumn|false {}  // ZPP "l"

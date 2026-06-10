@@ -14,6 +14,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - excel.skip_empty was backed by an int global while OnUpdateLong stores a
   zend_long; the setting read as 0 on big-endian 64-bit. The field is now
   zend_long.
+- ExcelAutoFilter::getRef() returned rowLast as col_first and colFirst as
+  row_last; the libxl call passed the output pointers in the wrong order.
+- ExcelAutoFilter::setRef() declared its parameters as (row_first, col_first,
+  row_last, col_last) while the implementation reads (row_first, row_last,
+  col_first, col_last); named-argument callers got rows and columns crossed.
+  The signature now matches the implementation.
+- Methods on wrappers derived from a subclassed Excel class (e.g. class
+  MyBook extends ExcelBook) failed with a spurious "handle is stale" warning;
+  the book resolver now walks the parent chain with instanceof checks.
 
 ## [2.1.0] - 2026-06-01
 
