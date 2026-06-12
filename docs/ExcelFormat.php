@@ -17,6 +17,7 @@ class ExcelFormat
 	const AS_DATE = 1;
 	const AS_FORMULA = 2;
 	const AS_NUMERIC_STRING = 3;
+	const AS_TEXT = 4;
 
 	const COLOR_BLACK = 8;
 	const COLOR_WHITE = 9;

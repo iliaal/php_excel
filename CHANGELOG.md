@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.2.0] - 2026-06-11
+
 ### Added
 - PHP 8.1 support (lowered the minimum from 8.3).
 - ExcelFormat::AS_TEXT data type for ExcelSheet::write()/writeCol(): writes
@@ -658,7 +660,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.8] - 2010-08-01
 	* Initial Release
 
-[Unreleased]: https://github.com/iliaal/php_excel/compare/2.1.0...HEAD
+[Unreleased]: https://github.com/iliaal/php_excel/compare/2.2.0...HEAD
+[2.2.0]: https://github.com/iliaal/php_excel/releases/tag/2.2.0
 [2.1.0]: https://github.com/iliaal/php_excel/releases/tag/2.1.0
 [2.0.1]: https://github.com/iliaal/php_excel/releases/tag/2.0.1
 [2.0.0]: https://github.com/iliaal/php_excel/releases/tag/v2.0.0
