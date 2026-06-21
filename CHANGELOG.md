@@ -8,16 +8,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Fixed
-- ExcelSheet::read() on an error-type cell left the optional format out-param
-  pointing at a NULL libxl handle; the returned ExcelFormat warned "The format
-  wasn't initialized" on every use. Error cells now populate the format like
-  every other cell type.
-- ExcelBook::packDate() rejected the Unix epoch (timestamp 0, a valid date).
-  It now rejects only negative timestamps.
-- ExcelBook::loadFile()/save() on a plain path denied by open_basedir emitted
-  the restriction warning twice (once from the fast-path check, once from the
-  stream-wrapper fallback). The denied plain path now fails after a single
-  warning.
+- ExcelSheet::read() now sets the format out-param for error-type cells; it previously returned an uninitialized ExcelFormat that warned on use.
+- ExcelBook::packDate() now accepts the Unix epoch; timestamp 0 was wrongly rejected as invalid.
+- ExcelBook::loadFile()/save() no longer emit a duplicate open_basedir warning when a plain path is denied.
 
 ## [2.2.0] - 2026-06-11
 
