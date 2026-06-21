@@ -1119,12 +1119,16 @@ EXCEL_METHOD(Book, loadFile)
 
 	BOOK_FROM_OBJECT(book, object);
 
-	/* For plain filesystem paths (no stream wrapper, passes open_basedir),
-	 * hand the path straight to libxl so we don't double-buffer the workbook
-	 * in PHP memory. Stream paths (phar://, php://, ...) still go through
-	 * the wrapper machinery. */
-	if (!strstr(ZSTR_VAL(filename_zs), "://")
-	    && !php_check_open_basedir(ZSTR_VAL(filename_zs))) {
+	/* For plain filesystem paths (no stream wrapper), hand the path straight
+	 * to libxl so we don't double-buffer the workbook in PHP memory. Stream
+	 * paths (phar://, php://, ...) still go through the wrapper machinery.
+	 * php_check_open_basedir emits its own warning on denial, so fail here
+	 * rather than falling through to the stream wrapper, which would re-check
+	 * open_basedir and warn a second time. */
+	if (!strstr(ZSTR_VAL(filename_zs), "://")) {
+		if (php_check_open_basedir(ZSTR_VAL(filename_zs))) {
+			RETURN_FALSE;
+		}
 		php_excel_book_reset_state(object);
 		RETURN_BOOL(xlBookLoad(book, ZSTR_VAL(filename_zs)));
 	}
@@ -1175,10 +1179,14 @@ EXCEL_METHOD(Book, save)
 
 	BOOK_FROM_OBJECT(book, object);
 
-	/* Plain filesystem path: hand straight to libxl, no in-memory copy. */
+	/* Plain filesystem path: hand straight to libxl, no in-memory copy.
+	 * php_check_open_basedir warns on denial, so fail here rather than
+	 * falling through to the stream wrapper and warning a second time. */
 	if (filename_zs && ZSTR_LEN(filename_zs) > 0
-	    && !strstr(ZSTR_VAL(filename_zs), "://")
-	    && !php_check_open_basedir(ZSTR_VAL(filename_zs))) {
+	    && !strstr(ZSTR_VAL(filename_zs), "://")) {
+		if (php_check_open_basedir(ZSTR_VAL(filename_zs))) {
+			RETURN_FALSE;
+		}
 		RETURN_BOOL(xlBookSave(book, ZSTR_VAL(filename_zs)));
 	}
 
@@ -1646,7 +1654,7 @@ EXCEL_METHOD(Book, packDate)
 		RETURN_FALSE;
 	}
 
-	if (ts < 1) {
+	if (ts < 0) {
 		RETURN_FALSE;
 	}
 
@@ -3300,6 +3308,7 @@ bool php_excel_read_cell(int row, int col, zval *val, SheetHandle sheet, BookHan
 			return 1;
 
 		case CELLTYPE_ERROR:
+			*format = xlSheetCellFormat(sheet, row, col);
 			ZVAL_LONG(val, xlSheetReadError(sheet, row, col));
 			return 1;
 	}
