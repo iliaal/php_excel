@@ -98,7 +98,7 @@ class ExcelSheet
     public function readCol(int $column, int $start_row = 0, int $end_row = -1, bool $read_formula = true): array|false {}  // ZPP "l|llb"
     public function read(int $row, int $column, mixed &$format = null, bool $read_formula = true): mixed {}  // ZPP "ll|zb"
     public function write(int $row, int $column, mixed $data, ?ExcelFormat $format = null, int $datatype = -1): bool {}  // ZPP "llz|O!l"
-    public function writeRow(int $row, array $data, int $start_column = 0, ?ExcelFormat $format = null): bool {}  // ZPP "la|lO!"
+    public function writeRow(int $row, array $data, int $start_column = 0, ?ExcelFormat $format = null, int $data_type = -1): bool {}  // ZPP "la|lO!l"
     public function writeCol(int $column, array $data, int $start_row = 0, ?ExcelFormat $format = null, int $data_type = -1): bool {}  // ZPP "la|lO!l"
     public function isFormula(int $row, int $column): bool {}  // ZPP "ll"
     public function isDate(int $row, int $column): bool {}  // ZPP "ll"
@@ -517,4 +517,3 @@ class ExcelTable
     public function columnName(int $index): string|null|false {}  // ZPP "l"
     public function setColumnName(int $index, string $name): bool {}  // ZPP "lS"
 }
-

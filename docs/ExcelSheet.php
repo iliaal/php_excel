@@ -223,7 +223,7 @@ class ExcelSheet
 	* @param int $datatype (optional, default=-1) One of ExcelFormat::AS_* constants
 	* @return bool
 	*/
-	public function write(int $row, int $column, mixed $data, ?ExcelFormat $format = null, $datatype = -1): bool
+	public function write(int $row, int $column, mixed $data, ?ExcelFormat $format = null, int $datatype = -1): bool
 	{
 	}
 
@@ -234,23 +234,24 @@ class ExcelSheet
 	* @param array $data
 	* @param int $start_column (optional, default=0)
 	* @param ExcelFormat|null $format (optional, default=null)
+	* @param int $data_type (optional, default=-1) One of ExcelFormat::AS_* constants
 	* @return bool
 	*/
-	public function writeRow(int $row, array $data, int $start_column = 0, ?ExcelFormat $format = null): bool
+	public function writeRow(int $row, array $data, int $start_column = 0, ?ExcelFormat $format = null, int $data_type = -1): bool
 	{
 	}
 
 	/**
 	* Write an array of values into a column
 	*
-	* @param int $row 0-based column number
+	* @param int $column 0-based column number
 	* @param array $data
 	* @param int $start_row (optional, default=0)
 	* @param ExcelFormat|null $format (optional, default=null)
 	* @param int $data_type (optional)
 	* @return bool
 	*/
-	public function writeCol(int $row, array $data, int $start_row = 0, ?ExcelFormat $format = null, $data_type = null): bool
+	public function writeCol(int $column, array $data, int $start_row = 0, ?ExcelFormat $format = null, int $data_type = -1): bool
 	{
 	}
 
@@ -933,14 +934,14 @@ class ExcelSheet
 	* Create a named range
 	*
 	* @param string $name
-	* @param int $row 0-based row number
-	* @param int $col 0-based column number
-	* @param int $to_row 0-based row number
-	* @param int $to_col 0-based column number
-	* @param int $scope_id (optional)
+	* @param int $row_first 0-based row number
+	* @param int $row_last 0-based row number
+	* @param int $col_first 0-based column number
+	* @param int $col_last 0-based column number
+	* @param int $scope_id (optional, default=-1)
 	* @return bool
 	*/
-	public function setNamedRange(string $name, int $row, int $col, int $to_row, int $to_col, int $scope_id = null): bool
+	public function setNamedRange(string $name, int $row_first, int $row_last, int $col_first, int $col_last, int $scope_id = -1): bool
 	{
 	}
 
@@ -948,10 +949,10 @@ class ExcelSheet
 	* Delete a named range
 	*
 	* @param string $name
-	* @param int $scope_id (optional)
+	* @param int $scope_id (optional, default=-1)
 	* @return bool
 	*/
-	public function delNamedRange(string $name, int $scope_id = null): bool
+	public function delNamedRange(string $name, int $scope_id = -1): bool
 	{
 	}
 
@@ -1070,10 +1071,10 @@ class ExcelSheet
 	* Gets the named range coordinates by name
 	*
 	* @param string $name
-	* @param int $scope_id (optional)
+	* @param int $scope_id (optional, default=-1)
 	* @return array|false Array with keys "row_first"(int), "row_last"(int), "col_first"(int), "col_last"(int), "hidden"(bool)
 	*/
-	public function getNamedRange(string $name, int $scope_id = null): array|false
+	public function getNamedRange(string $name, int $scope_id = -1): array|false
 	{
 	}
 

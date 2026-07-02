@@ -122,12 +122,12 @@ class ExcelFilterColumn
 	*
 	* @param int $operator_1 One of ExcelFilterColumn::OPERATOR_* constants
 	* @param string $value_1 Value used in the first filter criteria
-	* @param int $operator_2 (optional) One of ExcelFilterColumn::OPERATOR_* constants
-	* @param string $value_2 (optional) Value used in the second filter criteria
+	* @param int $operator_2 (optional, default=-1) One of ExcelFilterColumn::OPERATOR_* constants
+	* @param string|null $value_2 (optional, default=null) Value used in the second filter criteria
 	* @param bool $andOp (optional, default=false) True indicates "and", false indicates "or"
 	* @return bool
 	*/
-	public function setCustomFilter(int $operator_1, string $value_1, int $operator_2 = null, string $value_2 = null, bool $andOp = false): bool
+	public function setCustomFilter(int $operator_1, string $value_1, int $operator_2 = -1, ?string $value_2 = null, bool $andOp = false): bool
 	{
 	}
 

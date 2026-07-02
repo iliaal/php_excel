@@ -37,6 +37,9 @@ var_dump($cf["operator_1"], $cf["value_1"]);
 echo (new ReflectionMethod("ExcelSheet", "setProtect"))->getParameters()[2]->getDefaultValue(), "\n";
 echo (new ReflectionMethod("ExcelSheet", "setNamedRange"))->getParameters()[5]->getDefaultValue(), "\n";
 var_dump((new ReflectionMethod("ExcelSheet", "addTable"))->getParameters()[5]->getDefaultValue());
+$writeRow = new ReflectionMethod("ExcelSheet", "writeRow");
+echo $writeRow->getParameters()[4]->getName(), "\n";
+echo $writeRow->getParameters()[4]->getDefaultValue(), "\n";
 
 echo "OK\n";
 ?>
@@ -60,4 +63,6 @@ string(1) "a"
 -1
 -1
 bool(true)
+data_type
+-1
 OK

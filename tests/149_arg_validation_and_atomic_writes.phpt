@@ -39,6 +39,9 @@ var_dump(@$cfing2->addRule(1, $staleCF, "A1"));
 $b = new ExcelBook(null, null, true);
 $a = $b->addSheet("A");
 $bs = $b->addSheet("B");
+$fmt = $b->addFormat();
+$font = $b->addFont();
+$fmt->numberFormat(ExcelFormat::NUMFORMAT_TEXT);
 echo "before: ", $bs->name(), "\n";
 $b->moveSheet(1, 0);
 try {
@@ -46,6 +49,11 @@ try {
 } catch (Throwable $e) {
     echo "after: ", $e->getMessage(), "\n";
 }
+echo "format after move: "; var_dump($fmt->numberFormat() === ExcelFormat::NUMFORMAT_TEXT);
+echo "font after move: "; var_dump(is_int($font->size()));
+$b->deleteSheet(0);
+echo "format after delete: "; var_dump($fmt->numberFormat() === ExcelFormat::NUMFORMAT_TEXT);
+echo "font after delete: "; var_dump(is_int($font->size()));
 
 // CR-004: writeRow / writeCol must reject overflowing run before any write
 $xls = new ExcelBook();
@@ -88,6 +96,10 @@ bool(false)
 bool(false)
 before: B
 after: 
+format after move: bool(true)
+font after move: bool(true)
+format after delete: bool(true)
+font after delete: bool(true)
 bool(false)
 cell at start: string(0) ""
 bool(false)

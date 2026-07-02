@@ -146,10 +146,10 @@ class ExcelBook
 	/**
 	* Save Excel file
 	*
-	* @param string $filename (optional, default=null) If null, returns binary string
-	* @return string|bool If $filename is null, returns string; otherwise returns bool
+	* @param string $filename (optional, default="") If empty or omitted, returns binary string
+	* @return string|bool If $filename is empty or omitted, returns string; otherwise returns bool
 	*/
-	public function save(string $filename = null): string|bool
+	public function save(string $filename = ''): string|true|false
 	{
 	}
 
@@ -482,10 +482,10 @@ class ExcelBook
 	*
 	* @param int $index
 	* @param string $name
-	* @param ExcelSheet $sheet (optional) Existing sheet to copy
+	* @param ExcelSheet|null $sheet (optional) Existing sheet from this workbook to copy
 	* @return ExcelSheet|false
 	*/
-	public function insertSheet(int $index, string $name, ExcelSheet $sheet = null): ExcelSheet|false
+	public function insertSheet(int $index, string $name, ?ExcelSheet $sheet = null): ExcelSheet|false
 	{
 	}
 

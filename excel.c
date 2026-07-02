@@ -112,12 +112,14 @@ static zend_object_handlers excel_object_handlers_table;
 
 typedef struct _excel_book_object {
 	BookHandle book;
-	/* Bumped whenever the underlying libxl book state is reset or a child-
-	 * invalidating mutation runs (load, loadFile, clear, deleteSheet,
-	 * insertSheet, copySheet, moveSheet, manual __construct reuse). Child
-	 * wrappers stamp this at creation and CHECK_BOOK_GENERATION refuses to
-	 * use them once the value diverges. */
+	/* Bumped whenever the underlying libxl book state is reset (load,
+	 * loadFile, clear, loadInfo, loadInfoRaw, manual __construct reuse).
+	 * Every child wrapper stamps this at creation and refuses to use a
+	 * stale book after it diverges. */
 	uint64_t generation;
+	/* Bumped for sheet-topology mutations that leave workbook-scoped
+	 * handles valid but can retarget sheet-derived wrappers. */
+	uint64_t sheet_generation;
 	/* True for xlCreateXMLBook() (XLSX, 1048576x16384), false for
 	 * xlCreateBook() (XLS, 65536x256). Used by EXCEL_VALIDATE_ROW_COL to
 	 * reject impossible coordinates per book type. */
@@ -150,6 +152,7 @@ typedef struct _excel_sheet_object {
 	SheetHandle	sheet;
 	BookHandle book;
 	uint64_t book_generation;
+	uint64_t sheet_generation;
 	zval parent;
 	zend_object std;
 } excel_sheet_object;
@@ -168,7 +171,7 @@ static inline excel_sheet_object *php_excel_sheet_object_fetch_object(zend_objec
 			php_error_docref(NULL, E_WARNING, "The sheet wasn't initialized"); \
 			RETURN_FALSE; \
 		} \
-		CHECK_BOOK_GENERATION(obj); \
+		CHECK_BOOK_AND_SHEET_GENERATION(obj); \
 	}
 
 #define SHEET_AND_BOOK_FROM_OBJECT(sheet, book, object) \
@@ -180,7 +183,7 @@ static inline excel_sheet_object *php_excel_sheet_object_fetch_object(zend_objec
 			php_error_docref(NULL, E_WARNING, "The sheet wasn't initialized"); \
 			RETURN_FALSE; \
 		} \
-		CHECK_BOOK_GENERATION(obj); \
+		CHECK_BOOK_AND_SHEET_GENERATION(obj); \
 	}
 
 typedef struct _excel_font_object {
@@ -226,7 +229,7 @@ static inline excel_font_object *php_excel_font_object_fetch_object(zend_object 
 			php_error_docref(NULL, E_WARNING, "The autofilter wasn't initialized"); \
 			RETURN_FALSE; \
 		} \
-		CHECK_BOOK_GENERATION(obj); \
+		CHECK_BOOK_AND_SHEET_GENERATION(obj); \
 	}
 
 #define FILTERCOLUMN_FROM_OBJECT(filtercolumn, object) \
@@ -237,7 +240,7 @@ static inline excel_font_object *php_excel_font_object_fetch_object(zend_object 
 			php_error_docref(NULL, E_WARNING, "The filtercolumn wasn't initialized"); \
 			RETURN_FALSE; \
 		} \
-		CHECK_BOOK_GENERATION(obj); \
+		CHECK_BOOK_AND_SHEET_GENERATION(obj); \
 	}
 
 typedef struct _excel_format_object {
@@ -257,6 +260,7 @@ typedef struct _excel_autofilter_object {
 	AutoFilterHandle autofilter;
 	SheetHandle sheet;
 	uint64_t book_generation;
+	uint64_t sheet_generation;
 	zval parent;
 	zend_object std;
 } excel_autofilter_object;
@@ -270,6 +274,7 @@ typedef struct _excel_filtercolumn_object {
 	FilterColumnHandle filtercolumn;
 	AutoFilterHandle autofilter;
 	uint64_t book_generation;
+	uint64_t sheet_generation;
 	zval parent;
 	zend_object std;
 } excel_filtercolumn_object;
@@ -307,6 +312,7 @@ typedef struct _excel_formcontrol_object {
 	FormControlHandle formcontrol;
 	SheetHandle sheet;
 	uint64_t book_generation;
+	uint64_t sheet_generation;
 	zval parent;
 	zend_object std;
 } excel_formcontrol_object;
@@ -324,7 +330,7 @@ static inline excel_formcontrol_object *php_excel_formcontrol_object_fetch_objec
 			php_error_docref(NULL, E_WARNING, "The formcontrol wasn't initialized"); \
 			RETURN_FALSE; \
 		} \
-		CHECK_BOOK_GENERATION(obj); \
+		CHECK_BOOK_AND_SHEET_GENERATION(obj); \
 	}
 
 typedef struct _excel_conditionalformat_object {
@@ -355,6 +361,7 @@ typedef struct _excel_conditionalformatting_object {
 	ConditionalFormattingHandle conditionalformatting;
 	SheetHandle sheet;
 	uint64_t book_generation;
+	uint64_t sheet_generation;
 	zval parent;
 	zend_object std;
 } excel_conditionalformatting_object;
@@ -372,7 +379,7 @@ static inline excel_conditionalformatting_object *php_excel_conditionalformattin
 			php_error_docref(NULL, E_WARNING, "The conditionalformatting wasn't initialized"); \
 			RETURN_FALSE; \
 		} \
-		CHECK_BOOK_GENERATION(obj); \
+		CHECK_BOOK_AND_SHEET_GENERATION(obj); \
 	}
 
 typedef struct _excel_coreproperties_object {
@@ -403,6 +410,7 @@ typedef struct _excel_table_object {
 	TableHandle table;
 	SheetHandle sheet;
 	uint64_t book_generation;
+	uint64_t sheet_generation;
 	zval parent;
 	zend_object std;
 } excel_table_object;
@@ -420,7 +428,7 @@ static inline excel_table_object *php_excel_table_object_fetch_object(zend_objec
 			php_error_docref(NULL, E_WARNING, "The table wasn't initialized"); \
 			RETURN_FALSE; \
 		} \
-		CHECK_BOOK_GENERATION(obj); \
+		CHECK_BOOK_AND_SHEET_GENERATION(obj); \
 	}
 
 /* Walk the parent zval chain up to the owning ExcelBook so that any descendant
@@ -466,9 +474,9 @@ static inline excel_book_object *php_excel_resolve_book_obj(zval *parent_zv) {
  * tables. Applying one to a different workbook's sheet/cell/rule silently
  * produces wrong output and dangles once the source book is freed. Reject a
  * child-wrapper argument whose owning book differs from the target's. Returns 1
- * when both resolve to the same ExcelBook, 0 otherwise. (Template-copy methods
- * such as Book::addFormat/addFont and Book::insertSheet legitimately accept a
- * handle from another book and must NOT use this guard.) */
+ * when both resolve to the same ExcelBook, 0 otherwise. Template-copy methods
+ * such as Book::addFormat/addFont legitimately accept handles from another
+ * book and must NOT use this guard. */
 static zend_always_inline int php_excel_same_book(zval *arg_zv, zval *target_zv) {
 	excel_book_object *ba = php_excel_resolve_book_obj(arg_zv);
 	excel_book_object *bb = php_excel_resolve_book_obj(target_zv);
@@ -491,6 +499,21 @@ static zend_always_inline int php_excel_same_book(zval *arg_zv, zval *target_zv)
 		} \
 	} while (0)
 
+#define CHECK_BOOK_AND_SHEET_GENERATION(child_obj) \
+	do { \
+		excel_book_object *_b = php_excel_resolve_book_obj(&(child_obj)->parent); \
+		if (!_b || !_b->book || _b->generation != (child_obj)->book_generation) { \
+			php_error_docref(NULL, E_WARNING, \
+				"Underlying ExcelBook handle is stale (parent was reloaded, cleared, or reinitialized)"); \
+			RETURN_FALSE; \
+		} \
+		if (_b->sheet_generation != (child_obj)->sheet_generation) { \
+			php_error_docref(NULL, E_WARNING, \
+				"Underlying ExcelBook sheet topology changed; wrapper must be re-fetched"); \
+			RETURN_FALSE; \
+		} \
+	} while (0)
+
 /* Preresolved variant of CHECK_BOOK_GENERATION. resolve_book_obj(child) and
  * resolve_book_obj(&child->parent) return the same owning book, so single-cell
  * hot paths can resolve the book once and feed it to both the stale check and
@@ -504,6 +527,20 @@ static zend_always_inline int php_excel_same_book(zval *arg_zv, zval *target_zv)
 		} \
 	} while (0)
 
+#define CHECK_BOOK_AND_SHEET_GENERATION_PR(child_obj, vb) \
+	do { \
+		if (!(vb) || !(vb)->book || (vb)->generation != (child_obj)->book_generation) { \
+			php_error_docref(NULL, E_WARNING, \
+				"Underlying ExcelBook handle is stale (parent was reloaded, cleared, or reinitialized)"); \
+			RETURN_FALSE; \
+		} \
+		if ((vb)->sheet_generation != (child_obj)->sheet_generation) { \
+			php_error_docref(NULL, E_WARNING, \
+				"Underlying ExcelBook sheet topology changed; wrapper must be re-fetched"); \
+			RETURN_FALSE; \
+		} \
+	} while (0)
+
 /* Stamp child wrapper with current book generation and copy parent zval.
  * Use at every child creation site instead of a bare ZVAL_COPY(&x->parent, p). */
 #define EXCEL_INIT_PARENT(child_obj, parent_zv) \
@@ -513,13 +550,19 @@ static zend_always_inline int php_excel_same_book(zval *arg_zv, zval *target_zv)
 		ZVAL_COPY(&(child_obj)->parent, parent_zv); \
 	} while (0)
 
-/* Bump the generation counter so existing child wrappers fail their
- * stale-check. Use after libxl operations that shift internal child
- * indices (deleteSheet, moveSheet) — formats remain valid, so the
- * cached default date format must be preserved. */
-static inline void php_excel_book_bump_generation(zval *book_zv) {
+#define EXCEL_INIT_SHEET_PARENT(child_obj, parent_zv) \
+	do { \
+		excel_book_object *_bg = php_excel_resolve_book_obj(parent_zv); \
+		(child_obj)->book_generation = _bg ? _bg->generation : 0; \
+		(child_obj)->sheet_generation = _bg ? _bg->sheet_generation : 0; \
+		ZVAL_COPY(&(child_obj)->parent, parent_zv); \
+	} while (0)
+
+/* Bump the sheet-topology counter so sheet-derived wrappers fail their
+ * stale-check. Workbook-scoped handles remain valid. */
+static inline void php_excel_book_bump_sheet_generation(zval *book_zv) {
 	excel_book_object *bobj = php_excel_book_object_fetch_object(Z_OBJ_P(book_zv));
-	bobj->generation++;
+	bobj->sheet_generation++;
 }
 
 /* Full state reset: bump generation AND drop the cached default date
@@ -531,6 +574,7 @@ static inline void php_excel_book_bump_generation(zval *book_zv) {
 static inline void php_excel_book_reset_state(zval *book_zv) {
 	excel_book_object *bobj = php_excel_book_object_fetch_object(Z_OBJ_P(book_zv));
 	bobj->generation++;
+	bobj->sheet_generation++;
 	bobj->default_date_format = NULL;
 }
 
@@ -542,6 +586,23 @@ static inline int php_excel_check_book_generation_throw(zval *parent_zv, uint64_
 	if (!b || !b->book || b->generation != stamped) {
 		zend_throw_exception(NULL,
 			"Underlying ExcelBook handle is stale (parent was reloaded, cleared, or reinitialized)",
+			0);
+		return 0;
+	}
+	return 1;
+}
+
+static inline int php_excel_check_book_and_sheet_generation_throw(zval *parent_zv, uint64_t book_stamped, uint64_t sheet_stamped) {
+	excel_book_object *b = php_excel_resolve_book_obj(parent_zv);
+	if (!b || !b->book || b->generation != book_stamped) {
+		zend_throw_exception(NULL,
+			"Underlying ExcelBook handle is stale (parent was reloaded, cleared, or reinitialized)",
+			0);
+		return 0;
+	}
+	if (b->sheet_generation != sheet_stamped) {
+		zend_throw_exception(NULL,
+			"Underlying ExcelBook sheet topology changed; wrapper must be re-fetched",
 			0);
 		return 0;
 	}
@@ -563,7 +624,7 @@ static inline int php_excel_check_book_generation_throw(zval *parent_zv, uint64_
 			zend_throw_exception(NULL, "The sheet wasn't initialized", 0); \
 			RETURN_THROWS(); \
 		} \
-		if (!php_excel_check_book_generation_throw(&_obj->parent, _obj->book_generation)) { \
+		if (!php_excel_check_book_and_sheet_generation_throw(&_obj->parent, _obj->book_generation, _obj->sheet_generation)) { \
 			RETURN_THROWS(); \
 		} \
 	} while (0)
@@ -576,7 +637,7 @@ static inline int php_excel_check_book_generation_throw(zval *parent_zv, uint64_
 			zend_throw_exception(NULL, "The autofilter wasn't initialized", 0); \
 			RETURN_THROWS(); \
 		} \
-		if (!php_excel_check_book_generation_throw(&_obj->parent, _obj->book_generation)) { \
+		if (!php_excel_check_book_and_sheet_generation_throw(&_obj->parent, _obj->book_generation, _obj->sheet_generation)) { \
 			RETURN_THROWS(); \
 		} \
 	} while (0)
@@ -613,6 +674,7 @@ static zend_object *excel_object_new_book(zend_class_entry *class_type)
 
 	intern->book = NULL;
 	intern->generation = 0;
+	intern->sheet_generation = 0;
 	intern->is_xlsx = false;
 	intern->default_date_format = NULL;
 	intern->std.handlers = &excel_object_handlers_book;
@@ -1243,7 +1305,7 @@ EXCEL_METHOD(Book, getSheet)
 	fo = Z_EXCEL_SHEET_OBJ_P(return_value);
 	fo->sheet = sh;
 	fo->book = book;
-	EXCEL_INIT_PARENT(fo, object);
+	EXCEL_INIT_SHEET_PARENT(fo, object);
 }
 /* }}} */
 
@@ -1284,7 +1346,7 @@ EXCEL_METHOD(Book, getSheetByName)
 					fo = Z_EXCEL_SHEET_OBJ_P(return_value);
 					fo->sheet = sh;
 					fo->book = book;
-					EXCEL_INIT_PARENT(fo, object);
+					EXCEL_INIT_SHEET_PARENT(fo, object);
 					return;
 				}
 			}
@@ -1316,10 +1378,10 @@ EXCEL_METHOD(Book, deleteSheet)
 	if (ret) {
 		/* The deleted sheet's libxl handle is freed; an existing PHP
 		 * wrapper for it now points at freed memory and would crash with
-		 * "pure virtual method called" on next use. Bump the generation
-		 * so any outstanding wrapper fails the stale-check instead.
+		 * "pure virtual method called" on next use. Bump the sheet topology
+		 * generation so sheet-derived wrappers fail the stale-check instead.
 		 * Sibling sheets must be re-fetched via getSheet/getSheetByName. */
-		php_excel_book_bump_generation(object);
+		php_excel_book_bump_sheet_generation(object);
 	}
 	RETURN_BOOL(ret);
 }
@@ -1386,7 +1448,7 @@ EXCEL_METHOD(Book, addSheet)
 	fo = Z_EXCEL_SHEET_OBJ_P(return_value);
 	fo->sheet = sh;
 	fo->book = book;
-	EXCEL_INIT_PARENT(fo, object);
+	EXCEL_INIT_SHEET_PARENT(fo, object);
 }
 /* }}} */
 
@@ -1426,7 +1488,7 @@ EXCEL_METHOD(Book, copySheet)
 	fo = Z_EXCEL_SHEET_OBJ_P(return_value);
 	fo->sheet = sh;
 	fo->book = book;
-	EXCEL_INIT_PARENT(fo, object);
+	EXCEL_INIT_SHEET_PARENT(fo, object);
 }
 /* }}} */
 
@@ -1920,6 +1982,7 @@ EXCEL_METHOD(Book, __construct)
 			 * any subsequent use of those wrappers fails the stale-check
 			 * instead of dereferencing freed memory. */
 			obj->generation++;
+			obj->sheet_generation++;
 		}
 		obj->book = book;
 		obj->is_xlsx = new_excel;
@@ -3176,7 +3239,7 @@ EXCEL_METHOD(Sheet, __construct)
 
 	obj->sheet = sh;
 	obj->book = book;
-	EXCEL_INIT_PARENT(obj, zbook);
+	EXCEL_INIT_SHEET_PARENT(obj, zbook);
 }
 /* }}} */
 
@@ -3491,7 +3554,7 @@ EXCEL_METHOD(Sheet, read)
 		php_error_docref(NULL, E_WARNING, "The sheet wasn't initialized");
 		RETURN_FALSE;
 	}
-	CHECK_BOOK_GENERATION_PR(sheet_obj, book_obj);
+	CHECK_BOOK_AND_SHEET_GENERATION_PR(sheet_obj, book_obj);
 
 	if (oformat) {
 		ZVAL_DEREF(oformat);
@@ -3653,7 +3716,7 @@ EXCEL_METHOD(Sheet, write)
 		php_error_docref(NULL, E_WARNING, "The sheet wasn't initialized");
 		RETURN_FALSE;
 	}
-	CHECK_BOOK_GENERATION_PR(sheet_obj, book_obj);
+	CHECK_BOOK_AND_SHEET_GENERATION_PR(sheet_obj, book_obj);
 
 	if (oformat) {
 		FORMAT_FROM_OBJECT(format, oformat);
@@ -3669,7 +3732,7 @@ EXCEL_METHOD(Sheet, write)
 }
 /* }}} */
 
-/* {{{ proto bool ExcelSheet::writeRow(int row, array data [, int start_column [, ExcelFormat format]])
+/* {{{ proto bool ExcelSheet::writeRow(int row, array data [, int start_column [, ExcelFormat format [, int datatype]]])
 	Write an array of values into a row */
 EXCEL_METHOD(Sheet, writeRow)
 {
@@ -3682,8 +3745,9 @@ EXCEL_METHOD(Sheet, writeRow)
 	zval *data;
 	zval *element;
 	zend_long i;
+	zend_long dtype = -1;
 
-	if (zend_parse_parameters(ZEND_NUM_ARGS(), "la|lO!", &row, &data, &col, &oformat, excel_ce_format) == FAILURE) {
+	if (zend_parse_parameters(ZEND_NUM_ARGS(), "la|lO!l", &row, &data, &col, &oformat, excel_ce_format, &dtype) == FAILURE) {
 		RETURN_FALSE;
 	}
 
@@ -3715,7 +3779,7 @@ EXCEL_METHOD(Sheet, writeRow)
 	{
 		excel_book_object *book_obj = php_excel_resolve_book_obj(object);
 		ZEND_HASH_FOREACH_VAL(Z_ARRVAL_P(data), element) {
-			if (!php_excel_write_cell(sheet, book_obj, row, i++, element, (oformat ? format : 0), -1)) {
+			if (!php_excel_write_cell(sheet, book_obj, row, i++, element, (oformat ? format : 0), dtype)) {
 				php_error_docref(NULL, E_WARNING, "Failed to write cell in row " ZEND_LONG_FMT ", column " ZEND_LONG_FMT " with error '%s'", row, i-1, xlBookErrorMessage(book));
 				RETURN_FALSE;
 			}
@@ -5376,6 +5440,7 @@ EXCEL_METHOD(Book, insertSheet)
 	BOOK_FROM_OBJECT(book, object);
 	if (shz) {
 		SHEET_FROM_OBJECT(sheet, shz);
+		EXCEL_REQUIRE_SAME_BOOK(shz, object);
 		if (!(sh = xlBookInsertSheet(book, index, ZSTR_VAL(name_zs), sheet))) {
 			RETURN_FALSE;
 		}
@@ -5385,11 +5450,12 @@ EXCEL_METHOD(Book, insertSheet)
 		}
 	}
 
+	php_excel_book_bump_sheet_generation(object);
 	ZVAL_OBJ(return_value, excel_object_new_sheet(excel_ce_sheet));
 	fo = Z_EXCEL_SHEET_OBJ_P(return_value);
 	fo->sheet = sh;
 	fo->book = book;
-	EXCEL_INIT_PARENT(fo, object);
+	EXCEL_INIT_SHEET_PARENT(fo, object);
 }
 /* }}} */
 
@@ -6036,7 +6102,7 @@ EXCEL_METHOD(Sheet, autoFilter)
 	obj = Z_EXCEL_AUTOFILTER_OBJ_P(return_value);
 	obj->autofilter = ah;
 	obj->sheet = sheet;
-	EXCEL_INIT_PARENT(obj, object);
+	EXCEL_INIT_SHEET_PARENT(obj, object);
 }
 /* }}} */
 
@@ -6175,7 +6241,7 @@ EXCEL_METHOD(AutoFilter, __construct)
 
 	obj->sheet = sheet;
 	obj->autofilter = afh;
-	EXCEL_INIT_PARENT(obj, zsheet);
+	EXCEL_INIT_SHEET_PARENT(obj, zsheet);
 }
 /* }}} */
 
@@ -6244,7 +6310,7 @@ EXCEL_METHOD(AutoFilter, column)
 	obj = Z_EXCEL_FILTERCOLUMN_OBJ_P(return_value);
 	obj->autofilter = autofilter;
 	obj->filtercolumn = fch;
-	EXCEL_INIT_PARENT(obj, object);
+	EXCEL_INIT_SHEET_PARENT(obj, object);
 }
 /* }}} */
 
@@ -6284,7 +6350,7 @@ EXCEL_METHOD(AutoFilter, columnByIndex)
 	obj = Z_EXCEL_FILTERCOLUMN_OBJ_P(return_value);
 	obj->autofilter = autofilter;
 	obj->filtercolumn = fch;
-	EXCEL_INIT_PARENT(obj, object);
+	EXCEL_INIT_SHEET_PARENT(obj, object);
 }
 /* }}} */
 
@@ -6406,7 +6472,7 @@ EXCEL_METHOD(FilterColumn, __construct)
 
 	obj->filtercolumn = fch;
 	obj->autofilter = autofilter;
-	EXCEL_INIT_PARENT(obj, zautofilter);
+	EXCEL_INIT_SHEET_PARENT(obj, zautofilter);
 }
 /* }}} */
 
@@ -6674,8 +6740,8 @@ EXCEL_METHOD(Book, moveSheet)
 
 	/* Existing Sheet wrappers point at libxl handles by index; moving a
 	 * sheet shifts internal indices so the wrappers silently retarget to
-	 * a different sheet. Bump generation to invalidate them. */
-	php_excel_book_bump_generation(object);
+	 * a different sheet. Bump sheet topology generation to invalidate them. */
+	php_excel_book_bump_sheet_generation(object);
 	RETURN_TRUE;
 }
 /* }}} */
@@ -7016,7 +7082,7 @@ EXCEL_METHOD(Sheet, formControl)
 	fco = Z_EXCEL_FORMCONTROL_OBJ_P(return_value);
 	fco->formcontrol = fc;
 	fco->sheet = sheet;
-	EXCEL_INIT_PARENT(fco, object);
+	EXCEL_INIT_SHEET_PARENT(fco, object);
 }
 
 EXCEL_METHOD(Sheet, getActiveCell)
@@ -7365,7 +7431,7 @@ EXCEL_METHOD(Sheet, addTable)
 	to = Z_EXCEL_TABLE_OBJ_P(return_value);
 	to->table = th;
 	to->sheet = sheet;
-	EXCEL_INIT_PARENT(to, object);
+	EXCEL_INIT_SHEET_PARENT(to, object);
 }
 
 EXCEL_METHOD(Sheet, getTableByName)
@@ -7394,7 +7460,7 @@ EXCEL_METHOD(Sheet, getTableByName)
 	to = Z_EXCEL_TABLE_OBJ_P(return_value);
 	to->table = th;
 	to->sheet = sheet;
-	EXCEL_INIT_PARENT(to, object);
+	EXCEL_INIT_SHEET_PARENT(to, object);
 }
 
 EXCEL_METHOD(Sheet, getTableByIndex)
@@ -7422,7 +7488,7 @@ EXCEL_METHOD(Sheet, getTableByIndex)
 	to = Z_EXCEL_TABLE_OBJ_P(return_value);
 	to->table = th;
 	to->sheet = sheet;
-	EXCEL_INIT_PARENT(to, object);
+	EXCEL_INIT_SHEET_PARENT(to, object);
 }
 
 EXCEL_METHOD(Sheet, applyFilter2)
@@ -7477,7 +7543,7 @@ EXCEL_METHOD(Sheet, addConditionalFormatting)
 	cfo = Z_EXCEL_CONDITIONALFORMATTING_OBJ_P(return_value);
 	cfo->conditionalformatting = cfh;
 	cfo->sheet = sheet;
-	EXCEL_INIT_PARENT(cfo, object);
+	EXCEL_INIT_SHEET_PARENT(cfo, object);
 }
 
 #if LIBXL_VERSION >= 0x05010000
@@ -7506,7 +7572,7 @@ EXCEL_METHOD(Sheet, conditionalFormatting)
 	cfo = Z_EXCEL_CONDITIONALFORMATTING_OBJ_P(return_value);
 	cfo->conditionalformatting = cfh;
 	cfo->sheet = sheet;
-	EXCEL_INIT_PARENT(cfo, object);
+	EXCEL_INIT_SHEET_PARENT(cfo, object);
 }
 
 EXCEL_METHOD(Sheet, removeConditionalFormatting)
@@ -7711,7 +7777,7 @@ EXCEL_METHOD(FormControl, __construct)
 
 	obj->formcontrol = fc;
 	obj->sheet = sheet;
-	EXCEL_INIT_PARENT(obj, zsheet);
+	EXCEL_INIT_SHEET_PARENT(obj, zsheet);
 }
 
 EXCEL_METHOD(FormControl, objectType)
@@ -8646,7 +8712,7 @@ EXCEL_METHOD(ConditionalFormatting, __construct)
 
 	obj->conditionalformatting = cfh;
 	obj->sheet = sheet;
-	EXCEL_INIT_PARENT(obj, zsheet);
+	EXCEL_INIT_SHEET_PARENT(obj, zsheet);
 }
 
 EXCEL_METHOD(ConditionalFormatting, addRange)
@@ -9099,7 +9165,7 @@ EXCEL_METHOD(Table, __construct)
 
 	obj->table = th;
 	obj->sheet = sheet;
-	EXCEL_INIT_PARENT(obj, zsheet);
+	EXCEL_INIT_SHEET_PARENT(obj, zsheet);
 }
 
 EXCEL_METHOD(Table, name)
@@ -9173,7 +9239,7 @@ EXCEL_METHOD(Table, autoFilter)
 	aobj = Z_EXCEL_AUTOFILTER_OBJ_P(return_value);
 	aobj->autofilter = afh;
 	aobj->sheet = tobj->sheet;
-	EXCEL_INIT_PARENT(aobj, object);
+	EXCEL_INIT_SHEET_PARENT(aobj, object);
 }
 
 #if LIBXL_VERSION >= 0x05020000

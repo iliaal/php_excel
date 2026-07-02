@@ -39,12 +39,19 @@ var_dump($s->read(1, 1), $s->isFormula(1, 1), $s->read(2, 1));
 $s->writeCol(2, ["=2+3"], 1);
 var_dump($s->isFormula(1, 2));
 
+// writeRow passes the dtype through too; default writeRow still promotes
+$s->writeRow(7, ["=row"], 0, null, ExcelFormat::AS_TEXT);
+var_dump($s->read(7, 0), $s->isFormula(7, 0));
+$s->writeRow(8, ["=2+3"]);
+var_dump($s->isFormula(8, 0));
+
 // survives a save/load round-trip as a literal string
 $buf = $b->save();
 $b2 = new ExcelBook(null, null, true);
 $b2->load($buf);
 $s2 = $b2->getSheet(0);
 var_dump($s2->read(2, 0), $s2->isFormula(2, 0));
+var_dump($s2->read(7, 0), $s2->isFormula(7, 0));
 
 echo "OK\n";
 ?>
@@ -61,6 +68,11 @@ string(2) "=a"
 bool(false)
 string(2) "=b"
 bool(true)
+string(4) "=row"
+bool(false)
+bool(true)
 string(4) "=2+3"
+bool(false)
+string(4) "=row"
 bool(false)
 OK

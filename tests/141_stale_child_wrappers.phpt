@@ -120,7 +120,7 @@ bool(false)
 bool(true)
 bool(true)
 
-Warning: ExcelSheet::write(): Underlying ExcelBook handle is stale (parent was reloaded, cleared, or reinitialized) in %s on line %d
+Warning: ExcelSheet::write(): Underlying ExcelBook sheet topology changed; wrapper must be re-fetched in %s on line %d
 bool(false)
 bool(true)
 
