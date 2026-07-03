@@ -80,6 +80,8 @@ Write 100,000 rows × 20 columns vs PhpSpreadsheet 5.5.0 on PHP 8.4.19 NTS, Appl
 
 Read performance is similar: 8-9× faster than PhpSpreadsheet, 3× faster than OpenSpout (with proportional memory tradeoff vs OpenSpout's flat 130 MB streaming model).
 
+For read-heavy import paths, prefer `readRow()`, `readCol()`, or `readRange()` over per-cell `read()` loops. Pass `false` for the `$read_formula` argument when cached values are enough; this avoids the per-cell formula-text probe. For sparse sheets, `readSparseRow()` and `readSparseCol()` return only occupied cells keyed by their original column or row indexes.
+
 ### Why PhpSpreadsheet OOMs and php_excel doesn't
 
 PHP's `memory_get_peak_usage()` reports about 2 MB for php_excel because LibXL allocates on the C heap, invisible to PHP's `memory_limit`. PhpSpreadsheet allocates in PHP's memory: it OOMs on 10,000 rows in a default 128 MB PHP-FPM pool. php_excel writes 100,000 rows in the same pool without raising the limit.

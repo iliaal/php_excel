@@ -134,6 +134,47 @@ class ExcelBook
 	}
 
 	/**
+	* Load a row slice from Excel data string
+	*
+	* @since libxl 5.0.0
+	* @param string $data
+	* @param int $sheet_index 0-based sheet index to load
+	* @param int $row_first First 0-based row to load
+	* @param int $row_last Last 0-based row to load
+	* @param bool $keep_all_sheets (optional, default=false)
+	* @return bool
+	*/
+	public function loadPartially(string $data, int $sheet_index, int $row_first, int $row_last, bool $keep_all_sheets = false): bool
+	{
+	}
+
+	/**
+	* Load a row slice from Excel file
+	*
+	* @since libxl 5.0.0
+	* @param string $filename
+	* @param int $sheet_index 0-based sheet index to load
+	* @param int $row_first First 0-based row to load
+	* @param int $row_last Last 0-based row to load
+	* @param bool $keep_all_sheets (optional, default=false)
+	* @return bool
+	*/
+	public function loadFilePartially(string $filename, int $sheet_index, int $row_first, int $row_last, bool $keep_all_sheets = false): bool
+	{
+	}
+
+	/**
+	* Load Excel from file without empty cells
+	*
+	* @since libxl 5.0.0
+	* @param string $filename Plain filesystem path
+	* @return bool
+	*/
+	public function loadFileWithoutEmptyCells(string $filename): bool
+	{
+	}
+
+	/**
 	* Load Excel data string
 	*
 	* @param string $data

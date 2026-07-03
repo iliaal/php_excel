@@ -7,6 +7,11 @@ class ExcelBook
     public static function requiresKey(): bool {}  // ZPP ""
     public function load(string $data): bool {}  // ZPP "S"
     public function loadFile(string $filename): bool {}  // ZPP "S"
+#if LIBXL_VERSION >= 0x05000000
+    public function loadPartially(string $data, int $sheet_index, int $row_first, int $row_last, bool $keep_all_sheets = false): bool {}  // ZPP "Slll|b"
+    public function loadFilePartially(string $filename, int $sheet_index, int $row_first, int $row_last, bool $keep_all_sheets = false): bool {}  // ZPP "Slll|b"
+    public function loadFileWithoutEmptyCells(string $filename): bool {}  // ZPP "S"
+#endif
     public function save(string $filename = ""): string|true|false {}  // ZPP "|S"
     public function getSheet(int $sheet = 0): ExcelSheet|false {}  // ZPP "|l"
     public function getSheetByName(string $name, bool $case_insensitive = false): ExcelSheet|false {}  // ZPP "S|b"
@@ -96,6 +101,9 @@ class ExcelSheet
     public function setCellFormat(int $row, int $column, ExcelFormat $format): mixed {}  // ZPP "llO"
     public function readRow(int $row, int $start_col = 0, int $end_column = -1, bool $read_formula = true): array|false {}  // ZPP "l|llb"
     public function readCol(int $column, int $start_row = 0, int $end_row = -1, bool $read_formula = true): array|false {}  // ZPP "l|llb"
+    public function readRange(int $row_start, int $row_end, int $col_start, int $col_end, bool $read_formula = true): array|false {}  // ZPP "llll|b"
+    public function readSparseRow(int $row, int $start_col = 0, int $end_column = -1, bool $read_formula = true): array|false {}  // ZPP "l|llb"
+    public function readSparseCol(int $column, int $start_row = 0, int $end_row = -1, bool $read_formula = true): array|false {}  // ZPP "l|llb"
     public function read(int $row, int $column, mixed &$format = null, bool $read_formula = true): mixed {}  // ZPP "ll|zb"
     public function write(int $row, int $column, mixed $data, ?ExcelFormat $format = null, int $datatype = -1): bool {}  // ZPP "llz|O!l"
     public function writeRow(int $row, array $data, int $start_column = 0, ?ExcelFormat $format = null, int $data_type = -1): bool {}  // ZPP "la|lO!l"

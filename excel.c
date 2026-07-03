@@ -1158,6 +1158,8 @@ static zend_object *excel_object_new_table(zend_class_entry *class_type)
 #define EXCEL_MAX_COL_XLSX 16383
 #define EXCEL_MAX_ROW_XLS  65535
 #define EXCEL_MAX_COL_XLS  255
+#define PHP_EXCEL_MAX_RANGE_CELLS 1048576
+
 #define EXCEL_VALIDATE_ROW_COL(r, c, parent_zv) \
 	do { \
 		excel_book_object *_vb = php_excel_resolve_book_obj(parent_zv); \
@@ -1234,6 +1236,25 @@ static zend_object *excel_object_new_table(zend_class_entry *class_type)
 			RETURN_FALSE; \
 		} \
 	} while (0)
+
+#if LIBXL_VERSION >= 0x05000000
+static inline int php_excel_validate_partial_load_args(zend_long sheet_index, zend_long row_first, zend_long row_last)
+{
+	if (sheet_index < 0 || sheet_index > INT_MAX) {
+		php_error_docref(NULL, E_WARNING, "Sheet index out of range");
+		return 0;
+	}
+	if (row_first < 0 || row_first > INT_MAX || row_last < 0 || row_last > INT_MAX) {
+		php_error_docref(NULL, E_WARNING, "Row range out of int range");
+		return 0;
+	}
+	if (row_last < row_first) {
+		php_error_docref(NULL, E_WARNING, "Starting row is greater than ending row");
+		return 0;
+	}
+	return 1;
+}
+#endif
 
 /* {{{ proto bool ExcelBook::requiresKey()
 	true if license key is required. */
@@ -1326,6 +1347,130 @@ EXCEL_METHOD(Book, loadFile)
 	zend_string_release(contents);
 }
 /* }}} */
+
+#if LIBXL_VERSION >= 0x05000000
+/* {{{ proto bool ExcelBook::loadPartially(string data, int sheet_index, int row_first, int row_last [, bool keep_all_sheets])
+	Load a row slice from Excel data string. */
+EXCEL_METHOD(Book, loadPartially)
+{
+	BookHandle book;
+	zval *object = ZEND_THIS;
+	zend_string *data_zs = NULL;
+	zend_long sheet_index, row_first, row_last;
+	bool keep_all_sheets = 0;
+
+	if (zend_parse_parameters(ZEND_NUM_ARGS(), "Slll|b", &data_zs, &sheet_index, &row_first, &row_last, &keep_all_sheets) == FAILURE) {
+		RETURN_FALSE;
+	}
+
+	EXCEL_NON_EMPTY_STRING(data_zs)
+
+	if (!php_excel_validate_partial_load_args(sheet_index, row_first, row_last)) {
+		RETURN_FALSE;
+	}
+	if (ZSTR_LEN(data_zs) > UINT_MAX) {
+		php_error_docref(NULL, E_WARNING, "Data string too large");
+		RETURN_FALSE;
+	}
+
+	BOOK_FROM_OBJECT(book, object);
+
+	php_excel_book_reset_state(object);
+	RETURN_BOOL(xlBookLoadRawPartially(book, ZSTR_VAL(data_zs), (unsigned) ZSTR_LEN(data_zs), (int) sheet_index, (int) row_first, (int) row_last, keep_all_sheets));
+}
+/* }}} */
+
+/* {{{ proto bool ExcelBook::loadFilePartially(string filename, int sheet_index, int row_first, int row_last [, bool keep_all_sheets])
+	Load a row slice from Excel file. */
+EXCEL_METHOD(Book, loadFilePartially)
+{
+	BookHandle book;
+	zval *object = ZEND_THIS;
+	zend_string *filename_zs = NULL;
+	zend_long sheet_index, row_first, row_last;
+	bool keep_all_sheets = 0;
+	php_stream *stream;
+	zend_string *contents;
+
+	if (zend_parse_parameters(ZEND_NUM_ARGS(), "Slll|b", &filename_zs, &sheet_index, &row_first, &row_last, &keep_all_sheets) == FAILURE) {
+		RETURN_FALSE;
+	}
+
+	EXCEL_NON_EMPTY_STRING(filename_zs)
+	EXCEL_NUL_SAFE_STRING(filename_zs)
+
+	if (!php_excel_validate_partial_load_args(sheet_index, row_first, row_last)) {
+		RETURN_FALSE;
+	}
+
+	BOOK_FROM_OBJECT(book, object);
+
+	if (!strstr(ZSTR_VAL(filename_zs), "://")) {
+		if (php_check_open_basedir(ZSTR_VAL(filename_zs))) {
+			RETURN_FALSE;
+		}
+		php_excel_book_reset_state(object);
+		RETURN_BOOL(xlBookLoadPartially(book, ZSTR_VAL(filename_zs), (int) sheet_index, (int) row_first, (int) row_last, keep_all_sheets));
+	}
+
+	stream = php_stream_open_wrapper(ZSTR_VAL(filename_zs), "rb", REPORT_ERRORS, NULL);
+	if (!stream) {
+		RETURN_FALSE;
+	}
+
+	contents = php_stream_copy_to_mem(stream, PHP_STREAM_COPY_ALL, 0);
+	php_stream_close(stream);
+	if (!contents) {
+		php_error_docref(NULL, E_WARNING, "Source file is empty");
+		RETURN_FALSE;
+	}
+	if (ZSTR_LEN(contents) < 1) {
+		php_error_docref(NULL, E_WARNING, "Source file is empty");
+		zend_string_release(contents);
+		RETURN_FALSE;
+	}
+	if (ZSTR_LEN(contents) > UINT_MAX) {
+		php_error_docref(NULL, E_WARNING, "Source file too large");
+		zend_string_release(contents);
+		RETURN_FALSE;
+	}
+
+	php_excel_book_reset_state(object);
+	RETVAL_BOOL(xlBookLoadRawPartially(book, ZSTR_VAL(contents), (unsigned) ZSTR_LEN(contents), (int) sheet_index, (int) row_first, (int) row_last, keep_all_sheets));
+	zend_string_release(contents);
+}
+/* }}} */
+
+/* {{{ proto bool ExcelBook::loadFileWithoutEmptyCells(string filename)
+	Load Excel from file without empty cells. */
+EXCEL_METHOD(Book, loadFileWithoutEmptyCells)
+{
+	BookHandle book;
+	zval *object = ZEND_THIS;
+	zend_string *filename_zs = NULL;
+
+	if (zend_parse_parameters(ZEND_NUM_ARGS(), "S", &filename_zs) == FAILURE) {
+		RETURN_FALSE;
+	}
+
+	EXCEL_NON_EMPTY_STRING(filename_zs)
+	EXCEL_NUL_SAFE_STRING(filename_zs)
+
+	if (strstr(ZSTR_VAL(filename_zs), "://")) {
+		php_error_docref(NULL, E_WARNING, "Stream wrappers are not supported by loadFileWithoutEmptyCells");
+		RETURN_FALSE;
+	}
+	if (php_check_open_basedir(ZSTR_VAL(filename_zs))) {
+		RETURN_FALSE;
+	}
+
+	BOOK_FROM_OBJECT(book, object);
+
+	php_excel_book_reset_state(object);
+	RETURN_BOOL(xlBookLoadWithoutEmptyCells(book, ZSTR_VAL(filename_zs)));
+}
+/* }}} */
+#endif
 
 /* {{{ proto mixed ExcelBook::save([string filename])
 	Save Excel file. */
@@ -3487,6 +3632,42 @@ bool php_excel_read_cell(int row, int col, zval *val, SheetHandle sheet, BookHan
 	return 0;
 }
 
+static inline int php_excel_validate_read_row_bounds(SheetHandle sheet, zend_long row_start, zend_long *row_end, bool allow_default_end)
+{
+	int lr = xlSheetLastRow(sheet);
+
+	if (row_start < 0 || row_start > lr) {
+		php_error_docref(NULL, E_WARNING, "Invalid starting row number '" ZEND_LONG_FMT "'", row_start);
+		return 0;
+	}
+	if (allow_default_end && *row_end == -1) {
+		*row_end = lr - 1;
+	}
+	if (*row_end < row_start || *row_end > lr) {
+		php_error_docref(NULL, E_WARNING, "Invalid ending row number '" ZEND_LONG_FMT "'", *row_end);
+		return 0;
+	}
+	return 1;
+}
+
+static inline int php_excel_validate_read_col_bounds(SheetHandle sheet, zend_long col_start, zend_long *col_end, bool allow_default_end)
+{
+	int lc = xlSheetLastCol(sheet);
+
+	if (col_start < 0 || col_start > lc) {
+		php_error_docref(NULL, E_WARNING, "Invalid starting column number '" ZEND_LONG_FMT "'", col_start);
+		return 0;
+	}
+	if (allow_default_end && *col_end == -1) {
+		*col_end = lc - 1;
+	}
+	if (*col_end < col_start || *col_end > lc) {
+		php_error_docref(NULL, E_WARNING, "Invalid ending column number '" ZEND_LONG_FMT "'", *col_end);
+		return 0;
+	}
+	return 1;
+}
+
 /* {{{ proto array ExcelSheet::readRow(int row [, int start_col [, int end_column [, bool read_formula]]])
 	Read an entire row worth of data */
 EXCEL_METHOD(Sheet, readRow)
@@ -3628,6 +3809,157 @@ EXCEL_METHOD(Sheet, readCol)
 		}
 
 		lc++;
+	}
+}
+/* }}} */
+
+/* {{{ proto array ExcelSheet::readRange(int row_start, int row_end, int col_start, int col_end [, bool read_formula])
+	Read a rectangular range of cells */
+EXCEL_METHOD(Sheet, readRange)
+{
+	zval *object = ZEND_THIS;
+	zend_long row_start, row_end, col_start, col_end;
+	zend_long r, c;
+	zend_ulong row_count, col_count;
+	SheetHandle sheet;
+	BookHandle book;
+	bool read_formula = 1;
+
+	if (zend_parse_parameters(ZEND_NUM_ARGS(), "llll|b", &row_start, &row_end, &col_start, &col_end, &read_formula) == FAILURE) {
+		RETURN_FALSE;
+	}
+
+	SHEET_AND_BOOK_FROM_OBJECT(sheet, book, object);
+
+	if (!php_excel_validate_read_row_bounds(sheet, row_start, &row_end, 0) ||
+	    !php_excel_validate_read_col_bounds(sheet, col_start, &col_end, 0)) {
+		RETURN_FALSE;
+	}
+
+	row_count = (zend_ulong)(row_end - row_start + 1);
+	col_count = (zend_ulong)(col_end - col_start + 1);
+	if (row_count != 0 && col_count > (PHP_EXCEL_MAX_RANGE_CELLS / row_count)) {
+		php_error_docref(NULL, E_WARNING, "Cell range too large");
+		RETURN_FALSE;
+	}
+
+	array_init_size(return_value, row_count);
+	for (r = row_start; r <= row_end; r++) {
+		zval row_value;
+		array_init_size(&row_value, col_count);
+		for (c = col_start; c <= col_end; c++) {
+			zval value;
+			FormatHandle format = NULL;
+
+			ZVAL_UNDEF(&value);
+			if (!php_excel_read_cell((int) r, (int) c, &value, sheet, book, &format, read_formula)) {
+				zval_ptr_dtor(&value);
+				zval_ptr_dtor(&row_value);
+				zval_ptr_dtor(return_value);
+				php_error_docref(NULL, E_WARNING, "Failed to read cell in row " ZEND_LONG_FMT ", column " ZEND_LONG_FMT " with error '%s'", r, c, xlBookErrorMessage(book));
+				RETURN_FALSE;
+			}
+			add_next_index_zval(&row_value, &value);
+		}
+		add_next_index_zval(return_value, &row_value);
+	}
+}
+/* }}} */
+
+/* {{{ proto array ExcelSheet::readSparseRow(int row [, int start_col [, int end_column [, bool read_formula]]])
+	Read non-empty cells from a row, keyed by original column index */
+EXCEL_METHOD(Sheet, readSparseRow)
+{
+	zval *object = ZEND_THIS;
+	zend_long row;
+	zend_long col_start = 0;
+	zend_long col_end = -1;
+	zend_long c;
+	int lr;
+	SheetHandle sheet;
+	BookHandle book;
+	bool read_formula = 1;
+
+	if (zend_parse_parameters(ZEND_NUM_ARGS(), "l|llb", &row, &col_start, &col_end, &read_formula) == FAILURE) {
+		RETURN_FALSE;
+	}
+
+	SHEET_AND_BOOK_FROM_OBJECT(sheet, book, object);
+
+	lr = xlSheetLastRow(sheet);
+	if (row < 0 || row > lr) {
+		php_error_docref(NULL, E_WARNING, "Invalid row number '" ZEND_LONG_FMT "'", row);
+		RETURN_FALSE;
+	}
+	if (!php_excel_validate_read_col_bounds(sheet, col_start, &col_end, 1)) {
+		RETURN_FALSE;
+	}
+
+	array_init(return_value);
+	for (c = col_start; c <= col_end; c++) {
+		zval value;
+		FormatHandle format = NULL;
+
+		if (xlSheetCellType(sheet, (int) row, (int) c) == CELLTYPE_EMPTY) {
+			continue;
+		}
+		ZVAL_UNDEF(&value);
+		if (!php_excel_read_cell((int) row, (int) c, &value, sheet, book, &format, read_formula)) {
+			zval_ptr_dtor(&value);
+			zval_ptr_dtor(return_value);
+			php_error_docref(NULL, E_WARNING, "Failed to read cell in row " ZEND_LONG_FMT ", column " ZEND_LONG_FMT " with error '%s'", row, c, xlBookErrorMessage(book));
+			RETURN_FALSE;
+		}
+		add_index_zval(return_value, (zend_ulong)c, &value);
+	}
+}
+/* }}} */
+
+/* {{{ proto array ExcelSheet::readSparseCol(int column [, int start_row [, int end_row [, bool read_formula]]])
+	Read non-empty cells from a column, keyed by original row index */
+EXCEL_METHOD(Sheet, readSparseCol)
+{
+	zval *object = ZEND_THIS;
+	zend_long col;
+	zend_long row_start = 0;
+	zend_long row_end = -1;
+	zend_long r;
+	int lc;
+	SheetHandle sheet;
+	BookHandle book;
+	bool read_formula = 1;
+
+	if (zend_parse_parameters(ZEND_NUM_ARGS(), "l|llb", &col, &row_start, &row_end, &read_formula) == FAILURE) {
+		RETURN_FALSE;
+	}
+
+	SHEET_AND_BOOK_FROM_OBJECT(sheet, book, object);
+
+	lc = xlSheetLastCol(sheet);
+	if (col < 0 || col > lc) {
+		php_error_docref(NULL, E_WARNING, "Invalid column number '" ZEND_LONG_FMT "'", col);
+		RETURN_FALSE;
+	}
+	if (!php_excel_validate_read_row_bounds(sheet, row_start, &row_end, 1)) {
+		RETURN_FALSE;
+	}
+
+	array_init(return_value);
+	for (r = row_start; r <= row_end; r++) {
+		zval value;
+		FormatHandle format = NULL;
+
+		if (xlSheetCellType(sheet, (int) r, (int) col) == CELLTYPE_EMPTY) {
+			continue;
+		}
+		ZVAL_UNDEF(&value);
+		if (!php_excel_read_cell((int) r, (int) col, &value, sheet, book, &format, read_formula)) {
+			zval_ptr_dtor(&value);
+			zval_ptr_dtor(return_value);
+			php_error_docref(NULL, E_WARNING, "Failed to read cell in row " ZEND_LONG_FMT ", column " ZEND_LONG_FMT " with error '%s'", r, col, xlBookErrorMessage(book));
+			RETURN_FALSE;
+		}
+		add_index_zval(return_value, (zend_ulong)r, &value);
 	}
 }
 /* }}} */

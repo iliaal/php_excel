@@ -1,5 +1,5 @@
-/* This is a generated file, edit the .stub.php file instead.
- * Stub hash: 37ac940b995d0e832eb0ef11a845eff5e9ca0fdd */
+/* This is a generated file, edit excel.stub.php instead.
+ * Stub hash: 7a680cca910505f546183e161df71e1835a097c2 */
 
 ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_ExcelBook_requiresKey, 0, 0, _IS_BOOL, 0)
 ZEND_END_ARG_INFO()
@@ -11,6 +11,28 @@ ZEND_END_ARG_INFO()
 ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_ExcelBook_loadFile, 0, 1, _IS_BOOL, 0)
 	ZEND_ARG_TYPE_INFO(0, filename, IS_STRING, 0)
 ZEND_END_ARG_INFO()
+
+#if LIBXL_VERSION >= 0x05000000
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_ExcelBook_loadPartially, 0, 4, _IS_BOOL, 0)
+	ZEND_ARG_TYPE_INFO(0, data, IS_STRING, 0)
+	ZEND_ARG_TYPE_INFO(0, sheet_index, IS_LONG, 0)
+	ZEND_ARG_TYPE_INFO(0, row_first, IS_LONG, 0)
+	ZEND_ARG_TYPE_INFO(0, row_last, IS_LONG, 0)
+	ZEND_ARG_TYPE_INFO_WITH_DEFAULT_VALUE(0, keep_all_sheets, _IS_BOOL, 0, "false")
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_ExcelBook_loadFilePartially, 0, 4, _IS_BOOL, 0)
+	ZEND_ARG_TYPE_INFO(0, filename, IS_STRING, 0)
+	ZEND_ARG_TYPE_INFO(0, sheet_index, IS_LONG, 0)
+	ZEND_ARG_TYPE_INFO(0, row_first, IS_LONG, 0)
+	ZEND_ARG_TYPE_INFO(0, row_last, IS_LONG, 0)
+	ZEND_ARG_TYPE_INFO_WITH_DEFAULT_VALUE(0, keep_all_sheets, _IS_BOOL, 0, "false")
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_ExcelBook_loadFileWithoutEmptyCells, 0, 1, _IS_BOOL, 0)
+	ZEND_ARG_TYPE_INFO(0, filename, IS_STRING, 0)
+ZEND_END_ARG_INFO()
+#endif
 
 ZEND_BEGIN_ARG_WITH_RETURN_TYPE_MASK_EX(arginfo_class_ExcelBook_save, 0, 0, MAY_BE_STRING|MAY_BE_TRUE|MAY_BE_FALSE)
 	ZEND_ARG_TYPE_INFO_WITH_DEFAULT_VALUE(0, filename, IS_STRING, 0, "\"\"")
@@ -276,6 +298,18 @@ ZEND_BEGIN_ARG_WITH_RETURN_TYPE_MASK_EX(arginfo_class_ExcelSheet_readCol, 0, 1, 
 	ZEND_ARG_TYPE_INFO_WITH_DEFAULT_VALUE(0, end_row, IS_LONG, 0, "-1")
 	ZEND_ARG_TYPE_INFO_WITH_DEFAULT_VALUE(0, read_formula, _IS_BOOL, 0, "true")
 ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_MASK_EX(arginfo_class_ExcelSheet_readRange, 0, 4, MAY_BE_ARRAY|MAY_BE_FALSE)
+	ZEND_ARG_TYPE_INFO(0, row_start, IS_LONG, 0)
+	ZEND_ARG_TYPE_INFO(0, row_end, IS_LONG, 0)
+	ZEND_ARG_TYPE_INFO(0, col_start, IS_LONG, 0)
+	ZEND_ARG_TYPE_INFO(0, col_end, IS_LONG, 0)
+	ZEND_ARG_TYPE_INFO_WITH_DEFAULT_VALUE(0, read_formula, _IS_BOOL, 0, "true")
+ZEND_END_ARG_INFO()
+
+#define arginfo_class_ExcelSheet_readSparseRow arginfo_class_ExcelSheet_readRow
+
+#define arginfo_class_ExcelSheet_readSparseCol arginfo_class_ExcelSheet_readCol
 
 ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_ExcelSheet_read, 0, 2, IS_MIXED, 0)
 	ZEND_ARG_TYPE_INFO(0, row, IS_LONG, 0)
@@ -1525,6 +1559,11 @@ ZEND_END_ARG_INFO()
 ZEND_METHOD(ExcelBook, requiresKey);
 ZEND_METHOD(ExcelBook, load);
 ZEND_METHOD(ExcelBook, loadFile);
+#if LIBXL_VERSION >= 0x05000000
+ZEND_METHOD(ExcelBook, loadPartially);
+ZEND_METHOD(ExcelBook, loadFilePartially);
+ZEND_METHOD(ExcelBook, loadFileWithoutEmptyCells);
+#endif
 ZEND_METHOD(ExcelBook, save);
 ZEND_METHOD(ExcelBook, getSheet);
 ZEND_METHOD(ExcelBook, getSheetByName);
@@ -1600,6 +1639,9 @@ ZEND_METHOD(ExcelSheet, cellFormat);
 ZEND_METHOD(ExcelSheet, setCellFormat);
 ZEND_METHOD(ExcelSheet, readRow);
 ZEND_METHOD(ExcelSheet, readCol);
+ZEND_METHOD(ExcelSheet, readRange);
+ZEND_METHOD(ExcelSheet, readSparseRow);
+ZEND_METHOD(ExcelSheet, readSparseCol);
 ZEND_METHOD(ExcelSheet, read);
 ZEND_METHOD(ExcelSheet, write);
 ZEND_METHOD(ExcelSheet, writeRow);
@@ -1979,6 +2021,11 @@ static const zend_function_entry class_ExcelBook_methods[] = {
 	ZEND_ME(ExcelBook, requiresKey, arginfo_class_ExcelBook_requiresKey, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
 	ZEND_ME(ExcelBook, load, arginfo_class_ExcelBook_load, ZEND_ACC_PUBLIC)
 	ZEND_ME(ExcelBook, loadFile, arginfo_class_ExcelBook_loadFile, ZEND_ACC_PUBLIC)
+#if LIBXL_VERSION >= 0x05000000
+	ZEND_ME(ExcelBook, loadPartially, arginfo_class_ExcelBook_loadPartially, ZEND_ACC_PUBLIC)
+	ZEND_ME(ExcelBook, loadFilePartially, arginfo_class_ExcelBook_loadFilePartially, ZEND_ACC_PUBLIC)
+	ZEND_ME(ExcelBook, loadFileWithoutEmptyCells, arginfo_class_ExcelBook_loadFileWithoutEmptyCells, ZEND_ACC_PUBLIC)
+#endif
 	ZEND_ME(ExcelBook, save, arginfo_class_ExcelBook_save, ZEND_ACC_PUBLIC)
 	ZEND_ME(ExcelBook, getSheet, arginfo_class_ExcelBook_getSheet, ZEND_ACC_PUBLIC)
 	ZEND_ME(ExcelBook, getSheetByName, arginfo_class_ExcelBook_getSheetByName, ZEND_ACC_PUBLIC)
@@ -2058,6 +2105,9 @@ static const zend_function_entry class_ExcelSheet_methods[] = {
 	ZEND_ME(ExcelSheet, setCellFormat, arginfo_class_ExcelSheet_setCellFormat, ZEND_ACC_PUBLIC)
 	ZEND_ME(ExcelSheet, readRow, arginfo_class_ExcelSheet_readRow, ZEND_ACC_PUBLIC)
 	ZEND_ME(ExcelSheet, readCol, arginfo_class_ExcelSheet_readCol, ZEND_ACC_PUBLIC)
+	ZEND_ME(ExcelSheet, readRange, arginfo_class_ExcelSheet_readRange, ZEND_ACC_PUBLIC)
+	ZEND_ME(ExcelSheet, readSparseRow, arginfo_class_ExcelSheet_readSparseRow, ZEND_ACC_PUBLIC)
+	ZEND_ME(ExcelSheet, readSparseCol, arginfo_class_ExcelSheet_readSparseCol, ZEND_ACC_PUBLIC)
 	ZEND_ME(ExcelSheet, read, arginfo_class_ExcelSheet_read, ZEND_ACC_PUBLIC)
 	ZEND_ME(ExcelSheet, write, arginfo_class_ExcelSheet_write, ZEND_ACC_PUBLIC)
 	ZEND_ME(ExcelSheet, writeRow, arginfo_class_ExcelSheet_writeRow, ZEND_ACC_PUBLIC)

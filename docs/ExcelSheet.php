@@ -214,6 +214,46 @@ class ExcelSheet
 	}
 
 	/**
+	* Read a rectangular range of cells
+	*
+	* @param int $row_start 0-based first row
+	* @param int $row_end 0-based last row
+	* @param int $col_start 0-based first column
+	* @param int $col_end 0-based last column
+	* @param bool $read_formula (optional, default=true)
+	* @return array|false
+	*/
+	public function readRange(int $row_start, int $row_end, int $col_start, int $col_end, bool $read_formula = true): array|false
+	{
+	}
+
+	/**
+	* Read non-empty cells from a row, keyed by original column index
+	*
+	* @param int $row 0-based row number
+	* @param int $start_col (optional, default=0)
+	* @param int $end_column (optional, default=-1)
+	* @param bool $read_formula (optional, default=true)
+	* @return array|false
+	*/
+	public function readSparseRow(int $row, int $start_col = 0, int $end_column = -1, bool $read_formula = true): array|false
+	{
+	}
+
+	/**
+	* Read non-empty cells from a column, keyed by original row index
+	*
+	* @param int $column 0-based column number
+	* @param int $start_row (optional, default=0)
+	* @param int $end_row (optional, default=-1)
+	* @param bool $read_formula (optional, default=true)
+	* @return array|false
+	*/
+	public function readSparseCol(int $column, int $start_row = 0, int $end_row = -1, bool $read_formula = true): array|false
+	{
+	}
+
+	/**
 	* Write data into a cell
 	*
 	* @param int $row 0-based row number
