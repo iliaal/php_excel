@@ -7,6 +7,11 @@ on:
     branches: [master]
   release:
     types: [published]
+  # Manual build-only trigger for the pre-tag Layer B gate: the release job
+  # below is guarded by `github.event_name == 'release'`, so a dispatch run
+  # builds every toolset without uploading, validating the exact commit on
+  # the real Windows runners before a tag goes out.
+  workflow_dispatch:
 
 env:
   LIBXL_VERSION: "5.2.0.1"
