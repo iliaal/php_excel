@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- ExcelSheet::readRange() reads a rectangular block of cells into a 2D array in one call, avoiding per-cell PHP dispatch on read-heavy import paths.
+- ExcelSheet::readSparseRow()/readSparseCol() return only the occupied cells of a row or column, keyed by their original column or row index.
+- ExcelBook::loadPartially()/loadFilePartially() load a single sheet's row slice from an Excel string or file, with an optional flag to keep the remaining sheets (requires libxl 5.0.0+).
+- ExcelBook::loadFileWithoutEmptyCells() loads an xls file while dropping empty cells (xls format only; requires libxl 5.0.0+).
+
 ### Fixed
 - ExcelSheet::read() now sets the format out-param for error-type cells; it previously returned an uninitialized ExcelFormat that warned on use.
 - ExcelBook::packDate() now accepts the Unix epoch; timestamp 0 was wrongly rejected as invalid.
