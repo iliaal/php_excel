@@ -120,6 +120,10 @@ typedef struct _excel_book_object {
 	/* Bumped for sheet-topology mutations that leave workbook-scoped
 	 * handles valid but can retarget sheet-derived wrappers. */
 	uint64_t sheet_generation;
+	/* Bumped when libxl removes child handles that existing PHP wrappers
+	 * may still hold; scoped by handle family to keep owners usable. */
+	uint64_t autofilter_generation;
+	uint64_t conditional_formatting_generation;
 	/* True for xlCreateXMLBook() (XLSX, 1048576x16384), false for
 	 * xlCreateBook() (XLS, 65536x256). Used by EXCEL_VALIDATE_ROW_COL to
 	 * reject impossible coordinates per book type. */
@@ -229,7 +233,7 @@ static inline excel_font_object *php_excel_font_object_fetch_object(zend_object 
 			php_error_docref(NULL, E_WARNING, "The autofilter wasn't initialized"); \
 			RETURN_FALSE; \
 		} \
-		CHECK_BOOK_AND_SHEET_GENERATION(obj); \
+		CHECK_BOOK_SHEET_AND_AUTOFILTER_GENERATION(obj); \
 	}
 
 #define FILTERCOLUMN_FROM_OBJECT(filtercolumn, object) \
@@ -240,7 +244,7 @@ static inline excel_font_object *php_excel_font_object_fetch_object(zend_object 
 			php_error_docref(NULL, E_WARNING, "The filtercolumn wasn't initialized"); \
 			RETURN_FALSE; \
 		} \
-		CHECK_BOOK_AND_SHEET_GENERATION(obj); \
+		CHECK_BOOK_SHEET_AND_AUTOFILTER_GENERATION(obj); \
 	}
 
 typedef struct _excel_format_object {
@@ -261,6 +265,7 @@ typedef struct _excel_autofilter_object {
 	SheetHandle sheet;
 	uint64_t book_generation;
 	uint64_t sheet_generation;
+	uint64_t autofilter_generation;
 	zval parent;
 	zend_object std;
 } excel_autofilter_object;
@@ -275,6 +280,7 @@ typedef struct _excel_filtercolumn_object {
 	AutoFilterHandle autofilter;
 	uint64_t book_generation;
 	uint64_t sheet_generation;
+	uint64_t autofilter_generation;
 	zval parent;
 	zend_object std;
 } excel_filtercolumn_object;
@@ -362,6 +368,7 @@ typedef struct _excel_conditionalformatting_object {
 	SheetHandle sheet;
 	uint64_t book_generation;
 	uint64_t sheet_generation;
+	uint64_t conditional_formatting_generation;
 	zval parent;
 	zend_object std;
 } excel_conditionalformatting_object;
@@ -379,7 +386,7 @@ static inline excel_conditionalformatting_object *php_excel_conditionalformattin
 			php_error_docref(NULL, E_WARNING, "The conditionalformatting wasn't initialized"); \
 			RETURN_FALSE; \
 		} \
-		CHECK_BOOK_AND_SHEET_GENERATION(obj); \
+		CHECK_BOOK_SHEET_AND_CONDITIONALFORMATTING_GENERATION(obj); \
 	}
 
 typedef struct _excel_coreproperties_object {
@@ -514,6 +521,46 @@ static zend_always_inline int php_excel_same_book(zval *arg_zv, zval *target_zv)
 		} \
 	} while (0)
 
+#define CHECK_BOOK_SHEET_AND_AUTOFILTER_GENERATION(child_obj) \
+	do { \
+		excel_book_object *_b = php_excel_resolve_book_obj(&(child_obj)->parent); \
+		if (!_b || !_b->book || _b->generation != (child_obj)->book_generation) { \
+			php_error_docref(NULL, E_WARNING, \
+				"Underlying ExcelBook handle is stale (parent was reloaded, cleared, or reinitialized)"); \
+			RETURN_FALSE; \
+		} \
+		if (_b->sheet_generation != (child_obj)->sheet_generation) { \
+			php_error_docref(NULL, E_WARNING, \
+				"Underlying ExcelBook sheet topology changed; wrapper must be re-fetched"); \
+			RETURN_FALSE; \
+		} \
+		if (_b->autofilter_generation != (child_obj)->autofilter_generation) { \
+			php_error_docref(NULL, E_WARNING, \
+				"Underlying ExcelBook autofilter state changed; wrapper must be re-fetched"); \
+			RETURN_FALSE; \
+		} \
+	} while (0)
+
+#define CHECK_BOOK_SHEET_AND_CONDITIONALFORMATTING_GENERATION(child_obj) \
+	do { \
+		excel_book_object *_b = php_excel_resolve_book_obj(&(child_obj)->parent); \
+		if (!_b || !_b->book || _b->generation != (child_obj)->book_generation) { \
+			php_error_docref(NULL, E_WARNING, \
+				"Underlying ExcelBook handle is stale (parent was reloaded, cleared, or reinitialized)"); \
+			RETURN_FALSE; \
+		} \
+		if (_b->sheet_generation != (child_obj)->sheet_generation) { \
+			php_error_docref(NULL, E_WARNING, \
+				"Underlying ExcelBook sheet topology changed; wrapper must be re-fetched"); \
+			RETURN_FALSE; \
+		} \
+		if (_b->conditional_formatting_generation != (child_obj)->conditional_formatting_generation) { \
+			php_error_docref(NULL, E_WARNING, \
+				"Underlying ExcelBook conditional formatting state changed; wrapper must be re-fetched"); \
+			RETURN_FALSE; \
+		} \
+	} while (0)
+
 /* Preresolved variant of CHECK_BOOK_GENERATION. resolve_book_obj(child) and
  * resolve_book_obj(&child->parent) return the same owning book, so single-cell
  * hot paths can resolve the book once and feed it to both the stale check and
@@ -558,6 +605,24 @@ static zend_always_inline int php_excel_same_book(zval *arg_zv, zval *target_zv)
 		ZVAL_COPY(&(child_obj)->parent, parent_zv); \
 	} while (0)
 
+#define EXCEL_INIT_AUTOFILTER_PARENT(child_obj, parent_zv) \
+	do { \
+		excel_book_object *_bg = php_excel_resolve_book_obj(parent_zv); \
+		(child_obj)->book_generation = _bg ? _bg->generation : 0; \
+		(child_obj)->sheet_generation = _bg ? _bg->sheet_generation : 0; \
+		(child_obj)->autofilter_generation = _bg ? _bg->autofilter_generation : 0; \
+		ZVAL_COPY(&(child_obj)->parent, parent_zv); \
+	} while (0)
+
+#define EXCEL_INIT_CONDITIONALFORMATTING_PARENT(child_obj, parent_zv) \
+	do { \
+		excel_book_object *_bg = php_excel_resolve_book_obj(parent_zv); \
+		(child_obj)->book_generation = _bg ? _bg->generation : 0; \
+		(child_obj)->sheet_generation = _bg ? _bg->sheet_generation : 0; \
+		(child_obj)->conditional_formatting_generation = _bg ? _bg->conditional_formatting_generation : 0; \
+		ZVAL_COPY(&(child_obj)->parent, parent_zv); \
+	} while (0)
+
 /* Bump the sheet-topology counter so sheet-derived wrappers fail their
  * stale-check. Workbook-scoped handles remain valid. */
 static inline void php_excel_book_bump_sheet_generation(zval *book_zv) {
@@ -565,16 +630,32 @@ static inline void php_excel_book_bump_sheet_generation(zval *book_zv) {
 	bobj->sheet_generation++;
 }
 
-/* Full state reset: bump generation AND drop the cached default date
- * format. Use after libxl operations that free the internal format
- * table (load, loadFile, loadInfo, loadInfoRaw, clear, __construct
- * reuse). Reusing the stale FormatHandle from default_date_format
- * after one of these would silently write cells with no format,
- * corrupting AS_DATE-typed output. */
+static inline void php_excel_book_bump_autofilter_generation(zval *parent_zv) {
+	excel_book_object *bobj = php_excel_resolve_book_obj(parent_zv);
+	if (bobj) {
+		bobj->autofilter_generation++;
+	}
+}
+
+static inline void php_excel_book_bump_conditional_formatting_generation(zval *parent_zv) {
+	excel_book_object *bobj = php_excel_resolve_book_obj(parent_zv);
+	if (bobj) {
+		bobj->conditional_formatting_generation++;
+	}
+}
+
+/* Full state reset: bump every wrapper generation domain and drop the
+ * cached default date format. Use after libxl operations that free the
+ * internal format table (load, loadFile, loadInfo, loadInfoRaw, clear,
+ * __construct reuse). Reusing the stale FormatHandle from
+ * default_date_format after one of these would silently write cells with
+ * no format, corrupting AS_DATE-typed output. */
 static inline void php_excel_book_reset_state(zval *book_zv) {
 	excel_book_object *bobj = php_excel_book_object_fetch_object(Z_OBJ_P(book_zv));
 	bobj->generation++;
 	bobj->sheet_generation++;
+	bobj->autofilter_generation++;
+	bobj->conditional_formatting_generation++;
 	bobj->default_date_format = NULL;
 }
 
@@ -609,6 +690,29 @@ static inline int php_excel_check_book_and_sheet_generation_throw(zval *parent_z
 	return 1;
 }
 
+static inline int php_excel_check_book_sheet_and_autofilter_generation_throw(zval *parent_zv, uint64_t book_stamped, uint64_t sheet_stamped, uint64_t autofilter_stamped) {
+	excel_book_object *b = php_excel_resolve_book_obj(parent_zv);
+	if (!b || !b->book || b->generation != book_stamped) {
+		zend_throw_exception(NULL,
+			"Underlying ExcelBook handle is stale (parent was reloaded, cleared, or reinitialized)",
+			0);
+		return 0;
+	}
+	if (b->sheet_generation != sheet_stamped) {
+		zend_throw_exception(NULL,
+			"Underlying ExcelBook sheet topology changed; wrapper must be re-fetched",
+			0);
+		return 0;
+	}
+	if (b->autofilter_generation != autofilter_stamped) {
+		zend_throw_exception(NULL,
+			"Underlying ExcelBook autofilter state changed; wrapper must be re-fetched",
+			0);
+		return 0;
+	}
+	return 1;
+}
+
 /* Throw-on-error variants of the FROM_OBJECT macros. Used in constructors,
  * where PHP ignores the return value of RETURN_FALSE and the caller would
  * otherwise receive an uninitialized wrapper.
@@ -637,7 +741,7 @@ static inline int php_excel_check_book_and_sheet_generation_throw(zval *parent_z
 			zend_throw_exception(NULL, "The autofilter wasn't initialized", 0); \
 			RETURN_THROWS(); \
 		} \
-		if (!php_excel_check_book_and_sheet_generation_throw(&_obj->parent, _obj->book_generation, _obj->sheet_generation)) { \
+		if (!php_excel_check_book_sheet_and_autofilter_generation_throw(&_obj->parent, _obj->book_generation, _obj->sheet_generation, _obj->autofilter_generation)) { \
 			RETURN_THROWS(); \
 		} \
 	} while (0)
@@ -675,6 +779,8 @@ static zend_object *excel_object_new_book(zend_class_entry *class_type)
 	intern->book = NULL;
 	intern->generation = 0;
 	intern->sheet_generation = 0;
+	intern->autofilter_generation = 0;
+	intern->conditional_formatting_generation = 0;
 	intern->is_xlsx = false;
 	intern->default_date_format = NULL;
 	intern->std.handlers = &excel_object_handlers_book;
@@ -1983,6 +2089,8 @@ EXCEL_METHOD(Book, __construct)
 			 * instead of dereferencing freed memory. */
 			obj->generation++;
 			obj->sheet_generation++;
+			obj->autofilter_generation++;
+			obj->conditional_formatting_generation++;
 		}
 		obj->book = book;
 		obj->is_xlsx = new_excel;
@@ -6102,7 +6210,7 @@ EXCEL_METHOD(Sheet, autoFilter)
 	obj = Z_EXCEL_AUTOFILTER_OBJ_P(return_value);
 	obj->autofilter = ah;
 	obj->sheet = sheet;
-	EXCEL_INIT_SHEET_PARENT(obj, object);
+	EXCEL_INIT_AUTOFILTER_PARENT(obj, object);
 }
 /* }}} */
 
@@ -6137,6 +6245,7 @@ EXCEL_METHOD(Sheet, removeFilter)
 
 	// @todo check for XLSX format
 	xlSheetRemoveFilter(sheet);
+	php_excel_book_bump_autofilter_generation(object);
 
 	RETURN_TRUE;
 }
@@ -6241,7 +6350,7 @@ EXCEL_METHOD(AutoFilter, __construct)
 
 	obj->sheet = sheet;
 	obj->autofilter = afh;
-	EXCEL_INIT_SHEET_PARENT(obj, zsheet);
+	EXCEL_INIT_AUTOFILTER_PARENT(obj, zsheet);
 }
 /* }}} */
 
@@ -6310,7 +6419,7 @@ EXCEL_METHOD(AutoFilter, column)
 	obj = Z_EXCEL_FILTERCOLUMN_OBJ_P(return_value);
 	obj->autofilter = autofilter;
 	obj->filtercolumn = fch;
-	EXCEL_INIT_SHEET_PARENT(obj, object);
+	EXCEL_INIT_AUTOFILTER_PARENT(obj, object);
 }
 /* }}} */
 
@@ -6350,7 +6459,7 @@ EXCEL_METHOD(AutoFilter, columnByIndex)
 	obj = Z_EXCEL_FILTERCOLUMN_OBJ_P(return_value);
 	obj->autofilter = autofilter;
 	obj->filtercolumn = fch;
-	EXCEL_INIT_SHEET_PARENT(obj, object);
+	EXCEL_INIT_AUTOFILTER_PARENT(obj, object);
 }
 /* }}} */
 
@@ -6472,7 +6581,7 @@ EXCEL_METHOD(FilterColumn, __construct)
 
 	obj->filtercolumn = fch;
 	obj->autofilter = autofilter;
-	EXCEL_INIT_SHEET_PARENT(obj, zautofilter);
+	EXCEL_INIT_AUTOFILTER_PARENT(obj, zautofilter);
 }
 /* }}} */
 
@@ -7543,7 +7652,7 @@ EXCEL_METHOD(Sheet, addConditionalFormatting)
 	cfo = Z_EXCEL_CONDITIONALFORMATTING_OBJ_P(return_value);
 	cfo->conditionalformatting = cfh;
 	cfo->sheet = sheet;
-	EXCEL_INIT_SHEET_PARENT(cfo, object);
+	EXCEL_INIT_CONDITIONALFORMATTING_PARENT(cfo, object);
 }
 
 #if LIBXL_VERSION >= 0x05010000
@@ -7572,7 +7681,7 @@ EXCEL_METHOD(Sheet, conditionalFormatting)
 	cfo = Z_EXCEL_CONDITIONALFORMATTING_OBJ_P(return_value);
 	cfo->conditionalformatting = cfh;
 	cfo->sheet = sheet;
-	EXCEL_INIT_SHEET_PARENT(cfo, object);
+	EXCEL_INIT_CONDITIONALFORMATTING_PARENT(cfo, object);
 }
 
 EXCEL_METHOD(Sheet, removeConditionalFormatting)
@@ -7589,7 +7698,13 @@ EXCEL_METHOD(Sheet, removeConditionalFormatting)
 
 	SHEET_FROM_OBJECT(sheet, object);
 
-	RETURN_BOOL(xlSheetRemoveConditionalFormatting(sheet, index));
+	{
+		int ret = xlSheetRemoveConditionalFormatting(sheet, index);
+		if (ret) {
+			php_excel_book_bump_conditional_formatting_generation(object);
+		}
+		RETURN_BOOL(ret);
+	}
 }
 
 EXCEL_METHOD(Sheet, conditionalFormattingSize)
@@ -8712,7 +8827,7 @@ EXCEL_METHOD(ConditionalFormatting, __construct)
 
 	obj->conditionalformatting = cfh;
 	obj->sheet = sheet;
-	EXCEL_INIT_SHEET_PARENT(obj, zsheet);
+	EXCEL_INIT_CONDITIONALFORMATTING_PARENT(obj, zsheet);
 }
 
 EXCEL_METHOD(ConditionalFormatting, addRange)
@@ -9239,7 +9354,7 @@ EXCEL_METHOD(Table, autoFilter)
 	aobj = Z_EXCEL_AUTOFILTER_OBJ_P(return_value);
 	aobj->autofilter = afh;
 	aobj->sheet = tobj->sheet;
-	EXCEL_INIT_SHEET_PARENT(aobj, object);
+	EXCEL_INIT_AUTOFILTER_PARENT(aobj, object);
 }
 
 #if LIBXL_VERSION >= 0x05020000
@@ -9257,6 +9372,7 @@ EXCEL_METHOD(Table, removeFilter)
 	TableHandle table;
 	TABLE_FROM_OBJECT(table, object);
 	xlTableRemoveFilter(table);
+	php_excel_book_bump_autofilter_generation(object);
 	RETURN_TRUE;
 }
 #endif
