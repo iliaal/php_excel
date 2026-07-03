@@ -33,10 +33,22 @@ echo "file sheet count: " . $fileBook->sheetCount() . "\n";
 echo "file loaded row 1: " . $fileBook->getSheet(0)->read(1, 0) . "\n";
 echo "file other sheet name: " . $fileBook->getSheetName(1) . "\n";
 
-$compactBook = new ExcelBook(null, null, true);
-var_dump($compactBook->loadFileWithoutEmptyCells($tmp));
+// loadFileWithoutEmptyCells is xls-only in libxl; feed it a binary xls book.
+$xlsBook = new ExcelBook(null, null, false);
+$xls1 = $xlsBook->addSheet("First");
+$xls2 = $xlsBook->addSheet("Second");
+$xls1->write(1, 0, "first-r1");
+$xls1->write(5, 0, "first-r5");
+$xls2->write(1, 0, "second-r1");
+$xls2->write(5, 0, "second-r5");
+$xlsTmp = tempnam("/tmp", "xl_compact_") . ".xls";
+$xlsBook->save($xlsTmp);
+
+$compactBook = new ExcelBook(null, null, false);
+var_dump($compactBook->loadFileWithoutEmptyCells($xlsTmp));
 echo "compact sheet count: " . $compactBook->sheetCount() . "\n";
 echo "compact row 1: " . $compactBook->getSheet(0)->read(1, 0) . "\n";
+unlink($xlsTmp);
 
 unlink($tmp);
 echo "OK\n";

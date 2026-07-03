@@ -164,7 +164,8 @@ class ExcelBook
 	}
 
 	/**
-	* Load Excel from file without empty cells
+	* Load Excel from file without empty cells (xls format only; libxl does not
+	* support this for xlsx files and the call fails with a warning on such books)
 	*
 	* @since libxl 5.0.0
 	* @param string $filename Plain filesystem path
