@@ -7,16 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.3.0] - 2026-07-03
+
 ### Added
 - ExcelSheet::readRange() reads a rectangular block of cells into a 2D array in one call, avoiding per-cell PHP dispatch on read-heavy import paths.
 - ExcelSheet::readSparseRow()/readSparseCol() return only the occupied cells of a row or column, keyed by their original column or row index.
 - ExcelBook::loadPartially()/loadFilePartially() load a single sheet's row slice from an Excel string or file, with an optional flag to keep the remaining sheets (requires libxl 5.0.0+).
 - ExcelBook::loadFileWithoutEmptyCells() loads an xls file while dropping empty cells (xls format only; requires libxl 5.0.0+).
+- ExcelSheet::writeRow() now accepts an optional $data_type argument, matching writeCol(), to apply an explicit cell data type across the row.
 
 ### Fixed
 - ExcelSheet::read() now sets the format out-param for error-type cells; it previously returned an uninitialized ExcelFormat that warned on use.
 - ExcelBook::packDate() now accepts the Unix epoch; timestamp 0 was wrongly rejected as invalid.
 - ExcelBook::loadFile()/save() no longer emit a duplicate open_basedir warning when a plain path is denied.
+- Child wrappers (ExcelAutoFilter, ExcelFilterColumn, ExcelConditionalFormatting) fetched before their autofilter, table filter, or conditional formatting is removed are now invalidated and reject reuse, while the owning sheet, table, or book stays valid.
 
 ## [2.2.0] - 2026-06-11
 
@@ -671,7 +675,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.8] - 2010-08-01
 	* Initial Release
 
-[Unreleased]: https://github.com/iliaal/php_excel/compare/2.2.0...HEAD
+[Unreleased]: https://github.com/iliaal/php_excel/compare/2.3.0...HEAD
+[2.3.0]: https://github.com/iliaal/php_excel/releases/tag/2.3.0
 [2.2.0]: https://github.com/iliaal/php_excel/releases/tag/2.2.0
 [2.1.0]: https://github.com/iliaal/php_excel/releases/tag/2.1.0
 [2.0.1]: https://github.com/iliaal/php_excel/releases/tag/2.0.1
