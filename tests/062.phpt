@@ -39,7 +39,9 @@ array(5) {
   bool(false)
 }
 bool(false)
-array(6) {
+array(7) {
+  ["name"]=>
+  string(5) "test2"
   ["row_first"]=>
   int(20)
   ["row_last"]=>

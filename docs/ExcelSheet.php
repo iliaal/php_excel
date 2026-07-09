@@ -322,10 +322,9 @@ class ExcelSheet
 	*
 	* @param int $row_first 0-based row number
 	* @param int $row_last 0-based row number
-	* @param bool $update_named_ranges (optional, default=true)
 	* @return bool
 	*/
-	public function insertRow($row_first, $row_last, $update_named_ranges = true): bool
+	public function insertRow(int $row_first, int $row_last): bool
 	{
 	}
 
@@ -334,10 +333,9 @@ class ExcelSheet
 	*
 	* @param int $col_first 0-based column number
 	* @param int $col_last 0-based column number
-	* @param bool $update_named_ranges (optional, default=true)
 	* @return bool
 	*/
-	public function insertCol(int $col_first, $col_last, $update_named_ranges = true): bool
+	public function insertCol(int $col_first, int $col_last): bool
 	{
 	}
 
@@ -346,10 +344,9 @@ class ExcelSheet
 	*
 	* @param int $row_first 0-based row number
 	* @param int $row_last 0-based row number
-	* @param bool $update_named_ranges (optional, default=true)
 	* @return bool
 	*/
-	public function removeRow(int $row_first, $row_last, $update_named_ranges = true): bool
+	public function removeRow(int $row_first, int $row_last): bool
 	{
 	}
 
@@ -358,10 +355,9 @@ class ExcelSheet
 	*
 	* @param int $col_first 0-based column number
 	* @param int $col_last 0-based column number
-	* @param bool $update_named_ranges (optional, default=true)
 	* @return bool
 	*/
-	public function removeCol(int $col_first, $col_last, $update_named_ranges = true): bool
+	public function removeCol(int $col_first, int $col_last): bool
 	{
 	}
 
@@ -408,6 +404,17 @@ class ExcelSheet
 	* @return void
 	*/
 	public function writeComment(int $row, int $column, string $value, string $author, int $width, int $height)
+	{
+	}
+
+	/**
+	* Remove the comment from a cell
+	*
+	* @param int $row 0-based row number
+	* @param int $col 0-based column number
+	* @return mixed
+	*/
+	public function removeComment(int $row, int $col): mixed
 	{
 	}
 

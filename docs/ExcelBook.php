@@ -126,6 +126,12 @@ class ExcelBook
 	/**
 	* Load Excel from file
 	*
+	* Loading resets the book: any child wrappers (ExcelSheet, ExcelFont,
+	* ExcelFormat, ExcelAutoFilter, ...) fetched before this call are
+	* invalidated and must be re-fetched, whether the load succeeds or fails.
+	* On failure the return is false and an E_WARNING carries the libxl error
+	* (also available via getError()).
+	*
 	* @param string $filename
 	* @return bool
 	*/
@@ -177,6 +183,12 @@ class ExcelBook
 
 	/**
 	* Load Excel data string
+	*
+	* Loading resets the book: any child wrappers (ExcelSheet, ExcelFont,
+	* ExcelFormat, ExcelAutoFilter, ...) fetched before this call are
+	* invalidated and must be re-fetched, whether the load succeeds or fails.
+	* On failure the return is false and an E_WARNING carries the libxl error
+	* (also available via getError()).
 	*
 	* @param string $data
 	* @return bool

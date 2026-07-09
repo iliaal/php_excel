@@ -32,6 +32,26 @@ Please include:
 Acknowledgement within 7 days, fix or status update within 30. Once a
 fix is released the advisory becomes public.
 
+## Writing untrusted values (formula injection)
+
+When no explicit data type is passed, `ExcelSheet::write()`, `writeRow()`, and
+`writeCol()` promote a string whose first character is `=` to a live formula.
+Writing untrusted user input this way is a spreadsheet formula-injection
+vector: a value like `=HYPERLINK(...)` or `=cmd|...` can execute or exfiltrate
+when the file is opened in Excel.
+
+When writing values you do not control, pass `ExcelFormat::AS_TEXT` as the data
+type so the string is stored verbatim with no formula promotion, no
+leading-quote stripping, and no numeric coercion:
+
+```php
+$sheet->write($row, $col, $untrusted, null, ExcelFormat::AS_TEXT);
+$sheet->writeRow($row, $untrusted_array, 0, null, ExcelFormat::AS_TEXT);
+```
+
+Implicit `=` promotion is retained as the default for backwards compatibility;
+it may be revisited in a future major version.
+
 ## Scope
 
 In scope:

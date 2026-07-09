@@ -186,7 +186,7 @@ if (method_exists("ExcelSheet", "getTableByIndex")) {
 // AutoFilter / FilterColumn / RichString / Table index APIs.
 $sn->setMerge(1, 1, 0, 1);
 $af = $sn->autoFilter();
-$af->setRef(0, 0, 1, 0);
+$af->setRef(0, 1, 0, 1);
 echo "AutoFilter::column(2**32): "; var_dump(@$af->column(2 ** 32));
 echo "AutoFilter::columnByIndex(2**32): "; var_dump(@$af->columnByIndex(2 ** 32));
 echo "AutoFilter::setSort(2**32, false): "; var_dump(@$af->setSort(2 ** 32, false));

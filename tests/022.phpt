@@ -12,7 +12,7 @@ excel
 
 	for ($i = 0; $i < 40; $i++) {
 		$font = $x->addFont();
-		$font->size($i);
+		@$font->size($i); // i=0 is an invalid size; not what this test exercises
 		$format = $x->addFormat();
 		$format->setFont($font);
 

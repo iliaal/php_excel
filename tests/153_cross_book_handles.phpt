@@ -37,6 +37,11 @@ echo "setRowPx:     "; var_dump(@$s2->setRowPx(1, 20, $fmt1));
 $rs1 = $b1->addRichString();
 echo "writeRichStr: "; var_dump(@$s2->writeRichStr(2, 0, $rs1));
 
+// Font from b1 applied to b2's RichString via addText (live handle, not a copy)
+$rs2 = $b2->addRichString();
+$font_b1 = $b1->addFont();
+echo "addText:      "; var_dump(@$rs2->addText("x", $font_b1));
+
 // AutoFilter from b1
 $af1 = $b1->addSheet("A1")->autoFilter();
 echo "applyFilter2: "; var_dump(@$s2->applyFilter2($af1));
@@ -57,6 +62,8 @@ $font2 = $b2->addFont();
 echo "setFont:      "; var_dump($fmt2->setFont($font2));
 $cf2 = $b2->addConditionalFormat();
 echo "addRule:      "; var_dump($cfing->addRule(0x100, $cf2, "10"));
+$font_b2 = $b2->addFont();
+echo "addText:      "; var_dump($rs2->addText("y", $font_b2));
 
 echo "OK\n";
 ?>
@@ -71,6 +78,7 @@ setRowHeight: bool(false)
 setColPx:     bool(false)
 setRowPx:     bool(false)
 writeRichStr: bool(false)
+addText:      bool(false)
 applyFilter2: bool(false)
 setFont:      bool(false)
 addRule:      bool(false)
@@ -78,4 +86,5 @@ addRule:      bool(false)
 write:        bool(true)
 setFont:      bool(true)
 addRule:      bool(true)
+addText:      bool(true)
 OK

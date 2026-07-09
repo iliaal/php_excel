@@ -66,7 +66,7 @@ class ExcelConditionalFormatting
 	* @param int $colFirst (required for libxl 5.1.0+)
 	* @param int $colLast (required for libxl 5.1.0+)
 	*/
-	public function __construct(ExcelSheet $sheet, int $rowFirst = null, int $rowLast = null, int $colFirst = null, int $colLast = null)
+	public function __construct(ExcelSheet $sheet, int $rowFirst, int $rowLast, int $colFirst, int $colLast)
 	{
 	}
 
@@ -88,11 +88,11 @@ class ExcelConditionalFormatting
 	*
 	* @param int $type One of ExcelConditionalFormatting::CFORMAT_* constants
 	* @param ExcelConditionalFormat $cf
-	* @param mixed $value Rule value
-	* @param string $stopIfTrue (optional)
+	* @param string $value Rule value
+	* @param bool $stopIfTrue (optional)
 	* @return bool
 	*/
-	public function addRule(int $type, ExcelConditionalFormat $cf, $value = null, string $stopIfTrue = null): bool
+	public function addRule(int $type, ExcelConditionalFormat $cf, string $value, bool $stopIfTrue = false): bool
 	{
 	}
 
@@ -100,13 +100,13 @@ class ExcelConditionalFormatting
 	* Adds a top/bottom rule
 	*
 	* @param ExcelConditionalFormat $cf
-	* @param mixed $value Rank value
-	* @param int $bottom 0 for top, 1 for bottom
+	* @param int $value Rank value
+	* @param bool $bottom false for top, true for bottom
 	* @param bool $percent Whether to use percentage
 	* @param bool $stopIfTrue (optional)
 	* @return bool
 	*/
-	public function addTopRule(ExcelConditionalFormat $cf, $value, int $bottom, bool $percent, bool $stopIfTrue = false): bool
+	public function addTopRule(ExcelConditionalFormat $cf, int $value, bool $bottom, bool $percent, bool $stopIfTrue = false): bool
 	{
 	}
 
@@ -115,12 +115,12 @@ class ExcelConditionalFormatting
 	*
 	* @param int $op One of ExcelConditionalFormatting::CFOPERATOR_* constants
 	* @param ExcelConditionalFormat $cf
-	* @param mixed $value1 First comparison value
-	* @param float $value2 (optional) Second comparison value for BETWEEN/NOTBETWEEN
-	* @param float $stopIfTrue (optional)
+	* @param float $value1 First comparison value
+	* @param float $value2 Second comparison value for BETWEEN/NOTBETWEEN
+	* @param bool $stopIfTrue (optional)
 	* @return bool
 	*/
-	public function addOpNumRule(int $op, ExcelConditionalFormat $cf, $value1, float $value2 = null, float $stopIfTrue = null): bool
+	public function addOpNumRule(int $op, ExcelConditionalFormat $cf, float $value1, float $value2, bool $stopIfTrue = false): bool
 	{
 	}
 
@@ -129,12 +129,12 @@ class ExcelConditionalFormatting
 	*
 	* @param int $op One of ExcelConditionalFormatting::CFOPERATOR_* constants
 	* @param ExcelConditionalFormat $cf
-	* @param mixed $value1 First comparison value
-	* @param string $value2 (optional) Second comparison value
-	* @param string $stopIfTrue (optional)
+	* @param string $value1 First comparison value
+	* @param string $value2 Second comparison value
+	* @param bool $stopIfTrue (optional)
 	* @return bool
 	*/
-	public function addOpStrRule(int $op, ExcelConditionalFormat $cf, $value1, string $value2 = null, string $stopIfTrue = null): bool
+	public function addOpStrRule(int $op, ExcelConditionalFormat $cf, string $value1, string $value2, bool $stopIfTrue = false): bool
 	{
 	}
 
@@ -142,13 +142,13 @@ class ExcelConditionalFormatting
 	* Adds an above/below average rule
 	*
 	* @param ExcelConditionalFormat $cf
-	* @param mixed $above Whether to check above average
+	* @param bool $above Whether to check above average
 	* @param bool $equal Whether to include equal values
-	* @param bool $stdDev Whether to use standard deviation
-	* @param int $stopIfTrue (optional)
+	* @param int $stdDev Number of standard deviations (0 for none)
+	* @param bool $stopIfTrue (optional)
 	* @return bool
 	*/
-	public function addAboveAverageRule(ExcelConditionalFormat $cf, $above, bool $equal, bool $stdDev, int $stopIfTrue = 0): bool
+	public function addAboveAverageRule(ExcelConditionalFormat $cf, bool $above, bool $equal, int $stdDev, bool $stopIfTrue = false): bool
 	{
 	}
 
@@ -156,11 +156,11 @@ class ExcelConditionalFormatting
 	* Adds a time period rule
 	*
 	* @param ExcelConditionalFormat $cf
-	* @param mixed $timePeriod One of ExcelConditionalFormatting::CFTP_* constants
-	* @param int $stopIfTrue (optional)
+	* @param int $timePeriod One of ExcelConditionalFormatting::CFTP_* constants
+	* @param bool $stopIfTrue (optional)
 	* @return bool
 	*/
-	public function addTimePeriodRule(ExcelConditionalFormat $cf, $timePeriod, int $stopIfTrue = 0): bool
+	public function addTimePeriodRule(ExcelConditionalFormat $cf, int $timePeriod, bool $stopIfTrue = false): bool
 	{
 	}
 
