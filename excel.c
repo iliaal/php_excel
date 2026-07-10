@@ -50,7 +50,7 @@
 #define PHP_EXCEL_NUMERIC_STRING 3
 #define PHP_EXCEL_TEXT 4
 
-#define PHP_EXCEL_VERSION "2.3.0"
+#define PHP_EXCEL_VERSION "2.4.0"
 
 #ifdef COMPILE_DL_EXCEL
 #ifdef ZTS

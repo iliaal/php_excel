@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.4.0] - 2026-07-09
+
 ### Security
 - excel.license_key and excel.license_name are now PHP_INI_SYSTEM, so a per-request ini_set() or .user.ini can no longer overwrite the commercial license in a shared pool (a runtime key can still be passed to the ExcelBook constructor).
 
@@ -711,7 +713,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.8] - 2010-08-01
 	* Initial Release
 
-[Unreleased]: https://github.com/iliaal/php_excel/compare/2.3.0...HEAD
+[Unreleased]: https://github.com/iliaal/php_excel/compare/2.4.0...HEAD
+[2.4.0]: https://github.com/iliaal/php_excel/releases/tag/2.4.0
 [2.3.0]: https://github.com/iliaal/php_excel/releases/tag/2.3.0
 [2.2.0]: https://github.com/iliaal/php_excel/releases/tag/2.2.0
 [2.1.0]: https://github.com/iliaal/php_excel/releases/tag/2.1.0
