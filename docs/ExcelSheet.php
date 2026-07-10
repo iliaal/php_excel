@@ -1592,9 +1592,9 @@ class ExcelSheet
 	/**
 	* Returns the number of data validations in the sheet (only for xlsx files, libxl 5.2.0+)
 	*
-	* @return int
+	* @return int|false
 	*/
-	public function dataValidationSize(): int
+	public function dataValidationSize(): int|false
 	{
 	}
 
@@ -1951,7 +1951,7 @@ class ExcelSheet
 	* @param int $colLast 0-based last column
 	* @return ExcelConditionalFormatting|false
 	*/
-	public function addConditionalFormatting(int $rowFirst = null, int $rowLast = null, int $colFirst = null, int $colLast = null): ExcelConditionalFormatting|false
+	public function addConditionalFormatting(int $rowFirst, int $rowLast, int $colFirst, int $colLast): ExcelConditionalFormatting|false
 	{
 	}
 

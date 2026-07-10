@@ -108,7 +108,14 @@ jobs:
             --with-excel \
             --with-libxl-incdir=${{ github.workspace }}/libxl-${{ matrix.libxl }}/include_c \
             --with-libxl-libdir=${{ github.workspace }}/libxl-${{ matrix.libxl }}/lib64
-          WARNINGS=$(make -j$(nproc) 2>&1 | tee /dev/stderr | grep -c 'warning:' || true)
+          set -o pipefail
+          make -j$(nproc) 2>&1 | tee build.log
+          BUILD_STATUS=${PIPESTATUS[0]}
+          if [ "$BUILD_STATUS" -ne 0 ]; then
+            echo "::error::Build failed (make exited $BUILD_STATUS)"
+            exit 1
+          fi
+          WARNINGS=$(grep -c 'warning:' build.log || true)
           if [ "$WARNINGS" -gt 0 ]; then
             echo "::error::Build produced $WARNINGS warning(s)"
             exit 1
@@ -121,11 +128,15 @@ jobs:
           export TEST_PHP_EXECUTABLE=$(which php)
           export TEST_PHP_ARGS="-d extension=$(pwd)/modules/excel.so"
           export NO_INTERACTION=1
-          RESULT=$(php run-tests.php --show-diff -g FAIL,BORK,LEAK,XLEAK tests/ 2>&1)
-          echo "$RESULT"
-          FAILED=$(echo "$RESULT" | grep 'Tests failed' | grep -oP '\d+' | head -1)
-          if [ "$FAILED" -gt 0 ]; then
-            echo "::error::$FAILED test(s) failed"
+          set -o pipefail
+          php run-tests.php --show-diff -g FAIL,BORK,LEAK,XLEAK tests/ 2>&1 | tee test-output.txt
+          RUN_STATUS=${PIPESTATUS[0]}
+          if [ "$RUN_STATUS" -ne 0 ]; then
+            echo "::error::run-tests.php exited non-zero ($RUN_STATUS)"
+            exit 1
+          fi
+          if grep -qP 'Tests (failed|leaked)\s*:\s*[1-9]' test-output.txt; then
+            echo "::error::Tests failed or leaked"
             exit 1
           fi
 
@@ -182,11 +193,15 @@ jobs:
           export TEST_PHP_EXECUTABLE=$(which php)
           export TEST_PHP_ARGS="-d extension=$(pwd)/modules/excel.so"
           export NO_INTERACTION=1
-          RESULT=$(php run-tests.php --show-diff -g FAIL,BORK,LEAK,XLEAK tests/ 2>&1)
-          echo "$RESULT"
-          FAILED=$(echo "$RESULT" | grep 'Tests failed' | grep -oP '\d+' | head -1)
-          if [ "$FAILED" -gt 0 ]; then
-            echo "::error::$FAILED test(s) failed under ZTS"
+          set -o pipefail
+          php run-tests.php --show-diff -g FAIL,BORK,LEAK,XLEAK tests/ 2>&1 | tee test-output.txt
+          RUN_STATUS=${PIPESTATUS[0]}
+          if [ "$RUN_STATUS" -ne 0 ]; then
+            echo "::error::run-tests.php exited non-zero ($RUN_STATUS) under ZTS"
+            exit 1
+          fi
+          if grep -qP 'Tests (failed|leaked)\s*:\s*[1-9]' test-output.txt; then
+            echo "::error::Tests failed or leaked under ZTS"
             exit 1
           fi
 
@@ -272,8 +287,14 @@ jobs:
           export TEST_PHP_EXECUTABLE=/tmp/php-asan/bin/php
           export TEST_PHP_ARGS="-d extension=$(pwd)/modules/excel.so"
           export NO_INTERACTION=1
-          /tmp/php-asan/bin/php run-tests.php --show-diff --asan -g FAIL,BORK,LEAK,XLEAK tests/ 2>&1 | tee /tmp/test-output.txt || true
-          if grep -qP 'Tests failed\s*:\s*[1-9]' /tmp/test-output.txt; then
-            echo "::error::Tests failed under ASAN"
+          set -o pipefail
+          /tmp/php-asan/bin/php run-tests.php --show-diff --asan -g FAIL,BORK,LEAK,XLEAK tests/ 2>&1 | tee /tmp/test-output.txt
+          RUN_STATUS=${PIPESTATUS[0]}
+          if [ "$RUN_STATUS" -ne 0 ]; then
+            echo "::error::run-tests.php exited non-zero ($RUN_STATUS) under ASAN"
+            exit 1
+          fi
+          if grep -qP 'Tests (failed|leaked)\s*:\s*[1-9]' /tmp/test-output.txt; then
+            echo "::error::Tests failed or leaked under ASAN"
             exit 1
           fi

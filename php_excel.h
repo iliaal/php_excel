@@ -28,6 +28,10 @@ ZEND_END_MODULE_GLOBALS(excel)
 
 #define EXCEL_G(v) ZEND_MODULE_GLOBALS_ACCESSOR(excel, v)
 
+#if defined(ZTS) && defined(COMPILE_DL_EXCEL)
+ZEND_TSRMLS_CACHE_EXTERN()
+#endif
+
 #ifdef PHP_WIN32
 #define PHP_EXCEL_API __declspec(dllexport)
 #else
@@ -38,7 +42,7 @@ ZEND_END_MODULE_GLOBALS(excel)
 
 /* gen_stub.php on PHP master emits register_class_*() functions that call
  * zend_register_internal_class_with_flags(), which only exists in PHP 8.4+.
- * Polyfill for older targets (we support 8.3+) so the generated arginfo
+ * Polyfill for older targets (we support 8.1+) so the generated arginfo
  * header compiles unchanged. */
 #if PHP_VERSION_ID < 80400
 static zend_always_inline zend_class_entry *zend_register_internal_class_with_flags(

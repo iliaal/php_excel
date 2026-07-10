@@ -8,7 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Security
-- excel.license_key and excel.license_name are now PHP_INI_SYSTEM instead of PHP_INI_ALL, so a per-request ini_set() or a per-directory .user.ini/.htaccess can no longer overwrite the commercial license in a shared pool. A runtime license can still be supplied per workbook via the ExcelBook constructor.
+- excel.license_key and excel.license_name are now PHP_INI_SYSTEM, so a per-request ini_set() or .user.ini can no longer overwrite the commercial license in a shared pool (a runtime key can still be passed to the ExcelBook constructor).
 
 ### Added
 - ExcelSheet::getIndexRange() now includes the range's "name" in the returned array (libxl exposes it; it was previously discarded).
@@ -20,10 +20,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 - ExcelFont::size() now rejects a non-positive size (E_WARNING + false) instead of silently ignoring it and returning the current size as if it were a getter. Getter mode (no argument or null) and valid sizes are unchanged.
-- ExcelBook::save() to a stream/scheme path (e.g. file://) now stages the workbook to a temporary sibling and renames it into place, so a short or interrupted write no longer truncates and destroys the caller's existing file. Wrappers that cannot rename fall back to a direct write and are documented as non-atomic; plain filesystem paths were already atomic via libxl.
-- load(), loadFile() (stream path), loadInfoRaw(), and addPictureFromString()/addPictureFromFile() now reject buffers larger than UINT_MAX before passing the length to libxl's unsigned size parameter, matching the existing loadPartially guard (previously they could silently truncate a >4 GiB buffer).
-- ExcelSheet::writeRow()/writeCol() are now all-or-nothing for PHP-side value errors: an unsupported type, embedded NUL, or unpackable AS_DATE timestamp anywhere in the array is rejected before any cell is written, instead of committing the cells before it and then returning false.
-- Inverted ranges (first > last) are now rejected on addHyperlink(), AutoFilter::setRef(), addConditionalFormatting(), addDataValidation()/addDataValidationDouble(), clear(), and insert/remove row/col, instead of being stored as garbage coordinates. Equal endpoints (single row/column/cell) stay valid.
+- ExcelBook::save() to a stream path (e.g. file://) no longer truncates and destroys the caller's existing file on a short or interrupted write; wrappers that cannot rename fall back to a non-atomic direct write (plain paths were already atomic via libxl).
+- load(), loadFile(), loadInfoRaw(), and addPictureFromString()/addPictureFromFile() now reject buffers larger than UINT_MAX instead of silently truncating a >4 GiB payload at libxl's unsigned size parameter.
+- ExcelSheet::writeRow()/writeCol() now reject an unwritable value (bad type, embedded NUL, unpackable AS_DATE) before writing any cell, instead of committing earlier cells and then failing mid-array.
+- Inverted ranges (first > last) are now rejected across the range methods (hyperlinks, autofilter setRef, conditional formatting, data validation, clear, insert/remove row/col) instead of being stored as garbage coordinates; equal endpoints stay valid.
 - ExcelSheet::write() with ExcelFormat::AS_DATE now fails (returns false) when no date format can be allocated (the xlsx style table is exhausted), instead of writing a bare number and reporting success.
 - ExcelSheet::autoFilter() and ExcelAutoFilter::column()/columnByIndex() now return false when libxl yields no handle, matching their documented `|false` return, instead of a usable-looking object that only failed on the next method call.
 - ExcelRichString::addText() now rejects a font that belongs to a different ExcelBook, closing the last cross-book handle gap (the other use-sites were already guarded).
@@ -31,6 +31,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - ExcelBook::addPictureFromFile() now fails closed with a single warning when a plain path is denied by open_basedir, instead of emitting a duplicate warning and falling through to the stream wrapper.
 - Re-invoking a child object's __construct() (e.g. ExcelFont, ExcelFilterColumn) no longer leaks a reference to the previously bound parent.
 - docs/ API reference signatures now match the implementation: ExcelAutoFilter::setRef() argument order, the removed nonexistent third argument on ExcelSheet::insertRow()/insertCol()/removeRow()/removeCol(), and the corrected bool/int/required parameter types on the ExcelConditionalFormatting rule methods.
+- ExcelSheet::write()/writeRow()/writeCol() now reject a non-finite (NAN/INF) number, and an AS_DATE double beyond zend_long range, instead of storing a corrupt cell or casting out of range.
+- A reference cycle through a child wrapper's hidden parent (e.g. $book->prop = $sheet) is now reclaimable by the cycle collector; get_gc handlers expose the parent that previously leaked such cycles until request shutdown.
+- Zero-arg methods across all classes now throw ArgumentCountError on surplus arguments instead of triggering a debug-build arginfo/zpp mismatch fatal (the earlier pass missed the methods whose arginfo is a shared alias).
+- ExcelFormat::fillPattern()'s named argument is now $pattern (was misspelled $patern in the generated arginfo), so pattern: named calls resolve.
+- ExcelBook::loadInfo() and loadInfoRaw() now emit the libxl error message on failure, matching load()/loadFile().
+- ExcelBook::save()'s stub return type is now string|bool (was the invalid string|true|false union that broke stub linting and regeneration); the runtime signature is unchanged.
+
+### Hardening
+- ExcelBook::loadFile(), loadFilePartially(), and addPictureFromFile() reject a seekable stream whose stat size is >= UINT_MAX up front, and otherwise cap the read at UINT_MAX, so an oversized source cannot allocate ~4 GiB before rejection.
+- Module globals now install the ZTS TLS cache (ZEND_TSRMLS_CACHE_*), so EXCEL_G access on a threaded build no longer does a per-access thread-local lookup.
+- CI build and test steps now fail on a non-zero make/run-tests exit (previously a compile failure with no 'warning:' output, or a runner crash before the summary line, could pass green).
 
 ## [2.3.0] - 2026-07-03
 

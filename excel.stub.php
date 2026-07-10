@@ -12,7 +12,7 @@ class ExcelBook
     public function loadFilePartially(string $filename, int $sheet_index, int $row_first, int $row_last, bool $keep_all_sheets = false): bool {}  // ZPP "Slll|b"
     public function loadFileWithoutEmptyCells(string $filename): bool {}  // ZPP "S"
 #endif
-    public function save(string $filename = ""): string|true|false {}  // ZPP "|S"
+    public function save(string $filename = ""): string|bool {}  // ZPP "|S"
     public function getSheet(int $sheet = 0): ExcelSheet|false {}  // ZPP "|l"
     public function getSheetByName(string $name, bool $case_insensitive = false): ExcelSheet|false {}  // ZPP "S|b"
     public function deleteSheet(int $sheet): bool {}  // ZPP "l"
@@ -305,7 +305,7 @@ class ExcelFormat
     public function borderBottomColor(?int $color = null): int|false {}  // ZPP "|l!"
     public function borderDiagonalStyle(?int $style = null): int|false {}  // ZPP "|l!"
     public function borderDiagonalColor(?int $color = null): int|false {}  // ZPP "|l!"
-    public function fillPattern(?int $patern = null): int|false {}  // ZPP "|l!"
+    public function fillPattern(?int $pattern = null): int|false {}  // ZPP "|l!"
     public function patternForegroundColor(?int $color = null): int|false {}  // ZPP "|l!"
     public function patternBackgroundColor(?int $color = null): int|false {}  // ZPP "|l!"
     public function locked(?bool $locked = null): bool {}  // ZPP "|b!"

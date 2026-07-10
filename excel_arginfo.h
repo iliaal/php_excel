@@ -1,5 +1,5 @@
 /* This is a generated file, edit excel.stub.php instead.
- * Stub hash: 7a680cca910505f546183e161df71e1835a097c2 */
+ * Stub hash: 825f6c021916b7876dc84e46e4118964d6d4acab */
 
 ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_ExcelBook_requiresKey, 0, 0, _IS_BOOL, 0)
 ZEND_END_ARG_INFO()
@@ -34,7 +34,7 @@ ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_ExcelBook_loadFileWithoutE
 ZEND_END_ARG_INFO()
 #endif
 
-ZEND_BEGIN_ARG_WITH_RETURN_TYPE_MASK_EX(arginfo_class_ExcelBook_save, 0, 0, MAY_BE_STRING|MAY_BE_TRUE|MAY_BE_FALSE)
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_MASK_EX(arginfo_class_ExcelBook_save, 0, 0, MAY_BE_STRING|MAY_BE_BOOL)
 	ZEND_ARG_TYPE_INFO_WITH_DEFAULT_VALUE(0, filename, IS_STRING, 0, "\"\"")
 ZEND_END_ARG_INFO()
 
@@ -1039,7 +1039,7 @@ ZEND_END_ARG_INFO()
 #define arginfo_class_ExcelFormat_borderDiagonalColor arginfo_class_ExcelFormat_borderLeftColor
 
 ZEND_BEGIN_ARG_WITH_RETURN_TYPE_MASK_EX(arginfo_class_ExcelFormat_fillPattern, 0, 0, MAY_BE_LONG|MAY_BE_FALSE)
-	ZEND_ARG_TYPE_INFO_WITH_DEFAULT_VALUE(0, patern, IS_LONG, 1, "null")
+	ZEND_ARG_TYPE_INFO_WITH_DEFAULT_VALUE(0, pattern, IS_LONG, 1, "null")
 ZEND_END_ARG_INFO()
 
 #define arginfo_class_ExcelFormat_patternForegroundColor arginfo_class_ExcelFormat_borderLeftColor

@@ -53,6 +53,9 @@
 #define PHP_EXCEL_VERSION "2.3.0"
 
 #ifdef COMPILE_DL_EXCEL
+#ifdef ZTS
+ZEND_TSRMLS_CACHE_DEFINE()
+#endif
 ZEND_GET_MODULE(excel)
 #endif
 
@@ -1127,6 +1130,41 @@ static zend_object *excel_object_new_table(zend_class_entry *class_type)
 	return &intern->std;
 }
 
+/* Child wrappers hold a strong zval reference to their parent book/sheet
+ * (excel_<c_name>_object.parent) that the std object handlers do not expose.
+ * Without a get_gc that reports it, the cycle collector cannot see a
+ * user-formed cycle through that hidden edge (e.g. $book->x = $sheet, where
+ * $sheet->parent points back at $book), so gc_collect_cycles() leaks it.
+ * These handlers surface the parent zval alongside the object's own
+ * properties. */
+#define EXCEL_GET_GC_FN(c_name) \
+	static HashTable *excel_ ## c_name ## _get_gc(zend_object *object, zval **table, int *n) \
+	{ \
+		excel_ ## c_name ## _object *intern = php_excel_ ## c_name ## _object_fetch_object(object); \
+		zend_get_gc_buffer *gc_buffer = zend_get_gc_buffer_create(); \
+		zend_get_gc_buffer_add_zval(gc_buffer, &intern->parent); \
+		zend_get_gc_buffer_use(gc_buffer, table, n); \
+		return zend_std_get_properties(object); \
+	}
+
+EXCEL_GET_GC_FN(sheet)
+EXCEL_GET_GC_FN(font)
+EXCEL_GET_GC_FN(format)
+EXCEL_GET_GC_FN(autofilter)
+EXCEL_GET_GC_FN(filtercolumn)
+EXCEL_GET_GC_FN(richstring)
+EXCEL_GET_GC_FN(formcontrol)
+EXCEL_GET_GC_FN(conditionalformat)
+EXCEL_GET_GC_FN(conditionalformatting)
+EXCEL_GET_GC_FN(coreproperties)
+EXCEL_GET_GC_FN(table)
+
+/* Attach the parent-aware get_gc after class registration (the shared
+ * REGISTER_EXCEL_CLASS memcpy'd the std handlers, which is correct for Book
+ * since it has no parent). */
+#define EXCEL_SET_GC(c_name) \
+	excel_object_handlers_ ## c_name .get_gc = excel_ ## c_name ## _get_gc
+
 #define EXCEL_METHOD(class_name, function_name) \
 	PHP_METHOD(Excel ## class_name, function_name)
 
@@ -1152,6 +1190,22 @@ static zend_object *excel_object_new_table(zend_class_entry *class_type)
 		php_error_docref(NULL, E_WARNING, "Data string too large"); \
 		RETURN_FALSE; \
 	}
+
+/* Reject an oversized stream before copy_to_mem allocates. A seekable wrapper
+ * (a plain file:// path, php://memory, ...) reports its size up front, so a
+ * >= UINT_MAX source is rejected without first reading ~4 GiB into memory; a
+ * wrapper that cannot stat reports no size and falls through to the
+ * UINT_MAX-capped read below. Closes the open stream on rejection. */
+#define EXCEL_REJECT_OVERSIZED_STREAM(stream) \
+	do { \
+		php_stream_statbuf _ssb; \
+		if (php_stream_stat((stream), &_ssb) == 0 && _ssb.sb.st_size > 0 \
+		    && (zend_ulong) _ssb.sb.st_size >= UINT_MAX) { \
+			php_stream_close(stream); \
+			php_error_docref(NULL, E_WARNING, "Source file too large"); \
+			RETURN_FALSE; \
+		} \
+	} while (0)
 
 /* libxl APIs take int for row/col/dimension args; zend_long is 64-bit.
  * Reject out-of-int-range values before the implicit narrowing cast. */
@@ -1299,6 +1353,7 @@ static inline int php_excel_validate_partial_load_args(zend_long sheet_index, ze
 	true if license key is required. */
 EXCEL_METHOD(Book, requiresKey)
 {
+	ZEND_PARSE_PARAMETERS_NONE();
 #if defined(HAVE_LIBXL_SETKEY)
 	RETURN_BOOL(1);
 #else
@@ -1376,7 +1431,10 @@ EXCEL_METHOD(Book, loadFile)
 		RETURN_FALSE;
 	}
 
-	contents = php_stream_copy_to_mem(stream, PHP_STREAM_COPY_ALL, 0);
+	/* Cap the read at UINT_MAX (libxl's size ceiling) so an oversized file
+	 * cannot fully allocate before the length check below rejects it. */
+	EXCEL_REJECT_OVERSIZED_STREAM(stream);
+	contents = php_stream_copy_to_mem(stream, (size_t) UINT_MAX, 0);
 	php_stream_close(stream);
 
 	if (!contents) {
@@ -1390,7 +1448,7 @@ EXCEL_METHOD(Book, loadFile)
 		RETURN_FALSE;
 	}
 
-	if (ZSTR_LEN(contents) > UINT_MAX) {
+	if (ZSTR_LEN(contents) >= UINT_MAX) {
 		php_error_docref(NULL, E_WARNING, "Data string too large");
 		zend_string_release(contents);
 		RETURN_FALSE;
@@ -1477,7 +1535,10 @@ EXCEL_METHOD(Book, loadFilePartially)
 		RETURN_FALSE;
 	}
 
-	contents = php_stream_copy_to_mem(stream, PHP_STREAM_COPY_ALL, 0);
+	/* Cap the read at UINT_MAX (libxl's size ceiling) so an oversized file
+	 * cannot fully allocate before the length check below rejects it. */
+	EXCEL_REJECT_OVERSIZED_STREAM(stream);
+	contents = php_stream_copy_to_mem(stream, (size_t) UINT_MAX, 0);
 	php_stream_close(stream);
 	if (!contents) {
 		php_error_docref(NULL, E_WARNING, "Source file is empty");
@@ -1488,7 +1549,7 @@ EXCEL_METHOD(Book, loadFilePartially)
 		zend_string_release(contents);
 		RETURN_FALSE;
 	}
-	if (ZSTR_LEN(contents) > UINT_MAX) {
+	if (ZSTR_LEN(contents) >= UINT_MAX) {
 		php_error_docref(NULL, E_WARNING, "Source file too large");
 		zend_string_release(contents);
 		RETURN_FALSE;
@@ -1526,7 +1587,11 @@ EXCEL_METHOD(Book, loadFileWithoutEmptyCells)
 	BOOK_FROM_OBJECT(book, object);
 
 	php_excel_book_reset_state(object);
-	RETURN_BOOL(xlBookLoadWithoutEmptyCells(book, ZSTR_VAL(filename_zs)));
+	if (!xlBookLoadWithoutEmptyCells(book, ZSTR_VAL(filename_zs))) {
+		php_error_docref(NULL, E_WARNING, "Failed to load workbook: %s", xlBookErrorMessage(book));
+		RETURN_FALSE;
+	}
+	RETURN_TRUE;
 }
 /* }}} */
 #endif
@@ -2432,7 +2497,10 @@ static void php_excel_add_picture(INTERNAL_FUNCTION_PARAMETERS, int mode) /* {{{
 			RETURN_FALSE;
 		}
 
-		contents = php_stream_copy_to_mem(stream, PHP_STREAM_COPY_ALL, 0);
+		/* Cap the read at UINT_MAX (libxl's size ceiling) so an oversized
+		 * file cannot fully allocate before the length check rejects it. */
+		EXCEL_REJECT_OVERSIZED_STREAM(stream);
+		contents = php_stream_copy_to_mem(stream, (size_t) UINT_MAX, 0);
 		php_stream_close(stream);
 
 		if (!contents || ZSTR_LEN(contents) < 1) {
@@ -2441,7 +2509,7 @@ static void php_excel_add_picture(INTERNAL_FUNCTION_PARAMETERS, int mode) /* {{{
 			}
 			RETURN_FALSE;
 		}
-		if (ZSTR_LEN(contents) > UINT_MAX) {
+		if (ZSTR_LEN(contents) >= UINT_MAX) {
 			php_error_docref(NULL, E_WARNING, "Data string too large");
 			zend_string_release(contents);
 			RETURN_FALSE;
@@ -2571,6 +2639,9 @@ EXCEL_METHOD(Book, colorUnpack)
 EXCEL_METHOD(Book, getLibXlVersion)
 {
 	char libxl_api[25];
+
+	ZEND_PARSE_PARAMETERS_NONE();
+
 	snprintf(libxl_api, sizeof(libxl_api), "%x", LIBXL_VERSION);
 	RETURN_STRING(libxl_api);
 }
@@ -2580,6 +2651,8 @@ EXCEL_METHOD(Book, getLibXlVersion)
 	Returns the version of PHP Excel extension */
 EXCEL_METHOD(Book, getPhpExcelVersion)
 {
+	ZEND_PARSE_PARAMETERS_NONE();
+
 	RETURN_STRING(PHP_EXCEL_VERSION);
 }
 /* }}} */
@@ -2608,7 +2681,11 @@ EXCEL_METHOD(Book, loadInfo)
 	BOOK_FROM_OBJECT(book, object);
 
 	php_excel_book_reset_state(object);
-	RETURN_BOOL(xlBookLoadInfo(book, ZSTR_VAL(filename_zs)));
+	if (!xlBookLoadInfo(book, ZSTR_VAL(filename_zs))) {
+		php_error_docref(NULL, E_WARNING, "Failed to load workbook: %s", xlBookErrorMessage(book));
+		RETURN_FALSE;
+	}
+	RETURN_TRUE;
 }
 /* }}} */
 
@@ -2830,7 +2907,11 @@ EXCEL_METHOD(Book, loadInfoRaw)
 	BOOK_FROM_OBJECT(book, object);
 
 	php_excel_book_reset_state(object);
-	RETURN_BOOL(xlBookLoadInfoRaw(book, ZSTR_VAL(data), ZSTR_LEN(data)));
+	if (!xlBookLoadInfoRaw(book, ZSTR_VAL(data), ZSTR_LEN(data))) {
+		php_error_docref(NULL, E_WARNING, "Failed to load workbook: %s", xlBookErrorMessage(book));
+		RETURN_FALSE;
+	}
+	RETURN_TRUE;
 }
 #endif
 
@@ -4138,6 +4219,15 @@ EXCEL_METHOD(Sheet, read)
 }
 /* }}} */
 
+/* A finite double casts to zend_long without float-cast-overflow UB only
+ * within [-2^63, 2^63). 2^63 (9223372036854775808.0) is exactly representable;
+ * zend_long max is 2^63-1, so a value >= 2^63 (or < -2^63) is out of range.
+ * The AS_DATE path casts the timestamp to zend_long, so guard it there. */
+static zend_always_inline int php_excel_double_in_long_range(double d)
+{
+	return d >= -9223372036854775808.0 && d < 9223372036854775808.0;
+}
+
 /* Write an already-packed Excel date serial. When no explicit format was
  * supplied, apply the book's lazily-created shared date format. If that
  * format cannot be allocated (e.g. the style table is exhausted), fail
@@ -4177,9 +4267,27 @@ try_again:
 		case IS_LONG:
 			return !(dtype == PHP_EXCEL_DATE && _php_excel_date_pack(book, Z_LVAL_P(data)) == -1);
 		case IS_DOUBLE:
-			return !(dtype == PHP_EXCEL_DATE && _php_excel_date_pack(book, (zend_long) Z_DVAL_P(data)) == -1);
+			if (!zend_finite(Z_DVAL_P(data))) {
+				return 0;
+			}
+			if (dtype == PHP_EXCEL_DATE) {
+				return php_excel_double_in_long_range(Z_DVAL_P(data))
+				    && _php_excel_date_pack(book, (zend_long) Z_DVAL_P(data)) != -1;
+			}
+			return 1;
 		case IS_STRING:
-			return ZSTR_LEN(Z_STR_P(data)) == strlen(ZSTR_VAL(Z_STR_P(data)));
+			if (ZSTR_LEN(Z_STR_P(data)) != strlen(ZSTR_VAL(Z_STR_P(data)))) {
+				return 0;
+			}
+			if (dtype == PHP_EXCEL_NUMERIC_STRING) {
+				zend_long lval;
+				double dval;
+				if (is_numeric_string(Z_STRVAL_P(data), Z_STRLEN_P(data), &lval, &dval, 0) == IS_DOUBLE
+				    && !zend_finite(dval)) {
+					return 0;
+				}
+			}
+			return 1;
 		case IS_REFERENCE:
 			data = Z_REFVAL_P(data);
 			goto try_again;
@@ -4217,12 +4325,25 @@ bool php_excel_write_cell(SheetHandle sheet, excel_book_object *book_obj, int ro
 			}
 
 		case IS_DOUBLE:
+			/* NAN/INF serialize to a corrupt cell that reads back as garbage,
+			 * and the AS_DATE cast to zend_long below is undefined for a
+			 * non-finite double. Reject before either. */
+			if (!zend_finite(Z_DVAL_P(data))) {
+				php_error_docref(NULL, E_WARNING, "Cannot write a non-finite number (NAN/INF) to a cell");
+				return 0;
+			}
 			if (dtype == PHP_EXCEL_DATE) {
 				/* AS_DATE for a float timestamp: pack the whole-second part
 				 * as an Excel date serial, mirroring the IS_LONG path.
 				 * Without this a float unix time is written as a bare number
-				 * that renders as a plain value, not a date. */
+				 * that renders as a plain value, not a date. A finite value
+				 * beyond zend_long range cannot be cast without UB, so reject
+				 * it rather than truncating to a garbage timestamp. */
 				double dt;
+				if (!php_excel_double_in_long_range(Z_DVAL_P(data))) {
+					php_error_docref(NULL, E_WARNING, "Date timestamp out of range");
+					return 0;
+				}
 				if ((dt = _php_excel_date_pack(book, (zend_long) Z_DVAL_P(data))) == -1) {
 					return 0;
 				}
@@ -4264,6 +4385,10 @@ bool php_excel_write_cell(SheetHandle sheet, excel_book_object *book_obj, int ro
 							return xlSheetWriteNum(sheet, row, col, (double) lval, format);
 
 						case IS_DOUBLE:
+							if (!zend_finite(dval)) {
+								php_error_docref(NULL, E_WARNING, "Cannot write a non-finite number (NAN/INF) to a cell");
+								return 0;
+							}
 							return xlSheetWriteNum(sheet, row, col, dval, format);
 					}
 				}
@@ -6499,6 +6624,8 @@ EXCEL_METHOD(Sheet, isLicensed)
 	SheetHandle sheet;
 	BookHandle book;
 
+	ZEND_PARSE_PARAMETERS_NONE();
+
 	SHEET_AND_BOOK_FROM_OBJECT(sheet, book, object);
 
 	xlSheetCellFormat(sheet, 0, 0);
@@ -6610,6 +6737,8 @@ EXCEL_METHOD(Sheet, printArea)
 	zval *object = ZEND_THIS;
 	SheetHandle sheet;
 	int rowFirst, colFirst, rowLast, colLast;
+
+	ZEND_PARSE_PARAMETERS_NONE();
 
 	SHEET_FROM_OBJECT(sheet, object);
 
@@ -6885,6 +7014,8 @@ EXCEL_METHOD(AutoFilter, getRef)
 	AutoFilterHandle autofilter;
 	int rowFirst=0, colFirst=0, rowLast=0, colLast=0;
 
+	ZEND_PARSE_PARAMETERS_NONE();
+
 	AUTOFILTER_FROM_OBJECT(autofilter, object);
 
 	if (!xlAutoFilterGetRef(autofilter, &rowFirst, &rowLast, &colFirst, &colLast)) {
@@ -6956,6 +7087,8 @@ EXCEL_METHOD(AutoFilter, columnSize)
 	zval *object = ZEND_THIS;
 	AutoFilterHandle autofilter;
 
+	ZEND_PARSE_PARAMETERS_NONE();
+
 	AUTOFILTER_FROM_OBJECT(autofilter, object);
 
 	RETURN_LONG(xlAutoFilterColumnSize(autofilter));
@@ -7000,6 +7133,8 @@ EXCEL_METHOD(AutoFilter, getSortRange)
 	AutoFilterHandle autofilter;
 	int rowFirst=0, rowLast=0, colFirst=0, colLast=0;
 
+	ZEND_PARSE_PARAMETERS_NONE();
+
 	AUTOFILTER_FROM_OBJECT(autofilter, object);
 
 	if (!xlAutoFilterGetSortRange(autofilter, &rowFirst, &rowLast, &colFirst, &colLast)) {
@@ -7021,6 +7156,8 @@ EXCEL_METHOD(AutoFilter, getSort)
 	zval *object = ZEND_THIS;
 	AutoFilterHandle autofilter;
 	int columnIndex, descending;
+
+	ZEND_PARSE_PARAMETERS_NONE();
 
 	AUTOFILTER_FROM_OBJECT(autofilter, object);
 
@@ -7121,6 +7258,8 @@ EXCEL_METHOD(FilterColumn, index)
 	zval *object = ZEND_THIS;
 	FilterColumnHandle filtercolumn;
 
+	ZEND_PARSE_PARAMETERS_NONE();
+
 	FILTERCOLUMN_FROM_OBJECT(filtercolumn, object);
 
 	RETURN_LONG(xlFilterColumnIndex(filtercolumn));
@@ -7134,6 +7273,8 @@ EXCEL_METHOD(FilterColumn, filterType)
 	zval *object = ZEND_THIS;
 	FilterColumnHandle filtercolumn;
 
+	ZEND_PARSE_PARAMETERS_NONE();
+
 	FILTERCOLUMN_FROM_OBJECT(filtercolumn, object);
 
 	RETURN_LONG(xlFilterColumnFilterType(filtercolumn));
@@ -7146,6 +7287,8 @@ EXCEL_METHOD(FilterColumn, filterSize)
 {
 	zval *object = ZEND_THIS;
 	FilterColumnHandle filtercolumn;
+
+	ZEND_PARSE_PARAMETERS_NONE();
 
 	FILTERCOLUMN_FROM_OBJECT(filtercolumn, object);
 
@@ -7208,6 +7351,8 @@ EXCEL_METHOD(FilterColumn, getTop10)
 	double value;
 	int top, percent;
 
+	ZEND_PARSE_PARAMETERS_NONE();
+
 	FILTERCOLUMN_FROM_OBJECT(filtercolumn, object);
 
 	if (!xlFilterColumnGetTop10(filtercolumn, &value, &top, &percent)) {
@@ -7250,6 +7395,8 @@ EXCEL_METHOD(FilterColumn, getCustomFilter)
 	FilterColumnHandle filtercolumn;
 	int op1, op2, andOp;
 	const char *v1 = NULL, *v2 = NULL;
+
+	ZEND_PARSE_PARAMETERS_NONE();
 
 	FILTERCOLUMN_FROM_OBJECT(filtercolumn, object);
 
@@ -7312,6 +7459,8 @@ EXCEL_METHOD(FilterColumn, clear)
 {
 	zval *object = ZEND_THIS;
 	FilterColumnHandle filtercolumn;
+
+	ZEND_PARSE_PARAMETERS_NONE();
 
 	FILTERCOLUMN_FROM_OBJECT(filtercolumn, object);
 
@@ -7515,6 +7664,8 @@ EXCEL_METHOD(Sheet, removeDataValidations)
 	zval *object = ZEND_THIS;
 	SheetHandle sheet;
 
+	ZEND_PARSE_PARAMETERS_NONE();
+
 	SHEET_FROM_OBJECT(sheet, object);
 	xlSheetRemoveDataValidations(sheet);
 
@@ -7529,6 +7680,8 @@ EXCEL_METHOD(Sheet, dataValidationSize)
 {
 	zval *object = ZEND_THIS;
 	SheetHandle sheet;
+
+	ZEND_PARSE_PARAMETERS_NONE();
 
 	SHEET_FROM_OBJECT(sheet, object);
 
@@ -8431,6 +8584,9 @@ EXCEL_METHOD(FormControl, objectType)
 {
 	zval *object = ZEND_THIS;
 	FormControlHandle fc;
+
+	ZEND_PARSE_PARAMETERS_NONE();
+
 	FORMCONTROL_FROM_OBJECT(fc, object);
 	RETURN_LONG(xlFormControlObjectType(fc));
 }
@@ -8439,6 +8595,8 @@ EXCEL_METHOD(FormControl, checked)
 {
 	zval *object = ZEND_THIS;
 	FormControlHandle fc;
+	ZEND_PARSE_PARAMETERS_NONE();
+
 	FORMCONTROL_FROM_OBJECT(fc, object);
 	RETURN_LONG(xlFormControlChecked(fc));
 }
@@ -8462,6 +8620,8 @@ EXCEL_METHOD(FormControl, fmlaGroup)
 	zval *object = ZEND_THIS;
 	FormControlHandle fc;
 	const char *result;
+	ZEND_PARSE_PARAMETERS_NONE();
+
 	FORMCONTROL_FROM_OBJECT(fc, object);
 	result = xlFormControlFmlaGroup(fc);
 	PE_RETURN_IS_STRING(result)
@@ -8486,6 +8646,8 @@ EXCEL_METHOD(FormControl, fmlaLink)
 	zval *object = ZEND_THIS;
 	FormControlHandle fc;
 	const char *result;
+	ZEND_PARSE_PARAMETERS_NONE();
+
 	FORMCONTROL_FROM_OBJECT(fc, object);
 	result = xlFormControlFmlaLink(fc);
 	PE_RETURN_IS_STRING(result)
@@ -8510,6 +8672,8 @@ EXCEL_METHOD(FormControl, fmlaRange)
 	zval *object = ZEND_THIS;
 	FormControlHandle fc;
 	const char *result;
+	ZEND_PARSE_PARAMETERS_NONE();
+
 	FORMCONTROL_FROM_OBJECT(fc, object);
 	result = xlFormControlFmlaRange(fc);
 	PE_RETURN_IS_STRING(result)
@@ -8534,6 +8698,8 @@ EXCEL_METHOD(FormControl, fmlaTxbx)
 	zval *object = ZEND_THIS;
 	FormControlHandle fc;
 	const char *result;
+	ZEND_PARSE_PARAMETERS_NONE();
+
 	FORMCONTROL_FROM_OBJECT(fc, object);
 	result = xlFormControlFmlaTxbx(fc);
 	PE_RETURN_IS_STRING(result)
@@ -8558,6 +8724,8 @@ EXCEL_METHOD(FormControl, name)
 	zval *object = ZEND_THIS;
 	FormControlHandle fc;
 	const char *result;
+	ZEND_PARSE_PARAMETERS_NONE();
+
 	FORMCONTROL_FROM_OBJECT(fc, object);
 	result = xlFormControlName(fc);
 	PE_RETURN_IS_STRING(result)
@@ -8568,6 +8736,8 @@ EXCEL_METHOD(FormControl, linkedCell)
 	zval *object = ZEND_THIS;
 	FormControlHandle fc;
 	const char *result;
+	ZEND_PARSE_PARAMETERS_NONE();
+
 	FORMCONTROL_FROM_OBJECT(fc, object);
 	result = xlFormControlLinkedCell(fc);
 	PE_RETURN_IS_STRING(result)
@@ -8578,6 +8748,8 @@ EXCEL_METHOD(FormControl, listFillRange)
 	zval *object = ZEND_THIS;
 	FormControlHandle fc;
 	const char *result;
+	ZEND_PARSE_PARAMETERS_NONE();
+
 	FORMCONTROL_FROM_OBJECT(fc, object);
 	result = xlFormControlListFillRange(fc);
 	PE_RETURN_IS_STRING(result)
@@ -8588,6 +8760,8 @@ EXCEL_METHOD(FormControl, macro)
 	zval *object = ZEND_THIS;
 	FormControlHandle fc;
 	const char *result;
+	ZEND_PARSE_PARAMETERS_NONE();
+
 	FORMCONTROL_FROM_OBJECT(fc, object);
 	result = xlFormControlMacro(fc);
 	PE_RETURN_IS_STRING(result)
@@ -8598,6 +8772,8 @@ EXCEL_METHOD(FormControl, altText)
 	zval *object = ZEND_THIS;
 	FormControlHandle fc;
 	const char *result;
+	ZEND_PARSE_PARAMETERS_NONE();
+
 	FORMCONTROL_FROM_OBJECT(fc, object);
 	result = xlFormControlAltText(fc);
 	PE_RETURN_IS_STRING(result)
@@ -8607,6 +8783,8 @@ EXCEL_METHOD(FormControl, locked)
 {
 	zval *object = ZEND_THIS;
 	FormControlHandle fc;
+	ZEND_PARSE_PARAMETERS_NONE();
+
 	FORMCONTROL_FROM_OBJECT(fc, object);
 	RETURN_BOOL(xlFormControlLocked(fc));
 }
@@ -8615,6 +8793,8 @@ EXCEL_METHOD(FormControl, defaultSize)
 {
 	zval *object = ZEND_THIS;
 	FormControlHandle fc;
+	ZEND_PARSE_PARAMETERS_NONE();
+
 	FORMCONTROL_FROM_OBJECT(fc, object);
 	RETURN_BOOL(xlFormControlDefaultSize(fc));
 }
@@ -8623,6 +8803,8 @@ EXCEL_METHOD(FormControl, print)
 {
 	zval *object = ZEND_THIS;
 	FormControlHandle fc;
+	ZEND_PARSE_PARAMETERS_NONE();
+
 	FORMCONTROL_FROM_OBJECT(fc, object);
 	RETURN_BOOL(xlFormControlPrint(fc));
 }
@@ -8631,6 +8813,8 @@ EXCEL_METHOD(FormControl, disabled)
 {
 	zval *object = ZEND_THIS;
 	FormControlHandle fc;
+	ZEND_PARSE_PARAMETERS_NONE();
+
 	FORMCONTROL_FROM_OBJECT(fc, object);
 	RETURN_BOOL(xlFormControlDisabled(fc));
 }
@@ -8654,6 +8838,8 @@ EXCEL_METHOD(FormControl, itemSize)
 {
 	zval *object = ZEND_THIS;
 	FormControlHandle fc;
+	ZEND_PARSE_PARAMETERS_NONE();
+
 	FORMCONTROL_FROM_OBJECT(fc, object);
 	RETURN_LONG(xlFormControlItemSize(fc));
 }
@@ -8692,6 +8878,8 @@ EXCEL_METHOD(FormControl, clearItems)
 {
 	zval *object = ZEND_THIS;
 	FormControlHandle fc;
+	ZEND_PARSE_PARAMETERS_NONE();
+
 	FORMCONTROL_FROM_OBJECT(fc, object);
 	xlFormControlClearItems(fc);
 	RETURN_TRUE;
@@ -8701,6 +8889,8 @@ EXCEL_METHOD(FormControl, dropLines)
 {
 	zval *object = ZEND_THIS;
 	FormControlHandle fc;
+	ZEND_PARSE_PARAMETERS_NONE();
+
 	FORMCONTROL_FROM_OBJECT(fc, object);
 	RETURN_LONG(xlFormControlDropLines(fc));
 }
@@ -8723,6 +8913,8 @@ EXCEL_METHOD(FormControl, dx)
 {
 	zval *object = ZEND_THIS;
 	FormControlHandle fc;
+	ZEND_PARSE_PARAMETERS_NONE();
+
 	FORMCONTROL_FROM_OBJECT(fc, object);
 	RETURN_LONG(xlFormControlDx(fc));
 }
@@ -8745,6 +8937,8 @@ EXCEL_METHOD(FormControl, firstButton)
 {
 	zval *object = ZEND_THIS;
 	FormControlHandle fc;
+	ZEND_PARSE_PARAMETERS_NONE();
+
 	FORMCONTROL_FROM_OBJECT(fc, object);
 	RETURN_BOOL(xlFormControlFirstButton(fc));
 }
@@ -8766,6 +8960,8 @@ EXCEL_METHOD(FormControl, horiz)
 {
 	zval *object = ZEND_THIS;
 	FormControlHandle fc;
+	ZEND_PARSE_PARAMETERS_NONE();
+
 	FORMCONTROL_FROM_OBJECT(fc, object);
 	RETURN_BOOL(xlFormControlHoriz(fc));
 }
@@ -8787,6 +8983,8 @@ EXCEL_METHOD(FormControl, inc)
 {
 	zval *object = ZEND_THIS;
 	FormControlHandle fc;
+	ZEND_PARSE_PARAMETERS_NONE();
+
 	FORMCONTROL_FROM_OBJECT(fc, object);
 	RETURN_LONG(xlFormControlInc(fc));
 }
@@ -8809,6 +9007,8 @@ EXCEL_METHOD(FormControl, getMax)
 {
 	zval *object = ZEND_THIS;
 	FormControlHandle fc;
+	ZEND_PARSE_PARAMETERS_NONE();
+
 	FORMCONTROL_FROM_OBJECT(fc, object);
 	RETURN_LONG(xlFormControlGetMax(fc));
 }
@@ -8831,6 +9031,8 @@ EXCEL_METHOD(FormControl, getMin)
 {
 	zval *object = ZEND_THIS;
 	FormControlHandle fc;
+	ZEND_PARSE_PARAMETERS_NONE();
+
 	FORMCONTROL_FROM_OBJECT(fc, object);
 	RETURN_LONG(xlFormControlGetMin(fc));
 }
@@ -8854,6 +9056,8 @@ EXCEL_METHOD(FormControl, multiSel)
 	zval *object = ZEND_THIS;
 	FormControlHandle fc;
 	const char *result;
+	ZEND_PARSE_PARAMETERS_NONE();
+
 	FORMCONTROL_FROM_OBJECT(fc, object);
 	result = xlFormControlMultiSel(fc);
 	PE_RETURN_IS_STRING(result)
@@ -8877,6 +9081,8 @@ EXCEL_METHOD(FormControl, sel)
 {
 	zval *object = ZEND_THIS;
 	FormControlHandle fc;
+	ZEND_PARSE_PARAMETERS_NONE();
+
 	FORMCONTROL_FROM_OBJECT(fc, object);
 	RETURN_LONG(xlFormControlSel(fc));
 }
@@ -8901,6 +9107,8 @@ EXCEL_METHOD(FormControl, fromAnchor)
 	FormControlHandle fc;
 	int col = 0, colOff = 0, row = 0, rowOff = 0;
 
+	ZEND_PARSE_PARAMETERS_NONE();
+
 	FORMCONTROL_FROM_OBJECT(fc, object);
 
 	if (!xlFormControlFromAnchor(fc, &col, &colOff, &row, &rowOff)) {
@@ -8919,6 +9127,8 @@ EXCEL_METHOD(FormControl, toAnchor)
 	zval *object = ZEND_THIS;
 	FormControlHandle fc;
 	int col = 0, colOff = 0, row = 0, rowOff = 0;
+
+	ZEND_PARSE_PARAMETERS_NONE();
 
 	FORMCONTROL_FROM_OBJECT(fc, object);
 
@@ -8970,6 +9180,8 @@ EXCEL_METHOD(ConditionalFormat, font)
 	excel_font_object *fo;
 	excel_conditionalformat_object *cfo;
 
+	ZEND_PARSE_PARAMETERS_NONE();
+
 	CONDITIONALFORMAT_FROM_OBJECT(cf, object);
 
 	font = xlConditionalFormatFont(cf);
@@ -8990,6 +9202,8 @@ EXCEL_METHOD(ConditionalFormat, numFormat)
 {
 	zval *object = ZEND_THIS;
 	ConditionalFormatHandle cf;
+	ZEND_PARSE_PARAMETERS_NONE();
+
 	CONDITIONALFORMAT_FROM_OBJECT(cf, object);
 	RETURN_LONG(xlConditionalFormatNumFormat(cf));
 }
@@ -9013,6 +9227,8 @@ EXCEL_METHOD(ConditionalFormat, customNumFormat)
 	zval *object = ZEND_THIS;
 	ConditionalFormatHandle cf;
 	const char *result;
+	ZEND_PARSE_PARAMETERS_NONE();
+
 	CONDITIONALFORMAT_FROM_OBJECT(cf, object);
 	result = xlConditionalFormatCustomNumFormat(cf);
 	PE_RETURN_IS_STRING(result)
@@ -9064,6 +9280,8 @@ EXCEL_METHOD(ConditionalFormat, borderLeft)
 {
 	zval *object = ZEND_THIS;
 	ConditionalFormatHandle cf;
+	ZEND_PARSE_PARAMETERS_NONE();
+
 	CONDITIONALFORMAT_FROM_OBJECT(cf, object);
 	RETURN_LONG(xlConditionalFormatBorderLeft(cf));
 }
@@ -9086,6 +9304,8 @@ EXCEL_METHOD(ConditionalFormat, borderRight)
 {
 	zval *object = ZEND_THIS;
 	ConditionalFormatHandle cf;
+	ZEND_PARSE_PARAMETERS_NONE();
+
 	CONDITIONALFORMAT_FROM_OBJECT(cf, object);
 	RETURN_LONG(xlConditionalFormatBorderRight(cf));
 }
@@ -9108,6 +9328,8 @@ EXCEL_METHOD(ConditionalFormat, borderTop)
 {
 	zval *object = ZEND_THIS;
 	ConditionalFormatHandle cf;
+	ZEND_PARSE_PARAMETERS_NONE();
+
 	CONDITIONALFORMAT_FROM_OBJECT(cf, object);
 	RETURN_LONG(xlConditionalFormatBorderTop(cf));
 }
@@ -9130,6 +9352,8 @@ EXCEL_METHOD(ConditionalFormat, borderBottom)
 {
 	zval *object = ZEND_THIS;
 	ConditionalFormatHandle cf;
+	ZEND_PARSE_PARAMETERS_NONE();
+
 	CONDITIONALFORMAT_FROM_OBJECT(cf, object);
 	RETURN_LONG(xlConditionalFormatBorderBottom(cf));
 }
@@ -9152,6 +9376,8 @@ EXCEL_METHOD(ConditionalFormat, borderLeftColor)
 {
 	zval *object = ZEND_THIS;
 	ConditionalFormatHandle cf;
+	ZEND_PARSE_PARAMETERS_NONE();
+
 	CONDITIONALFORMAT_FROM_OBJECT(cf, object);
 	RETURN_LONG(xlConditionalFormatBorderLeftColor(cf));
 }
@@ -9174,6 +9400,8 @@ EXCEL_METHOD(ConditionalFormat, borderRightColor)
 {
 	zval *object = ZEND_THIS;
 	ConditionalFormatHandle cf;
+	ZEND_PARSE_PARAMETERS_NONE();
+
 	CONDITIONALFORMAT_FROM_OBJECT(cf, object);
 	RETURN_LONG(xlConditionalFormatBorderRightColor(cf));
 }
@@ -9196,6 +9424,8 @@ EXCEL_METHOD(ConditionalFormat, borderTopColor)
 {
 	zval *object = ZEND_THIS;
 	ConditionalFormatHandle cf;
+	ZEND_PARSE_PARAMETERS_NONE();
+
 	CONDITIONALFORMAT_FROM_OBJECT(cf, object);
 	RETURN_LONG(xlConditionalFormatBorderTopColor(cf));
 }
@@ -9218,6 +9448,8 @@ EXCEL_METHOD(ConditionalFormat, borderBottomColor)
 {
 	zval *object = ZEND_THIS;
 	ConditionalFormatHandle cf;
+	ZEND_PARSE_PARAMETERS_NONE();
+
 	CONDITIONALFORMAT_FROM_OBJECT(cf, object);
 	RETURN_LONG(xlConditionalFormatBorderBottomColor(cf));
 }
@@ -9240,6 +9472,8 @@ EXCEL_METHOD(ConditionalFormat, fillPattern)
 {
 	zval *object = ZEND_THIS;
 	ConditionalFormatHandle cf;
+	ZEND_PARSE_PARAMETERS_NONE();
+
 	CONDITIONALFORMAT_FROM_OBJECT(cf, object);
 	RETURN_LONG(xlConditionalFormatFillPattern(cf));
 }
@@ -9262,6 +9496,8 @@ EXCEL_METHOD(ConditionalFormat, patternForegroundColor)
 {
 	zval *object = ZEND_THIS;
 	ConditionalFormatHandle cf;
+	ZEND_PARSE_PARAMETERS_NONE();
+
 	CONDITIONALFORMAT_FROM_OBJECT(cf, object);
 	RETURN_LONG(xlConditionalFormatPatternForegroundColor(cf));
 }
@@ -9284,6 +9520,8 @@ EXCEL_METHOD(ConditionalFormat, patternBackgroundColor)
 {
 	zval *object = ZEND_THIS;
 	ConditionalFormatHandle cf;
+	ZEND_PARSE_PARAMETERS_NONE();
+
 	CONDITIONALFORMAT_FROM_OBJECT(cf, object);
 	RETURN_LONG(xlConditionalFormatPatternBackgroundColor(cf));
 }
@@ -9661,6 +9899,7 @@ EXCEL_METHOD(CoreProperties, method_name) \
 	zval *object = ZEND_THIS; \
 	CorePropertiesHandle cp; \
 	const char *result; \
+	ZEND_PARSE_PARAMETERS_NONE(); \
 	COREPROPERTIES_FROM_OBJECT(cp, object); \
 	result = api_func(cp); \
 	PE_RETURN_IS_STRING(result) \
@@ -9704,6 +9943,8 @@ EXCEL_METHOD(CoreProperties, createdAsDouble)
 {
 	zval *object = ZEND_THIS;
 	CorePropertiesHandle cp;
+	ZEND_PARSE_PARAMETERS_NONE();
+
 	COREPROPERTIES_FROM_OBJECT(cp, object);
 	RETURN_DOUBLE(xlCorePropertiesCreatedAsDouble(cp));
 }
@@ -9725,6 +9966,8 @@ EXCEL_METHOD(CoreProperties, modifiedAsDouble)
 {
 	zval *object = ZEND_THIS;
 	CorePropertiesHandle cp;
+	ZEND_PARSE_PARAMETERS_NONE();
+
 	COREPROPERTIES_FROM_OBJECT(cp, object);
 	RETURN_DOUBLE(xlCorePropertiesModifiedAsDouble(cp));
 }
@@ -9746,6 +9989,8 @@ EXCEL_METHOD(CoreProperties, removeAll)
 {
 	zval *object = ZEND_THIS;
 	CorePropertiesHandle cp;
+	ZEND_PARSE_PARAMETERS_NONE();
+
 	COREPROPERTIES_FROM_OBJECT(cp, object);
 	xlCorePropertiesRemoveAll(cp);
 	RETURN_TRUE;
@@ -9820,6 +10065,8 @@ EXCEL_METHOD(Table, name)
 	zval *object = ZEND_THIS;
 	TableHandle table;
 	const char *result;
+	ZEND_PARSE_PARAMETERS_NONE();
+
 	TABLE_FROM_OBJECT(table, object);
 	result = xlTableName(table);
 	PE_RETURN_IS_STRING(result)
@@ -9845,6 +10092,8 @@ EXCEL_METHOD(Table, ref)
 	zval *object = ZEND_THIS;
 	TableHandle table;
 	const char *result;
+	ZEND_PARSE_PARAMETERS_NONE();
+
 	TABLE_FROM_OBJECT(table, object);
 	result = xlTableRef(table);
 	PE_RETURN_IS_STRING(result)
@@ -9873,6 +10122,8 @@ EXCEL_METHOD(Table, autoFilter)
 	excel_autofilter_object *aobj;
 	excel_table_object *tobj;
 
+	ZEND_PARSE_PARAMETERS_NONE();
+
 	TABLE_FROM_OBJECT(table, object);
 
 	afh = xlTableAutoFilter(table);
@@ -9894,6 +10145,9 @@ EXCEL_METHOD(Table, isAutoFilter)
 {
 	zval *object = ZEND_THIS;
 	TableHandle table;
+
+	ZEND_PARSE_PARAMETERS_NONE();
+
 	TABLE_FROM_OBJECT(table, object);
 	RETURN_BOOL(xlTableIsAutoFilter(table));
 }
@@ -9902,6 +10156,8 @@ EXCEL_METHOD(Table, removeFilter)
 {
 	zval *object = ZEND_THIS;
 	TableHandle table;
+	ZEND_PARSE_PARAMETERS_NONE();
+
 	TABLE_FROM_OBJECT(table, object);
 	xlTableRemoveFilter(table);
 	php_excel_book_bump_autofilter_generation(object);
@@ -9913,6 +10169,8 @@ EXCEL_METHOD(Table, style)
 {
 	zval *object = ZEND_THIS;
 	TableHandle table;
+	ZEND_PARSE_PARAMETERS_NONE();
+
 	TABLE_FROM_OBJECT(table, object);
 	RETURN_LONG(xlTableStyle(table));
 }
@@ -9935,6 +10193,8 @@ EXCEL_METHOD(Table, showRowStripes)
 {
 	zval *object = ZEND_THIS;
 	TableHandle table;
+	ZEND_PARSE_PARAMETERS_NONE();
+
 	TABLE_FROM_OBJECT(table, object);
 	RETURN_BOOL(xlTableShowRowStripes(table));
 }
@@ -9956,6 +10216,8 @@ EXCEL_METHOD(Table, showColumnStripes)
 {
 	zval *object = ZEND_THIS;
 	TableHandle table;
+	ZEND_PARSE_PARAMETERS_NONE();
+
 	TABLE_FROM_OBJECT(table, object);
 	RETURN_BOOL(xlTableShowColumnStripes(table));
 }
@@ -9977,6 +10239,8 @@ EXCEL_METHOD(Table, showFirstColumn)
 {
 	zval *object = ZEND_THIS;
 	TableHandle table;
+	ZEND_PARSE_PARAMETERS_NONE();
+
 	TABLE_FROM_OBJECT(table, object);
 	RETURN_BOOL(xlTableShowFirstColumn(table));
 }
@@ -9998,6 +10262,8 @@ EXCEL_METHOD(Table, showLastColumn)
 {
 	zval *object = ZEND_THIS;
 	TableHandle table;
+	ZEND_PARSE_PARAMETERS_NONE();
+
 	TABLE_FROM_OBJECT(table, object);
 	RETURN_BOOL(xlTableShowLastColumn(table));
 }
@@ -10019,6 +10285,8 @@ EXCEL_METHOD(Table, columnSize)
 {
 	zval *object = ZEND_THIS;
 	TableHandle table;
+	ZEND_PARSE_PARAMETERS_NONE();
+
 	TABLE_FROM_OBJECT(table, object);
 	RETURN_LONG(xlTableColumnSize(table));
 }
@@ -10074,6 +10342,18 @@ PHP_MINIT_FUNCTION(excel)
 	REGISTER_EXCEL_CLASS(ConditionalFormatting,	conditionalformatting,	NULL);
 	REGISTER_EXCEL_CLASS(CoreProperties,	coreproperties,	NULL);
 	REGISTER_EXCEL_CLASS(Table,			table,			NULL);
+
+	EXCEL_SET_GC(sheet);
+	EXCEL_SET_GC(font);
+	EXCEL_SET_GC(format);
+	EXCEL_SET_GC(autofilter);
+	EXCEL_SET_GC(filtercolumn);
+	EXCEL_SET_GC(richstring);
+	EXCEL_SET_GC(formcontrol);
+	EXCEL_SET_GC(conditionalformat);
+	EXCEL_SET_GC(conditionalformatting);
+	EXCEL_SET_GC(coreproperties);
+	EXCEL_SET_GC(table);
 
 	REGISTER_EXCEL_CLASS_CONST_LONG(font, "NORMAL", SCRIPT_NORMAL);
 	REGISTER_EXCEL_CLASS_CONST_LONG(font, "SUBSCRIPT", SCRIPT_SUB);
@@ -10532,6 +10812,9 @@ PHP_MINFO_FUNCTION(excel)
  */
 static PHP_GINIT_FUNCTION(excel)
 {
+#if defined(ZTS) && defined(COMPILE_DL_EXCEL)
+	ZEND_TSRMLS_CACHE_UPDATE();
+#endif
 	memset(excel_globals, 0, sizeof(*excel_globals));
 }
 /* }}} */

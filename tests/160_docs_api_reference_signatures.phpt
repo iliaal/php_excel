@@ -5,7 +5,7 @@ excel
 --FILE--
 <?php
 $checks = [
-    ["ExcelBook.php", "public function save(string \$filename = ''): string|true|false"],
+    ["ExcelBook.php", "public function save(string \$filename = ''): string|bool"],
     ["ExcelBook.php", "public function loadPartially(string \$data, int \$sheet_index, int \$row_first, int \$row_last, bool \$keep_all_sheets = false): bool"],
     ["ExcelBook.php", "public function loadFilePartially(string \$filename, int \$sheet_index, int \$row_first, int \$row_last, bool \$keep_all_sheets = false): bool"],
     ["ExcelBook.php", "public function loadFileWithoutEmptyCells(string \$filename): bool"],
@@ -34,6 +34,13 @@ $checks = [
     ["ExcelConditionalFormatting.php", "public function addTimePeriodRule(ExcelConditionalFormat \$cf, int \$timePeriod, bool \$stopIfTrue = false): bool"],
     // removeComment is implemented and now documented (was doc-lagged)
     ["ExcelSheet.php", "public function removeComment(int \$row, int \$col): mixed"],
+    // addConditionalFormatting takes required ints (no null defaults) on libxl 5.1+
+    ["ExcelSheet.php", "public function addConditionalFormatting(int \$rowFirst, int \$rowLast, int \$colFirst, int \$colLast): ExcelConditionalFormatting|false"],
+    // dataValidationSize returns int|false, matching the stub
+    ["ExcelSheet.php", "public function dataValidationSize(): int|false"],
+    // CoreProperties string getters return string|null|false, matching the stub
+    ["ExcelCoreProperties.php", "public function title(): string|null|false"],
+    ["ExcelCoreProperties.php", "public function categories(): string|null|false"],
 ];
 
 foreach ($checks as [$file, $needle]) {
@@ -67,3 +74,7 @@ ExcelConditionalFormatting.php: OK
 ExcelConditionalFormatting.php: OK
 ExcelConditionalFormatting.php: OK
 ExcelSheet.php: OK
+ExcelSheet.php: OK
+ExcelSheet.php: OK
+ExcelCoreProperties.php: OK
+ExcelCoreProperties.php: OK

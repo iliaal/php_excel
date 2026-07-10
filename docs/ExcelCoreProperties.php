@@ -26,9 +26,9 @@ class ExcelCoreProperties
 	/**
 	* Returns the title
 	*
-	* @return string|null
+	* @return string|null|false
 	*/
-	public function title()
+	public function title(): string|null|false
 	{
 	}
 
@@ -45,9 +45,9 @@ class ExcelCoreProperties
 	/**
 	* Returns the subject
 	*
-	* @return string|null
+	* @return string|null|false
 	*/
-	public function subject()
+	public function subject(): string|null|false
 	{
 	}
 
@@ -64,9 +64,9 @@ class ExcelCoreProperties
 	/**
 	* Returns the creator
 	*
-	* @return string|null
+	* @return string|null|false
 	*/
-	public function creator()
+	public function creator(): string|null|false
 	{
 	}
 
@@ -83,9 +83,9 @@ class ExcelCoreProperties
 	/**
 	* Returns the last modified by value
 	*
-	* @return string|null
+	* @return string|null|false
 	*/
-	public function lastModifiedBy()
+	public function lastModifiedBy(): string|null|false
 	{
 	}
 
@@ -102,9 +102,9 @@ class ExcelCoreProperties
 	/**
 	* Returns the created date as a string
 	*
-	* @return string|null
+	* @return string|null|false
 	*/
-	public function created()
+	public function created(): string|null|false
 	{
 	}
 
@@ -121,9 +121,9 @@ class ExcelCoreProperties
 	/**
 	* Returns the modified date as a string
 	*
-	* @return string|null
+	* @return string|null|false
 	*/
-	public function modified()
+	public function modified(): string|null|false
 	{
 	}
 
@@ -140,9 +140,9 @@ class ExcelCoreProperties
 	/**
 	* Returns the tags
 	*
-	* @return string|null
+	* @return string|null|false
 	*/
-	public function tags()
+	public function tags(): string|null|false
 	{
 	}
 
@@ -159,9 +159,9 @@ class ExcelCoreProperties
 	/**
 	* Returns the categories
 	*
-	* @return string|null
+	* @return string|null|false
 	*/
-	public function categories()
+	public function categories(): string|null|false
 	{
 	}
 
@@ -178,9 +178,9 @@ class ExcelCoreProperties
 	/**
 	* Returns the comments
 	*
-	* @return string|null
+	* @return string|null|false
 	*/
-	public function comments()
+	public function comments(): string|null|false
 	{
 	}
 

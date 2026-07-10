@@ -203,7 +203,7 @@ class ExcelBook
 	* @param string $filename (optional, default="") If empty or omitted, returns binary string
 	* @return string|bool If $filename is empty or omitted, returns string; otherwise returns bool
 	*/
-	public function save(string $filename = ''): string|true|false
+	public function save(string $filename = ''): string|bool
 	{
 	}
 
