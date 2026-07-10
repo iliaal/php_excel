@@ -283,7 +283,13 @@ jobs:
       - name: Run tests under ASAN
         run: |
           export LD_LIBRARY_PATH="${{ github.workspace }}/libxl-5.2.0.1/lib64"
-          export LD_PRELOAD=$(clang -print-file-name=libclang_rt.asan-x86_64.so):$(dpkg -L libstdc++-dev | grep 'libstdc++.so$' | head -1 || echo /usr/lib/x86_64-linux-gnu/libstdc++.so)
+          # php-asan links the clang ASan runtime statically (no -shared-libasan),
+          # so preloading the shared libclang_rt.asan on top of it aborts with
+          # "incompatible ASan runtimes". The extension's ASan symbols resolve
+          # from php's static runtime at dlopen; only libstdc++ needs preloading
+          # so libxl's C++ exceptions unwind before ASan interception. Resolve it
+          # via gcc (the dpkg package name is not present on the runner image).
+          export LD_PRELOAD=$(gcc -print-file-name=libstdc++.so.6)
           export TEST_PHP_EXECUTABLE=/tmp/php-asan/bin/php
           export TEST_PHP_ARGS="-d extension=$(pwd)/modules/excel.so"
           export NO_INTERACTION=1
