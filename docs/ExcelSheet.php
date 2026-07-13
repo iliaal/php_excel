@@ -136,7 +136,7 @@ class ExcelSheet
 	* @param ExcelBook $book
 	* @param string $name The name for the new worksheet
 	*/
-	public function __construct(ExcelBook $book, $name)
+	public function __construct(ExcelBook $book, string $name)
 	{
 	}
 
@@ -170,7 +170,7 @@ class ExcelSheet
 	* @param ExcelFormat $format
 	* @return void
 	*/
-	public function setCellFormat(int $row, int $column, ExcelFormat $format)
+	public function setCellFormat(int $row, int $column, ExcelFormat $format): mixed
 	{
 	}
 
@@ -183,7 +183,7 @@ class ExcelSheet
 	* @param bool $read_formula (optional, default=true)
 	* @return mixed
 	*/
-	public function read(int $row, int $column, &$format = null, bool $read_formula = true)
+	public function read(int $row, int $column, mixed &$format = null, bool $read_formula = true): mixed
 	{
 	}
 
@@ -403,7 +403,7 @@ class ExcelSheet
 	* @param int $height
 	* @return void
 	*/
-	public function writeComment(int $row, int $column, string $value, string $author, int $width, int $height)
+	public function writeComment(int $row, int $column, string $value, string $author, int $width, int $height): mixed
 	{
 	}
 
@@ -441,7 +441,7 @@ class ExcelSheet
 	* @param mixed $hidden (optional, default=false)
 	* @return bool
 	*/
-	public function setRowHeight(int $row, float $height, ?ExcelFormat $format = null, $hidden = false): bool
+	public function setRowHeight(int $row, float $height, ?ExcelFormat $format = null, bool $hidden = false): bool
 	{
 	}
 
@@ -492,7 +492,7 @@ class ExcelSheet
 	* @param int $pos (optional) One of ExcelBook::POSITION_* constants
 	* @return void
 	*/
-	public function addPictureScaled(int $row, int $column, int $pic_id, float $scale, int $x_offset = 0, int $y_offset = 0, int $pos = 0)
+	public function addPictureScaled(int $row, int $column, int $pic_id, float $scale, int $x_offset = 0, int $y_offset = 0, int $pos = 0): mixed
 	{
 	}
 
@@ -509,7 +509,7 @@ class ExcelSheet
 	* @param int $pos (optional) One of ExcelBook::POSITION_* constants
 	* @return void
 	*/
-	public function addPictureDim(int $row, int $column, int $pic_id, int $width, int $height, int $x_offset = 0, int $y_offset = 0, int $pos = 0)
+	public function addPictureDim(int $row, int $column, int $pic_id, int $width, int $height, int $x_offset = 0, int $y_offset = 0, int $pos = 0): mixed
 	{
 	}
 
@@ -520,7 +520,7 @@ class ExcelSheet
 	* @param int $break
 	* @return bool
 	*/
-	public function horPageBreak(int $row, int $break): bool
+	public function horPageBreak(int $row, bool $break): bool
 	{
 	}
 
@@ -531,7 +531,7 @@ class ExcelSheet
 	* @param int $break
 	* @return bool
 	*/
-	public function verPageBreak(int $col, int $break): bool
+	public function verPageBreak(int $col, bool $break): bool
 	{
 	}
 
@@ -542,7 +542,7 @@ class ExcelSheet
 	* @param int $column 0-based column number
 	* @return void
 	*/
-	public function splitSheet(int $row, int $column)
+	public function splitSheet(int $row, int $column): mixed
 	{
 	}
 
@@ -579,7 +579,7 @@ class ExcelSheet
 	* @param int $col_e 0-based column number
 	* @return void
 	*/
-	public function clear(int $row_s, int $row_e, int $col_s, int $col_e)
+	public function clear(int $row_s, int $row_e, int $col_s, int $col_e): mixed
 	{
 	}
 
@@ -656,7 +656,7 @@ class ExcelSheet
 	* @param bool $value
 	* @return void
 	*/
-	public function setDisplayGridlines(bool $value)
+	public function setDisplayGridlines(bool $value): mixed
 	{
 	}
 
@@ -666,7 +666,7 @@ class ExcelSheet
 	* @param mixed $value
 	* @return void
 	*/
-	public function setPrintGridlines($value)
+	public function setPrintGridlines(bool $value): mixed
 	{
 	}
 
@@ -694,7 +694,7 @@ class ExcelSheet
 	* @param mixed $value
 	* @return void
 	*/
-	public function setZoom($value)
+	public function setZoom(int $value): mixed
 	{
 	}
 
@@ -704,7 +704,7 @@ class ExcelSheet
 	* @param mixed $value
 	* @return void
 	*/
-	public function setZoomPrint($value)
+	public function setZoomPrint(int $value): mixed
 	{
 	}
 
@@ -714,7 +714,7 @@ class ExcelSheet
 	* @param mixed $value true for landscape, false for portrait
 	* @return void
 	*/
-	public function setLandscape($value)
+	public function setLandscape(bool $value): mixed
 	{
 	}
 
@@ -742,7 +742,7 @@ class ExcelSheet
 	* @param string $value One of ExcelSheet::PAPER_* constants
 	* @return void
 	*/
-	public function setPaper(string $value)
+	public function setPaper(int $value): mixed
 	{
 	}
 
@@ -751,7 +751,7 @@ class ExcelSheet
 	*
 	* @return string|null|false
 	*/
-	public function header(): string|null|false
+	public function header(): string|false|null
 	{
 	}
 
@@ -760,7 +760,7 @@ class ExcelSheet
 	*
 	* @return string|null|false
 	*/
-	public function footer(): string|null|false
+	public function footer(): string|false|null
 	{
 	}
 
@@ -771,7 +771,7 @@ class ExcelSheet
 	* @param mixed $margin
 	* @return bool
 	*/
-	public function setHeader($header, $margin): bool
+	public function setHeader(string $header, float $margin): bool
 	{
 	}
 
@@ -782,7 +782,7 @@ class ExcelSheet
 	* @param mixed $margin
 	* @return bool
 	*/
-	public function setFooter($footer, $margin): bool
+	public function setFooter(string $footer, float $margin): bool
 	{
 	}
 
@@ -828,7 +828,7 @@ class ExcelSheet
 	* @param mixed $value
 	* @return void
 	*/
-	public function setHCenter($value)
+	public function setHCenter(bool $value): mixed
 	{
 	}
 
@@ -838,7 +838,7 @@ class ExcelSheet
 	* @param mixed $value
 	* @return void
 	*/
-	public function setVCenter($value)
+	public function setVCenter(bool $value): mixed
 	{
 	}
 
@@ -884,7 +884,7 @@ class ExcelSheet
 	* @param mixed $value
 	* @return void
 	*/
-	public function setMarginLeft($value)
+	public function setMarginLeft(float $value): mixed
 	{
 	}
 
@@ -894,7 +894,7 @@ class ExcelSheet
 	* @param mixed $value
 	* @return void
 	*/
-	public function setMarginRight($value)
+	public function setMarginRight(float $value): mixed
 	{
 	}
 
@@ -904,7 +904,7 @@ class ExcelSheet
 	* @param mixed $value
 	* @return void
 	*/
-	public function setMarginTop($value)
+	public function setMarginTop(float $value): mixed
 	{
 	}
 
@@ -914,7 +914,7 @@ class ExcelSheet
 	* @param mixed $value
 	* @return void
 	*/
-	public function setMarginBottom($value)
+	public function setMarginBottom(float $value): mixed
 	{
 	}
 
@@ -933,7 +933,7 @@ class ExcelSheet
 	* @param bool $value
 	* @return void
 	*/
-	public function setPrintHeaders(bool $value)
+	public function setPrintHeaders(bool $value): mixed
 	{
 	}
 
@@ -942,7 +942,7 @@ class ExcelSheet
 	*
 	* @return string|null|false
 	*/
-	public function name(): string|null|false
+	public function name(): string|false|null
 	{
 	}
 
@@ -952,7 +952,7 @@ class ExcelSheet
 	* @param string $name
 	* @return void
 	*/
-	public function setName(string $name)
+	public function setName(string $name): mixed
 	{
 	}
 
@@ -1010,7 +1010,7 @@ class ExcelSheet
 	* @param mixed $row_end 0-based row number
 	* @return bool
 	*/
-	public function setPrintRepeatRows($row_start, $row_end): bool
+	public function setPrintRepeatRows(int $row_start, int $row_end): bool
 	{
 	}
 
@@ -1021,7 +1021,7 @@ class ExcelSheet
 	* @param mixed $col_end 0-based column number
 	* @return bool
 	*/
-	public function setPrintRepeatCols($col_start, $col_end): bool
+	public function setPrintRepeatCols(int $col_start, int $col_end): bool
 	{
 	}
 
@@ -1278,7 +1278,7 @@ class ExcelSheet
 	* @param int $mode
 	* @return void
 	*/
-	public function setRightToLeft(int $mode)
+	public function setRightToLeft(int $mode): mixed
 	{
 	}
 
@@ -1497,7 +1497,7 @@ class ExcelSheet
 	* @param int $index (optional, default=0)
 	* @return array|false Array with keys "name", "row_first", "col_first", "row_last", "col_last", "header_row_count", "totals_row_count"
 	*/
-	public function table(int $index = 0): array|false
+	public function table(int $index): array|false
 	{
 	}
 
@@ -1510,7 +1510,7 @@ class ExcelSheet
 	* @param ExcelFormat|null $format (optional, default=null)
 	* @return void
 	*/
-	public function writeError(int $row, int $col, int $iError, ?ExcelFormat $format = null)
+	public function writeError(int $row, int $col, int $iError, ?ExcelFormat $format = null): mixed
 	{
 	}
 
@@ -1749,7 +1749,7 @@ class ExcelSheet
 	*
 	* @return string|null|false
 	*/
-	public function selectionRange(): string|null|false
+	public function selectionRange(): string|false|null
 	{
 	}
 
@@ -1863,7 +1863,7 @@ class ExcelSheet
 	* @param mixed $hidden (optional)
 	* @return bool
 	*/
-	public function setColPx(int $colFirst, int $colLast, int $widthPx, ?ExcelFormat $format = null, $hidden = null): bool
+	public function setColPx(int $colFirst, int $colLast, int $widthPx, ?ExcelFormat $format = null, bool $hidden = false): bool
 	{
 	}
 
@@ -1876,7 +1876,7 @@ class ExcelSheet
 	* @param mixed $hidden (optional)
 	* @return bool
 	*/
-	public function setRowPx(int $row, int $heightPx, ?ExcelFormat $format = null, $hidden = null): bool
+	public function setRowPx(int $row, int $heightPx, ?ExcelFormat $format = null, bool $hidden = false): bool
 	{
 	}
 
@@ -1907,7 +1907,7 @@ class ExcelSheet
 	* @param int $style (optional) One of ExcelTable::TABLESTYLE_* constants
 	* @return ExcelTable|false
 	*/
-	public function addTable(string $name, int $rowFirst, int $rowLast, int $colFirst, int $colLast, bool $hasHeaders = null, int $style = null): ExcelTable|false
+	public function addTable(string $name, int $rowFirst, int $rowLast, int $colFirst, int $colLast, bool $hasHeaders = true, int $style = 0): ExcelTable|false
 	{
 	}
 

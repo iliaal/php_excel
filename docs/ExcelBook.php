@@ -91,7 +91,7 @@ class ExcelBook
 	* @param ExcelFont $font (optional, default=null) Font to copy
 	* @return ExcelFont|false
 	*/
-	public function addFont(ExcelFont $font = null): ExcelFont|false
+	public function addFont(?ExcelFont $font = null): ExcelFont|false
 	{
 	}
 
@@ -380,7 +380,7 @@ class ExcelBook
 	* @param int $font_size
 	* @return void
 	*/
-	public function setDefaultFont(string $font, int $font_size)
+	public function setDefaultFont(string $font, int $font_size): mixed
 	{
 	}
 
@@ -390,7 +390,7 @@ class ExcelBook
 	* @param string $locale
 	* @return void
 	*/
-	public function setLocale(string $locale)
+	public function setLocale(string $locale): mixed
 	{
 	}
 
@@ -403,7 +403,7 @@ class ExcelBook
 	* @param string $filename
 	* @return int|false A picture ID
 	*/
-	public function addPictureFromFile($filename): int|false
+	public function addPictureFromFile(string $filename): int|false
 	{
 	}
 
@@ -416,7 +416,7 @@ class ExcelBook
 	* @param string $data
 	* @return int|false A picture ID
 	*/
-	public function addPictureFromString($data): int|false
+	public function addPictureFromString(string $data): int|false
 	{
 	}
 
@@ -437,7 +437,7 @@ class ExcelBook
 	* @param bool $mode
 	* @return void
 	*/
-	public function setRGBMode(bool $mode)
+	public function setRGBMode(bool $mode): bool
 	{
 	}
 
@@ -499,7 +499,7 @@ class ExcelBook
 	* @param bool $active
 	* @return void
 	*/
-	public function setRefR1C1(bool $active)
+	public function setRefR1C1(bool $active): bool
 	{
 	}
 
@@ -558,7 +558,7 @@ class ExcelBook
 	* @param bool $mode
 	* @return void
 	*/
-	public function setTemplate(bool $mode)
+	public function setTemplate(bool $mode): bool
 	{
 	}
 

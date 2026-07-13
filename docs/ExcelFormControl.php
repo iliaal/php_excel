@@ -37,7 +37,7 @@ class ExcelFormControl
 	* @param ExcelSheet $sheet
 	* @param int $index
 	*/
-	public function __construct(ExcelSheet $sheet, $index)
+	public function __construct(ExcelSheet $sheet, int $index)
 	{
 	}
 
@@ -46,7 +46,7 @@ class ExcelFormControl
 	*
 	* @return int One of ExcelFormControl::OBJECT_* constants
 	*/
-	public function objectType()
+	public function objectType(): mixed
 	{
 	}
 
@@ -55,7 +55,7 @@ class ExcelFormControl
 	*
 	* @return int One of ExcelFormControl::CHECKEDTYPE_* constants
 	*/
-	public function checked()
+	public function checked(): mixed
 	{
 	}
 
@@ -65,7 +65,7 @@ class ExcelFormControl
 	* @param int $value One of ExcelFormControl::CHECKEDTYPE_* constants
 	* @return bool
 	*/
-	public function setChecked($value): bool
+	public function setChecked(int $value): bool
 	{
 	}
 
@@ -74,7 +74,7 @@ class ExcelFormControl
 	*
 	* @return string|null
 	*/
-	public function fmlaGroup()
+	public function fmlaGroup(): mixed
 	{
 	}
 
@@ -84,7 +84,7 @@ class ExcelFormControl
 	* @param string $value
 	* @return bool
 	*/
-	public function setFmlaGroup($value): bool
+	public function setFmlaGroup(string $value): bool
 	{
 	}
 
@@ -93,7 +93,7 @@ class ExcelFormControl
 	*
 	* @return string|null
 	*/
-	public function fmlaLink()
+	public function fmlaLink(): mixed
 	{
 	}
 
@@ -103,7 +103,7 @@ class ExcelFormControl
 	* @param string $value
 	* @return bool
 	*/
-	public function setFmlaLink($value): bool
+	public function setFmlaLink(string $value): bool
 	{
 	}
 
@@ -112,7 +112,7 @@ class ExcelFormControl
 	*
 	* @return string|null
 	*/
-	public function fmlaRange()
+	public function fmlaRange(): mixed
 	{
 	}
 
@@ -122,7 +122,7 @@ class ExcelFormControl
 	* @param string $value
 	* @return bool
 	*/
-	public function setFmlaRange($value): bool
+	public function setFmlaRange(string $value): bool
 	{
 	}
 
@@ -131,7 +131,7 @@ class ExcelFormControl
 	*
 	* @return string|null
 	*/
-	public function fmlaTxbx()
+	public function fmlaTxbx(): mixed
 	{
 	}
 
@@ -141,7 +141,7 @@ class ExcelFormControl
 	* @param string $value
 	* @return bool
 	*/
-	public function setFmlaTxbx($value): bool
+	public function setFmlaTxbx(string $value): bool
 	{
 	}
 
@@ -150,7 +150,7 @@ class ExcelFormControl
 	*
 	* @return string|null
 	*/
-	public function name()
+	public function name(): mixed
 	{
 	}
 
@@ -159,7 +159,7 @@ class ExcelFormControl
 	*
 	* @return string|null
 	*/
-	public function linkedCell()
+	public function linkedCell(): mixed
 	{
 	}
 
@@ -168,7 +168,7 @@ class ExcelFormControl
 	*
 	* @return string|null
 	*/
-	public function listFillRange()
+	public function listFillRange(): mixed
 	{
 	}
 
@@ -177,7 +177,7 @@ class ExcelFormControl
 	*
 	* @return string|null
 	*/
-	public function macro()
+	public function macro(): mixed
 	{
 	}
 
@@ -186,7 +186,7 @@ class ExcelFormControl
 	*
 	* @return string|null
 	*/
-	public function altText()
+	public function altText(): mixed
 	{
 	}
 
@@ -195,7 +195,7 @@ class ExcelFormControl
 	*
 	* @return bool
 	*/
-	public function locked()
+	public function locked(): mixed
 	{
 	}
 
@@ -204,7 +204,7 @@ class ExcelFormControl
 	*
 	* @return bool
 	*/
-	public function defaultSize()
+	public function defaultSize(): mixed
 	{
 	}
 
@@ -213,7 +213,7 @@ class ExcelFormControl
 	*
 	* @return bool
 	*/
-	public function print()
+	public function print(): mixed
 	{
 	}
 
@@ -222,7 +222,7 @@ class ExcelFormControl
 	*
 	* @return bool
 	*/
-	public function disabled()
+	public function disabled(): mixed
 	{
 	}
 
@@ -232,7 +232,7 @@ class ExcelFormControl
 	* @param int $index
 	* @return string|null|false
 	*/
-	public function item(int $index): string|null|false
+	public function item(int $index): string|false|null
 	{
 	}
 
@@ -241,7 +241,7 @@ class ExcelFormControl
 	*
 	* @return int
 	*/
-	public function itemSize()
+	public function itemSize(): mixed
 	{
 	}
 
@@ -251,7 +251,7 @@ class ExcelFormControl
 	* @param string $value
 	* @return bool
 	*/
-	public function addItem($value): bool
+	public function addItem(string $value): bool
 	{
 	}
 
@@ -271,7 +271,7 @@ class ExcelFormControl
 	*
 	* @return void
 	*/
-	public function clearItems()
+	public function clearItems(): mixed
 	{
 	}
 
@@ -280,7 +280,7 @@ class ExcelFormControl
 	*
 	* @return int
 	*/
-	public function dropLines()
+	public function dropLines(): mixed
 	{
 	}
 
@@ -290,7 +290,7 @@ class ExcelFormControl
 	* @param int $value
 	* @return bool
 	*/
-	public function setDropLines($value): bool
+	public function setDropLines(int $value): bool
 	{
 	}
 
@@ -299,7 +299,7 @@ class ExcelFormControl
 	*
 	* @return int
 	*/
-	public function dx()
+	public function dx(): mixed
 	{
 	}
 
@@ -309,7 +309,7 @@ class ExcelFormControl
 	* @param int $value
 	* @return bool
 	*/
-	public function setDx($value): bool
+	public function setDx(int $value): bool
 	{
 	}
 
@@ -318,7 +318,7 @@ class ExcelFormControl
 	*
 	* @return bool
 	*/
-	public function firstButton()
+	public function firstButton(): mixed
 	{
 	}
 
@@ -328,7 +328,7 @@ class ExcelFormControl
 	* @param bool $value
 	* @return bool
 	*/
-	public function setFirstButton($value): bool
+	public function setFirstButton(bool $value): bool
 	{
 	}
 
@@ -337,7 +337,7 @@ class ExcelFormControl
 	*
 	* @return bool
 	*/
-	public function horiz()
+	public function horiz(): mixed
 	{
 	}
 
@@ -347,7 +347,7 @@ class ExcelFormControl
 	* @param bool $value
 	* @return bool
 	*/
-	public function setHoriz($value): bool
+	public function setHoriz(bool $value): bool
 	{
 	}
 
@@ -356,7 +356,7 @@ class ExcelFormControl
 	*
 	* @return int
 	*/
-	public function inc()
+	public function inc(): mixed
 	{
 	}
 
@@ -366,7 +366,7 @@ class ExcelFormControl
 	* @param int $value
 	* @return bool
 	*/
-	public function setInc($value): bool
+	public function setInc(int $value): bool
 	{
 	}
 
@@ -375,7 +375,7 @@ class ExcelFormControl
 	*
 	* @return int
 	*/
-	public function getMax()
+	public function getMax(): mixed
 	{
 	}
 
@@ -385,7 +385,7 @@ class ExcelFormControl
 	* @param int $value
 	* @return bool
 	*/
-	public function setMax($value): bool
+	public function setMax(int $value): bool
 	{
 	}
 
@@ -394,7 +394,7 @@ class ExcelFormControl
 	*
 	* @return int
 	*/
-	public function getMin()
+	public function getMin(): mixed
 	{
 	}
 
@@ -404,7 +404,7 @@ class ExcelFormControl
 	* @param int $value
 	* @return bool
 	*/
-	public function setMin($value): bool
+	public function setMin(int $value): bool
 	{
 	}
 
@@ -413,7 +413,7 @@ class ExcelFormControl
 	*
 	* @return string|null
 	*/
-	public function multiSel()
+	public function multiSel(): mixed
 	{
 	}
 
@@ -423,7 +423,7 @@ class ExcelFormControl
 	* @param string $value
 	* @return bool
 	*/
-	public function setMultiSel($value): bool
+	public function setMultiSel(string $value): bool
 	{
 	}
 
@@ -432,7 +432,7 @@ class ExcelFormControl
 	*
 	* @return int
 	*/
-	public function sel()
+	public function sel(): mixed
 	{
 	}
 
@@ -442,7 +442,7 @@ class ExcelFormControl
 	* @param int $value
 	* @return bool
 	*/
-	public function setSel($value): bool
+	public function setSel(int $value): bool
 	{
 	}
 
@@ -451,7 +451,7 @@ class ExcelFormControl
 	*
 	* @return array
 	*/
-	public function fromAnchor()
+	public function fromAnchor(): mixed
 	{
 	}
 
@@ -460,7 +460,7 @@ class ExcelFormControl
 	*
 	* @return array
 	*/
-	public function toAnchor()
+	public function toAnchor(): mixed
 	{
 	}
 

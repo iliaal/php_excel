@@ -44,7 +44,7 @@ class ExcelTable
 	* @param bool $hasHeaders (optional)
 	* @param int $style (optional) One of ExcelTable::TABLESTYLE_* constants
 	*/
-	public function __construct(ExcelSheet $sheet, $name, int $rowFirst, int $rowLast, int $colFirst, int $colLast, bool $hasHeaders = null, int $style = null)
+	public function __construct(ExcelSheet $sheet, string $name, int $rowFirst, int $rowLast, int $colFirst, int $colLast, bool $hasHeaders = true, int $style = 0)
 	{
 	}
 
@@ -53,7 +53,7 @@ class ExcelTable
 	*
 	* @return string|null
 	*/
-	public function name()
+	public function name(): mixed
 	{
 	}
 
@@ -63,7 +63,7 @@ class ExcelTable
 	* @param string $value
 	* @return bool
 	*/
-	public function setName($value): bool
+	public function setName(string $value): bool
 	{
 	}
 
@@ -72,7 +72,7 @@ class ExcelTable
 	*
 	* @return string|null
 	*/
-	public function ref()
+	public function ref(): mixed
 	{
 	}
 
@@ -82,7 +82,7 @@ class ExcelTable
 	* @param string $value
 	* @return bool
 	*/
-	public function setRef($value): bool
+	public function setRef(string $value): bool
 	{
 	}
 
@@ -91,7 +91,7 @@ class ExcelTable
 	*
 	* @return ExcelAutoFilter
 	*/
-	public function autoFilter()
+	public function autoFilter(): mixed
 	{
 	}
 
@@ -118,7 +118,7 @@ class ExcelTable
 	*
 	* @return int One of ExcelTable::TABLESTYLE_* constants
 	*/
-	public function style()
+	public function style(): mixed
 	{
 	}
 
@@ -128,7 +128,7 @@ class ExcelTable
 	* @param int $value One of ExcelTable::TABLESTYLE_* constants
 	* @return bool
 	*/
-	public function setStyle($value): bool
+	public function setStyle(int $value): bool
 	{
 	}
 
@@ -137,7 +137,7 @@ class ExcelTable
 	*
 	* @return bool
 	*/
-	public function showRowStripes()
+	public function showRowStripes(): mixed
 	{
 	}
 
@@ -147,7 +147,7 @@ class ExcelTable
 	* @param bool $value
 	* @return bool
 	*/
-	public function setShowRowStripes($value): bool
+	public function setShowRowStripes(bool $value): bool
 	{
 	}
 
@@ -156,7 +156,7 @@ class ExcelTable
 	*
 	* @return bool
 	*/
-	public function showColumnStripes()
+	public function showColumnStripes(): mixed
 	{
 	}
 
@@ -166,7 +166,7 @@ class ExcelTable
 	* @param bool $value
 	* @return bool
 	*/
-	public function setShowColumnStripes($value): bool
+	public function setShowColumnStripes(bool $value): bool
 	{
 	}
 
@@ -175,7 +175,7 @@ class ExcelTable
 	*
 	* @return bool
 	*/
-	public function showFirstColumn()
+	public function showFirstColumn(): mixed
 	{
 	}
 
@@ -185,7 +185,7 @@ class ExcelTable
 	* @param bool $value
 	* @return bool
 	*/
-	public function setShowFirstColumn($value): bool
+	public function setShowFirstColumn(bool $value): bool
 	{
 	}
 
@@ -194,7 +194,7 @@ class ExcelTable
 	*
 	* @return bool
 	*/
-	public function showLastColumn()
+	public function showLastColumn(): mixed
 	{
 	}
 
@@ -204,7 +204,7 @@ class ExcelTable
 	* @param bool $value
 	* @return bool
 	*/
-	public function setShowLastColumn($value): bool
+	public function setShowLastColumn(bool $value): bool
 	{
 	}
 
@@ -213,7 +213,7 @@ class ExcelTable
 	*
 	* @return int
 	*/
-	public function columnSize()
+	public function columnSize(): mixed
 	{
 	}
 
@@ -223,7 +223,7 @@ class ExcelTable
 	* @param int $index
 	* @return string|null|false
 	*/
-	public function columnName(int $index): string|null|false
+	public function columnName(int $index): string|false|null
 	{
 	}
 

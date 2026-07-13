@@ -28,7 +28,7 @@ class ExcelConditionalFormat
 	*
 	* @return ExcelFont
 	*/
-	public function font()
+	public function font(): mixed
 	{
 	}
 
@@ -37,7 +37,7 @@ class ExcelConditionalFormat
 	*
 	* @return int
 	*/
-	public function numFormat()
+	public function numFormat(): mixed
 	{
 	}
 
@@ -47,7 +47,7 @@ class ExcelConditionalFormat
 	* @param int $value
 	* @return bool
 	*/
-	public function setNumFormat($value): bool
+	public function setNumFormat(int $value): bool
 	{
 	}
 
@@ -56,7 +56,7 @@ class ExcelConditionalFormat
 	*
 	* @return string
 	*/
-	public function customNumFormat()
+	public function customNumFormat(): mixed
 	{
 	}
 
@@ -66,7 +66,7 @@ class ExcelConditionalFormat
 	* @param string $value
 	* @return bool
 	*/
-	public function setCustomNumFormat($value): bool
+	public function setCustomNumFormat(string $value): bool
 	{
 	}
 
@@ -76,7 +76,7 @@ class ExcelConditionalFormat
 	* @param int $value One of ExcelFormat::BORDERSTYLE_* constants
 	* @return bool
 	*/
-	public function setBorder($value): bool
+	public function setBorder(int $value): bool
 	{
 	}
 
@@ -86,7 +86,7 @@ class ExcelConditionalFormat
 	* @param int $value One of ExcelFormat::COLOR_* constants
 	* @return bool
 	*/
-	public function setBorderColor($value): bool
+	public function setBorderColor(int $value): bool
 	{
 	}
 
@@ -95,7 +95,7 @@ class ExcelConditionalFormat
 	*
 	* @return int
 	*/
-	public function borderLeft()
+	public function borderLeft(): mixed
 	{
 	}
 
@@ -105,7 +105,7 @@ class ExcelConditionalFormat
 	* @param int $value One of ExcelFormat::BORDERSTYLE_* constants
 	* @return bool
 	*/
-	public function setBorderLeft($value): bool
+	public function setBorderLeft(int $value): bool
 	{
 	}
 
@@ -114,7 +114,7 @@ class ExcelConditionalFormat
 	*
 	* @return int
 	*/
-	public function borderRight()
+	public function borderRight(): mixed
 	{
 	}
 
@@ -124,7 +124,7 @@ class ExcelConditionalFormat
 	* @param int $value One of ExcelFormat::BORDERSTYLE_* constants
 	* @return bool
 	*/
-	public function setBorderRight($value): bool
+	public function setBorderRight(int $value): bool
 	{
 	}
 
@@ -133,7 +133,7 @@ class ExcelConditionalFormat
 	*
 	* @return int
 	*/
-	public function borderTop()
+	public function borderTop(): mixed
 	{
 	}
 
@@ -143,7 +143,7 @@ class ExcelConditionalFormat
 	* @param int $value One of ExcelFormat::BORDERSTYLE_* constants
 	* @return bool
 	*/
-	public function setBorderTop($value): bool
+	public function setBorderTop(int $value): bool
 	{
 	}
 
@@ -152,7 +152,7 @@ class ExcelConditionalFormat
 	*
 	* @return int
 	*/
-	public function borderBottom()
+	public function borderBottom(): mixed
 	{
 	}
 
@@ -162,7 +162,7 @@ class ExcelConditionalFormat
 	* @param int $value One of ExcelFormat::BORDERSTYLE_* constants
 	* @return bool
 	*/
-	public function setBorderBottom($value): bool
+	public function setBorderBottom(int $value): bool
 	{
 	}
 
@@ -171,7 +171,7 @@ class ExcelConditionalFormat
 	*
 	* @return int
 	*/
-	public function borderLeftColor()
+	public function borderLeftColor(): mixed
 	{
 	}
 
@@ -181,7 +181,7 @@ class ExcelConditionalFormat
 	* @param int $value One of ExcelFormat::COLOR_* constants
 	* @return bool
 	*/
-	public function setBorderLeftColor($value): bool
+	public function setBorderLeftColor(int $value): bool
 	{
 	}
 
@@ -190,7 +190,7 @@ class ExcelConditionalFormat
 	*
 	* @return int
 	*/
-	public function borderRightColor()
+	public function borderRightColor(): mixed
 	{
 	}
 
@@ -200,7 +200,7 @@ class ExcelConditionalFormat
 	* @param int $value One of ExcelFormat::COLOR_* constants
 	* @return bool
 	*/
-	public function setBorderRightColor($value): bool
+	public function setBorderRightColor(int $value): bool
 	{
 	}
 
@@ -209,7 +209,7 @@ class ExcelConditionalFormat
 	*
 	* @return int
 	*/
-	public function borderTopColor()
+	public function borderTopColor(): mixed
 	{
 	}
 
@@ -219,7 +219,7 @@ class ExcelConditionalFormat
 	* @param int $value One of ExcelFormat::COLOR_* constants
 	* @return bool
 	*/
-	public function setBorderTopColor($value): bool
+	public function setBorderTopColor(int $value): bool
 	{
 	}
 
@@ -228,7 +228,7 @@ class ExcelConditionalFormat
 	*
 	* @return int
 	*/
-	public function borderBottomColor()
+	public function borderBottomColor(): mixed
 	{
 	}
 
@@ -238,7 +238,7 @@ class ExcelConditionalFormat
 	* @param int $value One of ExcelFormat::COLOR_* constants
 	* @return bool
 	*/
-	public function setBorderBottomColor($value): bool
+	public function setBorderBottomColor(int $value): bool
 	{
 	}
 
@@ -247,7 +247,7 @@ class ExcelConditionalFormat
 	*
 	* @return int
 	*/
-	public function fillPattern()
+	public function fillPattern(): mixed
 	{
 	}
 
@@ -257,7 +257,7 @@ class ExcelConditionalFormat
 	* @param int $value One of ExcelFormat::FILLPATTERN_* constants
 	* @return bool
 	*/
-	public function setFillPattern($value): bool
+	public function setFillPattern(int $value): bool
 	{
 	}
 
@@ -266,7 +266,7 @@ class ExcelConditionalFormat
 	*
 	* @return int
 	*/
-	public function patternForegroundColor()
+	public function patternForegroundColor(): mixed
 	{
 	}
 
@@ -276,7 +276,7 @@ class ExcelConditionalFormat
 	* @param int $value One of ExcelFormat::COLOR_* constants
 	* @return bool
 	*/
-	public function setPatternForegroundColor($value): bool
+	public function setPatternForegroundColor(int $value): bool
 	{
 	}
 
@@ -285,7 +285,7 @@ class ExcelConditionalFormat
 	*
 	* @return int
 	*/
-	public function patternBackgroundColor()
+	public function patternBackgroundColor(): mixed
 	{
 	}
 
@@ -295,7 +295,7 @@ class ExcelConditionalFormat
 	* @param int $value One of ExcelFormat::COLOR_* constants
 	* @return bool
 	*/
-	public function setPatternBackgroundColor($value): bool
+	public function setPatternBackgroundColor(int $value): bool
 	{
 	}
 

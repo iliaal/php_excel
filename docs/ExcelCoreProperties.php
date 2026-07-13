@@ -28,7 +28,7 @@ class ExcelCoreProperties
 	*
 	* @return string|null|false
 	*/
-	public function title(): string|null|false
+	public function title(): string|false|null
 	{
 	}
 
@@ -38,7 +38,7 @@ class ExcelCoreProperties
 	* @param string $value
 	* @return bool
 	*/
-	public function setTitle($value): bool
+	public function setTitle(string $value): bool
 	{
 	}
 
@@ -47,7 +47,7 @@ class ExcelCoreProperties
 	*
 	* @return string|null|false
 	*/
-	public function subject(): string|null|false
+	public function subject(): string|false|null
 	{
 	}
 
@@ -57,7 +57,7 @@ class ExcelCoreProperties
 	* @param string $value
 	* @return bool
 	*/
-	public function setSubject($value): bool
+	public function setSubject(string $value): bool
 	{
 	}
 
@@ -66,7 +66,7 @@ class ExcelCoreProperties
 	*
 	* @return string|null|false
 	*/
-	public function creator(): string|null|false
+	public function creator(): string|false|null
 	{
 	}
 
@@ -76,7 +76,7 @@ class ExcelCoreProperties
 	* @param string $value
 	* @return bool
 	*/
-	public function setCreator($value): bool
+	public function setCreator(string $value): bool
 	{
 	}
 
@@ -85,7 +85,7 @@ class ExcelCoreProperties
 	*
 	* @return string|null|false
 	*/
-	public function lastModifiedBy(): string|null|false
+	public function lastModifiedBy(): string|false|null
 	{
 	}
 
@@ -95,7 +95,7 @@ class ExcelCoreProperties
 	* @param string $value
 	* @return bool
 	*/
-	public function setLastModifiedBy($value): bool
+	public function setLastModifiedBy(string $value): bool
 	{
 	}
 
@@ -104,7 +104,7 @@ class ExcelCoreProperties
 	*
 	* @return string|null|false
 	*/
-	public function created(): string|null|false
+	public function created(): string|false|null
 	{
 	}
 
@@ -114,7 +114,7 @@ class ExcelCoreProperties
 	* @param string $value
 	* @return bool
 	*/
-	public function setCreated($value): bool
+	public function setCreated(string $value): bool
 	{
 	}
 
@@ -123,7 +123,7 @@ class ExcelCoreProperties
 	*
 	* @return string|null|false
 	*/
-	public function modified(): string|null|false
+	public function modified(): string|false|null
 	{
 	}
 
@@ -133,7 +133,7 @@ class ExcelCoreProperties
 	* @param string $value
 	* @return bool
 	*/
-	public function setModified($value): bool
+	public function setModified(string $value): bool
 	{
 	}
 
@@ -142,7 +142,7 @@ class ExcelCoreProperties
 	*
 	* @return string|null|false
 	*/
-	public function tags(): string|null|false
+	public function tags(): string|false|null
 	{
 	}
 
@@ -152,7 +152,7 @@ class ExcelCoreProperties
 	* @param string $value
 	* @return bool
 	*/
-	public function setTags($value): bool
+	public function setTags(string $value): bool
 	{
 	}
 
@@ -161,7 +161,7 @@ class ExcelCoreProperties
 	*
 	* @return string|null|false
 	*/
-	public function categories(): string|null|false
+	public function categories(): string|false|null
 	{
 	}
 
@@ -171,7 +171,7 @@ class ExcelCoreProperties
 	* @param string $value
 	* @return bool
 	*/
-	public function setCategories($value): bool
+	public function setCategories(string $value): bool
 	{
 	}
 
@@ -180,7 +180,7 @@ class ExcelCoreProperties
 	*
 	* @return string|null|false
 	*/
-	public function comments(): string|null|false
+	public function comments(): string|false|null
 	{
 	}
 
@@ -190,7 +190,7 @@ class ExcelCoreProperties
 	* @param string $value
 	* @return bool
 	*/
-	public function setComments($value): bool
+	public function setComments(string $value): bool
 	{
 	}
 
@@ -199,7 +199,7 @@ class ExcelCoreProperties
 	*
 	* @return float
 	*/
-	public function createdAsDouble()
+	public function createdAsDouble(): mixed
 	{
 	}
 
@@ -209,7 +209,7 @@ class ExcelCoreProperties
 	* @param float $value
 	* @return bool
 	*/
-	public function setCreatedAsDouble($value): bool
+	public function setCreatedAsDouble(float $value): bool
 	{
 	}
 
@@ -218,7 +218,7 @@ class ExcelCoreProperties
 	*
 	* @return float
 	*/
-	public function modifiedAsDouble()
+	public function modifiedAsDouble(): mixed
 	{
 	}
 
@@ -228,7 +228,7 @@ class ExcelCoreProperties
 	* @param float $value
 	* @return bool
 	*/
-	public function setModifiedAsDouble($value): bool
+	public function setModifiedAsDouble(float $value): bool
 	{
 	}
 
@@ -237,7 +237,7 @@ class ExcelCoreProperties
 	*
 	* @return void
 	*/
-	public function removeAll()
+	public function removeAll(): mixed
 	{
 	}
 
