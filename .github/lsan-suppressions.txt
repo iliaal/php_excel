@@ -21,9 +21,8 @@
 # extension-side missing free — our ExcelTable::removeFilter() binding only
 # calls the void libxl function and has no handle to release. libxl is shipped
 # stripped (frames are bare libxl.so+offset with no symbol), so the narrowest
-# practical match is the library name. Reported to libxl support; remove this
-# entry once a fixed SDK ships. Tradeoff: this also masks a hypothetical
-# forgotten xlBookRelease (whose allocation frames are also inside libxl.so) —
-# book release is structural (object free handler) and covered by the
-# stale-wrapper tests, so the risk is low.
+# practical match is the library name. This file is applied only to the two
+# PHPTs that exercise the affected vendor call; the main ASan suite runs with
+# no LSan suppression. Reported to libxl support; remove this entry once a
+# fixed SDK ships.
 leak:libxl.so
