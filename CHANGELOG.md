@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Security
+- Stream-backed load, save, read, write, and picture operations now remain safe when user callbacks reconstruct the workbook during the operation.
+- Path operations now use PHP streams while open_basedir is active, closing the gap between a policy check and LibXL reopening a changed path. The LibXL APIs that require a pathname (ExcelBook::loadFileWithoutEmptyCells(), ExcelBook::addPictureAsLink(), and ExcelBook::loadInfo() with LibXL older than 5.0.1) reject calls while open_basedir is active.
+- Stream saves now create unpredictable temporary files exclusively, so an existing file or symlink cannot redirect the staged write.
+
+### Changed
+- ExcelRichString::addText() once again accepts a font from another workbook. LibXL copies the font attributes into the rich string, so the source workbook can be released immediately after the call.
+- Re-invoking a constructor on a child wrapper now throws instead of rebinding or replacing its native handle.
+
+### Fixed
+- ExcelBook::save() now leaves the destination unchanged when a staged rename fails.
+- ExcelBook::insertSheet() no longer invalidates wrappers for existing sheets; LibXL keeps those sheet handles stable across insertion.
+- ExcelSheet::setAutoFitArea() and direct ExcelConditionalFormatting construction now reject inverted finite ranges.
+- The API reference now matches every public runtime signature, including parameter names, types, defaults, and return types.
+- Added the PHP License 3.01 file referenced by the source headers and package documentation.
+
+### For contributors
+- CI now rejects all-skipped PHPT runs and verifies that the extension loaded before running the suite.
+- The main ASan suite now runs without LibXL leak suppressions. Only the two tests that exercise a confirmed LibXL leak use the vendor suppression.
+
 ## [2.4.0] - 2026-07-09
 
 ### Security

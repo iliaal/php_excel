@@ -24,11 +24,17 @@
 
 #include "php.h"
 #include "php_ini.h"
+#if PHP_VERSION_ID < 80200
+#include "ext/standard/php_random.h"
+#else
+#include "ext/random/php_random.h"
+#endif
 #include "ext/standard/info.h"
 #include "ext/date/php_date.h"
 
 #include "php_excel.h"
 #include "zend_exceptions.h"
+#include "Zend/zend_smart_str.h"
 
 #if !defined(LIBXL_VERSION) || LIBXL_VERSION < 0x04060000
 #error "LibXL version 4.6.0+ required"
@@ -154,6 +160,19 @@ static inline excel_book_object *php_excel_book_object_fetch_object(zend_object 
 		excel_book_object *obj = Z_EXCEL_BOOK_OBJ_P(object); \
 		book = obj->book; \
 		if (!book) { \
+			php_error_docref(NULL, E_WARNING, "The book wasn't initialized"); \
+			RETURN_FALSE; \
+		} \
+	}
+
+/* Post-stream-read variant: the fetch runs after user stream callbacks, so an
+ * owned buffer is already live and must be released on the bail path. */
+#define BOOK_FROM_OBJECT_RELEASE_STR(book, object, contents_zs) \
+	{ \
+		excel_book_object *obj = Z_EXCEL_BOOK_OBJ_P(object); \
+		book = obj->book; \
+		if (!book) { \
+			zend_string_release(contents_zs); \
 			php_error_docref(NULL, E_WARNING, "The book wasn't initialized"); \
 			RETURN_FALSE; \
 		} \
@@ -644,6 +663,14 @@ static zend_always_inline int php_excel_same_book(zval *arg_zv, zval *target_zv)
 			zval_ptr_dtor(&(child_obj)->parent); \
 		} \
 		ZVAL_COPY(&(child_obj)->parent, parent_zv); \
+	} while (0)
+
+#define EXCEL_REJECT_RECONSTRUCTION(child_obj, handle_field) \
+	do { \
+		if ((child_obj)->handle_field) { \
+			zend_throw_exception(NULL, "Cannot call constructor twice", 0); \
+			RETURN_THROWS(); \
+		} \
 	} while (0)
 
 /* Bump the sheet-topology counter so sheet-derived wrappers fail their
@@ -1207,6 +1234,29 @@ EXCEL_GET_GC_FN(table)
 		} \
 	} while (0)
 
+static zend_string *php_excel_stream_copy_to_uint_mem(php_stream *stream, bool *too_large)
+{
+	char buffer[65536];
+	smart_str contents = {0};
+	size_t total = 0;
+	/* php_stream_read returns a negative value on error; keep it signed so
+	 * an error ends the loop instead of counting as an oversized read. */
+	ssize_t read_len;
+
+	*too_large = 0;
+	while ((read_len = php_stream_read(stream, buffer, sizeof(buffer))) > 0) {
+		if ((size_t) read_len > ((size_t) UINT_MAX - 1) - total) {
+			smart_str_free(&contents);
+			*too_large = 1;
+			return NULL;
+		}
+		smart_str_appendl(&contents, buffer, (size_t) read_len);
+		total += (size_t) read_len;
+	}
+	smart_str_0(&contents);
+	return contents.s;
+}
+
 /* libxl APIs take int for row/col/dimension args; zend_long is 64-bit.
  * Reject out-of-int-range values before the implicit narrowing cast. */
 #define EXCEL_VALIDATE_INT_RANGE(arg) \
@@ -1397,6 +1447,7 @@ EXCEL_METHOD(Book, loadFile)
 	zend_string *filename_zs = NULL;
 	php_stream *stream;
 	zend_string *contents;
+	bool source_too_large;
 
 	if (zend_parse_parameters(ZEND_NUM_ARGS(), "S", &filename_zs) == FAILURE) {
 		RETURN_FALSE;
@@ -1405,24 +1456,22 @@ EXCEL_METHOD(Book, loadFile)
 	EXCEL_NON_EMPTY_STRING(filename_zs)
 	EXCEL_NUL_SAFE_STRING(filename_zs)
 
-	BOOK_FROM_OBJECT(book, object);
-
-	/* For plain filesystem paths (no stream wrapper), hand the path straight
-	 * to libxl so we don't double-buffer the workbook in PHP memory. Stream
-	 * paths (phar://, php://, ...) still go through the wrapper machinery.
-	 * php_check_open_basedir emits its own warning on denial, so fail here
-	 * rather than falling through to the stream wrapper, which would re-check
-	 * open_basedir and warn a second time. */
-	if (!strstr(ZSTR_VAL(filename_zs), "://")) {
-		if (php_check_open_basedir(ZSTR_VAL(filename_zs))) {
-			RETURN_FALSE;
-		}
+	/* With open_basedir active, PHP must perform the actual open. A separate
+	 * policy check followed by a libxl path open has a rename/symlink race. */
+	if (!strstr(ZSTR_VAL(filename_zs), "://")
+	    && (!PG(open_basedir) || !*PG(open_basedir))) {
+		BOOK_FROM_OBJECT(book, object);
 		php_excel_book_reset_state(object);
 		if (!xlBookLoad(book, ZSTR_VAL(filename_zs))) {
 			php_error_docref(NULL, E_WARNING, "Failed to load workbook: %s", xlBookErrorMessage(book));
 			RETURN_FALSE;
 		}
 		RETURN_TRUE;
+	}
+	if (!strstr(ZSTR_VAL(filename_zs), "://")
+	    && PG(open_basedir) && *PG(open_basedir)
+	    && php_check_open_basedir(ZSTR_VAL(filename_zs))) {
+		RETURN_FALSE;
 	}
 
 	stream = php_stream_open_wrapper(ZSTR_VAL(filename_zs), "rb", REPORT_ERRORS, NULL);
@@ -1434,8 +1483,12 @@ EXCEL_METHOD(Book, loadFile)
 	/* Cap the read at UINT_MAX (libxl's size ceiling) so an oversized file
 	 * cannot fully allocate before the length check below rejects it. */
 	EXCEL_REJECT_OVERSIZED_STREAM(stream);
-	contents = php_stream_copy_to_mem(stream, (size_t) UINT_MAX, 0);
+	contents = php_excel_stream_copy_to_uint_mem(stream, &source_too_large);
 	php_stream_close(stream);
+	if (source_too_large) {
+		php_error_docref(NULL, E_WARNING, "Source file too large");
+		RETURN_FALSE;
+	}
 
 	if (!contents) {
 		php_error_docref(NULL, E_WARNING, "Source file is empty");
@@ -1454,6 +1507,9 @@ EXCEL_METHOD(Book, loadFile)
 		RETURN_FALSE;
 	}
 
+	/* Stream callbacks may reconstruct the receiver while the file is read.
+	 * Fetch the current handle only after every open/read/close callback. */
+	BOOK_FROM_OBJECT_RELEASE_STR(book, object, contents);
 	php_excel_book_reset_state(object);
 	if (!xlBookLoadRaw(book, ZSTR_VAL(contents), ZSTR_LEN(contents))) {
 		php_error_docref(NULL, E_WARNING, "Failed to load workbook: %s", xlBookErrorMessage(book));
@@ -1508,6 +1564,7 @@ EXCEL_METHOD(Book, loadFilePartially)
 	bool keep_all_sheets = 0;
 	php_stream *stream;
 	zend_string *contents;
+	bool source_too_large;
 
 	if (zend_parse_parameters(ZEND_NUM_ARGS(), "Slll|b", &filename_zs, &sheet_index, &row_first, &row_last, &keep_all_sheets) == FAILURE) {
 		RETURN_FALSE;
@@ -1520,14 +1577,16 @@ EXCEL_METHOD(Book, loadFilePartially)
 		RETURN_FALSE;
 	}
 
-	BOOK_FROM_OBJECT(book, object);
-
-	if (!strstr(ZSTR_VAL(filename_zs), "://")) {
-		if (php_check_open_basedir(ZSTR_VAL(filename_zs))) {
-			RETURN_FALSE;
-		}
+	if (!strstr(ZSTR_VAL(filename_zs), "://")
+	    && (!PG(open_basedir) || !*PG(open_basedir))) {
+		BOOK_FROM_OBJECT(book, object);
 		php_excel_book_reset_state(object);
 		RETURN_BOOL(xlBookLoadPartially(book, ZSTR_VAL(filename_zs), (int) sheet_index, (int) row_first, (int) row_last, keep_all_sheets));
+	}
+	if (!strstr(ZSTR_VAL(filename_zs), "://")
+	    && PG(open_basedir) && *PG(open_basedir)
+	    && php_check_open_basedir(ZSTR_VAL(filename_zs))) {
+		RETURN_FALSE;
 	}
 
 	stream = php_stream_open_wrapper(ZSTR_VAL(filename_zs), "rb", REPORT_ERRORS, NULL);
@@ -1538,8 +1597,12 @@ EXCEL_METHOD(Book, loadFilePartially)
 	/* Cap the read at UINT_MAX (libxl's size ceiling) so an oversized file
 	 * cannot fully allocate before the length check below rejects it. */
 	EXCEL_REJECT_OVERSIZED_STREAM(stream);
-	contents = php_stream_copy_to_mem(stream, (size_t) UINT_MAX, 0);
+	contents = php_excel_stream_copy_to_uint_mem(stream, &source_too_large);
 	php_stream_close(stream);
+	if (source_too_large) {
+		php_error_docref(NULL, E_WARNING, "Source file too large");
+		RETURN_FALSE;
+	}
 	if (!contents) {
 		php_error_docref(NULL, E_WARNING, "Source file is empty");
 		RETURN_FALSE;
@@ -1555,6 +1618,7 @@ EXCEL_METHOD(Book, loadFilePartially)
 		RETURN_FALSE;
 	}
 
+	BOOK_FROM_OBJECT_RELEASE_STR(book, object, contents);
 	php_excel_book_reset_state(object);
 	RETVAL_BOOL(xlBookLoadRawPartially(book, ZSTR_VAL(contents), (unsigned) ZSTR_LEN(contents), (int) sheet_index, (int) row_first, (int) row_last, keep_all_sheets));
 	zend_string_release(contents);
@@ -1581,6 +1645,10 @@ EXCEL_METHOD(Book, loadFileWithoutEmptyCells)
 		RETURN_FALSE;
 	}
 	if (php_check_open_basedir(ZSTR_VAL(filename_zs))) {
+		RETURN_FALSE;
+	}
+	if (PG(open_basedir) && *PG(open_basedir)) {
+		php_error_docref(NULL, E_WARNING, "loadFileWithoutEmptyCells is not available while open_basedir is active");
 		RETURN_FALSE;
 	}
 
@@ -1616,19 +1684,22 @@ EXCEL_METHOD(Book, save)
 
 	BOOK_FROM_OBJECT(book, object);
 
-	/* Plain filesystem path: hand straight to libxl, no in-memory copy.
-	 * php_check_open_basedir warns on denial, so fail here rather than
-	 * falling through to the stream wrapper and warning a second time. */
+	/* With open_basedir active, save through PHP streams so the policy check
+	 * and file creation are one operation. */
 	if (filename_zs && ZSTR_LEN(filename_zs) > 0
-	    && !strstr(ZSTR_VAL(filename_zs), "://")) {
-		if (php_check_open_basedir(ZSTR_VAL(filename_zs))) {
-			RETURN_FALSE;
-		}
+	    && !strstr(ZSTR_VAL(filename_zs), "://")
+	    && (!PG(open_basedir) || !*PG(open_basedir))) {
 		if (!xlBookSave(book, ZSTR_VAL(filename_zs))) {
 			php_error_docref(NULL, E_WARNING, "Failed to save workbook: %s", xlBookErrorMessage(book));
 			RETURN_FALSE;
 		}
 		RETURN_TRUE;
+	}
+	if (filename_zs && ZSTR_LEN(filename_zs) > 0
+	    && !strstr(ZSTR_VAL(filename_zs), "://")
+	    && PG(open_basedir) && *PG(open_basedir)
+	    && php_check_open_basedir(ZSTR_VAL(filename_zs))) {
+		RETURN_FALSE;
 	}
 
 	if (!xlBookSaveRaw(book, (const char **) &contents, &len)) {
@@ -1640,40 +1711,63 @@ EXCEL_METHOD(Book, save)
 		ssize_t numbytes;
 		php_stream *stream;
 		php_stream_wrapper *wrapper = php_stream_locate_url_wrapper(ZSTR_VAL(filename_zs), NULL, 0);
+		zend_string *owned_contents = zend_string_init(contents, len, 0);
 
 		/* If the destination wrapper exposes rename+unlink, stage the full
 		 * buffer to a sibling temp URL and rename it into place. A short
 		 * write then fails against the temp, leaving the caller's existing
-		 * file untouched, instead of truncating the destination up front and
-		 * corrupting it on a partial write. If the wrapper accepts the temp
-		 * write but cannot actually rename (e.g. a user-space wrapper with no
-		 * rename() method), fall back to a direct write so such destinations
-		 * keep working as before. */
+		 * file untouched, instead of truncating the destination up front. */
 		if (wrapper && wrapper->wops && wrapper->wops->rename && wrapper->wops->unlink) {
-			zend_string *tmp_name = zend_strpprintf(0, "%s.%d.tmp", ZSTR_VAL(filename_zs), (int) getpid());
+			zend_string *tmp_name = NULL;
+			unsigned char random_bytes[8];
+			char random_suffix[17];
+			int attempt;
 
-			stream = php_stream_open_wrapper(ZSTR_VAL(tmp_name), "wb", REPORT_ERRORS, NULL);
-			if (stream) {
-				numbytes = php_stream_write(stream, contents, len);
-				php_stream_close(stream);
-
-				if (numbytes != (ssize_t)len) {
-					wrapper->wops->unlink(wrapper, ZSTR_VAL(tmp_name), REPORT_ERRORS, NULL);
-					zend_string_release(tmp_name);
-					php_error_docref(NULL, E_WARNING, "Only %zd of %u bytes written, possibly out of free disk space; destination left unchanged", numbytes, len);
-					RETURN_FALSE;
+			for (attempt = 0; attempt < 8; attempt++) {
+				int i;
+				if (php_random_bytes_silent(random_bytes, sizeof(random_bytes)) == FAILURE) {
+					break;
 				}
-
-				if (wrapper->wops->rename(wrapper, ZSTR_VAL(tmp_name), ZSTR_VAL(filename_zs), REPORT_ERRORS, NULL)) {
-					zend_string_release(tmp_name);
-					RETURN_TRUE;
+				for (i = 0; i < (int) sizeof(random_bytes); i++) {
+					snprintf(random_suffix + (i * 2), 3, "%02x", random_bytes[i]);
 				}
-
-				/* Rename unsupported/failed: drop the temp and fall through
-				 * to a direct write to preserve legacy behavior. */
-				wrapper->wops->unlink(wrapper, ZSTR_VAL(tmp_name), REPORT_ERRORS, NULL);
+				tmp_name = zend_strpprintf(0, "%s.%s.tmp", ZSTR_VAL(filename_zs), random_suffix);
+				stream = php_stream_open_wrapper(ZSTR_VAL(tmp_name), "xb", 0, NULL);
+				if (stream) {
+					break;
+				}
+				zend_string_release(tmp_name);
+				tmp_name = NULL;
 			}
+
+			if (!tmp_name || !stream) {
+				zend_string_release(owned_contents);
+				php_error_docref(NULL, E_WARNING, "Could not create an exclusive temporary file for atomic save");
+				RETURN_FALSE;
+			}
+
+			numbytes = php_stream_write(stream, ZSTR_VAL(owned_contents), ZSTR_LEN(owned_contents));
+			php_stream_close(stream);
+
+			if (numbytes != (ssize_t)ZSTR_LEN(owned_contents)) {
+				wrapper->wops->unlink(wrapper, ZSTR_VAL(tmp_name), REPORT_ERRORS, NULL);
+				zend_string_release(tmp_name);
+				zend_string_release(owned_contents);
+				php_error_docref(NULL, E_WARNING, "Only %zd of %u bytes written, possibly out of free disk space; destination left unchanged", numbytes, len);
+				RETURN_FALSE;
+			}
+
+			if (wrapper->wops->rename(wrapper, ZSTR_VAL(tmp_name), ZSTR_VAL(filename_zs), REPORT_ERRORS, NULL)) {
+				zend_string_release(tmp_name);
+				zend_string_release(owned_contents);
+				RETURN_TRUE;
+			}
+
+			wrapper->wops->unlink(wrapper, ZSTR_VAL(tmp_name), REPORT_ERRORS, NULL);
 			zend_string_release(tmp_name);
+			zend_string_release(owned_contents);
+			php_error_docref(NULL, E_WARNING, "Could not replace destination with completed temporary file; destination left unchanged");
+			RETURN_FALSE;
 		}
 
 		/* Wrapper cannot stage/rename: write directly. A short write here is
@@ -1681,16 +1775,19 @@ EXCEL_METHOD(Book, save)
 		stream = php_stream_open_wrapper(ZSTR_VAL(filename_zs), "wb", REPORT_ERRORS, NULL);
 
 		if (!stream) {
+			zend_string_release(owned_contents);
 			RETURN_FALSE;
 		}
 
-		if ((numbytes = php_stream_write(stream, contents, len)) != (ssize_t)len) {
+		if ((numbytes = php_stream_write(stream, ZSTR_VAL(owned_contents), ZSTR_LEN(owned_contents))) != (ssize_t)ZSTR_LEN(owned_contents)) {
 			php_stream_close(stream);
+			zend_string_release(owned_contents);
 			php_error_docref(NULL, E_WARNING, "Only %zd of %u bytes written, possibly out of free disk space", numbytes, len);
 			RETURN_FALSE;
 		}
 
 		php_stream_close(stream);
+		zend_string_release(owned_contents);
 		RETURN_TRUE;
 	} else {
 		RETURN_STRINGL(contents, len);
@@ -2465,6 +2562,7 @@ static void php_excel_add_picture(INTERNAL_FUNCTION_PARAMETERS, int mode) /* {{{
 	int ret;
 	php_stream *stream;
 	zend_string *contents;
+	bool source_too_large;
 
 	if (zend_parse_parameters(ZEND_NUM_ARGS(), "S", &data_zs) == FAILURE) {
 		RETURN_FALSE;
@@ -2481,15 +2579,16 @@ static void php_excel_add_picture(INTERNAL_FUNCTION_PARAMETERS, int mode) /* {{{
 		/* path-mode: data_zs is a filesystem path. NUL truncation here
 		 * silently opens a different file than the caller validated. */
 		EXCEL_NUL_SAFE_STRING(data_zs)
-		/* Plain filesystem path: skip the stream double-buffer. Fail closed
-		 * on an open_basedir denial instead of falling through to the stream
-		 * wrapper, which would re-check and emit a second warning. */
-		if (!strstr(ZSTR_VAL(data_zs), "://")) {
-			if (php_check_open_basedir(ZSTR_VAL(data_zs))) {
-				RETURN_FALSE;
-			}
+		/* With open_basedir active, PHP must perform the actual open. */
+		if (!strstr(ZSTR_VAL(data_zs), "://")
+		    && (!PG(open_basedir) || !*PG(open_basedir))) {
 			ret = xlBookAddPicture(book, ZSTR_VAL(data_zs));
 			goto picture_done;
+		}
+		if (!strstr(ZSTR_VAL(data_zs), "://")
+		    && PG(open_basedir) && *PG(open_basedir)
+		    && php_check_open_basedir(ZSTR_VAL(data_zs))) {
+			RETURN_FALSE;
 		}
 		stream = php_stream_open_wrapper(ZSTR_VAL(data_zs), "rb", REPORT_ERRORS, NULL);
 
@@ -2500,8 +2599,12 @@ static void php_excel_add_picture(INTERNAL_FUNCTION_PARAMETERS, int mode) /* {{{
 		/* Cap the read at UINT_MAX (libxl's size ceiling) so an oversized
 		 * file cannot fully allocate before the length check rejects it. */
 		EXCEL_REJECT_OVERSIZED_STREAM(stream);
-		contents = php_stream_copy_to_mem(stream, (size_t) UINT_MAX, 0);
+		contents = php_excel_stream_copy_to_uint_mem(stream, &source_too_large);
 		php_stream_close(stream);
+		if (source_too_large) {
+			php_error_docref(NULL, E_WARNING, "Source file too large");
+			RETURN_FALSE;
+		}
 
 		if (!contents || ZSTR_LEN(contents) < 1) {
 			if (contents) {
@@ -2514,6 +2617,8 @@ static void php_excel_add_picture(INTERNAL_FUNCTION_PARAMETERS, int mode) /* {{{
 			zend_string_release(contents);
 			RETURN_FALSE;
 		}
+		/* The wrapper can execute userland and reconstruct the book. */
+		BOOK_FROM_OBJECT_RELEASE_STR(book, object, contents);
 		ret = xlBookAddPicture2(book, ZSTR_VAL(contents), ZSTR_LEN(contents));
 		zend_string_release(contents);
 	}
@@ -2666,6 +2771,11 @@ EXCEL_METHOD(Book, loadInfo)
 	BookHandle book;
 	zval *object = ZEND_THIS;
 	zend_string *filename_zs = NULL;
+#if LIBXL_VERSION >= 0x05000100
+	php_stream *stream;
+	zend_string *contents;
+	bool source_too_large;
+#endif
 
 	if (zend_parse_parameters(ZEND_NUM_ARGS(), "S", &filename_zs) == FAILURE) {
 		RETURN_FALSE;
@@ -2674,12 +2784,56 @@ EXCEL_METHOD(Book, loadInfo)
 	EXCEL_NON_EMPTY_STRING(filename_zs)
 	EXCEL_NUL_SAFE_STRING(filename_zs)
 
-	if (php_check_open_basedir(ZSTR_VAL(filename_zs))) {
+#if LIBXL_VERSION >= 0x05000100
+	if (strstr(ZSTR_VAL(filename_zs), "://") || (PG(open_basedir) && *PG(open_basedir))) {
+		if (!strstr(ZSTR_VAL(filename_zs), "://")
+		    && php_check_open_basedir(ZSTR_VAL(filename_zs))) {
+			RETURN_FALSE;
+		}
+		stream = php_stream_open_wrapper(ZSTR_VAL(filename_zs), "rb", REPORT_ERRORS, NULL);
+		if (!stream) {
+			RETURN_FALSE;
+		}
+		EXCEL_REJECT_OVERSIZED_STREAM(stream);
+		contents = php_excel_stream_copy_to_uint_mem(stream, &source_too_large);
+		php_stream_close(stream);
+		if (source_too_large) {
+			php_error_docref(NULL, E_WARNING, "Source file too large");
+			RETURN_FALSE;
+		}
+		if (!contents || ZSTR_LEN(contents) < 1) {
+			if (contents) {
+				zend_string_release(contents);
+			}
+			php_error_docref(NULL, E_WARNING, "Source file is empty");
+			RETURN_FALSE;
+		}
+		if (ZSTR_LEN(contents) >= UINT_MAX) {
+			zend_string_release(contents);
+			php_error_docref(NULL, E_WARNING, "Source file too large");
+			RETURN_FALSE;
+		}
+		BOOK_FROM_OBJECT_RELEASE_STR(book, object, contents);
+		php_excel_book_reset_state(object);
+		if (!xlBookLoadInfoRaw(book, ZSTR_VAL(contents), (unsigned) ZSTR_LEN(contents))) {
+			php_error_docref(NULL, E_WARNING, "Failed to load workbook: %s", xlBookErrorMessage(book));
+			zend_string_release(contents);
+			RETURN_FALSE;
+		}
+		zend_string_release(contents);
+		RETURN_TRUE;
+	}
+#else
+	if (PG(open_basedir) && *PG(open_basedir)) {
+		if (php_check_open_basedir(ZSTR_VAL(filename_zs))) {
+			RETURN_FALSE;
+		}
+		php_error_docref(NULL, E_WARNING, "loadInfo is not available while open_basedir is active with LibXL older than 5.0.1");
 		RETURN_FALSE;
 	}
+#endif
 
 	BOOK_FROM_OBJECT(book, object);
-
 	php_excel_book_reset_state(object);
 	if (!xlBookLoadInfo(book, ZSTR_VAL(filename_zs))) {
 		php_error_docref(NULL, E_WARNING, "Failed to load workbook: %s", xlBookErrorMessage(book));
@@ -3255,6 +3409,7 @@ EXCEL_METHOD(Format, __construct)
 	BOOK_FROM_OBJECT_THROW(book, zbook);
 
 	obj = Z_EXCEL_FORMAT_OBJ_P(object);
+	EXCEL_REJECT_RECONSTRUCTION(obj, format);
 
 	format = xlBookAddFormat(book, NULL);
 	if (!format) {
@@ -3285,6 +3440,7 @@ EXCEL_METHOD(Font, __construct)
 	BOOK_FROM_OBJECT_THROW(book, zbook);
 
 	obj = Z_EXCEL_FONT_OBJ_P(object);
+	EXCEL_REJECT_RECONSTRUCTION(obj, font);
 
 	font = xlBookAddFont(book, NULL);
 	if (!font) {
@@ -3682,6 +3838,7 @@ EXCEL_METHOD(Sheet, __construct)
 	BOOK_FROM_OBJECT_THROW(book, zbook);
 
 	obj = Z_EXCEL_SHEET_OBJ_P(object);
+	EXCEL_REJECT_RECONSTRUCTION(obj, sheet);
 
 	sh = xlBookAddSheet(book, ZSTR_VAL(name_zs), 0);
 
@@ -4176,6 +4333,7 @@ EXCEL_METHOD(Sheet, read)
 	zend_long row, col;
 	zval *oformat = NULL;
 	FormatHandle format = NULL;
+	zval format_result;
 	bool read_formula = 1;
 
 	if (zend_parse_parameters(ZEND_NUM_ARGS(), "ll|zb", &row, &col, &oformat, &read_formula) == FAILURE) {
@@ -4196,12 +4354,6 @@ EXCEL_METHOD(Sheet, read)
 	}
 	CHECK_BOOK_AND_SHEET_GENERATION_PR(sheet_obj, book_obj);
 
-	if (oformat) {
-		ZVAL_DEREF(oformat);
-		zval_ptr_dtor(oformat);
-		ZVAL_NULL(oformat);
-	}
-
 	if (!php_excel_read_cell(row, col, return_value, sheet, book, &format, read_formula)) {
 		php_error_docref(NULL, E_WARNING, "Failed to read cell in row " ZEND_LONG_FMT ", column " ZEND_LONG_FMT " with error '%s'", row, col, xlBookErrorMessage(book));
 		RETURN_FALSE;
@@ -4210,11 +4362,18 @@ EXCEL_METHOD(Sheet, read)
 	if (oformat) {
 		excel_format_object *fo;
 
-		ZVAL_OBJ(oformat, excel_object_new_format(excel_ce_format));
-		fo = Z_EXCEL_FORMAT_OBJ_P(oformat);
+		/* Build the wrapper while the native handle and generation are current.
+		 * Replacing the caller's old zval can invoke arbitrary userland. No native
+		 * work may follow that destructor callback. */
+		ZVAL_OBJ(&format_result, excel_object_new_format(excel_ce_format));
+		fo = Z_EXCEL_FORMAT_OBJ_P(&format_result);
 		fo->format = format;
 		fo->book = book;
 		EXCEL_INIT_PARENT(fo, object);
+
+		ZVAL_DEREF(oformat);
+		zval_ptr_dtor(oformat);
+		ZVAL_COPY_VALUE(oformat, &format_result);
 	}
 }
 /* }}} */
@@ -4329,7 +4488,6 @@ bool php_excel_write_cell(SheetHandle sheet, excel_book_object *book_obj, int ro
 			 * and the AS_DATE cast to zend_long below is undefined for a
 			 * non-finite double. Reject before either. */
 			if (!zend_finite(Z_DVAL_P(data))) {
-				php_error_docref(NULL, E_WARNING, "Cannot write a non-finite number (NAN/INF) to a cell");
 				return 0;
 			}
 			if (dtype == PHP_EXCEL_DATE) {
@@ -4341,7 +4499,6 @@ bool php_excel_write_cell(SheetHandle sheet, excel_book_object *book_obj, int ro
 				 * it rather than truncating to a garbage timestamp. */
 				double dt;
 				if (!php_excel_double_in_long_range(Z_DVAL_P(data))) {
-					php_error_docref(NULL, E_WARNING, "Date timestamp out of range");
 					return 0;
 				}
 				if ((dt = _php_excel_date_pack(book, (zend_long) Z_DVAL_P(data))) == -1) {
@@ -4356,7 +4513,6 @@ bool php_excel_write_cell(SheetHandle sheet, excel_book_object *book_obj, int ro
 			/* libxl writes use NUL-terminated C strings; reject embedded
 			 * NULs so the caller's value isn't silently truncated. */
 			if (ZSTR_LEN(data_zs) != strlen(ZSTR_VAL(data_zs))) {
-				php_error_docref(NULL, E_WARNING, "Cell string must not contain NUL bytes");
 				return 0;
 			}
 			/* AS_TEXT writes the value verbatim: no quote-prefix stripping, no
@@ -4409,7 +4565,6 @@ bool php_excel_write_cell(SheetHandle sheet, excel_book_object *book_obj, int ro
 			goto try_again;
 
 		default:
-			php_error_docref(NULL, E_WARNING, "Type mismatch: %d not supported for atomic write operation in row %d, column %d", Z_TYPE_P(data), row, col);
 			return 0;
 	}
 
@@ -4453,6 +4608,10 @@ EXCEL_METHOD(Sheet, write)
 	if (oformat) {
 		FORMAT_FROM_OBJECT(format, oformat);
 		EXCEL_REQUIRE_SAME_BOOK(oformat, object);
+	}
+	if (!php_excel_cell_value_acceptable(book, data, dtype)) {
+		php_error_docref(NULL, E_WARNING, "Cell value cannot be written");
+		RETURN_FALSE;
 	}
 
 	if (!php_excel_write_cell(sheet, book_obj, row, col, data, oformat ? format : 0, dtype)) {
@@ -6203,7 +6362,6 @@ EXCEL_METHOD(Book, insertSheet)
 		}
 	}
 
-	php_excel_book_bump_sheet_generation(object);
 	ZVAL_OBJ(return_value, excel_object_new_sheet(excel_ce_sheet));
 	fo = Z_EXCEL_SHEET_OBJ_P(return_value);
 	fo->sheet = sh;
@@ -6667,7 +6825,9 @@ EXCEL_METHOD(Sheet, setAutoFitArea)
 		 * sentinel; the *First params still must be 0..max. */
 		if (rowFirst < 0 || rowFirst > _maxr || colFirst < 0 || colFirst > _maxc
 		    || rowLast < -1 || rowLast > _maxr
-		    || colLast < -1 || colLast > _maxc) {
+		    || colLast < -1 || colLast > _maxc
+		    || (rowLast != -1 && rowFirst > rowLast)
+		    || (colLast != -1 && colFirst > colLast)) {
 			php_error_docref(NULL, E_WARNING,
 				"Invalid autofit area: rowFirst=" ZEND_LONG_FMT
 				", rowLast=" ZEND_LONG_FMT ", colFirst=" ZEND_LONG_FMT
@@ -6992,6 +7152,7 @@ EXCEL_METHOD(AutoFilter, __construct)
 	SHEET_FROM_OBJECT_THROW(sheet, zsheet);
 
 	obj = Z_EXCEL_AUTOFILTER_OBJ_P(object);
+	EXCEL_REJECT_RECONSTRUCTION(obj, autofilter);
 
 	afh = xlSheetAutoFilter(sheet);
 
@@ -7237,6 +7398,7 @@ EXCEL_METHOD(FilterColumn, __construct)
 	AUTOFILTER_FROM_OBJECT_THROW(autofilter, zautofilter);
 
 	obj = Z_EXCEL_FILTERCOLUMN_OBJ_P(object);
+	EXCEL_REJECT_RECONSTRUCTION(obj, filtercolumn);
 
 	fch = xlAutoFilterColumn(autofilter, colId);
 
@@ -7488,6 +7650,10 @@ EXCEL_METHOD(Book, addPictureAsLink)
 	EXCEL_NUL_SAFE_STRING(filename)
 
 	if (php_check_open_basedir(ZSTR_VAL(filename))) {
+		RETURN_FALSE;
+	}
+	if (PG(open_basedir) && *PG(open_basedir)) {
+		php_error_docref(NULL, E_WARNING, "addPictureAsLink is not available while open_basedir is active");
 		RETURN_FALSE;
 	}
 
@@ -8419,6 +8585,7 @@ EXCEL_METHOD(RichString, __construct)
 	BOOK_FROM_OBJECT_THROW(book, zbook);
 
 	obj = Z_EXCEL_RICHSTRING_OBJ_P(object);
+	EXCEL_REJECT_RECONSTRUCTION(obj, richstring);
 
 	rs = xlBookAddRichString(book);
 	if (!rs) {
@@ -8483,9 +8650,6 @@ EXCEL_METHOD(RichString, addText)
 
 	if (zfont) {
 		FONT_FROM_OBJECT(font, zfont);
-		/* addText applies the live FontHandle (not a template copy), so a
-		 * font from a different book would dangle once its book is freed. */
-		EXCEL_REQUIRE_SAME_BOOK(zfont, object);
 	}
 
 	xlRichStringAddText(rs, ZSTR_VAL(text), font);
@@ -8568,6 +8732,7 @@ EXCEL_METHOD(FormControl, __construct)
 	SHEET_FROM_OBJECT_THROW(sheet, zsheet);
 
 	obj = Z_EXCEL_FORMCONTROL_OBJ_P(object);
+	EXCEL_REJECT_RECONSTRUCTION(obj, formcontrol);
 
 	fc = xlSheetFormControl(sheet, index);
 	if (!fc) {
@@ -9160,6 +9325,7 @@ EXCEL_METHOD(ConditionalFormat, __construct)
 	BOOK_FROM_OBJECT_THROW(book, zbook);
 
 	obj = Z_EXCEL_CONDITIONALFORMAT_OBJ_P(object);
+	EXCEL_REJECT_RECONSTRUCTION(obj, conditionalformat);
 
 	cf = xlBookAddConditionalFormat(book);
 	if (!cf) {
@@ -9568,7 +9734,19 @@ EXCEL_METHOD(ConditionalFormatting, __construct)
 				rowFirst, rowLast);
 			RETURN_THROWS();
 		}
+		if (rowFirst > rowLast) {
+			zend_throw_exception_ex(NULL, 0,
+				"Invalid row range: first=" ZEND_LONG_FMT ", last=" ZEND_LONG_FMT,
+				rowFirst, rowLast);
+			RETURN_THROWS();
+		}
 		if (colFirst < 0 || colFirst > _maxc || colLast < 0 || colLast > _maxc) {
+			zend_throw_exception_ex(NULL, 0,
+				"Invalid column range: first=" ZEND_LONG_FMT ", last=" ZEND_LONG_FMT,
+				colFirst, colLast);
+			RETURN_THROWS();
+		}
+		if (colFirst > colLast) {
 			zend_throw_exception_ex(NULL, 0,
 				"Invalid column range: first=" ZEND_LONG_FMT ", last=" ZEND_LONG_FMT,
 				colFirst, colLast);
@@ -9584,6 +9762,7 @@ EXCEL_METHOD(ConditionalFormatting, __construct)
 	SHEET_FROM_OBJECT_THROW(sheet, zsheet);
 
 	obj = Z_EXCEL_CONDITIONALFORMATTING_OBJ_P(object);
+	EXCEL_REJECT_RECONSTRUCTION(obj, conditionalformatting);
 
 #if LIBXL_VERSION >= 0x05010000
 	cfh = xlSheetAddConditionalFormatting(sheet, rowFirst, rowLast, colFirst, colLast);
@@ -9881,6 +10060,7 @@ EXCEL_METHOD(CoreProperties, __construct)
 	BOOK_FROM_OBJECT_THROW(book, zbook);
 
 	obj = Z_EXCEL_COREPROPERTIES_OBJ_P(object);
+	EXCEL_REJECT_RECONSTRUCTION(obj, coreproperties);
 
 	cp = xlBookCoreProperties(book);
 	if (!cp) {
@@ -10048,6 +10228,7 @@ EXCEL_METHOD(Table, __construct)
 	SHEET_FROM_OBJECT_THROW(sheet, zsheet);
 
 	obj = Z_EXCEL_TABLE_OBJ_P(object);
+	EXCEL_REJECT_RECONSTRUCTION(obj, table);
 
 	th = xlSheetAddTable(sheet, ZSTR_VAL(name), rowFirst, rowLast, colFirst, colLast, hasHeaders, style);
 	if (!th) {

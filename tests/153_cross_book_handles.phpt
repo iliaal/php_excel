@@ -12,9 +12,9 @@ if ((new ReflectionMethod("ExcelSheet", "addConditionalFormatting"))->getNumberO
 libxl Format/Font/RichString/AutoFilter/ConditionalFormat handles index into
 the workbook that created them. Applying one to a different workbook silently
 corrupts output and dangles once the source book is freed. Every use-site must
-reject a foreign handle and accept a same-book one. (Template-copy methods such
-as Book::addFormat/addFont legitimately accept a foreign handle and are not
-covered here.)
+reject a foreign handle and accept a same-book one. Template-copy methods such
+as Book::addFormat(), Book::addFont(), and RichString::addText() legitimately
+accept a foreign handle.
 --FILE--
 <?php
 $b1 = new ExcelBook(null, null, true);
@@ -37,7 +37,7 @@ echo "setRowPx:     "; var_dump(@$s2->setRowPx(1, 20, $fmt1));
 $rs1 = $b1->addRichString();
 echo "writeRichStr: "; var_dump(@$s2->writeRichStr(2, 0, $rs1));
 
-// Font from b1 applied to b2's RichString via addText (live handle, not a copy)
+// Font from b1 applied to b2's RichString via addText (template copy)
 $rs2 = $b2->addRichString();
 $font_b1 = $b1->addFont();
 echo "addText:      "; var_dump(@$rs2->addText("x", $font_b1));
@@ -78,7 +78,7 @@ setRowHeight: bool(false)
 setColPx:     bool(false)
 setRowPx:     bool(false)
 writeRichStr: bool(false)
-addText:      bool(false)
+addText:      bool(true)
 applyFilter2: bool(false)
 setFont:      bool(false)
 addRule:      bool(false)
