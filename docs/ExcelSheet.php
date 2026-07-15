@@ -1944,7 +1944,9 @@ class ExcelSheet
 	/**
 	* Adds conditional formatting to the sheet
 	*
-	* @since libxl 5.1.0 (with range parameters)
+	* @since libxl 4.6.0; with libxl 4.6.0 through 5.0.x, call this method
+	*        with no arguments and add ranges through ExcelConditionalFormatting::addRange().
+	*        LibXL 5.1.0+ requires the four range parameters shown below.
 	* @param int $rowFirst 0-based first row
 	* @param int $rowLast 0-based last row
 	* @param int $colFirst 0-based first column

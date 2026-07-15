@@ -56,7 +56,7 @@
 #define PHP_EXCEL_NUMERIC_STRING 3
 #define PHP_EXCEL_TEXT 4
 
-#define PHP_EXCEL_VERSION "2.4.0"
+#define PHP_EXCEL_VERSION "2.4.1"
 
 #ifdef COMPILE_DL_EXCEL
 #ifdef ZTS
@@ -141,6 +141,7 @@ typedef struct _excel_book_object {
 	 * xlCreateBook() (XLS, 65536x256). Used by EXCEL_VALIDATE_ROW_COL to
 	 * reject impossible coordinates per book type. */
 	bool is_xlsx;
+	bool locale_is_utf8;
 	/* Lazily-allocated default format used by IS_DATE writes when the
 	 * caller doesn't supply an explicit format, so bulk date exports
 	 * don't create one new format per cell and bloat the style table.
@@ -832,17 +833,27 @@ static zend_object *excel_object_new_book(zend_class_entry *class_type)
 	intern->autofilter_generation = 0;
 	intern->conditional_formatting_generation = 0;
 	intern->is_xlsx = false;
+	intern->locale_is_utf8 = false;
 	intern->default_date_format = NULL;
 	intern->std.handlers = &excel_object_handlers_book;
 
 	return &intern->std;
 }
 
+static void php_excel_child_object_std_dtor(zval *parent, zend_object *std)
+{
+	zval saved_parent;
+
+	ZVAL_COPY_VALUE(&saved_parent, parent);
+	ZVAL_UNDEF(parent);
+	zend_object_std_dtor(std);
+	zval_ptr_dtor(&saved_parent);
+}
+
 static void excel_sheet_object_free_storage(zend_object *object)
 {
 	excel_sheet_object *intern = php_excel_sheet_object_fetch_object(object);
-	zval_ptr_dtor(&intern->parent);
-	zend_object_std_dtor(&intern->std);
+	php_excel_child_object_std_dtor(&intern->parent, &intern->std);
 }
 
 static zend_object *excel_object_new_sheet(zend_class_entry *class_type)
@@ -862,8 +873,7 @@ static zend_object *excel_object_new_sheet(zend_class_entry *class_type)
 static void excel_font_object_free_storage(zend_object *object)
 {
 	excel_font_object *intern = php_excel_font_object_fetch_object(object);
-	zval_ptr_dtor(&intern->parent);
-	zend_object_std_dtor(&intern->std);
+	php_excel_child_object_std_dtor(&intern->parent, &intern->std);
 }
 
 #define REGISTER_EXCEL_CLASS_CONST_LONG(class_name, const_name, value) \
@@ -930,8 +940,7 @@ static zend_object *excel_font_object_clone(zend_object *object)
 static void excel_format_object_free_storage(zend_object *object)
 {
 	excel_format_object *intern = php_excel_format_object_fetch_object(object);
-	zval_ptr_dtor(&intern->parent);
-	zend_object_std_dtor(&intern->std);
+	php_excel_child_object_std_dtor(&intern->parent, &intern->std);
 }
 
 static zend_object *excel_object_new_format_ex(zend_class_entry *class_type, excel_format_object **ptr)
@@ -992,8 +1001,7 @@ static zend_object *excel_format_object_clone(zend_object *object)
 static void excel_autofilter_object_free_storage(zend_object *object)
 {
 	excel_autofilter_object *intern = php_excel_autofilter_object_fetch_object(object);
-	zval_ptr_dtor(&intern->parent);
-	zend_object_std_dtor(&intern->std);
+	php_excel_child_object_std_dtor(&intern->parent, &intern->std);
 }
 
 static zend_object *excel_object_new_autofilter(zend_class_entry *class_type)
@@ -1013,8 +1021,7 @@ static zend_object *excel_object_new_autofilter(zend_class_entry *class_type)
 static void excel_filtercolumn_object_free_storage(zend_object *object)
 {
 	excel_filtercolumn_object *intern = php_excel_filtercolumn_object_fetch_object(object);
-	zval_ptr_dtor(&intern->parent);
-	zend_object_std_dtor(&intern->std);
+	php_excel_child_object_std_dtor(&intern->parent, &intern->std);
 }
 
 static zend_object *excel_object_new_filtercolumn(zend_class_entry *class_type)
@@ -1034,8 +1041,7 @@ static zend_object *excel_object_new_filtercolumn(zend_class_entry *class_type)
 static void excel_richstring_object_free_storage(zend_object *object)
 {
 	excel_richstring_object *intern = php_excel_richstring_object_fetch_object(object);
-	zval_ptr_dtor(&intern->parent);
-	zend_object_std_dtor(&intern->std);
+	php_excel_child_object_std_dtor(&intern->parent, &intern->std);
 }
 
 static zend_object *excel_object_new_richstring(zend_class_entry *class_type)
@@ -1055,8 +1061,7 @@ static zend_object *excel_object_new_richstring(zend_class_entry *class_type)
 static void excel_formcontrol_object_free_storage(zend_object *object)
 {
 	excel_formcontrol_object *intern = php_excel_formcontrol_object_fetch_object(object);
-	zval_ptr_dtor(&intern->parent);
-	zend_object_std_dtor(&intern->std);
+	php_excel_child_object_std_dtor(&intern->parent, &intern->std);
 }
 
 static zend_object *excel_object_new_formcontrol(zend_class_entry *class_type)
@@ -1076,8 +1081,7 @@ static zend_object *excel_object_new_formcontrol(zend_class_entry *class_type)
 static void excel_conditionalformat_object_free_storage(zend_object *object)
 {
 	excel_conditionalformat_object *intern = php_excel_conditionalformat_object_fetch_object(object);
-	zval_ptr_dtor(&intern->parent);
-	zend_object_std_dtor(&intern->std);
+	php_excel_child_object_std_dtor(&intern->parent, &intern->std);
 }
 
 static zend_object *excel_object_new_conditionalformat(zend_class_entry *class_type)
@@ -1097,8 +1101,7 @@ static zend_object *excel_object_new_conditionalformat(zend_class_entry *class_t
 static void excel_conditionalformatting_object_free_storage(zend_object *object)
 {
 	excel_conditionalformatting_object *intern = php_excel_conditionalformatting_object_fetch_object(object);
-	zval_ptr_dtor(&intern->parent);
-	zend_object_std_dtor(&intern->std);
+	php_excel_child_object_std_dtor(&intern->parent, &intern->std);
 }
 
 static zend_object *excel_object_new_conditionalformatting(zend_class_entry *class_type)
@@ -1118,8 +1121,7 @@ static zend_object *excel_object_new_conditionalformatting(zend_class_entry *cla
 static void excel_coreproperties_object_free_storage(zend_object *object)
 {
 	excel_coreproperties_object *intern = php_excel_coreproperties_object_fetch_object(object);
-	zval_ptr_dtor(&intern->parent);
-	zend_object_std_dtor(&intern->std);
+	php_excel_child_object_std_dtor(&intern->parent, &intern->std);
 }
 
 static zend_object *excel_object_new_coreproperties(zend_class_entry *class_type)
@@ -1139,8 +1141,7 @@ static zend_object *excel_object_new_coreproperties(zend_class_entry *class_type
 static void excel_table_object_free_storage(zend_object *object)
 {
 	excel_table_object *intern = php_excel_table_object_fetch_object(object);
-	zval_ptr_dtor(&intern->parent);
-	zend_object_std_dtor(&intern->std);
+	php_excel_child_object_std_dtor(&intern->parent, &intern->std);
 }
 
 static zend_object *excel_object_new_table(zend_class_entry *class_type)
@@ -1218,43 +1219,126 @@ EXCEL_GET_GC_FN(table)
 		RETURN_FALSE; \
 	}
 
-/* Reject an oversized stream before copy_to_mem allocates. A seekable wrapper
- * (a plain file:// path, php://memory, ...) reports its size up front, so a
- * >= UINT_MAX source is rejected without first reading ~4 GiB into memory; a
- * wrapper that cannot stat reports no size and falls through to the
- * UINT_MAX-capped read below. Closes the open stream on rejection. */
-#define EXCEL_REJECT_OVERSIZED_STREAM(stream) \
-	do { \
-		php_stream_statbuf _ssb; \
-		if (php_stream_stat((stream), &_ssb) == 0 && _ssb.sb.st_size > 0 \
-		    && (zend_ulong) _ssb.sb.st_size >= UINT_MAX) { \
-			php_stream_close(stream); \
-			php_error_docref(NULL, E_WARNING, "Source file too large"); \
-			RETURN_FALSE; \
-		} \
-	} while (0)
+typedef enum {
+	PHP_EXCEL_STREAM_READ_OK,
+	PHP_EXCEL_STREAM_READ_ERROR,
+	PHP_EXCEL_STREAM_READ_TOO_LARGE
+} php_excel_stream_read_status;
 
-static zend_string *php_excel_stream_copy_to_uint_mem(php_stream *stream, bool *too_large)
+static zend_object *php_excel_suspend_exception(void)
+{
+	zend_object *exception = EG(exception);
+
+	EG(exception) = NULL;
+	return exception;
+}
+
+static void php_excel_restore_exception(zend_object *exception)
+{
+	if (!exception) {
+		return;
+	}
+	if (EG(exception)) {
+		zend_object *cleanup_exception = EG(exception);
+		EG(exception) = NULL;
+		zend_exception_set_previous(exception, cleanup_exception);
+	}
+	EG(exception) = exception;
+}
+
+static int php_excel_stream_close_preserving_exception(php_stream *stream)
+{
+	zend_object *exception = php_excel_suspend_exception();
+	int result = php_stream_close(stream);
+
+	php_excel_restore_exception(exception);
+	return result;
+}
+
+/* Seekable streams are rejected from stat before allocating. Wrappers without
+ * stat support are capped during the read. A zero-byte read is EOF only when
+ * the wrapper reports EOF; otherwise it is an I/O failure. */
+static zend_string *php_excel_stream_read_all(php_stream *stream, php_excel_stream_read_status *status)
 {
 	char buffer[65536];
 	smart_str contents = {0};
 	size_t total = 0;
-	/* php_stream_read returns a negative value on error; keep it signed so
-	 * an error ends the loop instead of counting as an oversized read. */
 	ssize_t read_len;
+	php_stream_statbuf ssb;
+	int close_result;
 
-	*too_large = 0;
-	while ((read_len = php_stream_read(stream, buffer, sizeof(buffer))) > 0) {
+	*status = PHP_EXCEL_STREAM_READ_OK;
+	if (php_stream_stat(stream, &ssb) == 0 && ssb.sb.st_size > 0
+	    && (zend_ulong) ssb.sb.st_size >= UINT_MAX) {
+		*status = PHP_EXCEL_STREAM_READ_TOO_LARGE;
+		goto close_stream;
+	}
+	if (EG(exception)) {
+		*status = PHP_EXCEL_STREAM_READ_ERROR;
+		goto close_stream;
+	}
+
+	for (;;) {
+		read_len = php_stream_read(stream, buffer, sizeof(buffer));
+		if (EG(exception) || read_len < 0) {
+			*status = PHP_EXCEL_STREAM_READ_ERROR;
+			break;
+		}
+		if (read_len == 0) {
+			if (!php_stream_eof(stream) || EG(exception)) {
+				*status = PHP_EXCEL_STREAM_READ_ERROR;
+			}
+			break;
+		}
 		if ((size_t) read_len > ((size_t) UINT_MAX - 1) - total) {
-			smart_str_free(&contents);
-			*too_large = 1;
-			return NULL;
+			*status = PHP_EXCEL_STREAM_READ_TOO_LARGE;
+			break;
 		}
 		smart_str_appendl(&contents, buffer, (size_t) read_len);
 		total += (size_t) read_len;
 	}
+
+close_stream:
+	close_result = php_excel_stream_close_preserving_exception(stream);
+	if (close_result != 0 || EG(exception)) {
+		*status = PHP_EXCEL_STREAM_READ_ERROR;
+	}
+	if (*status != PHP_EXCEL_STREAM_READ_OK) {
+		smart_str_free(&contents);
+		return NULL;
+	}
 	smart_str_0(&contents);
 	return contents.s;
+}
+
+static bool php_excel_wrapper_supports_atomic_save(zend_string *url)
+{
+	php_stream_wrapper *wrapper = php_stream_locate_url_wrapper(ZSTR_VAL(url), NULL, 0);
+
+	return wrapper && wrapper->wops && wrapper->wops->rename && wrapper->wops->unlink;
+}
+
+static bool php_excel_wrapper_rename(zend_string *from, zend_string *to)
+{
+	php_stream_wrapper *wrapper = php_stream_locate_url_wrapper(ZSTR_VAL(from), NULL, 0);
+
+	if (!wrapper || !wrapper->wops || !wrapper->wops->rename) {
+		return false;
+	}
+	return wrapper->wops->rename(wrapper, ZSTR_VAL(from), ZSTR_VAL(to), REPORT_ERRORS, NULL);
+}
+
+static bool php_excel_wrapper_unlink_preserving_exception(zend_string *url)
+{
+	zend_object *exception = php_excel_suspend_exception();
+	php_stream_wrapper *wrapper = php_stream_locate_url_wrapper(ZSTR_VAL(url), NULL, 0);
+	bool result = false;
+
+	if (wrapper && wrapper->wops && wrapper->wops->unlink) {
+		result = wrapper->wops->unlink(wrapper, ZSTR_VAL(url), REPORT_ERRORS, NULL);
+	}
+	php_excel_restore_exception(exception);
+	return result;
 }
 
 /* libxl APIs take int for row/col/dimension args; zend_long is 64-bit.
@@ -1270,6 +1354,12 @@ static zend_string *php_excel_stream_copy_to_uint_mem(php_stream *stream, bool *
 #define EXCEL_VALIDATE_RGB(arg) \
 	if ((arg) < 0 || (arg) > 255) { \
 		php_error_docref(NULL, E_WARNING, "RGB component out of range (0-255)"); \
+		RETURN_FALSE; \
+	}
+
+#define EXCEL_VALIDATE_FINITE(arg) \
+	if (!zend_finite(arg)) { \
+		php_error_docref(NULL, E_WARNING, "Floating-point argument must be finite"); \
 		RETURN_FALSE; \
 	}
 
@@ -1447,7 +1537,7 @@ EXCEL_METHOD(Book, loadFile)
 	zend_string *filename_zs = NULL;
 	php_stream *stream;
 	zend_string *contents;
-	bool source_too_large;
+	php_excel_stream_read_status stream_status;
 
 	if (zend_parse_parameters(ZEND_NUM_ARGS(), "S", &filename_zs) == FAILURE) {
 		RETURN_FALSE;
@@ -1480,13 +1570,16 @@ EXCEL_METHOD(Book, loadFile)
 		RETURN_FALSE;
 	}
 
-	/* Cap the read at UINT_MAX (libxl's size ceiling) so an oversized file
-	 * cannot fully allocate before the length check below rejects it. */
-	EXCEL_REJECT_OVERSIZED_STREAM(stream);
-	contents = php_excel_stream_copy_to_uint_mem(stream, &source_too_large);
-	php_stream_close(stream);
-	if (source_too_large) {
+	contents = php_excel_stream_read_all(stream, &stream_status);
+	if (EG(exception)) {
+		RETURN_THROWS();
+	}
+	if (stream_status == PHP_EXCEL_STREAM_READ_TOO_LARGE) {
 		php_error_docref(NULL, E_WARNING, "Source file too large");
+		RETURN_FALSE;
+	}
+	if (stream_status == PHP_EXCEL_STREAM_READ_ERROR) {
+		php_error_docref(NULL, E_WARNING, "Failed to read source stream");
 		RETURN_FALSE;
 	}
 
@@ -1564,7 +1657,7 @@ EXCEL_METHOD(Book, loadFilePartially)
 	bool keep_all_sheets = 0;
 	php_stream *stream;
 	zend_string *contents;
-	bool source_too_large;
+	php_excel_stream_read_status stream_status;
 
 	if (zend_parse_parameters(ZEND_NUM_ARGS(), "Slll|b", &filename_zs, &sheet_index, &row_first, &row_last, &keep_all_sheets) == FAILURE) {
 		RETURN_FALSE;
@@ -1594,13 +1687,16 @@ EXCEL_METHOD(Book, loadFilePartially)
 		RETURN_FALSE;
 	}
 
-	/* Cap the read at UINT_MAX (libxl's size ceiling) so an oversized file
-	 * cannot fully allocate before the length check below rejects it. */
-	EXCEL_REJECT_OVERSIZED_STREAM(stream);
-	contents = php_excel_stream_copy_to_uint_mem(stream, &source_too_large);
-	php_stream_close(stream);
-	if (source_too_large) {
+	contents = php_excel_stream_read_all(stream, &stream_status);
+	if (EG(exception)) {
+		RETURN_THROWS();
+	}
+	if (stream_status == PHP_EXCEL_STREAM_READ_TOO_LARGE) {
 		php_error_docref(NULL, E_WARNING, "Source file too large");
+		RETURN_FALSE;
+	}
+	if (stream_status == PHP_EXCEL_STREAM_READ_ERROR) {
+		php_error_docref(NULL, E_WARNING, "Failed to read source stream");
 		RETURN_FALSE;
 	}
 	if (!contents) {
@@ -1710,18 +1806,21 @@ EXCEL_METHOD(Book, save)
 	if (filename_zs && ZSTR_LEN(filename_zs) > 0) {
 		ssize_t numbytes;
 		php_stream *stream;
-		php_stream_wrapper *wrapper = php_stream_locate_url_wrapper(ZSTR_VAL(filename_zs), NULL, 0);
 		zend_string *owned_contents = zend_string_init(contents, len, 0);
 
 		/* If the destination wrapper exposes rename+unlink, stage the full
 		 * buffer to a sibling temp URL and rename it into place. A short
 		 * write then fails against the temp, leaving the caller's existing
 		 * file untouched, instead of truncating the destination up front. */
-		if (wrapper && wrapper->wops && wrapper->wops->rename && wrapper->wops->unlink) {
+		if (php_excel_wrapper_supports_atomic_save(filename_zs)) {
 			zend_string *tmp_name = NULL;
 			unsigned char random_bytes[8];
 			char random_suffix[17];
+			int flush_result = 0;
+			int close_result;
 			int attempt;
+
+			stream = NULL;
 
 			for (attempt = 0; attempt < 8; attempt++) {
 				int i;
@@ -1747,25 +1846,39 @@ EXCEL_METHOD(Book, save)
 			}
 
 			numbytes = php_stream_write(stream, ZSTR_VAL(owned_contents), ZSTR_LEN(owned_contents));
-			php_stream_close(stream);
+			if (!EG(exception) && numbytes == (ssize_t) ZSTR_LEN(owned_contents)) {
+				flush_result = php_stream_flush(stream);
+			}
+			close_result = php_excel_stream_close_preserving_exception(stream);
 
-			if (numbytes != (ssize_t)ZSTR_LEN(owned_contents)) {
-				wrapper->wops->unlink(wrapper, ZSTR_VAL(tmp_name), REPORT_ERRORS, NULL);
+			if (numbytes != (ssize_t) ZSTR_LEN(owned_contents)
+			    || flush_result != 0 || close_result != 0 || EG(exception)) {
+				php_excel_wrapper_unlink_preserving_exception(tmp_name);
 				zend_string_release(tmp_name);
 				zend_string_release(owned_contents);
+				if (EG(exception)) {
+					RETURN_THROWS();
+				}
+				if (flush_result != 0 || close_result != 0) {
+					php_error_docref(NULL, E_WARNING, "Failed to flush or close completed temporary file; destination left unchanged");
+					RETURN_FALSE;
+				}
 				php_error_docref(NULL, E_WARNING, "Only %zd of %u bytes written, possibly out of free disk space; destination left unchanged", numbytes, len);
 				RETURN_FALSE;
 			}
 
-			if (wrapper->wops->rename(wrapper, ZSTR_VAL(tmp_name), ZSTR_VAL(filename_zs), REPORT_ERRORS, NULL)) {
+			if (php_excel_wrapper_rename(tmp_name, filename_zs)) {
 				zend_string_release(tmp_name);
 				zend_string_release(owned_contents);
 				RETURN_TRUE;
 			}
 
-			wrapper->wops->unlink(wrapper, ZSTR_VAL(tmp_name), REPORT_ERRORS, NULL);
+			php_excel_wrapper_unlink_preserving_exception(tmp_name);
 			zend_string_release(tmp_name);
 			zend_string_release(owned_contents);
+			if (EG(exception)) {
+				RETURN_THROWS();
+			}
 			php_error_docref(NULL, E_WARNING, "Could not replace destination with completed temporary file; destination left unchanged");
 			RETURN_FALSE;
 		}
@@ -1779,14 +1892,29 @@ EXCEL_METHOD(Book, save)
 			RETURN_FALSE;
 		}
 
-		if ((numbytes = php_stream_write(stream, ZSTR_VAL(owned_contents), ZSTR_LEN(owned_contents))) != (ssize_t)ZSTR_LEN(owned_contents)) {
-			php_stream_close(stream);
-			zend_string_release(owned_contents);
-			php_error_docref(NULL, E_WARNING, "Only %zd of %u bytes written, possibly out of free disk space", numbytes, len);
-			RETURN_FALSE;
-		}
+		{
+			int flush_result = 0;
+			int close_result;
 
-		php_stream_close(stream);
+			numbytes = php_stream_write(stream, ZSTR_VAL(owned_contents), ZSTR_LEN(owned_contents));
+			if (!EG(exception) && numbytes == (ssize_t) ZSTR_LEN(owned_contents)) {
+				flush_result = php_stream_flush(stream);
+			}
+			close_result = php_excel_stream_close_preserving_exception(stream);
+			if (numbytes != (ssize_t) ZSTR_LEN(owned_contents)
+			    || flush_result != 0 || close_result != 0 || EG(exception)) {
+				zend_string_release(owned_contents);
+				if (EG(exception)) {
+					RETURN_THROWS();
+				}
+				if (flush_result != 0 || close_result != 0) {
+					php_error_docref(NULL, E_WARNING, "Failed to flush or close destination stream");
+					RETURN_FALSE;
+				}
+				php_error_docref(NULL, E_WARNING, "Only %zd of %u bytes written, possibly out of free disk space", numbytes, len);
+				RETURN_FALSE;
+			}
+		}
 		zend_string_release(owned_contents);
 		RETURN_TRUE;
 	} else {
@@ -2330,6 +2458,7 @@ EXCEL_METHOD(Book, unpackDate)
 		RETURN_FALSE;
 	}
 
+	EXCEL_VALIDATE_FINITE(dt)
 	if (dt < 1) {
 		RETURN_FALSE;
 	}
@@ -2438,6 +2567,32 @@ EXCEL_METHOD(Book, setDefaultFont)
 }
 /* }}} */
 
+static bool php_excel_locale_is_utf8(zend_string *locale)
+{
+	const unsigned char *value = (const unsigned char *) ZSTR_VAL(locale);
+	size_t length = ZSTR_LEN(locale);
+	size_t i;
+
+	for (i = 0; i < length; i++) {
+		if (i + 5 <= length
+		    && (value[i] == 'U' || value[i] == 'u')
+		    && (value[i + 1] == 'T' || value[i + 1] == 't')
+		    && (value[i + 2] == 'F' || value[i + 2] == 'f')
+		    && value[i + 3] == '-'
+		    && value[i + 4] == '8') {
+			return true;
+		}
+		if (i + 4 <= length
+		    && (value[i] == 'U' || value[i] == 'u')
+		    && (value[i + 1] == 'T' || value[i + 1] == 't')
+		    && (value[i + 2] == 'F' || value[i + 2] == 'f')
+		    && value[i + 3] == '8') {
+			return true;
+		}
+	}
+	return false;
+}
+
 /* {{{ proto void ExcelBook::setLocale(string locale)
 	Set the locale. */
 EXCEL_METHOD(Book, setLocale)
@@ -2455,7 +2610,10 @@ EXCEL_METHOD(Book, setLocale)
 
 	BOOK_FROM_OBJECT(book, object);
 
-	xlBookSetLocale(book, ZSTR_VAL(locale_zs));
+	if (xlBookSetLocale(book, ZSTR_VAL(locale_zs))) {
+		excel_book_object *book_obj = Z_EXCEL_BOOK_OBJ_P(object);
+		book_obj->locale_is_utf8 = php_excel_locale_is_utf8(locale_zs);
+	}
 }
 /* }}} */
 
@@ -2505,6 +2663,7 @@ EXCEL_METHOD(Book, __construct)
 		}
 		obj->book = book;
 		obj->is_xlsx = new_excel;
+		obj->locale_is_utf8 = false;
 		obj->default_date_format = NULL;
 	}
 
@@ -2562,7 +2721,7 @@ static void php_excel_add_picture(INTERNAL_FUNCTION_PARAMETERS, int mode) /* {{{
 	int ret;
 	php_stream *stream;
 	zend_string *contents;
-	bool source_too_large;
+	php_excel_stream_read_status stream_status;
 
 	if (zend_parse_parameters(ZEND_NUM_ARGS(), "S", &data_zs) == FAILURE) {
 		RETURN_FALSE;
@@ -2596,13 +2755,16 @@ static void php_excel_add_picture(INTERNAL_FUNCTION_PARAMETERS, int mode) /* {{{
 			RETURN_FALSE;
 		}
 
-		/* Cap the read at UINT_MAX (libxl's size ceiling) so an oversized
-		 * file cannot fully allocate before the length check rejects it. */
-		EXCEL_REJECT_OVERSIZED_STREAM(stream);
-		contents = php_excel_stream_copy_to_uint_mem(stream, &source_too_large);
-		php_stream_close(stream);
-		if (source_too_large) {
+		contents = php_excel_stream_read_all(stream, &stream_status);
+		if (EG(exception)) {
+			RETURN_THROWS();
+		}
+		if (stream_status == PHP_EXCEL_STREAM_READ_TOO_LARGE) {
 			php_error_docref(NULL, E_WARNING, "Source file too large");
+			RETURN_FALSE;
+		}
+		if (stream_status == PHP_EXCEL_STREAM_READ_ERROR) {
+			php_error_docref(NULL, E_WARNING, "Failed to read source stream");
 			RETURN_FALSE;
 		}
 
@@ -2723,7 +2885,7 @@ EXCEL_METHOD(Book, colorUnpack)
 		RETURN_FALSE;
 	}
 
-	if (color <= 0 || color > INT_MAX) {
+	if (color < 0 || color > INT_MAX) {
 		php_error_docref(NULL, E_WARNING, "Invalid '" ZEND_LONG_FMT "' value for color code", color);
 		RETURN_FALSE;
 	}
@@ -2774,7 +2936,7 @@ EXCEL_METHOD(Book, loadInfo)
 #if LIBXL_VERSION >= 0x05000100
 	php_stream *stream;
 	zend_string *contents;
-	bool source_too_large;
+	php_excel_stream_read_status stream_status;
 #endif
 
 	if (zend_parse_parameters(ZEND_NUM_ARGS(), "S", &filename_zs) == FAILURE) {
@@ -2794,11 +2956,16 @@ EXCEL_METHOD(Book, loadInfo)
 		if (!stream) {
 			RETURN_FALSE;
 		}
-		EXCEL_REJECT_OVERSIZED_STREAM(stream);
-		contents = php_excel_stream_copy_to_uint_mem(stream, &source_too_large);
-		php_stream_close(stream);
-		if (source_too_large) {
+		contents = php_excel_stream_read_all(stream, &stream_status);
+		if (EG(exception)) {
+			RETURN_THROWS();
+		}
+		if (stream_status == PHP_EXCEL_STREAM_READ_TOO_LARGE) {
 			php_error_docref(NULL, E_WARNING, "Source file too large");
+			RETURN_FALSE;
+		}
+		if (stream_status == PHP_EXCEL_STREAM_READ_ERROR) {
+			php_error_docref(NULL, E_WARNING, "Failed to read source stream");
 			RETURN_FALSE;
 		}
 		if (!contents || ZSTR_LEN(contents) < 1) {
@@ -4236,10 +4403,12 @@ EXCEL_METHOD(Sheet, readSparseRow)
 	SheetHandle sheet;
 	BookHandle book;
 	bool read_formula = 1;
+	bool default_end;
 
 	if (zend_parse_parameters(ZEND_NUM_ARGS(), "l|llb", &row, &col_start, &col_end, &read_formula) == FAILURE) {
 		RETURN_FALSE;
 	}
+	default_end = (col_end == -1);
 
 	SHEET_AND_BOOK_FROM_OBJECT(sheet, book, object);
 
@@ -4253,6 +4422,15 @@ EXCEL_METHOD(Sheet, readSparseRow)
 	}
 
 	array_init(return_value);
+	if (default_end) {
+		int first_col = xlSheetFirstFilledCol(sheet);
+		if (first_col > col_end) {
+			return;
+		}
+		if (first_col > col_start) {
+			col_start = first_col;
+		}
+	}
 	for (c = col_start; c <= col_end; c++) {
 		zval value;
 		FormatHandle format = NULL;
@@ -4285,10 +4463,12 @@ EXCEL_METHOD(Sheet, readSparseCol)
 	SheetHandle sheet;
 	BookHandle book;
 	bool read_formula = 1;
+	bool default_end;
 
 	if (zend_parse_parameters(ZEND_NUM_ARGS(), "l|llb", &col, &row_start, &row_end, &read_formula) == FAILURE) {
 		RETURN_FALSE;
 	}
+	default_end = (row_end == -1);
 
 	SHEET_AND_BOOK_FROM_OBJECT(sheet, book, object);
 
@@ -4302,6 +4482,15 @@ EXCEL_METHOD(Sheet, readSparseCol)
 	}
 
 	array_init(return_value);
+	if (default_end) {
+		int first_row = xlSheetFirstFilledRow(sheet);
+		if (first_row > row_end) {
+			return;
+		}
+		if (first_row > row_start) {
+			row_start = first_row;
+		}
+	}
 	for (r = row_start; r <= row_end; r++) {
 		zval value;
 		FormatHandle format = NULL;
@@ -4580,7 +4769,7 @@ EXCEL_METHOD(Sheet, write)
 	excel_book_object *book_obj;
 	SheetHandle sheet;
 	BookHandle book;
-	FormatHandle format;
+	FormatHandle format = NULL;
 	zend_long row, col;
 	zval *oformat = NULL;
 	zend_long dtype = -1;
@@ -4630,7 +4819,7 @@ EXCEL_METHOD(Sheet, writeRow)
 	zval *object = ZEND_THIS;
 	SheetHandle sheet;
 	BookHandle book;
-	FormatHandle format;
+	FormatHandle format = NULL;
 	zend_long row, col = 0;
 	zval *oformat = NULL;
 	zval *data;
@@ -4697,7 +4886,7 @@ EXCEL_METHOD(Sheet, writeCol)
 	zval *object = ZEND_THIS;
 	SheetHandle sheet;
 	BookHandle book;
-	FormatHandle format;
+	FormatHandle format = NULL;
 	zend_long row = 0, col;
 	zval *oformat = NULL;
 	zval *data;
@@ -4954,7 +5143,7 @@ EXCEL_METHOD(Sheet, writeComment)
 EXCEL_METHOD(Sheet, setColWidth)
 {
 		SheetHandle sheet;
-		FormatHandle format;
+		FormatHandle format = NULL;
 		zval *object = ZEND_THIS;
 		zend_long s, e;
 		double width;
@@ -4965,6 +5154,7 @@ EXCEL_METHOD(Sheet, setColWidth)
 			RETURN_FALSE;
 		}
 
+		EXCEL_VALIDATE_FINITE(width)
 		EXCEL_VALIDATE_COL_RANGE(s, e, object);
 		SHEET_FROM_OBJECT(sheet, object);
 
@@ -4990,7 +5180,7 @@ EXCEL_METHOD(Sheet, setColWidth)
 EXCEL_METHOD(Sheet, setRowHeight)
 {
 		SheetHandle sheet;
-		FormatHandle format;
+		FormatHandle format = NULL;
 		zval *object = ZEND_THIS;
 		zend_long row;
 		double height;
@@ -5001,6 +5191,7 @@ EXCEL_METHOD(Sheet, setRowHeight)
 			RETURN_FALSE;
 		}
 
+		EXCEL_VALIDATE_FINITE(height)
 		{
 			excel_book_object *_vb = php_excel_resolve_book_obj(object);
 			zend_long _maxr = (_vb && _vb->is_xlsx) ? EXCEL_MAX_ROW_XLSX : EXCEL_MAX_ROW_XLS;
@@ -5106,6 +5297,7 @@ EXCEL_METHOD(Sheet, addPictureScaled)
 		RETURN_FALSE;
 	}
 
+	EXCEL_VALIDATE_FINITE(scale)
 	EXCEL_VALIDATE_ROW_COL(row, col, object);
 	EXCEL_VALIDATE_INT_RANGE(pic_id)
 	EXCEL_VALIDATE_INT_RANGE(x_offset)
@@ -5341,6 +5533,7 @@ EXCEL_METHOD(Sheet, copy)
 		if (zend_parse_parameters(ZEND_NUM_ARGS(), "d", &val) == FAILURE) { \
 			RETURN_FALSE; \
 		} \
+		EXCEL_VALIDATE_FINITE(val) \
 		SHEET_FROM_OBJECT(sheet, object); \
 		xlSheet ## func_name (sheet, val); \
 	}
@@ -5504,6 +5697,68 @@ EXCEL_METHOD(Sheet, rowColToAddr)
 }
 /* }}} */
 
+static bool php_excel_parse_cell_reference(
+	zend_string *reference,
+	int max_row,
+	int max_col,
+	int *row,
+	int *col,
+	int *row_relative,
+	int *col_relative
+)
+{
+	const unsigned char *p = (const unsigned char *) ZSTR_VAL(reference);
+	const unsigned char *end = p + ZSTR_LEN(reference);
+	unsigned int parsed_col = 0;
+	unsigned int parsed_row = 0;
+	bool has_col = false;
+	bool has_row = false;
+
+	*col_relative = 1;
+	*row_relative = 1;
+	if (p < end && *p == '$') {
+		*col_relative = 0;
+		p++;
+	}
+	while (p < end && ((*p >= 'A' && *p <= 'Z') || (*p >= 'a' && *p <= 'z'))) {
+		unsigned int digit = (*p >= 'a' ? *p - 'a' : *p - 'A') + 1;
+		if (parsed_col > ((unsigned int) max_col + 1 - digit) / 26) {
+			return false;
+		}
+		parsed_col = parsed_col * 26 + digit;
+		has_col = true;
+		p++;
+	}
+	if (!has_col) {
+		return false;
+	}
+	if (p < end && *p == '$') {
+		*row_relative = 0;
+		p++;
+	}
+	while (p < end && *p >= '0' && *p <= '9') {
+		unsigned int digit = *p - '0';
+		if (!has_row && digit == 0) {
+			return false;
+		}
+		if (parsed_row > ((unsigned int) max_row + 1 - digit) / 10) {
+			return false;
+		}
+		parsed_row = parsed_row * 10 + digit;
+		has_row = true;
+		p++;
+	}
+	if (!has_row || p != end || parsed_col == 0 || parsed_row == 0
+	    || parsed_col > (unsigned int) max_col + 1
+	    || parsed_row > (unsigned int) max_row + 1) {
+		return false;
+	}
+
+	*col = (int) parsed_col - 1;
+	*row = (int) parsed_row - 1;
+	return true;
+}
+
 /* {{{ proto array ExcelSheet::addrToRowCol(string cell_reference)
 	Converts a cell reference to row and column. */
 EXCEL_METHOD(Sheet, addrToRowCol)
@@ -5512,6 +5767,8 @@ EXCEL_METHOD(Sheet, addrToRowCol)
 	zval *object = ZEND_THIS;
 	zend_string *cell_reference_zs = NULL;
 	int row = 0, col = 0, rowRelative = 0, colRelative = 0;
+	excel_book_object *book_obj;
+	int max_row, max_col;
 
 	if (zend_parse_parameters(ZEND_NUM_ARGS(), "S", &cell_reference_zs) == FAILURE) {
 		RETURN_FALSE;
@@ -5524,8 +5781,16 @@ EXCEL_METHOD(Sheet, addrToRowCol)
 	EXCEL_NUL_SAFE_STRING(cell_reference_zs)
 
 	SHEET_FROM_OBJECT(sheet, object);
+	(void) sheet;
+	book_obj = php_excel_resolve_book_obj(object);
+	max_row = (book_obj && book_obj->is_xlsx) ? EXCEL_MAX_ROW_XLSX : EXCEL_MAX_ROW_XLS;
+	max_col = (book_obj && book_obj->is_xlsx) ? EXCEL_MAX_COL_XLSX : EXCEL_MAX_COL_XLS;
+	if (!php_excel_parse_cell_reference(cell_reference_zs, max_row, max_col,
+	    &row, &col, &rowRelative, &colRelative)) {
+		php_error_docref(NULL, E_WARNING, "Invalid cell reference");
+		RETURN_FALSE;
+	}
 
-	xlSheetAddrToRowCol(sheet, ZSTR_VAL(cell_reference_zs), &row, &col, &rowRelative, &colRelative);
 	array_init(return_value);
 	add_assoc_long(return_value, "row", row);
 	add_assoc_long(return_value, "column", col);
@@ -5622,20 +5887,75 @@ EXCEL_METHOD(Sheet, footer)
 }
 /* }}} */
 
+static bool php_excel_utf8_length_within(zend_string *value, size_t limit)
+{
+	const unsigned char *p = (const unsigned char *) ZSTR_VAL(value);
+	const unsigned char *end = p + ZSTR_LEN(value);
+	size_t count = 0;
+
+	while (p < end) {
+		size_t width;
+
+		if (*p <= 0x7f) {
+			width = 1;
+		} else if (*p >= 0xc2 && *p <= 0xdf) {
+			width = 2;
+		} else if (*p >= 0xe0 && *p <= 0xef) {
+			width = 3;
+		} else if (*p >= 0xf0 && *p <= 0xf4) {
+			width = 4;
+		} else {
+			return false;
+		}
+		if ((size_t) (end - p) < width) {
+			return false;
+		}
+		if (width >= 2 && (p[1] < 0x80 || p[1] > 0xbf)) {
+			return false;
+		}
+		if (width >= 3 && (p[2] < 0x80 || p[2] > 0xbf)) {
+			return false;
+		}
+		if (width == 4 && (p[3] < 0x80 || p[3] > 0xbf)) {
+			return false;
+		}
+		if ((p[0] == 0xe0 && p[1] < 0xa0)
+		    || (p[0] == 0xed && p[1] > 0x9f)
+		    || (p[0] == 0xf0 && p[1] < 0x90)
+		    || (p[0] == 0xf4 && p[1] > 0x8f)) {
+			return false;
+		}
+		count++;
+		if (count > limit) {
+			return false;
+		}
+		p += width;
+	}
+	return true;
+}
+
 #define PHP_EXCEL_SET_HF(func_name) \
 	{ \
 		SheetHandle sheet; \
+		excel_book_object *book_obj; \
 		zval *object = ZEND_THIS; \
 		zend_string *val_zs = NULL; \
 		double margin; \
 		if (zend_parse_parameters(ZEND_NUM_ARGS(), "Sd", &val_zs, &margin) == FAILURE) { \
 			RETURN_FALSE; \
 		} \
-		if (!val_zs || ZSTR_LEN(val_zs) > 255) { \
+		EXCEL_VALIDATE_FINITE(margin) \
+		if (!val_zs) { \
 			RETURN_FALSE; \
 		} \
 		EXCEL_NUL_SAFE_STRING(val_zs); \
 		SHEET_FROM_OBJECT(sheet, object); \
+		book_obj = php_excel_resolve_book_obj(object); \
+		if ((book_obj && book_obj->locale_is_utf8 \
+		     && !php_excel_utf8_length_within(val_zs, 255)) \
+		    || ((!book_obj || !book_obj->locale_is_utf8) && ZSTR_LEN(val_zs) > 255)) { \
+			RETURN_FALSE; \
+		} \
 		RETURN_BOOL(xlSheet ## func_name (sheet, ZSTR_VAL(val_zs), margin)); \
 	}
 
@@ -7322,7 +7642,11 @@ EXCEL_METHOD(AutoFilter, getSort)
 
 	AUTOFILTER_FROM_OBJECT(autofilter, object);
 
+#ifdef HAVE_LIBXL_AUTOFILTER_GETSORT_LEVEL
+	if (!xlAutoFilterGetSort(autofilter, &columnIndex, &descending, 0)) {
+#else
 	if (!xlAutoFilterGetSort(autofilter, &columnIndex, &descending)) {
+#endif
 		RETURN_FALSE;
 	}
 
@@ -7541,6 +7865,7 @@ EXCEL_METHOD(FilterColumn, setTop10)
 		RETURN_FALSE;
 	}
 
+	EXCEL_VALIDATE_FINITE(value)
 	FILTERCOLUMN_FROM_OBJECT(filtercolumn, object);
 
 	xlFilterColumnSetTop10(filtercolumn, value, top, percent);
@@ -7797,6 +8122,10 @@ EXCEL_METHOD(Sheet, addDataValidationDouble)
 		Z_PARAM_LONG(error_style)
 	ZEND_PARSE_PARAMETERS_END();
 
+	EXCEL_VALIDATE_FINITE(val_1)
+	if (!val_2_is_null) {
+		EXCEL_VALIDATE_FINITE(val_2)
+	}
 	EXCEL_NUL_SAFE_STRING(prompt_title)
 	EXCEL_NUL_SAFE_STRING(prompt)
 	EXCEL_NUL_SAFE_STRING(error_title)
@@ -9859,6 +10188,8 @@ EXCEL_METHOD(ConditionalFormatting, addOpNumRule)
 		RETURN_FALSE;
 	}
 
+	EXCEL_VALIDATE_FINITE(v1)
+	EXCEL_VALIDATE_FINITE(v2)
 	EXCEL_VALIDATE_INT_RANGE(op)
 
 	CONDITIONALFORMATTING_FROM_OBJECT(cfing, object);
@@ -9954,6 +10285,8 @@ EXCEL_METHOD(ConditionalFormatting, add2ColorScaleRule)
 		RETURN_FALSE;
 	}
 
+	EXCEL_VALIDATE_FINITE(minVal)
+	EXCEL_VALIDATE_FINITE(maxVal)
 	EXCEL_VALIDATE_INT_RANGE(minColor)
 	EXCEL_VALIDATE_INT_RANGE(maxColor)
 	EXCEL_VALIDATE_INT_RANGE(minType)
@@ -10002,6 +10335,9 @@ EXCEL_METHOD(ConditionalFormatting, add3ColorScaleRule)
 		RETURN_FALSE;
 	}
 
+	EXCEL_VALIDATE_FINITE(minVal)
+	EXCEL_VALIDATE_FINITE(midVal)
+	EXCEL_VALIDATE_FINITE(maxVal)
 	EXCEL_VALIDATE_INT_RANGE(minColor)
 	EXCEL_VALIDATE_INT_RANGE(midColor)
 	EXCEL_VALIDATE_INT_RANGE(maxColor)
@@ -10137,6 +10473,7 @@ EXCEL_METHOD(CoreProperties, setCreatedAsDouble)
 	if (zend_parse_parameters(ZEND_NUM_ARGS(), "d", &val) == FAILURE) {
 		RETURN_FALSE;
 	}
+	EXCEL_VALIDATE_FINITE(val)
 	COREPROPERTIES_FROM_OBJECT(cp, object);
 	xlCorePropertiesSetCreatedAsDouble(cp, val);
 	RETURN_TRUE;
@@ -10160,6 +10497,7 @@ EXCEL_METHOD(CoreProperties, setModifiedAsDouble)
 	if (zend_parse_parameters(ZEND_NUM_ARGS(), "d", &val) == FAILURE) {
 		RETURN_FALSE;
 	}
+	EXCEL_VALIDATE_FINITE(val)
 	COREPROPERTIES_FROM_OBJECT(cp, object);
 	xlCorePropertiesSetModifiedAsDouble(cp, val);
 	RETURN_TRUE;
@@ -10216,6 +10554,14 @@ EXCEL_METHOD(Table, __construct)
 			zend_throw_exception_ex(NULL, 0,
 				"Invalid column range: first=" ZEND_LONG_FMT ", last=" ZEND_LONG_FMT,
 				colFirst, colLast);
+			RETURN_THROWS();
+		}
+		if (rowFirst > rowLast) {
+			zend_throw_exception(NULL, "Table row start cannot be greater than row end", 0);
+			RETURN_THROWS();
+		}
+		if (colFirst > colLast) {
+			zend_throw_exception(NULL, "Table column start cannot be greater than column end", 0);
 			RETURN_THROWS();
 		}
 	}

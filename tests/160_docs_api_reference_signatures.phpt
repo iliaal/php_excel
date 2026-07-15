@@ -82,6 +82,11 @@ if (!method_exists(ExcelSheet::class, "dataValidationSize")) {
         "ExcelTable::removeFilter",
     ], true);
 }
+if (method_exists(ExcelSheet::class, "addConditionalFormatting")
+    && (new ReflectionMethod(ExcelSheet::class, "addConditionalFormatting"))->getNumberOfParameters() === 0) {
+    $documentedVersionGates["ExcelSheet::addConditionalFormatting"] = true;
+    $documentedVersionGates["ExcelConditionalFormatting::__construct"] = true;
+}
 foreach (glob(__DIR__ . "/../docs/Excel*.php") as $file) {
     $class = basename($file, ".php");
     $docClass = "Documentation" . $class;
@@ -126,6 +131,20 @@ foreach (glob(__DIR__ . "/../docs/Excel*.php") as $file) {
         if (!isset($documentedVersionGates["$class::$name"])
             && methodShape($method) !== methodShape($documentedMethods[$name])) {
             $errors[] = "$class::$name signature mismatch";
+        }
+    }
+
+    $runtimeConstants = $runtime->getConstants();
+    $documentedConstants = $documented->getConstants();
+    foreach (array_diff_key($runtimeConstants, $documentedConstants) as $name => $_) {
+        $errors[] = "$class::$name constant is undocumented";
+    }
+    foreach (array_diff_key($documentedConstants, $runtimeConstants) as $name => $_) {
+        $errors[] = "$class::$name constant is documented but unavailable";
+    }
+    foreach (array_intersect_key($runtimeConstants, $documentedConstants) as $name => $value) {
+        if ($value !== $documentedConstants[$name]) {
+            $errors[] = "$class::$name constant value mismatch";
         }
     }
 }

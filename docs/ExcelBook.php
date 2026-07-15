@@ -16,12 +16,12 @@ class ExcelBook
 {
 	const PICTURETYPE_PNG = 0;
 	const PICTURETYPE_JPEG = 1;
-	const PICTURETYPE_WMF = 2;
-	const PICTURETYPE_DIB = 3;
-	const PICTURETYPE_EMF = 4;
-	const PICTURETYPE_PICT = 5;
-	const PICTURETYPE_TIFF = 6;
-	const PICTURETYPE_GIF = 7;
+	const PICTURETYPE_GIF = 2;
+	const PICTURETYPE_WMF = 3;
+	const PICTURETYPE_DIB = 4;
+	const PICTURETYPE_EMF = 5;
+	const PICTURETYPE_PICT = 6;
+	const PICTURETYPE_TIFF = 7;
 	const PICTURETYPE_SVG = 8;
 
 	const SCOPE_UNDEFINED = -2;
@@ -58,11 +58,11 @@ class ExcelBook
 	const CELLSTYLE_HEADING3 = 16;
 	const CELLSTYLE_HEADING4 = 17;
 	const CELLSTYLE_TOTAL = 18;
-	const CELLSTYLE_COMMA = 19;
-	const CELLSTYLE_COMMA0 = 20;
-	const CELLSTYLE_CURRENCY = 21;
-	const CELLSTYLE_CURRENCY0 = 22;
-	const CELLSTYLE_PERCENT = 23;
+	const CELLSTYLE_COMMA = 43;
+	const CELLSTYLE_COMMA0 = 44;
+	const CELLSTYLE_CURRENCY = 45;
+	const CELLSTYLE_CURRENCY0 = 46;
+	const CELLSTYLE_PERCENT = 47;
 
 	/**
 	* Create a new Excel workbook
@@ -199,6 +199,11 @@ class ExcelBook
 
 	/**
 	* Save Excel file
+	*
+	* PHP user-defined stream wrappers must implement rename() and unlink(). PHP's
+	* stream adapter advertises both operations even when the wrapper class omits
+	* them, so save() stages the file and returns false if replacement can't run.
+	* It doesn't retry a failed staged replacement with a non-atomic direct write.
 	*
 	* @param string $filename (optional, default="") If empty or omitted, returns binary string
 	* @return string|bool If $filename is empty or omitted, returns string; otherwise returns bool
@@ -435,7 +440,7 @@ class ExcelBook
 	*
 	* @see ExcelBook::rgbMode()
 	* @param bool $mode
-	* @return void
+	* @return bool
 	*/
 	public function setRGBMode(bool $mode): bool
 	{
@@ -497,7 +502,7 @@ class ExcelBook
 	* Sets the R1C1 reference mode
 	*
 	* @param bool $active
-	* @return void
+	* @return bool
 	*/
 	public function setRefR1C1(bool $active): bool
 	{
@@ -556,7 +561,7 @@ class ExcelBook
 	* Sets the template flag
 	*
 	* @param bool $mode
-	* @return void
+	* @return bool
 	*/
 	public function setTemplate(bool $mode): bool
 	{

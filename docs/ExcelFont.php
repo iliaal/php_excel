@@ -15,8 +15,8 @@
 class ExcelFont
 {
 	const NORMAL = 0;
-	const SUBSCRIPT = 1;
-	const SUPERSCRIPT = 2;
+	const SUPERSCRIPT = 1;
+	const SUBSCRIPT = 2;
 
 	const UNDERLINE_NONE = 0;
 	const UNDERLINE_SINGLE = 1;

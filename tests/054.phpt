@@ -28,6 +28,12 @@ excel
 		}
 	}
 
+	$black = $x->colorPack(0, 0, 0);
+	if ($x->colorUnpack($black) !== ['red' => 0, 'green' => 0, 'blue' => 0]) {
+		var_dump($black, $x->colorUnpack($black));
+		exit;
+	}
+
 	echo "OK\n";
 ?>
 --EXPECT--

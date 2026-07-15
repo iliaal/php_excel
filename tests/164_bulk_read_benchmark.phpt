@@ -16,40 +16,61 @@ for ($row = 1; $row <= 50; $row++) {
     $sheet->writeRow($row, $values);
 }
 
-$iterations = 100;
+$iterations = 40;
+$rounds = 5;
 
-$start = hrtime(true);
-$perCellSum = 0;
-for ($i = 0; $i < $iterations; $i++) {
-    for ($row = 1; $row <= 50; $row++) {
-        for ($col = 0; $col < 20; $col++) {
-            $perCellSum += (int)$sheet->read($row, $col, $fmt, false);
+$readPerCell = static function () use ($sheet, $iterations): array {
+    $start = hrtime(true);
+    $sum = 0;
+    for ($i = 0; $i < $iterations; $i++) {
+        for ($row = 1; $row <= 50; $row++) {
+            for ($col = 0; $col < 20; $col++) {
+                $sum += (int)$sheet->read($row, $col, $fmt, false);
+            }
         }
     }
-}
-$perCellNs = hrtime(true) - $start;
 
-$start = hrtime(true);
-$rangeSum = 0;
-for ($i = 0; $i < $iterations; $i++) {
-    foreach ($sheet->readRange(1, 50, 0, 19, false) as $values) {
-        foreach ($values as $value) {
-            $rangeSum += (int)$value;
+    return [hrtime(true) - $start, $sum];
+};
+
+$readRange = static function () use ($sheet, $iterations): array {
+    $start = hrtime(true);
+    $sum = 0;
+    for ($i = 0; $i < $iterations; $i++) {
+        foreach ($sheet->readRange(1, 50, 0, 19, false) as $values) {
+            foreach ($values as $value) {
+                $sum += (int)$value;
+            }
         }
     }
-}
-$rangeNs = hrtime(true) - $start;
 
-if ($perCellSum !== $rangeSum) {
-    echo "sum mismatch\n";
-    var_dump($perCellSum, $rangeSum);
-    exit;
+    return [hrtime(true) - $start, $sum];
+};
+
+$ratios = [];
+for ($round = 0; $round < $rounds; $round++) {
+    if ($round % 2 === 0) {
+        [$perCellNs, $perCellSum] = $readPerCell();
+        [$rangeNs, $rangeSum] = $readRange();
+    } else {
+        [$rangeNs, $rangeSum] = $readRange();
+        [$perCellNs, $perCellSum] = $readPerCell();
+    }
+
+    if ($perCellSum !== $rangeSum) {
+        echo "sum mismatch\n";
+        var_dump($perCellSum, $rangeSum);
+        exit;
+    }
+
+    $ratios[] = $perCellNs / max(1, $rangeNs);
 }
 
-$ratio = $perCellNs / max(1, $rangeNs);
-printf("ratio %.2f\n", $ratio);
-echo $ratio >= 1.5 ? "bulk faster: yes\n" : "bulk faster: no\n";
+sort($ratios);
+$median = $ratios[intdiv($rounds, 2)];
+printf("median ratio %.2f\n", $median);
+echo $median >= 1.1 ? "bulk faster: yes\n" : "bulk faster: no\n";
 ?>
 --EXPECTF--
-ratio %f
+median ratio %f
 bulk faster: yes

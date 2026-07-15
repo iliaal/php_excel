@@ -2,7 +2,7 @@
 
 ## Requirements
 
-- PHP 8.3+ (debug build recommended: `--enable-debug`)
+- PHP 8.1+ (debug build recommended: `--enable-debug`)
 - [LibXL](http://www.libxl.com/) 4.6.0+
 - Standard C build tools (gcc, make, autoconf)
 

@@ -65,6 +65,8 @@ class ExcelConditionalFormatting
 	* @param int $rowLast (required for libxl 5.1.0+)
 	* @param int $colFirst (required for libxl 5.1.0+)
 	* @param int $colLast (required for libxl 5.1.0+)
+	* @note With libxl 4.6.0 through 5.0.x, the constructor accepts only
+	*       ExcelSheet $sheet; add ranges afterward with addRange().
 	*/
 	public function __construct(ExcelSheet $sheet, int $rowFirst, int $rowLast, int $colFirst, int $colLast)
 	{

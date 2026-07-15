@@ -9,23 +9,38 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Security
 - Stream-backed load, save, read, write, and picture operations now remain safe when user callbacks reconstruct the workbook during the operation.
+- Stream callbacks can now unregister their wrapper or throw during read, write, flush, or close without leaving native code with a freed wrapper pointer or committing incomplete input.
+- Releasing a child wrapper no longer exposes a live WeakReference to an object whose native storage is already being destroyed.
 - Path operations now use PHP streams while open_basedir is active, closing the gap between a policy check and LibXL reopening a changed path. The LibXL APIs that require a pathname (ExcelBook::loadFileWithoutEmptyCells(), ExcelBook::addPictureAsLink(), and ExcelBook::loadInfo() with LibXL older than 5.0.1) reject calls while open_basedir is active.
 - Stream saves now create unpredictable temporary files exclusively, so an existing file or symlink cannot redirect the staged write.
 
 ### Changed
 - ExcelRichString::addText() once again accepts a font from another workbook. LibXL copies the font attributes into the rich string, so the source workbook can be released immediately after the call.
 - Re-invoking a constructor on a child wrapper now throws instead of rebinding or replacing its native handle.
+- ExcelSheet::addrToRowCol() now accepts only complete A1 references within the active XLS or XLSX limits; trailing text, row zero, and out-of-range addresses return false.
+- PHP user-defined stream wrappers used by ExcelBook::save() must implement rename() and unlink(). A failed staged replacement returns false and never retries with a non-atomic direct write.
 
 ### Fixed
 - ExcelBook::save() now leaves the destination unchanged when a staged rename fails.
+- ExcelBook::save() now rejects flush and close failures, removes the staged file after write exceptions, and re-resolves wrapper metadata after every user callback.
+- Stream-backed load, partial load, metadata load, and picture import now reject read and close failures instead of passing accumulated bytes to LibXL.
 - ExcelBook::insertSheet() no longer invalidates wrappers for existing sheets; LibXL keeps those sheet handles stable across insertion.
 - ExcelSheet::setAutoFitArea() and direct ExcelConditionalFormatting construction now reject inverted finite ranges.
+- Direct ExcelTable construction now rejects inverted rows and columns before LibXL can corrupt the workbook.
+- Public double parameters now reject NAN and infinity before calling LibXL.
+- ExcelSheet::setHeader() and setFooter() now apply the 255-character limit by character when the book uses a UTF-8 locale.
+- ExcelBook::colorUnpack() now accepts packed black (`0`) and returns its RGB components.
+- Sparse row and column reads with an omitted end now start at LibXL's first filled row or column, avoiding full-sheet scans for data near the XLSX limits.
+- ExcelAutoFilter::getSort() now builds with both the transient LibXL 5.2.0 sort-level API and the restored 5.2.0.1 signature.
 - The API reference now matches every public runtime signature, including parameter names, types, defaults, and return types.
+- The API reference now matches all runtime constant values and documents the LibXL 4.6.0 through 5.0.x conditional-formatting signatures.
 - Added the PHP License 3.01 file referenced by the source headers and package documentation.
 
 ### For contributors
 - CI now rejects all-skipped PHPT runs and verifies that the extension loaded before running the suite.
 - The main ASan suite now runs without LibXL leak suppressions. Only the two tests that exercise a confirmed LibXL leak use the vendor suppression.
+- Configure now keeps automatic header and library discovery under one prefix and rejects a library that lacks symbols required by the selected LibXL headers.
+- CONTRIBUTING.md now states the supported PHP 8.1 minimum.
 
 ## [2.4.0] - 2026-07-09
 
@@ -42,7 +57,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 - ExcelFont::size() now rejects a non-positive size (E_WARNING + false) instead of silently ignoring it and returning the current size as if it were a getter. Getter mode (no argument or null) and valid sizes are unchanged.
-- ExcelBook::save() to a stream path (e.g. file://) no longer truncates and destroys the caller's existing file on a short or interrupted write; wrappers that cannot rename fall back to a non-atomic direct write (plain paths were already atomic via libxl).
+- ExcelBook::save() to a stream path (e.g. file://) no longer truncates and destroys the caller's existing file on a short or interrupted write. Native wrappers without rename support use a non-atomic direct write; PHP user-defined wrappers must implement rename() and unlink() because PHP's adapter advertises both operations.
 - load(), loadFile(), loadInfoRaw(), and addPictureFromString()/addPictureFromFile() now reject buffers larger than UINT_MAX instead of silently truncating a >4 GiB payload at libxl's unsigned size parameter.
 - ExcelSheet::writeRow()/writeCol() now reject an unwritable value (bad type, embedded NUL, unpackable AS_DATE) before writing any cell, instead of committing earlier cells and then failing mid-array.
 - Inverted ranges (first > last) are now rejected across the range methods (hyperlinks, autofilter setRef, conditional formatting, data validation, clear, insert/remove row/col) instead of being stored as garbage coordinates; equal endpoints stay valid.

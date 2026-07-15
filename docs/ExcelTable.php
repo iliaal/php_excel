@@ -24,12 +24,12 @@ class ExcelTable
 	const TABLESTYLE_LIGHT8 = 8;
 	const TABLESTYLE_LIGHT9 = 9;
 	const TABLESTYLE_LIGHT10 = 10;
-	const TABLESTYLE_MEDIUM1 = 11;
-	const TABLESTYLE_MEDIUM2 = 12;
-	const TABLESTYLE_MEDIUM3 = 13;
-	const TABLESTYLE_DARK1 = 14;
-	const TABLESTYLE_DARK2 = 15;
-	const TABLESTYLE_DARK3 = 16;
+	const TABLESTYLE_MEDIUM1 = 22;
+	const TABLESTYLE_MEDIUM2 = 23;
+	const TABLESTYLE_MEDIUM3 = 24;
+	const TABLESTYLE_DARK1 = 50;
+	const TABLESTYLE_DARK2 = 51;
+	const TABLESTYLE_DARK3 = 52;
 
 	/**
 	* Create a table within an Excel sheet

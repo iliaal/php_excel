@@ -74,3 +74,4 @@ CLAUDE.md
 .env
 configure.ac
 *.dep
+.plan/
