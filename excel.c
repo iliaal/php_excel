@@ -850,25 +850,29 @@ static void php_excel_child_object_std_dtor(zval *parent, zend_object *std)
 	zval_ptr_dtor(&saved_parent);
 }
 
-static void excel_sheet_object_free_storage(zend_object *object)
-{
-	excel_sheet_object *intern = php_excel_sheet_object_fetch_object(object);
-	php_excel_child_object_std_dtor(&intern->parent, &intern->std);
+/* Child wrappers (except book, and font/format with clone helpers) share
+ * identical free_storage / object_new bodies. Keep book and *_ex clone
+ * constructors hand-written. */
+#define EXCEL_CHILD_FREE_STORAGE(c_name) \
+static void excel_ ## c_name ## _object_free_storage(zend_object *object) \
+{ \
+	excel_ ## c_name ## _object *intern = php_excel_ ## c_name ## _object_fetch_object(object); \
+	php_excel_child_object_std_dtor(&intern->parent, &intern->std); \
 }
 
-static zend_object *excel_object_new_sheet(zend_class_entry *class_type)
-{
-	excel_sheet_object *intern;
-
-	intern = zend_object_alloc(sizeof(excel_sheet_object), class_type);
-
-	zend_object_std_init(&intern->std, class_type);
-	object_properties_init(&intern->std, class_type);
-
-	intern->std.handlers = &excel_object_handlers_sheet;
-
-	return &intern->std;
+#define EXCEL_CHILD_OBJECT_NEW(c_name) \
+static zend_object *excel_object_new_ ## c_name(zend_class_entry *class_type) \
+{ \
+	excel_ ## c_name ## _object *intern; \
+	intern = zend_object_alloc(sizeof(excel_ ## c_name ## _object), class_type); \
+	zend_object_std_init(&intern->std, class_type); \
+	object_properties_init(&intern->std, class_type); \
+	intern->std.handlers = &excel_object_handlers_ ## c_name; \
+	return &intern->std; \
 }
+
+EXCEL_CHILD_FREE_STORAGE(sheet)
+EXCEL_CHILD_OBJECT_NEW(sheet)
 
 static void excel_font_object_free_storage(zend_object *object)
 {
@@ -998,165 +1002,29 @@ static zend_object *excel_format_object_clone(zend_object *object)
 	return new_ov;
 }
 
-static void excel_autofilter_object_free_storage(zend_object *object)
-{
-	excel_autofilter_object *intern = php_excel_autofilter_object_fetch_object(object);
-	php_excel_child_object_std_dtor(&intern->parent, &intern->std);
-}
+EXCEL_CHILD_FREE_STORAGE(autofilter)
+EXCEL_CHILD_OBJECT_NEW(autofilter)
 
-static zend_object *excel_object_new_autofilter(zend_class_entry *class_type)
-{
-	excel_autofilter_object *intern;
+EXCEL_CHILD_FREE_STORAGE(filtercolumn)
+EXCEL_CHILD_OBJECT_NEW(filtercolumn)
 
-	intern = zend_object_alloc(sizeof(excel_autofilter_object), class_type);
+EXCEL_CHILD_FREE_STORAGE(richstring)
+EXCEL_CHILD_OBJECT_NEW(richstring)
 
-	zend_object_std_init(&intern->std, class_type);
-	object_properties_init(&intern->std, class_type);
+EXCEL_CHILD_FREE_STORAGE(formcontrol)
+EXCEL_CHILD_OBJECT_NEW(formcontrol)
 
-	intern->std.handlers = &excel_object_handlers_autofilter;
+EXCEL_CHILD_FREE_STORAGE(conditionalformat)
+EXCEL_CHILD_OBJECT_NEW(conditionalformat)
 
-	return &intern->std;
-}
+EXCEL_CHILD_FREE_STORAGE(conditionalformatting)
+EXCEL_CHILD_OBJECT_NEW(conditionalformatting)
 
-static void excel_filtercolumn_object_free_storage(zend_object *object)
-{
-	excel_filtercolumn_object *intern = php_excel_filtercolumn_object_fetch_object(object);
-	php_excel_child_object_std_dtor(&intern->parent, &intern->std);
-}
+EXCEL_CHILD_FREE_STORAGE(coreproperties)
+EXCEL_CHILD_OBJECT_NEW(coreproperties)
 
-static zend_object *excel_object_new_filtercolumn(zend_class_entry *class_type)
-{
-	excel_filtercolumn_object *intern;
-
-	intern = zend_object_alloc(sizeof(excel_filtercolumn_object), class_type);
-
-	zend_object_std_init(&intern->std, class_type);
-	object_properties_init(&intern->std, class_type);
-
-	intern->std.handlers = &excel_object_handlers_filtercolumn;
-
-	return &intern->std;
-}
-
-static void excel_richstring_object_free_storage(zend_object *object)
-{
-	excel_richstring_object *intern = php_excel_richstring_object_fetch_object(object);
-	php_excel_child_object_std_dtor(&intern->parent, &intern->std);
-}
-
-static zend_object *excel_object_new_richstring(zend_class_entry *class_type)
-{
-	excel_richstring_object *intern;
-
-	intern = zend_object_alloc(sizeof(excel_richstring_object), class_type);
-
-	zend_object_std_init(&intern->std, class_type);
-	object_properties_init(&intern->std, class_type);
-
-	intern->std.handlers = &excel_object_handlers_richstring;
-
-	return &intern->std;
-}
-
-static void excel_formcontrol_object_free_storage(zend_object *object)
-{
-	excel_formcontrol_object *intern = php_excel_formcontrol_object_fetch_object(object);
-	php_excel_child_object_std_dtor(&intern->parent, &intern->std);
-}
-
-static zend_object *excel_object_new_formcontrol(zend_class_entry *class_type)
-{
-	excel_formcontrol_object *intern;
-
-	intern = zend_object_alloc(sizeof(excel_formcontrol_object), class_type);
-
-	zend_object_std_init(&intern->std, class_type);
-	object_properties_init(&intern->std, class_type);
-
-	intern->std.handlers = &excel_object_handlers_formcontrol;
-
-	return &intern->std;
-}
-
-static void excel_conditionalformat_object_free_storage(zend_object *object)
-{
-	excel_conditionalformat_object *intern = php_excel_conditionalformat_object_fetch_object(object);
-	php_excel_child_object_std_dtor(&intern->parent, &intern->std);
-}
-
-static zend_object *excel_object_new_conditionalformat(zend_class_entry *class_type)
-{
-	excel_conditionalformat_object *intern;
-
-	intern = zend_object_alloc(sizeof(excel_conditionalformat_object), class_type);
-
-	zend_object_std_init(&intern->std, class_type);
-	object_properties_init(&intern->std, class_type);
-
-	intern->std.handlers = &excel_object_handlers_conditionalformat;
-
-	return &intern->std;
-}
-
-static void excel_conditionalformatting_object_free_storage(zend_object *object)
-{
-	excel_conditionalformatting_object *intern = php_excel_conditionalformatting_object_fetch_object(object);
-	php_excel_child_object_std_dtor(&intern->parent, &intern->std);
-}
-
-static zend_object *excel_object_new_conditionalformatting(zend_class_entry *class_type)
-{
-	excel_conditionalformatting_object *intern;
-
-	intern = zend_object_alloc(sizeof(excel_conditionalformatting_object), class_type);
-
-	zend_object_std_init(&intern->std, class_type);
-	object_properties_init(&intern->std, class_type);
-
-	intern->std.handlers = &excel_object_handlers_conditionalformatting;
-
-	return &intern->std;
-}
-
-static void excel_coreproperties_object_free_storage(zend_object *object)
-{
-	excel_coreproperties_object *intern = php_excel_coreproperties_object_fetch_object(object);
-	php_excel_child_object_std_dtor(&intern->parent, &intern->std);
-}
-
-static zend_object *excel_object_new_coreproperties(zend_class_entry *class_type)
-{
-	excel_coreproperties_object *intern;
-
-	intern = zend_object_alloc(sizeof(excel_coreproperties_object), class_type);
-
-	zend_object_std_init(&intern->std, class_type);
-	object_properties_init(&intern->std, class_type);
-
-	intern->std.handlers = &excel_object_handlers_coreproperties;
-
-	return &intern->std;
-}
-
-static void excel_table_object_free_storage(zend_object *object)
-{
-	excel_table_object *intern = php_excel_table_object_fetch_object(object);
-	php_excel_child_object_std_dtor(&intern->parent, &intern->std);
-}
-
-static zend_object *excel_object_new_table(zend_class_entry *class_type)
-{
-	excel_table_object *intern;
-
-	intern = zend_object_alloc(sizeof(excel_table_object), class_type);
-
-	zend_object_std_init(&intern->std, class_type);
-	object_properties_init(&intern->std, class_type);
-
-	intern->std.handlers = &excel_object_handlers_table;
-
-	return &intern->std;
-}
+EXCEL_CHILD_FREE_STORAGE(table)
+EXCEL_CHILD_OBJECT_NEW(table)
 
 /* Child wrappers hold a strong zval reference to their parent book/sheet
  * (excel_<c_name>_object.parent) that the std object handlers do not expose.
@@ -3370,27 +3238,51 @@ EXCEL_METHOD(Font, size)
 }
 /* }}} */
 
+/* Font long/bool option helpers — same pattern as Format options.
+ * size() and name() stay hand-written (size rejects <=0; name is string). */
+#define PHP_EXCEL_LONG_FONT_OPTION(method_name, api_name) \
+	{ \
+		FontHandle font; \
+		zval *object = ZEND_THIS; \
+		zend_long data = 0; \
+		bool data_is_null = 1; \
+		ZEND_PARSE_PARAMETERS_START(0, 1) \
+			Z_PARAM_OPTIONAL \
+			Z_PARAM_LONG_OR_NULL(data, data_is_null) \
+		ZEND_PARSE_PARAMETERS_END_EX(RETURN_FALSE); \
+		FONT_FROM_OBJECT(font, object); \
+		if (!data_is_null) { \
+			if (data < 0 || data > INT_MAX) { \
+				php_error_docref(NULL, E_WARNING, "Argument out of int range"); \
+				RETURN_FALSE; \
+			} \
+			xlFontSet ## api_name (font, (int)data); \
+		} \
+		RETURN_LONG(xlFont ## api_name (font)); \
+	}
+
+#define PHP_EXCEL_BOOL_FONT_OPTION(method_name, api_name) \
+	{ \
+		FontHandle font; \
+		zval *object = ZEND_THIS; \
+		bool data = 0; \
+		bool data_is_null = 1; \
+		ZEND_PARSE_PARAMETERS_START(0, 1) \
+			Z_PARAM_OPTIONAL \
+			Z_PARAM_BOOL_OR_NULL(data, data_is_null) \
+		ZEND_PARSE_PARAMETERS_END_EX(RETURN_FALSE); \
+		FONT_FROM_OBJECT(font, object); \
+		if (!data_is_null) { \
+			xlFontSet ## api_name (font, data); \
+		} \
+		RETURN_BOOL(xlFont ## api_name (font)); \
+	}
+
 /* {{{ proto bool ExcelFont::italics([bool italics])
 	Get or set the if italics are enabled */
 EXCEL_METHOD(Font, italics)
 {
-	zval *object = ZEND_THIS;
-	FontHandle font;
-	bool italics = 0;
-	bool italics_is_null = 1;
-
-	ZEND_PARSE_PARAMETERS_START(0, 1)
-		Z_PARAM_OPTIONAL
-		Z_PARAM_BOOL_OR_NULL(italics, italics_is_null)
-	ZEND_PARSE_PARAMETERS_END_EX(RETURN_FALSE);
-
-	FONT_FROM_OBJECT(font, object);
-
-	if (!italics_is_null) {
-		xlFontSetItalic(font, italics);
-	}
-
-	RETURN_BOOL(xlFontItalic(font));
+	PHP_EXCEL_BOOL_FONT_OPTION(italics, Italic);
 }
 /* }}} */
 
@@ -3398,23 +3290,7 @@ EXCEL_METHOD(Font, italics)
 	Get or set the font strike-through */
 EXCEL_METHOD(Font, strike)
 {
-	zval *object = ZEND_THIS;
-	FontHandle font;
-	bool strike = 0;
-	bool strike_is_null = 1;
-
-	ZEND_PARSE_PARAMETERS_START(0, 1)
-		Z_PARAM_OPTIONAL
-		Z_PARAM_BOOL_OR_NULL(strike, strike_is_null)
-	ZEND_PARSE_PARAMETERS_END_EX(RETURN_FALSE);
-
-	FONT_FROM_OBJECT(font, object);
-
-	if (!strike_is_null) {
-		xlFontSetStrikeOut(font, strike);
-	}
-
-	RETURN_BOOL(xlFontStrikeOut(font));
+	PHP_EXCEL_BOOL_FONT_OPTION(strike, StrikeOut);
 }
 /* }}} */
 
@@ -3422,23 +3298,7 @@ EXCEL_METHOD(Font, strike)
 	Get or set the font bold */
 EXCEL_METHOD(Font, bold)
 {
-	zval *object = ZEND_THIS;
-	FontHandle font;
-	bool bold = 0;
-	bool bold_is_null = 1;
-
-	ZEND_PARSE_PARAMETERS_START(0, 1)
-		Z_PARAM_OPTIONAL
-		Z_PARAM_BOOL_OR_NULL(bold, bold_is_null)
-	ZEND_PARSE_PARAMETERS_END_EX(RETURN_FALSE);
-
-	FONT_FROM_OBJECT(font, object);
-
-	if (!bold_is_null) {
-		xlFontSetBold(font, bold);
-	}
-
-	RETURN_BOOL(xlFontBold(font));
+	PHP_EXCEL_BOOL_FONT_OPTION(bold, Bold);
 }
 /* }}} */
 
@@ -3446,27 +3306,7 @@ EXCEL_METHOD(Font, bold)
 	Get or set the font color */
 EXCEL_METHOD(Font, color)
 {
-	zval *object = ZEND_THIS;
-	FontHandle font;
-	zend_long color = 0;
-	bool color_is_null = 1;
-
-	ZEND_PARSE_PARAMETERS_START(0, 1)
-		Z_PARAM_OPTIONAL
-		Z_PARAM_LONG_OR_NULL(color, color_is_null)
-	ZEND_PARSE_PARAMETERS_END_EX(RETURN_FALSE);
-
-	FONT_FROM_OBJECT(font, object);
-
-	if (!color_is_null) {
-		if (color < 0 || color > INT_MAX) {
-			php_error_docref(NULL, E_WARNING, "Argument out of int range");
-			RETURN_FALSE;
-		}
-		xlFontSetColor(font, (int)color);
-	}
-
-	RETURN_LONG(xlFontColor(font));
+	PHP_EXCEL_LONG_FONT_OPTION(color, Color);
 }
 /* }}} */
 
@@ -3474,27 +3314,8 @@ EXCEL_METHOD(Font, color)
 	Get or set the font mode */
 EXCEL_METHOD(Font, mode)
 {
-	zval *object = ZEND_THIS;
-	FontHandle font;
-	zend_long mode = 0;
-	bool mode_is_null = 1;
-
-	ZEND_PARSE_PARAMETERS_START(0, 1)
-		Z_PARAM_OPTIONAL
-		Z_PARAM_LONG_OR_NULL(mode, mode_is_null)
-	ZEND_PARSE_PARAMETERS_END_EX(RETURN_FALSE);
-
-	FONT_FROM_OBJECT(font, object);
-
-	if (!mode_is_null) {
-		if (mode < 0 || mode > INT_MAX) {
-			php_error_docref(NULL, E_WARNING, "Argument out of int range");
-			RETURN_FALSE;
-		}
-		xlFontSetScript(font, (int)mode);
-	}
-
-	RETURN_LONG(xlFontScript(font));
+	/* LibXL names this "Script" (super/subscript); PHP API is mode(). */
+	PHP_EXCEL_LONG_FONT_OPTION(mode, Script);
 }
 /* }}} */
 
@@ -3502,27 +3323,7 @@ EXCEL_METHOD(Font, mode)
 	Get or set the font underline style */
 EXCEL_METHOD(Font, underline)
 {
-	zval *object = ZEND_THIS;
-	FontHandle font;
-	zend_long underline = 0;
-	bool underline_is_null = 1;
-
-	ZEND_PARSE_PARAMETERS_START(0, 1)
-		Z_PARAM_OPTIONAL
-		Z_PARAM_LONG_OR_NULL(underline, underline_is_null)
-	ZEND_PARSE_PARAMETERS_END_EX(RETURN_FALSE);
-
-	FONT_FROM_OBJECT(font, object);
-
-	if (!underline_is_null) {
-		if (underline < 0 || underline > INT_MAX) {
-			php_error_docref(NULL, E_WARNING, "Argument out of int range");
-			RETURN_FALSE;
-		}
-		xlFontSetUnderline(font, (int)underline);
-	}
-
-	RETURN_LONG(xlFontUnderline(font));
+	PHP_EXCEL_LONG_FONT_OPTION(underline, Underline);
 }
 /* }}} */
 
@@ -4095,12 +3896,11 @@ bool php_excel_read_cell(int row, int col, zval *val, SheetHandle sheet, BookHan
 	const char *s;
 	if (read_formula && xlSheetIsFormula(sheet, row, col)) {
 		s = xlSheetReadFormula(sheet, row, col, format);
-		if (s) {
-			ZVAL_STRING(val, (char *)s);
-			return 1;
-		} else {
+		if (!s) {
 			return 0;
 		}
+		ZVAL_STRING(val, (char *)s);
+		return 1;
 	}
 
 	switch (xlSheetCellType(sheet, row, col)) {
@@ -4112,10 +3912,9 @@ bool php_excel_read_cell(int row, int col, zval *val, SheetHandle sheet, BookHan
 		case CELLTYPE_BLANK:
 			if (!xlSheetReadBlank(sheet, row, col, format)) {
 				return 0;
-			} else {
-				ZVAL_NULL(val);
-				return 1;
 			}
+			ZVAL_NULL(val);
+			return 1;
 
 		case CELLTYPE_NUMBER: {
 			double d = xlSheetReadNum(sheet, row, col, format);
@@ -4123,24 +3922,21 @@ bool php_excel_read_cell(int row, int col, zval *val, SheetHandle sheet, BookHan
 				zend_long dt = _php_excel_date_unpack(book, d);
 				if (dt == -1) {
 					return 0;
-				} else {
-					ZVAL_LONG(val, dt);
-					return 1;
 				}
-			} else {
-				ZVAL_DOUBLE(val, d);
+				ZVAL_LONG(val, dt);
 				return 1;
 			}
+			ZVAL_DOUBLE(val, d);
+			return 1;
 		}
 
 		case CELLTYPE_STRING: {
 			s = xlSheetReadStr(sheet, row, col, format);
-			if (s) {
-				ZVAL_STRING(val, (char *)s);
-				return 1;
-			} else {
+			if (!s) {
 				return 0;
 			}
+			ZVAL_STRING(val, (char *)s);
+			return 1;
 		}
 
 		case CELLTYPE_BOOLEAN:
@@ -4256,9 +4052,8 @@ EXCEL_METHOD(Sheet, readRow)
 			zval_ptr_dtor(return_value);
 			php_error_docref(NULL, E_WARNING, "Failed to read cell in row " ZEND_LONG_FMT ", column %d with error '%s'", row, lc, xlBookErrorMessage(book));
 			RETURN_FALSE;
-		} else {
-			add_next_index_zval(return_value, &value);
 		}
+		add_next_index_zval(return_value, &value);
 
 		lc++;
 	}
@@ -4328,9 +4123,8 @@ EXCEL_METHOD(Sheet, readCol)
 			zval_ptr_dtor(return_value);
 			php_error_docref(NULL, E_WARNING, "Failed to read cell in row %d, column " ZEND_LONG_FMT " with error '%s'", lc, col, xlBookErrorMessage(book));
 			RETURN_FALSE;
-		} else {
-			add_next_index_zval(return_value, &value);
 		}
+		add_next_index_zval(return_value, &value);
 
 		lc++;
 	}
@@ -4655,11 +4449,7 @@ bool php_excel_write_cell(SheetHandle sheet, excel_book_object *book_obj, int ro
 			if (EXCEL_G(ini_skip_empty) > 0) {
 				return 1;
 			}
-			if (!format) {
-				return xlSheetWriteBlank(sheet, row, col, NULL);
-			} else {
-				return xlSheetWriteBlank(sheet, row, col, format);
-			}
+			return xlSheetWriteBlank(sheet, row, col, format);
 
 		case IS_LONG:
 			if (dtype == PHP_EXCEL_DATE) {
@@ -4756,8 +4546,6 @@ bool php_excel_write_cell(SheetHandle sheet, excel_book_object *book_obj, int ro
 		default:
 			return 0;
 	}
-
-	return 0;
 }
 
 /* {{{ proto bool ExcelSheet::write(int row, int column, mixed data [, ExcelFormat format [, int datatype]])
@@ -9074,244 +8862,102 @@ EXCEL_METHOD(FormControl, __construct)
 	EXCEL_INIT_SHEET_PARENT(obj, zsheet);
 }
 
-EXCEL_METHOD(FormControl, objectType)
-{
-	zval *object = ZEND_THIS;
-	FormControlHandle fc;
-
-	ZEND_PARSE_PARAMETERS_NONE();
-
-	FORMCONTROL_FROM_OBJECT(fc, object);
-	RETURN_LONG(xlFormControlObjectType(fc));
+#define FORMCONTROL_LONG_GETTER(method_name, api_func) \
+EXCEL_METHOD(FormControl, method_name) \
+{ \
+	zval *object = ZEND_THIS; \
+	FormControlHandle fc; \
+	ZEND_PARSE_PARAMETERS_NONE(); \
+	FORMCONTROL_FROM_OBJECT(fc, object); \
+	RETURN_LONG(api_func(fc)); \
 }
 
-EXCEL_METHOD(FormControl, checked)
-{
-	zval *object = ZEND_THIS;
-	FormControlHandle fc;
-	ZEND_PARSE_PARAMETERS_NONE();
-
-	FORMCONTROL_FROM_OBJECT(fc, object);
-	RETURN_LONG(xlFormControlChecked(fc));
+#define FORMCONTROL_LONG_SETTER(method_name, api_func) \
+EXCEL_METHOD(FormControl, method_name) \
+{ \
+	zval *object = ZEND_THIS; \
+	FormControlHandle fc; \
+	zend_long val; \
+	if (zend_parse_parameters(ZEND_NUM_ARGS(), "l", &val) == FAILURE) { \
+		RETURN_FALSE; \
+	} \
+	EXCEL_VALIDATE_INT_RANGE(val) \
+	FORMCONTROL_FROM_OBJECT(fc, object); \
+	api_func(fc, val); \
+	RETURN_TRUE; \
 }
 
-EXCEL_METHOD(FormControl, setChecked)
-{
-	zval *object = ZEND_THIS;
-	FormControlHandle fc;
-	zend_long val;
-	if (zend_parse_parameters(ZEND_NUM_ARGS(), "l", &val) == FAILURE) {
-		RETURN_FALSE;
-	}
-	EXCEL_VALIDATE_INT_RANGE(val)
-	FORMCONTROL_FROM_OBJECT(fc, object);
-	xlFormControlSetChecked(fc, val);
-	RETURN_TRUE;
+#define FORMCONTROL_STRING_GETTER(method_name, api_func) \
+EXCEL_METHOD(FormControl, method_name) \
+{ \
+	zval *object = ZEND_THIS; \
+	FormControlHandle fc; \
+	const char *result; \
+	ZEND_PARSE_PARAMETERS_NONE(); \
+	FORMCONTROL_FROM_OBJECT(fc, object); \
+	result = api_func(fc); \
+	PE_RETURN_IS_STRING(result) \
 }
 
-EXCEL_METHOD(FormControl, fmlaGroup)
-{
-	zval *object = ZEND_THIS;
-	FormControlHandle fc;
-	const char *result;
-	ZEND_PARSE_PARAMETERS_NONE();
-
-	FORMCONTROL_FROM_OBJECT(fc, object);
-	result = xlFormControlFmlaGroup(fc);
-	PE_RETURN_IS_STRING(result)
+#define FORMCONTROL_STRING_SETTER(method_name, api_func) \
+EXCEL_METHOD(FormControl, method_name) \
+{ \
+	zval *object = ZEND_THIS; \
+	FormControlHandle fc; \
+	zend_string *val; \
+	if (zend_parse_parameters(ZEND_NUM_ARGS(), "S", &val) == FAILURE) { \
+		RETURN_FALSE; \
+	} \
+	EXCEL_NUL_SAFE_STRING(val) \
+	FORMCONTROL_FROM_OBJECT(fc, object); \
+	api_func(fc, ZSTR_VAL(val)); \
+	RETURN_TRUE; \
 }
 
-EXCEL_METHOD(FormControl, setFmlaGroup)
-{
-	zval *object = ZEND_THIS;
-	FormControlHandle fc;
-	zend_string *val;
-	if (zend_parse_parameters(ZEND_NUM_ARGS(), "S", &val) == FAILURE) {
-		RETURN_FALSE;
-	}
-	EXCEL_NUL_SAFE_STRING(val)
-	FORMCONTROL_FROM_OBJECT(fc, object);
-	xlFormControlSetFmlaGroup(fc, ZSTR_VAL(val));
-	RETURN_TRUE;
+#define FORMCONTROL_BOOL_GETTER(method_name, api_func) \
+EXCEL_METHOD(FormControl, method_name) \
+{ \
+	zval *object = ZEND_THIS; \
+	FormControlHandle fc; \
+	ZEND_PARSE_PARAMETERS_NONE(); \
+	FORMCONTROL_FROM_OBJECT(fc, object); \
+	RETURN_BOOL(api_func(fc)); \
 }
 
-EXCEL_METHOD(FormControl, fmlaLink)
-{
-	zval *object = ZEND_THIS;
-	FormControlHandle fc;
-	const char *result;
-	ZEND_PARSE_PARAMETERS_NONE();
-
-	FORMCONTROL_FROM_OBJECT(fc, object);
-	result = xlFormControlFmlaLink(fc);
-	PE_RETURN_IS_STRING(result)
+#define FORMCONTROL_BOOL_SETTER(method_name, api_func) \
+EXCEL_METHOD(FormControl, method_name) \
+{ \
+	zval *object = ZEND_THIS; \
+	FormControlHandle fc; \
+	bool val; \
+	if (zend_parse_parameters(ZEND_NUM_ARGS(), "b", &val) == FAILURE) { \
+		RETURN_FALSE; \
+	} \
+	FORMCONTROL_FROM_OBJECT(fc, object); \
+	api_func(fc, val); \
+	RETURN_TRUE; \
 }
 
-EXCEL_METHOD(FormControl, setFmlaLink)
-{
-	zval *object = ZEND_THIS;
-	FormControlHandle fc;
-	zend_string *val;
-	if (zend_parse_parameters(ZEND_NUM_ARGS(), "S", &val) == FAILURE) {
-		RETURN_FALSE;
-	}
-	EXCEL_NUL_SAFE_STRING(val)
-	FORMCONTROL_FROM_OBJECT(fc, object);
-	xlFormControlSetFmlaLink(fc, ZSTR_VAL(val));
-	RETURN_TRUE;
-}
-
-EXCEL_METHOD(FormControl, fmlaRange)
-{
-	zval *object = ZEND_THIS;
-	FormControlHandle fc;
-	const char *result;
-	ZEND_PARSE_PARAMETERS_NONE();
-
-	FORMCONTROL_FROM_OBJECT(fc, object);
-	result = xlFormControlFmlaRange(fc);
-	PE_RETURN_IS_STRING(result)
-}
-
-EXCEL_METHOD(FormControl, setFmlaRange)
-{
-	zval *object = ZEND_THIS;
-	FormControlHandle fc;
-	zend_string *val;
-	if (zend_parse_parameters(ZEND_NUM_ARGS(), "S", &val) == FAILURE) {
-		RETURN_FALSE;
-	}
-	EXCEL_NUL_SAFE_STRING(val)
-	FORMCONTROL_FROM_OBJECT(fc, object);
-	xlFormControlSetFmlaRange(fc, ZSTR_VAL(val));
-	RETURN_TRUE;
-}
-
-EXCEL_METHOD(FormControl, fmlaTxbx)
-{
-	zval *object = ZEND_THIS;
-	FormControlHandle fc;
-	const char *result;
-	ZEND_PARSE_PARAMETERS_NONE();
-
-	FORMCONTROL_FROM_OBJECT(fc, object);
-	result = xlFormControlFmlaTxbx(fc);
-	PE_RETURN_IS_STRING(result)
-}
-
-EXCEL_METHOD(FormControl, setFmlaTxbx)
-{
-	zval *object = ZEND_THIS;
-	FormControlHandle fc;
-	zend_string *val;
-	if (zend_parse_parameters(ZEND_NUM_ARGS(), "S", &val) == FAILURE) {
-		RETURN_FALSE;
-	}
-	EXCEL_NUL_SAFE_STRING(val)
-	FORMCONTROL_FROM_OBJECT(fc, object);
-	xlFormControlSetFmlaTxbx(fc, ZSTR_VAL(val));
-	RETURN_TRUE;
-}
-
-EXCEL_METHOD(FormControl, name)
-{
-	zval *object = ZEND_THIS;
-	FormControlHandle fc;
-	const char *result;
-	ZEND_PARSE_PARAMETERS_NONE();
-
-	FORMCONTROL_FROM_OBJECT(fc, object);
-	result = xlFormControlName(fc);
-	PE_RETURN_IS_STRING(result)
-}
-
-EXCEL_METHOD(FormControl, linkedCell)
-{
-	zval *object = ZEND_THIS;
-	FormControlHandle fc;
-	const char *result;
-	ZEND_PARSE_PARAMETERS_NONE();
-
-	FORMCONTROL_FROM_OBJECT(fc, object);
-	result = xlFormControlLinkedCell(fc);
-	PE_RETURN_IS_STRING(result)
-}
-
-EXCEL_METHOD(FormControl, listFillRange)
-{
-	zval *object = ZEND_THIS;
-	FormControlHandle fc;
-	const char *result;
-	ZEND_PARSE_PARAMETERS_NONE();
-
-	FORMCONTROL_FROM_OBJECT(fc, object);
-	result = xlFormControlListFillRange(fc);
-	PE_RETURN_IS_STRING(result)
-}
-
-EXCEL_METHOD(FormControl, macro)
-{
-	zval *object = ZEND_THIS;
-	FormControlHandle fc;
-	const char *result;
-	ZEND_PARSE_PARAMETERS_NONE();
-
-	FORMCONTROL_FROM_OBJECT(fc, object);
-	result = xlFormControlMacro(fc);
-	PE_RETURN_IS_STRING(result)
-}
-
-EXCEL_METHOD(FormControl, altText)
-{
-	zval *object = ZEND_THIS;
-	FormControlHandle fc;
-	const char *result;
-	ZEND_PARSE_PARAMETERS_NONE();
-
-	FORMCONTROL_FROM_OBJECT(fc, object);
-	result = xlFormControlAltText(fc);
-	PE_RETURN_IS_STRING(result)
-}
-
-EXCEL_METHOD(FormControl, locked)
-{
-	zval *object = ZEND_THIS;
-	FormControlHandle fc;
-	ZEND_PARSE_PARAMETERS_NONE();
-
-	FORMCONTROL_FROM_OBJECT(fc, object);
-	RETURN_BOOL(xlFormControlLocked(fc));
-}
-
-EXCEL_METHOD(FormControl, defaultSize)
-{
-	zval *object = ZEND_THIS;
-	FormControlHandle fc;
-	ZEND_PARSE_PARAMETERS_NONE();
-
-	FORMCONTROL_FROM_OBJECT(fc, object);
-	RETURN_BOOL(xlFormControlDefaultSize(fc));
-}
-
-EXCEL_METHOD(FormControl, print)
-{
-	zval *object = ZEND_THIS;
-	FormControlHandle fc;
-	ZEND_PARSE_PARAMETERS_NONE();
-
-	FORMCONTROL_FROM_OBJECT(fc, object);
-	RETURN_BOOL(xlFormControlPrint(fc));
-}
-
-EXCEL_METHOD(FormControl, disabled)
-{
-	zval *object = ZEND_THIS;
-	FormControlHandle fc;
-	ZEND_PARSE_PARAMETERS_NONE();
-
-	FORMCONTROL_FROM_OBJECT(fc, object);
-	RETURN_BOOL(xlFormControlDisabled(fc));
-}
+FORMCONTROL_LONG_GETTER(objectType, xlFormControlObjectType)
+FORMCONTROL_LONG_GETTER(checked, xlFormControlChecked)
+FORMCONTROL_LONG_SETTER(setChecked, xlFormControlSetChecked)
+FORMCONTROL_STRING_GETTER(fmlaGroup, xlFormControlFmlaGroup)
+FORMCONTROL_STRING_SETTER(setFmlaGroup, xlFormControlSetFmlaGroup)
+FORMCONTROL_STRING_GETTER(fmlaLink, xlFormControlFmlaLink)
+FORMCONTROL_STRING_SETTER(setFmlaLink, xlFormControlSetFmlaLink)
+FORMCONTROL_STRING_GETTER(fmlaRange, xlFormControlFmlaRange)
+FORMCONTROL_STRING_SETTER(setFmlaRange, xlFormControlSetFmlaRange)
+FORMCONTROL_STRING_GETTER(fmlaTxbx, xlFormControlFmlaTxbx)
+FORMCONTROL_STRING_SETTER(setFmlaTxbx, xlFormControlSetFmlaTxbx)
+FORMCONTROL_STRING_GETTER(name, xlFormControlName)
+FORMCONTROL_STRING_GETTER(linkedCell, xlFormControlLinkedCell)
+FORMCONTROL_STRING_GETTER(listFillRange, xlFormControlListFillRange)
+FORMCONTROL_STRING_GETTER(macro, xlFormControlMacro)
+FORMCONTROL_STRING_GETTER(altText, xlFormControlAltText)
+FORMCONTROL_BOOL_GETTER(locked, xlFormControlLocked)
+FORMCONTROL_BOOL_GETTER(defaultSize, xlFormControlDefaultSize)
+FORMCONTROL_BOOL_GETTER(print, xlFormControlPrint)
+FORMCONTROL_BOOL_GETTER(disabled, xlFormControlDisabled)
 
 EXCEL_METHOD(FormControl, item)
 {
@@ -9328,15 +8974,7 @@ EXCEL_METHOD(FormControl, item)
 	PE_RETURN_IS_STRING(result)
 }
 
-EXCEL_METHOD(FormControl, itemSize)
-{
-	zval *object = ZEND_THIS;
-	FormControlHandle fc;
-	ZEND_PARSE_PARAMETERS_NONE();
-
-	FORMCONTROL_FROM_OBJECT(fc, object);
-	RETURN_LONG(xlFormControlItemSize(fc));
-}
+FORMCONTROL_LONG_GETTER(itemSize, xlFormControlItemSize)
 
 EXCEL_METHOD(FormControl, addItem)
 {
@@ -9379,221 +9017,24 @@ EXCEL_METHOD(FormControl, clearItems)
 	RETURN_TRUE;
 }
 
-EXCEL_METHOD(FormControl, dropLines)
-{
-	zval *object = ZEND_THIS;
-	FormControlHandle fc;
-	ZEND_PARSE_PARAMETERS_NONE();
-
-	FORMCONTROL_FROM_OBJECT(fc, object);
-	RETURN_LONG(xlFormControlDropLines(fc));
-}
-
-EXCEL_METHOD(FormControl, setDropLines)
-{
-	zval *object = ZEND_THIS;
-	FormControlHandle fc;
-	zend_long val;
-	if (zend_parse_parameters(ZEND_NUM_ARGS(), "l", &val) == FAILURE) {
-		RETURN_FALSE;
-	}
-	EXCEL_VALIDATE_INT_RANGE(val)
-	FORMCONTROL_FROM_OBJECT(fc, object);
-	xlFormControlSetDropLines(fc, val);
-	RETURN_TRUE;
-}
-
-EXCEL_METHOD(FormControl, dx)
-{
-	zval *object = ZEND_THIS;
-	FormControlHandle fc;
-	ZEND_PARSE_PARAMETERS_NONE();
-
-	FORMCONTROL_FROM_OBJECT(fc, object);
-	RETURN_LONG(xlFormControlDx(fc));
-}
-
-EXCEL_METHOD(FormControl, setDx)
-{
-	zval *object = ZEND_THIS;
-	FormControlHandle fc;
-	zend_long val;
-	if (zend_parse_parameters(ZEND_NUM_ARGS(), "l", &val) == FAILURE) {
-		RETURN_FALSE;
-	}
-	EXCEL_VALIDATE_INT_RANGE(val)
-	FORMCONTROL_FROM_OBJECT(fc, object);
-	xlFormControlSetDx(fc, val);
-	RETURN_TRUE;
-}
-
-EXCEL_METHOD(FormControl, firstButton)
-{
-	zval *object = ZEND_THIS;
-	FormControlHandle fc;
-	ZEND_PARSE_PARAMETERS_NONE();
-
-	FORMCONTROL_FROM_OBJECT(fc, object);
-	RETURN_BOOL(xlFormControlFirstButton(fc));
-}
-
-EXCEL_METHOD(FormControl, setFirstButton)
-{
-	zval *object = ZEND_THIS;
-	FormControlHandle fc;
-	bool val;
-	if (zend_parse_parameters(ZEND_NUM_ARGS(), "b", &val) == FAILURE) {
-		RETURN_FALSE;
-	}
-	FORMCONTROL_FROM_OBJECT(fc, object);
-	xlFormControlSetFirstButton(fc, val);
-	RETURN_TRUE;
-}
-
-EXCEL_METHOD(FormControl, horiz)
-{
-	zval *object = ZEND_THIS;
-	FormControlHandle fc;
-	ZEND_PARSE_PARAMETERS_NONE();
-
-	FORMCONTROL_FROM_OBJECT(fc, object);
-	RETURN_BOOL(xlFormControlHoriz(fc));
-}
-
-EXCEL_METHOD(FormControl, setHoriz)
-{
-	zval *object = ZEND_THIS;
-	FormControlHandle fc;
-	bool val;
-	if (zend_parse_parameters(ZEND_NUM_ARGS(), "b", &val) == FAILURE) {
-		RETURN_FALSE;
-	}
-	FORMCONTROL_FROM_OBJECT(fc, object);
-	xlFormControlSetHoriz(fc, val);
-	RETURN_TRUE;
-}
-
-EXCEL_METHOD(FormControl, inc)
-{
-	zval *object = ZEND_THIS;
-	FormControlHandle fc;
-	ZEND_PARSE_PARAMETERS_NONE();
-
-	FORMCONTROL_FROM_OBJECT(fc, object);
-	RETURN_LONG(xlFormControlInc(fc));
-}
-
-EXCEL_METHOD(FormControl, setInc)
-{
-	zval *object = ZEND_THIS;
-	FormControlHandle fc;
-	zend_long val;
-	if (zend_parse_parameters(ZEND_NUM_ARGS(), "l", &val) == FAILURE) {
-		RETURN_FALSE;
-	}
-	EXCEL_VALIDATE_INT_RANGE(val)
-	FORMCONTROL_FROM_OBJECT(fc, object);
-	xlFormControlSetInc(fc, val);
-	RETURN_TRUE;
-}
-
-EXCEL_METHOD(FormControl, getMax)
-{
-	zval *object = ZEND_THIS;
-	FormControlHandle fc;
-	ZEND_PARSE_PARAMETERS_NONE();
-
-	FORMCONTROL_FROM_OBJECT(fc, object);
-	RETURN_LONG(xlFormControlGetMax(fc));
-}
-
-EXCEL_METHOD(FormControl, setMax)
-{
-	zval *object = ZEND_THIS;
-	FormControlHandle fc;
-	zend_long val;
-	if (zend_parse_parameters(ZEND_NUM_ARGS(), "l", &val) == FAILURE) {
-		RETURN_FALSE;
-	}
-	EXCEL_VALIDATE_INT_RANGE(val)
-	FORMCONTROL_FROM_OBJECT(fc, object);
-	xlFormControlSetMax(fc, val);
-	RETURN_TRUE;
-}
-
-EXCEL_METHOD(FormControl, getMin)
-{
-	zval *object = ZEND_THIS;
-	FormControlHandle fc;
-	ZEND_PARSE_PARAMETERS_NONE();
-
-	FORMCONTROL_FROM_OBJECT(fc, object);
-	RETURN_LONG(xlFormControlGetMin(fc));
-}
-
-EXCEL_METHOD(FormControl, setMin)
-{
-	zval *object = ZEND_THIS;
-	FormControlHandle fc;
-	zend_long val;
-	if (zend_parse_parameters(ZEND_NUM_ARGS(), "l", &val) == FAILURE) {
-		RETURN_FALSE;
-	}
-	EXCEL_VALIDATE_INT_RANGE(val)
-	FORMCONTROL_FROM_OBJECT(fc, object);
-	xlFormControlSetMin(fc, val);
-	RETURN_TRUE;
-}
-
-EXCEL_METHOD(FormControl, multiSel)
-{
-	zval *object = ZEND_THIS;
-	FormControlHandle fc;
-	const char *result;
-	ZEND_PARSE_PARAMETERS_NONE();
-
-	FORMCONTROL_FROM_OBJECT(fc, object);
-	result = xlFormControlMultiSel(fc);
-	PE_RETURN_IS_STRING(result)
-}
-
-EXCEL_METHOD(FormControl, setMultiSel)
-{
-	zval *object = ZEND_THIS;
-	FormControlHandle fc;
-	zend_string *val;
-	if (zend_parse_parameters(ZEND_NUM_ARGS(), "S", &val) == FAILURE) {
-		RETURN_FALSE;
-	}
-	EXCEL_NUL_SAFE_STRING(val)
-	FORMCONTROL_FROM_OBJECT(fc, object);
-	xlFormControlSetMultiSel(fc, ZSTR_VAL(val));
-	RETURN_TRUE;
-}
-
-EXCEL_METHOD(FormControl, sel)
-{
-	zval *object = ZEND_THIS;
-	FormControlHandle fc;
-	ZEND_PARSE_PARAMETERS_NONE();
-
-	FORMCONTROL_FROM_OBJECT(fc, object);
-	RETURN_LONG(xlFormControlSel(fc));
-}
-
-EXCEL_METHOD(FormControl, setSel)
-{
-	zval *object = ZEND_THIS;
-	FormControlHandle fc;
-	zend_long val;
-	if (zend_parse_parameters(ZEND_NUM_ARGS(), "l", &val) == FAILURE) {
-		RETURN_FALSE;
-	}
-	EXCEL_VALIDATE_INT_RANGE(val)
-	FORMCONTROL_FROM_OBJECT(fc, object);
-	xlFormControlSetSel(fc, val);
-	RETURN_TRUE;
-}
+FORMCONTROL_LONG_GETTER(dropLines, xlFormControlDropLines)
+FORMCONTROL_LONG_SETTER(setDropLines, xlFormControlSetDropLines)
+FORMCONTROL_LONG_GETTER(dx, xlFormControlDx)
+FORMCONTROL_LONG_SETTER(setDx, xlFormControlSetDx)
+FORMCONTROL_BOOL_GETTER(firstButton, xlFormControlFirstButton)
+FORMCONTROL_BOOL_SETTER(setFirstButton, xlFormControlSetFirstButton)
+FORMCONTROL_BOOL_GETTER(horiz, xlFormControlHoriz)
+FORMCONTROL_BOOL_SETTER(setHoriz, xlFormControlSetHoriz)
+FORMCONTROL_LONG_GETTER(inc, xlFormControlInc)
+FORMCONTROL_LONG_SETTER(setInc, xlFormControlSetInc)
+FORMCONTROL_LONG_GETTER(getMax, xlFormControlGetMax)
+FORMCONTROL_LONG_SETTER(setMax, xlFormControlSetMax)
+FORMCONTROL_LONG_GETTER(getMin, xlFormControlGetMin)
+FORMCONTROL_LONG_SETTER(setMin, xlFormControlSetMin)
+FORMCONTROL_STRING_GETTER(multiSel, xlFormControlMultiSel)
+FORMCONTROL_STRING_SETTER(setMultiSel, xlFormControlSetMultiSel)
+FORMCONTROL_LONG_GETTER(sel, xlFormControlSel)
+FORMCONTROL_LONG_SETTER(setSel, xlFormControlSetSel)
 
 EXCEL_METHOD(FormControl, fromAnchor)
 {
@@ -9693,347 +9134,86 @@ EXCEL_METHOD(ConditionalFormat, font)
 	EXCEL_INIT_PARENT(fo, object);
 }
 
-EXCEL_METHOD(ConditionalFormat, numFormat)
-{
-	zval *object = ZEND_THIS;
-	ConditionalFormatHandle cf;
-	ZEND_PARSE_PARAMETERS_NONE();
-
-	CONDITIONALFORMAT_FROM_OBJECT(cf, object);
-	RETURN_LONG(xlConditionalFormatNumFormat(cf));
+#define CF_LONG_GETTER(method_name, api_func) \
+EXCEL_METHOD(ConditionalFormat, method_name) \
+{ \
+	zval *object = ZEND_THIS; \
+	ConditionalFormatHandle cf; \
+	ZEND_PARSE_PARAMETERS_NONE(); \
+	CONDITIONALFORMAT_FROM_OBJECT(cf, object); \
+	RETURN_LONG(api_func(cf)); \
 }
 
-EXCEL_METHOD(ConditionalFormat, setNumFormat)
-{
-	zval *object = ZEND_THIS;
-	ConditionalFormatHandle cf;
-	zend_long val;
-	if (zend_parse_parameters(ZEND_NUM_ARGS(), "l", &val) == FAILURE) {
-		RETURN_FALSE;
-	}
-	EXCEL_VALIDATE_INT_RANGE(val)
-	CONDITIONALFORMAT_FROM_OBJECT(cf, object);
-	xlConditionalFormatSetNumFormat(cf, val);
-	RETURN_TRUE;
+#define CF_LONG_SETTER(method_name, api_func) \
+EXCEL_METHOD(ConditionalFormat, method_name) \
+{ \
+	zval *object = ZEND_THIS; \
+	ConditionalFormatHandle cf; \
+	zend_long val; \
+	if (zend_parse_parameters(ZEND_NUM_ARGS(), "l", &val) == FAILURE) { \
+		RETURN_FALSE; \
+	} \
+	EXCEL_VALIDATE_INT_RANGE(val) \
+	CONDITIONALFORMAT_FROM_OBJECT(cf, object); \
+	api_func(cf, val); \
+	RETURN_TRUE; \
 }
 
-EXCEL_METHOD(ConditionalFormat, customNumFormat)
-{
-	zval *object = ZEND_THIS;
-	ConditionalFormatHandle cf;
-	const char *result;
-	ZEND_PARSE_PARAMETERS_NONE();
-
-	CONDITIONALFORMAT_FROM_OBJECT(cf, object);
-	result = xlConditionalFormatCustomNumFormat(cf);
-	PE_RETURN_IS_STRING(result)
+#define CF_STRING_GETTER(method_name, api_func) \
+EXCEL_METHOD(ConditionalFormat, method_name) \
+{ \
+	zval *object = ZEND_THIS; \
+	ConditionalFormatHandle cf; \
+	const char *result; \
+	ZEND_PARSE_PARAMETERS_NONE(); \
+	CONDITIONALFORMAT_FROM_OBJECT(cf, object); \
+	result = api_func(cf); \
+	PE_RETURN_IS_STRING(result) \
 }
 
-EXCEL_METHOD(ConditionalFormat, setCustomNumFormat)
-{
-	zval *object = ZEND_THIS;
-	ConditionalFormatHandle cf;
-	zend_string *val;
-	if (zend_parse_parameters(ZEND_NUM_ARGS(), "S", &val) == FAILURE) {
-		RETURN_FALSE;
-	}
-	EXCEL_NUL_SAFE_STRING(val)
-	CONDITIONALFORMAT_FROM_OBJECT(cf, object);
-	xlConditionalFormatSetCustomNumFormat(cf, ZSTR_VAL(val));
-	RETURN_TRUE;
+#define CF_STRING_SETTER(method_name, api_func) \
+EXCEL_METHOD(ConditionalFormat, method_name) \
+{ \
+	zval *object = ZEND_THIS; \
+	ConditionalFormatHandle cf; \
+	zend_string *val; \
+	if (zend_parse_parameters(ZEND_NUM_ARGS(), "S", &val) == FAILURE) { \
+		RETURN_FALSE; \
+	} \
+	EXCEL_NUL_SAFE_STRING(val) \
+	CONDITIONALFORMAT_FROM_OBJECT(cf, object); \
+	api_func(cf, ZSTR_VAL(val)); \
+	RETURN_TRUE; \
 }
 
-EXCEL_METHOD(ConditionalFormat, setBorder)
-{
-	zval *object = ZEND_THIS;
-	ConditionalFormatHandle cf;
-	zend_long val;
-	if (zend_parse_parameters(ZEND_NUM_ARGS(), "l", &val) == FAILURE) {
-		RETURN_FALSE;
-	}
-	EXCEL_VALIDATE_INT_RANGE(val)
-	CONDITIONALFORMAT_FROM_OBJECT(cf, object);
-	xlConditionalFormatSetBorder(cf, val);
-	RETURN_TRUE;
-}
-
-EXCEL_METHOD(ConditionalFormat, setBorderColor)
-{
-	zval *object = ZEND_THIS;
-	ConditionalFormatHandle cf;
-	zend_long val;
-	if (zend_parse_parameters(ZEND_NUM_ARGS(), "l", &val) == FAILURE) {
-		RETURN_FALSE;
-	}
-	EXCEL_VALIDATE_INT_RANGE(val)
-	CONDITIONALFORMAT_FROM_OBJECT(cf, object);
-	xlConditionalFormatSetBorderColor(cf, val);
-	RETURN_TRUE;
-}
-
-EXCEL_METHOD(ConditionalFormat, borderLeft)
-{
-	zval *object = ZEND_THIS;
-	ConditionalFormatHandle cf;
-	ZEND_PARSE_PARAMETERS_NONE();
-
-	CONDITIONALFORMAT_FROM_OBJECT(cf, object);
-	RETURN_LONG(xlConditionalFormatBorderLeft(cf));
-}
-
-EXCEL_METHOD(ConditionalFormat, setBorderLeft)
-{
-	zval *object = ZEND_THIS;
-	ConditionalFormatHandle cf;
-	zend_long val;
-	if (zend_parse_parameters(ZEND_NUM_ARGS(), "l", &val) == FAILURE) {
-		RETURN_FALSE;
-	}
-	EXCEL_VALIDATE_INT_RANGE(val)
-	CONDITIONALFORMAT_FROM_OBJECT(cf, object);
-	xlConditionalFormatSetBorderLeft(cf, val);
-	RETURN_TRUE;
-}
-
-EXCEL_METHOD(ConditionalFormat, borderRight)
-{
-	zval *object = ZEND_THIS;
-	ConditionalFormatHandle cf;
-	ZEND_PARSE_PARAMETERS_NONE();
-
-	CONDITIONALFORMAT_FROM_OBJECT(cf, object);
-	RETURN_LONG(xlConditionalFormatBorderRight(cf));
-}
-
-EXCEL_METHOD(ConditionalFormat, setBorderRight)
-{
-	zval *object = ZEND_THIS;
-	ConditionalFormatHandle cf;
-	zend_long val;
-	if (zend_parse_parameters(ZEND_NUM_ARGS(), "l", &val) == FAILURE) {
-		RETURN_FALSE;
-	}
-	EXCEL_VALIDATE_INT_RANGE(val)
-	CONDITIONALFORMAT_FROM_OBJECT(cf, object);
-	xlConditionalFormatSetBorderRight(cf, val);
-	RETURN_TRUE;
-}
-
-EXCEL_METHOD(ConditionalFormat, borderTop)
-{
-	zval *object = ZEND_THIS;
-	ConditionalFormatHandle cf;
-	ZEND_PARSE_PARAMETERS_NONE();
-
-	CONDITIONALFORMAT_FROM_OBJECT(cf, object);
-	RETURN_LONG(xlConditionalFormatBorderTop(cf));
-}
-
-EXCEL_METHOD(ConditionalFormat, setBorderTop)
-{
-	zval *object = ZEND_THIS;
-	ConditionalFormatHandle cf;
-	zend_long val;
-	if (zend_parse_parameters(ZEND_NUM_ARGS(), "l", &val) == FAILURE) {
-		RETURN_FALSE;
-	}
-	EXCEL_VALIDATE_INT_RANGE(val)
-	CONDITIONALFORMAT_FROM_OBJECT(cf, object);
-	xlConditionalFormatSetBorderTop(cf, val);
-	RETURN_TRUE;
-}
-
-EXCEL_METHOD(ConditionalFormat, borderBottom)
-{
-	zval *object = ZEND_THIS;
-	ConditionalFormatHandle cf;
-	ZEND_PARSE_PARAMETERS_NONE();
-
-	CONDITIONALFORMAT_FROM_OBJECT(cf, object);
-	RETURN_LONG(xlConditionalFormatBorderBottom(cf));
-}
-
-EXCEL_METHOD(ConditionalFormat, setBorderBottom)
-{
-	zval *object = ZEND_THIS;
-	ConditionalFormatHandle cf;
-	zend_long val;
-	if (zend_parse_parameters(ZEND_NUM_ARGS(), "l", &val) == FAILURE) {
-		RETURN_FALSE;
-	}
-	EXCEL_VALIDATE_INT_RANGE(val)
-	CONDITIONALFORMAT_FROM_OBJECT(cf, object);
-	xlConditionalFormatSetBorderBottom(cf, val);
-	RETURN_TRUE;
-}
-
-EXCEL_METHOD(ConditionalFormat, borderLeftColor)
-{
-	zval *object = ZEND_THIS;
-	ConditionalFormatHandle cf;
-	ZEND_PARSE_PARAMETERS_NONE();
-
-	CONDITIONALFORMAT_FROM_OBJECT(cf, object);
-	RETURN_LONG(xlConditionalFormatBorderLeftColor(cf));
-}
-
-EXCEL_METHOD(ConditionalFormat, setBorderLeftColor)
-{
-	zval *object = ZEND_THIS;
-	ConditionalFormatHandle cf;
-	zend_long val;
-	if (zend_parse_parameters(ZEND_NUM_ARGS(), "l", &val) == FAILURE) {
-		RETURN_FALSE;
-	}
-	EXCEL_VALIDATE_INT_RANGE(val)
-	CONDITIONALFORMAT_FROM_OBJECT(cf, object);
-	xlConditionalFormatSetBorderLeftColor(cf, val);
-	RETURN_TRUE;
-}
-
-EXCEL_METHOD(ConditionalFormat, borderRightColor)
-{
-	zval *object = ZEND_THIS;
-	ConditionalFormatHandle cf;
-	ZEND_PARSE_PARAMETERS_NONE();
-
-	CONDITIONALFORMAT_FROM_OBJECT(cf, object);
-	RETURN_LONG(xlConditionalFormatBorderRightColor(cf));
-}
-
-EXCEL_METHOD(ConditionalFormat, setBorderRightColor)
-{
-	zval *object = ZEND_THIS;
-	ConditionalFormatHandle cf;
-	zend_long val;
-	if (zend_parse_parameters(ZEND_NUM_ARGS(), "l", &val) == FAILURE) {
-		RETURN_FALSE;
-	}
-	EXCEL_VALIDATE_INT_RANGE(val)
-	CONDITIONALFORMAT_FROM_OBJECT(cf, object);
-	xlConditionalFormatSetBorderRightColor(cf, val);
-	RETURN_TRUE;
-}
-
-EXCEL_METHOD(ConditionalFormat, borderTopColor)
-{
-	zval *object = ZEND_THIS;
-	ConditionalFormatHandle cf;
-	ZEND_PARSE_PARAMETERS_NONE();
-
-	CONDITIONALFORMAT_FROM_OBJECT(cf, object);
-	RETURN_LONG(xlConditionalFormatBorderTopColor(cf));
-}
-
-EXCEL_METHOD(ConditionalFormat, setBorderTopColor)
-{
-	zval *object = ZEND_THIS;
-	ConditionalFormatHandle cf;
-	zend_long val;
-	if (zend_parse_parameters(ZEND_NUM_ARGS(), "l", &val) == FAILURE) {
-		RETURN_FALSE;
-	}
-	EXCEL_VALIDATE_INT_RANGE(val)
-	CONDITIONALFORMAT_FROM_OBJECT(cf, object);
-	xlConditionalFormatSetBorderTopColor(cf, val);
-	RETURN_TRUE;
-}
-
-EXCEL_METHOD(ConditionalFormat, borderBottomColor)
-{
-	zval *object = ZEND_THIS;
-	ConditionalFormatHandle cf;
-	ZEND_PARSE_PARAMETERS_NONE();
-
-	CONDITIONALFORMAT_FROM_OBJECT(cf, object);
-	RETURN_LONG(xlConditionalFormatBorderBottomColor(cf));
-}
-
-EXCEL_METHOD(ConditionalFormat, setBorderBottomColor)
-{
-	zval *object = ZEND_THIS;
-	ConditionalFormatHandle cf;
-	zend_long val;
-	if (zend_parse_parameters(ZEND_NUM_ARGS(), "l", &val) == FAILURE) {
-		RETURN_FALSE;
-	}
-	EXCEL_VALIDATE_INT_RANGE(val)
-	CONDITIONALFORMAT_FROM_OBJECT(cf, object);
-	xlConditionalFormatSetBorderBottomColor(cf, val);
-	RETURN_TRUE;
-}
-
-EXCEL_METHOD(ConditionalFormat, fillPattern)
-{
-	zval *object = ZEND_THIS;
-	ConditionalFormatHandle cf;
-	ZEND_PARSE_PARAMETERS_NONE();
-
-	CONDITIONALFORMAT_FROM_OBJECT(cf, object);
-	RETURN_LONG(xlConditionalFormatFillPattern(cf));
-}
-
-EXCEL_METHOD(ConditionalFormat, setFillPattern)
-{
-	zval *object = ZEND_THIS;
-	ConditionalFormatHandle cf;
-	zend_long val;
-	if (zend_parse_parameters(ZEND_NUM_ARGS(), "l", &val) == FAILURE) {
-		RETURN_FALSE;
-	}
-	EXCEL_VALIDATE_INT_RANGE(val)
-	CONDITIONALFORMAT_FROM_OBJECT(cf, object);
-	xlConditionalFormatSetFillPattern(cf, val);
-	RETURN_TRUE;
-}
-
-EXCEL_METHOD(ConditionalFormat, patternForegroundColor)
-{
-	zval *object = ZEND_THIS;
-	ConditionalFormatHandle cf;
-	ZEND_PARSE_PARAMETERS_NONE();
-
-	CONDITIONALFORMAT_FROM_OBJECT(cf, object);
-	RETURN_LONG(xlConditionalFormatPatternForegroundColor(cf));
-}
-
-EXCEL_METHOD(ConditionalFormat, setPatternForegroundColor)
-{
-	zval *object = ZEND_THIS;
-	ConditionalFormatHandle cf;
-	zend_long val;
-	if (zend_parse_parameters(ZEND_NUM_ARGS(), "l", &val) == FAILURE) {
-		RETURN_FALSE;
-	}
-	EXCEL_VALIDATE_INT_RANGE(val)
-	CONDITIONALFORMAT_FROM_OBJECT(cf, object);
-	xlConditionalFormatSetPatternForegroundColor(cf, val);
-	RETURN_TRUE;
-}
-
-EXCEL_METHOD(ConditionalFormat, patternBackgroundColor)
-{
-	zval *object = ZEND_THIS;
-	ConditionalFormatHandle cf;
-	ZEND_PARSE_PARAMETERS_NONE();
-
-	CONDITIONALFORMAT_FROM_OBJECT(cf, object);
-	RETURN_LONG(xlConditionalFormatPatternBackgroundColor(cf));
-}
-
-EXCEL_METHOD(ConditionalFormat, setPatternBackgroundColor)
-{
-	zval *object = ZEND_THIS;
-	ConditionalFormatHandle cf;
-	zend_long val;
-	if (zend_parse_parameters(ZEND_NUM_ARGS(), "l", &val) == FAILURE) {
-		RETURN_FALSE;
-	}
-	EXCEL_VALIDATE_INT_RANGE(val)
-	CONDITIONALFORMAT_FROM_OBJECT(cf, object);
-	xlConditionalFormatSetPatternBackgroundColor(cf, val);
-	RETURN_TRUE;
-}
+CF_LONG_GETTER(numFormat, xlConditionalFormatNumFormat)
+CF_LONG_SETTER(setNumFormat, xlConditionalFormatSetNumFormat)
+CF_STRING_GETTER(customNumFormat, xlConditionalFormatCustomNumFormat)
+CF_STRING_SETTER(setCustomNumFormat, xlConditionalFormatSetCustomNumFormat)
+CF_LONG_SETTER(setBorder, xlConditionalFormatSetBorder)
+CF_LONG_SETTER(setBorderColor, xlConditionalFormatSetBorderColor)
+CF_LONG_GETTER(borderLeft, xlConditionalFormatBorderLeft)
+CF_LONG_SETTER(setBorderLeft, xlConditionalFormatSetBorderLeft)
+CF_LONG_GETTER(borderRight, xlConditionalFormatBorderRight)
+CF_LONG_SETTER(setBorderRight, xlConditionalFormatSetBorderRight)
+CF_LONG_GETTER(borderTop, xlConditionalFormatBorderTop)
+CF_LONG_SETTER(setBorderTop, xlConditionalFormatSetBorderTop)
+CF_LONG_GETTER(borderBottom, xlConditionalFormatBorderBottom)
+CF_LONG_SETTER(setBorderBottom, xlConditionalFormatSetBorderBottom)
+CF_LONG_GETTER(borderLeftColor, xlConditionalFormatBorderLeftColor)
+CF_LONG_SETTER(setBorderLeftColor, xlConditionalFormatSetBorderLeftColor)
+CF_LONG_GETTER(borderRightColor, xlConditionalFormatBorderRightColor)
+CF_LONG_SETTER(setBorderRightColor, xlConditionalFormatSetBorderRightColor)
+CF_LONG_GETTER(borderTopColor, xlConditionalFormatBorderTopColor)
+CF_LONG_SETTER(setBorderTopColor, xlConditionalFormatSetBorderTopColor)
+CF_LONG_GETTER(borderBottomColor, xlConditionalFormatBorderBottomColor)
+CF_LONG_SETTER(setBorderBottomColor, xlConditionalFormatSetBorderBottomColor)
+CF_LONG_GETTER(fillPattern, xlConditionalFormatFillPattern)
+CF_LONG_SETTER(setFillPattern, xlConditionalFormatSetFillPattern)
+CF_LONG_GETTER(patternForegroundColor, xlConditionalFormatPatternForegroundColor)
+CF_LONG_SETTER(setPatternForegroundColor, xlConditionalFormatSetPatternForegroundColor)
+CF_LONG_GETTER(patternBackgroundColor, xlConditionalFormatPatternBackgroundColor)
+CF_LONG_SETTER(setPatternBackgroundColor, xlConditionalFormatSetPatternBackgroundColor)
 
 /* ConditionalFormatting methods */
 
