@@ -2,6 +2,13 @@
 Scalar format type checks, stale-arg validation, moveSheet generation, atomic writeRow/writeCol, nullable arginfo
 --EXTENSIONS--
 excel
+--SKIPIF--
+<?php
+/* Uses 4-arg ExcelSheet::addConditionalFormatting (libxl 5.1.0+) and related CF rule APIs. */
+if ((new ReflectionMethod("ExcelSheet", "addConditionalFormatting"))->getNumberOfParameters() < 4) {
+	print "skip libxl 5.1.0+ required";
+}
+?>
 --FILE--
 <?php
 $b = new ExcelBook(null, null, true);

@@ -2,6 +2,13 @@
 loadInfo()/loadInfoRaw() surface the libxl error message on failure
 --EXTENSIONS--
 excel
+--SKIPIF--
+<?php
+/* loadInfoRaw is compiled only for libxl >= 5.0.1 (0x05000100). */
+if (!method_exists("ExcelBook", "loadInfoRaw")) {
+	print "skip libxl 5.0.1+ required";
+}
+?>
 --DESCRIPTION--
 loadInfo() and loadInfoRaw() previously returned a bare false on libxl failure
 with no diagnostic, unlike load()/loadFile(). They now emit an E_WARNING

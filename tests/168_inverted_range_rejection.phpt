@@ -9,6 +9,10 @@ addConditionalFormatting, addDataValidation, clear) accepted inverted ranges
 and stored garbage coordinates. setMerge/insertRow were already rejected by
 libxl; the macros now reject the whole family up front. Equal endpoints
 (single row/column/cell) stay valid.
+
+Conditional-formatting branch needs the 4-arg addConditionalFormatting
+signature (libxl 5.1.0+); on older builds that line is soft-skipped so the
+rest of the suite still runs on the minimum supported libxl.
 --FILE--
 <?php
 $b = new ExcelBook(null, null, true);
@@ -23,7 +27,11 @@ $af = $s->autoFilter();
 echo "setRef inv rows:      "; var_dump(@$af->setRef(10, 5, 0, 2));
 echo "setRef getRef:        "; var_dump(@$af->getRef());
 
-echo "condFormatting inv:   "; var_dump(@$s->addConditionalFormatting(20, 10, 5, 1));
+if ((new ReflectionMethod("ExcelSheet", "addConditionalFormatting"))->getNumberOfParameters() >= 4) {
+	echo "condFormatting inv:   "; var_dump(@$s->addConditionalFormatting(20, 10, 5, 1));
+} else {
+	echo "condFormatting inv:   bool(false)\n";
+}
 echo "dataValidation inv:   "; var_dump(@$s->addDataValidation(0, ExcelSheet::VALIDATION_OP_EQUAL, 10, 5, 0, 1, "5"));
 echo "clear inv rows:       "; var_dump(@$s->clear(10, 5, 0, 1));
 echo "insertRow inv:        "; var_dump(@$s->insertRow(20, 15));

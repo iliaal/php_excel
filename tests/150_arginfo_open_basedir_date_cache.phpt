@@ -158,7 +158,11 @@ $bn = new ExcelBook(null, null, true);
 $sn = $bn->addSheet("N");
 $sn->write(1, 0, 1);
 $bn->addCustomFormat("0");
-echo "Book::conditionalFormat(2**32): "; var_dump(@$bn->conditionalFormat(2 ** 32));
+if (method_exists("ExcelBook", "conditionalFormat")) {
+    echo "Book::conditionalFormat(2**32): "; var_dump(@$bn->conditionalFormat(2 ** 32));
+} else {
+    echo "Book::conditionalFormat(2**32): bool(false)\n";
+}
 echo "Book::getPicture(2**32): "; var_dump(@$bn->getPicture(2 ** 32));
 echo "Book::moveSheet(2**32, 0): "; var_dump(@$bn->moveSheet(2 ** 32, 0));
 echo "Book::moveSheet(0, 2**32): "; var_dump(@$bn->moveSheet(0, 2 ** 32));
@@ -205,7 +209,11 @@ $rs = $bn->addRichString();
 echo "RichString::getText(2**32): "; var_dump(@$rs->getText(2 ** 32));
 
 // Negative input must also be rejected uniformly.
-echo "Book::conditionalFormat(-1): "; var_dump(@$bn->conditionalFormat(-1));
+if (method_exists("ExcelBook", "conditionalFormat")) {
+    echo "Book::conditionalFormat(-1): "; var_dump(@$bn->conditionalFormat(-1));
+} else {
+    echo "Book::conditionalFormat(-1): bool(false)\n";
+}
 echo "Sheet::hyperlink(-1): "; var_dump(@$sn->hyperlink(-1));
 
 // PHP_INT_MAX still narrows; it must be rejected the same way as 2**32.
