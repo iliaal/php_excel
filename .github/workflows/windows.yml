@@ -16,6 +16,12 @@ on:
 env:
   LIBXL_VERSION: "5.2.0.1"
 
+permissions: {}
+
+concurrency:
+  group: windows-${{ github.event.release.tag_name || github.ref }}
+  cancel-in-progress: ${{ github.event_name != 'release' }}
+
 jobs:
   windows-matrix:
     name: Generate Windows build matrix
@@ -24,7 +30,7 @@ jobs:
       matrix: ${{ steps.matrix.outputs.matrix }}
     steps:
       - id: matrix
-        uses: php/php-windows-builder/extension-matrix@v1
+        uses: php/php-windows-builder/extension-matrix@e03e5d39879adaeb61ed2225f0f4eae7db8c1df8 # 1.8.1
         with:
           extension-url: ${{ github.event.repository.html_url }}
           php-version-list: '8.1, 8.2, 8.3, 8.4, 8.5'
@@ -33,16 +39,20 @@ jobs:
     name: Build ${{ matrix.php-version }} ${{ matrix.arch }} ${{ matrix.ts }}
     needs: windows-matrix
     runs-on: ${{ matrix.os }}
+    permissions:
+      contents: read
     strategy:
       fail-fast: false
       matrix: ${{ fromJson(needs.windows-matrix.outputs.matrix) }}
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
       - name: Download and prepare LibXL
         shell: pwsh
         run: |
-          Invoke-WebRequest -Uri "https://www.libxl.com/download/libxl-win-${{ env.LIBXL_VERSION }}.zip" -OutFile libxl.zip
+          Invoke-WebRequest -Uri "https://www.libxl.com/download/libxl-win-$env:LIBXL_VERSION.zip" -OutFile libxl.zip
           Expand-Archive libxl.zip -DestinationPath libxl-extract
           $dir = Get-ChildItem -Path libxl-extract -Directory | Select-Object -First 1
           $depsDir = "libxl-deps"
@@ -52,7 +62,7 @@ jobs:
           Copy-Item -Path "$($dir.FullName)\include_c" -Destination "$depsDir\" -Recurse -Force
 
           # Select lib and bin for target architecture
-          if ("${{ matrix.arch }}" -eq "x64") {
+          if ("$env:MATRIX_ARCH" -eq "x64") {
             Copy-Item -Path "$($dir.FullName)\lib64\libxl.lib" -Destination "$depsDir\libxl.lib" -Force
             Copy-Item -Path "$($dir.FullName)\bin64\libxl.dll" -Destination "$depsDir\libxl.dll" -Force
           } else {
@@ -61,9 +71,11 @@ jobs:
           }
 
           Get-ChildItem $depsDir -Recurse | Select-Object FullName
+        env:
+          MATRIX_ARCH: ${{ matrix.arch }}
 
       - name: Build extension
-        uses: php/php-windows-builder/extension@v1
+        uses: php/php-windows-builder/extension@e03e5d39879adaeb61ed2225f0f4eae7db8c1df8 # 1.8.1
         with:
           php-version: ${{ matrix.php-version }}
           ts: ${{ matrix.ts }}
@@ -81,12 +93,14 @@ jobs:
     # repos like this one predate that default tightening, but newer
     # ones (lchash) need this block or the upload 403s.
     permissions:
-      contents: write
+      contents: write # Uploads Windows binaries to the published release.
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
       - name: Upload release artifacts
-        uses: php/php-windows-builder/release@v1
+        uses: php/php-windows-builder/release@e03e5d39879adaeb61ed2225f0f4eae7db8c1df8 # 1.8.1
         with:
           release: ${{ github.event.release.tag_name }}
         env:
