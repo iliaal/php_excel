@@ -1494,7 +1494,7 @@ class ExcelSheet
 	/**
 	* Gets the table parameters by index
 	*
-	* @param int $index (optional, default=0)
+	* @param int $index Zero-based table index
 	* @return array|false Array with keys "name", "row_first", "col_first", "row_last", "col_last", "header_row_count", "totals_row_count"
 	*/
 	public function table(int $index): array|false
@@ -1504,9 +1504,9 @@ class ExcelSheet
 	/**
 	* Writes error into the cell with specified format
 	*
-	* @param int $row (optional, default=0)
-	* @param int $col (optional, default=0)
-	* @param int $iError (optional, default=0) One of ExcelSheet::ERRORTYPE_* constants
+	* @param int $row Row index
+	* @param int $col Column index
+	* @param int $iError One of ExcelSheet::ERRORTYPE_* constants
 	* @param ExcelFormat|null $format (optional, default=null)
 	* @return void
 	*/

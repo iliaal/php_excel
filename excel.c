@@ -1732,7 +1732,11 @@ EXCEL_METHOD(Book, loadPartially)
 	BOOK_FROM_OBJECT(book, object);
 
 	php_excel_book_reset_state(object);
-	RETURN_BOOL(xlBookLoadRawPartially(book, ZSTR_VAL(data_zs), (unsigned) ZSTR_LEN(data_zs), (int) sheet_index, (int) row_first, (int) row_last, keep_all_sheets));
+	if (!xlBookLoadRawPartially(book, ZSTR_VAL(data_zs), (unsigned) ZSTR_LEN(data_zs), (int) sheet_index, (int) row_first, (int) row_last, keep_all_sheets)) {
+		php_error_docref(NULL, E_WARNING, "Failed to load workbook: %s", xlBookErrorMessage(book));
+		RETURN_FALSE;
+	}
+	RETURN_TRUE;
 }
 /* }}} */
 
@@ -1764,7 +1768,11 @@ EXCEL_METHOD(Book, loadFilePartially)
 	    && (!PG(open_basedir) || !*PG(open_basedir))) {
 		BOOK_FROM_OBJECT(book, object);
 		php_excel_book_reset_state(object);
-		RETURN_BOOL(xlBookLoadPartially(book, ZSTR_VAL(filename_zs), (int) sheet_index, (int) row_first, (int) row_last, keep_all_sheets));
+		if (!xlBookLoadPartially(book, ZSTR_VAL(filename_zs), (int) sheet_index, (int) row_first, (int) row_last, keep_all_sheets)) {
+			php_error_docref(NULL, E_WARNING, "Failed to load workbook: %s", xlBookErrorMessage(book));
+			RETURN_FALSE;
+		}
+		RETURN_TRUE;
 	}
 	if (!strstr(ZSTR_VAL(filename_zs), "://")
 	    && PG(open_basedir) && *PG(open_basedir)
@@ -1806,8 +1814,13 @@ EXCEL_METHOD(Book, loadFilePartially)
 
 	BOOK_FROM_OBJECT_RELEASE_STR(book, object, contents);
 	php_excel_book_reset_state(object);
-	RETVAL_BOOL(xlBookLoadRawPartially(book, ZSTR_VAL(contents), (unsigned) ZSTR_LEN(contents), (int) sheet_index, (int) row_first, (int) row_last, keep_all_sheets));
+	if (!xlBookLoadRawPartially(book, ZSTR_VAL(contents), (unsigned) ZSTR_LEN(contents), (int) sheet_index, (int) row_first, (int) row_last, keep_all_sheets)) {
+		zend_string_release(contents);
+		php_error_docref(NULL, E_WARNING, "Failed to load workbook: %s", xlBookErrorMessage(book));
+		RETURN_FALSE;
+	}
 	zend_string_release(contents);
+	RETURN_TRUE;
 }
 /* }}} */
 
@@ -2542,7 +2555,9 @@ EXCEL_METHOD(Book, unpackDate)
 	}
 
 	EXCEL_VALIDATE_FINITE(dt)
-	if (dt < 1) {
+	/* Excel serial day 0 is the epoch baseline; fractional values in [0, 1)
+	 * are valid time-of-day-only dates (see packDateValues year=month=day=0). */
+	if (dt < 0) {
 		RETURN_FALSE;
 	}
 
@@ -4011,6 +4026,9 @@ EXCEL_METHOD(Sheet, cellFormat)
 	SHEET_AND_BOOK_FROM_OBJECT(sheet, book, object);
 
 	format = xlSheetCellFormat(sheet, row, col);
+	if (!format) {
+		RETURN_FALSE;
+	}
 
 	ZVAL_OBJ(return_value, excel_object_new_format(excel_ce_format));
 	fo = Z_EXCEL_FORMAT_OBJ_P(return_value);
@@ -4043,7 +4061,10 @@ EXCEL_METHOD(Sheet, setCellFormat)
 }
 /* }}} */
 
-bool php_excel_read_cell(int row, int col, zval *val, SheetHandle sheet, BookHandle book, FormatHandle *format, bool read_formula)
+/* Returns 1 on success, 0 on failure (caller may use xlBookErrorMessage),
+ * -1 when date→timestamp conversion failed (caller should use a dedicated
+ * message — the book error is unrelated). */
+static int php_excel_read_cell(int row, int col, zval *val, SheetHandle sheet, BookHandle book, FormatHandle *format, bool read_formula)
 {
 	const char *s;
 	if (read_formula && xlSheetIsFormula(sheet, row, col)) {
@@ -4068,12 +4089,16 @@ bool php_excel_read_cell(int row, int col, zval *val, SheetHandle sheet, BookHan
 			ZVAL_NULL(val);
 			return 1;
 
-		case CELLTYPE_NUMBER: {
+		case CELLTYPE_NUMBER:
+#ifdef CELLTYPE_STRICTDATE
+		case CELLTYPE_STRICTDATE:
+#endif
+		{
 			double d = xlSheetReadNum(sheet, row, col, format);
 			if (xlSheetIsDate(sheet, row, col)) {
 				zend_long dt = _php_excel_date_unpack(book, d);
 				if (dt == -1) {
-					return 0;
+					return -1;
 				}
 				ZVAL_LONG(val, dt);
 				return 1;
@@ -4113,6 +4138,11 @@ static inline int php_excel_validate_read_row_bounds(SheetHandle sheet, zend_lon
 		return 0;
 	}
 	if (allow_default_end && *row_end == -1) {
+		if (lr == 0) {
+			/* Empty used range: leave end < start so callers build empty arrays. */
+			*row_end = row_start - 1;
+			return 1;
+		}
 		*row_end = lr - 1;
 	}
 	if (*row_end < row_start || *row_end > lr) {
@@ -4131,6 +4161,10 @@ static inline int php_excel_validate_read_col_bounds(SheetHandle sheet, zend_lon
 		return 0;
 	}
 	if (allow_default_end && *col_end == -1) {
+		if (lc == 0) {
+			*col_end = col_start - 1;
+			return 1;
+		}
 		*col_end = lc - 1;
 	}
 	if (*col_end < col_start || *col_end > lc) {
@@ -4176,6 +4210,10 @@ EXCEL_METHOD(Sheet, readRow)
 	 * up to lastCol() inclusive (one past the last used column); such reads
 	 * just return empty cells, so the leniency is harmless. */
 	if (col_end == -1) {
+		if (lc == 0) {
+			array_init(return_value);
+			return;
+		}
 		col_end = lc - 1;
 	}
 
@@ -4199,11 +4237,18 @@ EXCEL_METHOD(Sheet, readRow)
 		ZVAL_UNDEF(&value);
 		FormatHandle format = NULL;
 
-		if (!php_excel_read_cell(row, lc, &value, sheet, book, &format, read_formula)) {
-			zval_ptr_dtor(&value);
-			zval_ptr_dtor(return_value);
-			php_error_docref(NULL, E_WARNING, "Failed to read cell in row " ZEND_LONG_FMT ", column %d with error '%s'", row, lc, xlBookErrorMessage(book));
-			RETURN_FALSE;
+		{
+			int read_rc = php_excel_read_cell(row, lc, &value, sheet, book, &format, read_formula);
+			if (read_rc != 1) {
+				zval_ptr_dtor(&value);
+				zval_ptr_dtor(return_value);
+				if (read_rc < 0) {
+					php_error_docref(NULL, E_WARNING, "Failed to convert Excel date to timestamp");
+				} else {
+					php_error_docref(NULL, E_WARNING, "Failed to read cell in row " ZEND_LONG_FMT ", column %d with error '%s'", row, lc, xlBookErrorMessage(book));
+				}
+				RETURN_FALSE;
+			}
 		}
 		add_next_index_zval(return_value, &value);
 
@@ -4248,6 +4293,10 @@ EXCEL_METHOD(Sheet, readCol)
 	 * inclusive (one past the last used row); such reads just return empty
 	 * cells, so the leniency is harmless. */
 	if (row_end == -1) {
+		if (lc == 0) {
+			array_init(return_value);
+			return;
+		}
 		row_end = lc - 1;
 	}
 
@@ -4270,11 +4319,18 @@ EXCEL_METHOD(Sheet, readCol)
 		ZVAL_UNDEF(&value);
 		FormatHandle format = NULL;
 
-		if (!php_excel_read_cell(lc, col, &value, sheet, book, &format, read_formula)) {
-			zval_ptr_dtor(&value);
-			zval_ptr_dtor(return_value);
-			php_error_docref(NULL, E_WARNING, "Failed to read cell in row %d, column " ZEND_LONG_FMT " with error '%s'", lc, col, xlBookErrorMessage(book));
-			RETURN_FALSE;
+		{
+			int read_rc = php_excel_read_cell(lc, col, &value, sheet, book, &format, read_formula);
+			if (read_rc != 1) {
+				zval_ptr_dtor(&value);
+				zval_ptr_dtor(return_value);
+				if (read_rc < 0) {
+					php_error_docref(NULL, E_WARNING, "Failed to convert Excel date to timestamp");
+				} else {
+					php_error_docref(NULL, E_WARNING, "Failed to read cell in row %d, column " ZEND_LONG_FMT " with error '%s'", lc, col, xlBookErrorMessage(book));
+				}
+				RETURN_FALSE;
+			}
 		}
 		add_next_index_zval(return_value, &value);
 
@@ -4322,12 +4378,19 @@ EXCEL_METHOD(Sheet, readRange)
 			FormatHandle format = NULL;
 
 			ZVAL_UNDEF(&value);
-			if (!php_excel_read_cell((int) r, (int) c, &value, sheet, book, &format, read_formula)) {
-				zval_ptr_dtor(&value);
-				zval_ptr_dtor(&row_value);
-				zval_ptr_dtor(return_value);
-				php_error_docref(NULL, E_WARNING, "Failed to read cell in row " ZEND_LONG_FMT ", column " ZEND_LONG_FMT " with error '%s'", r, c, xlBookErrorMessage(book));
-				RETURN_FALSE;
+			{
+				int read_rc = php_excel_read_cell((int) r, (int) c, &value, sheet, book, &format, read_formula);
+				if (read_rc != 1) {
+					zval_ptr_dtor(&value);
+					zval_ptr_dtor(&row_value);
+					zval_ptr_dtor(return_value);
+					if (read_rc < 0) {
+						php_error_docref(NULL, E_WARNING, "Failed to convert Excel date to timestamp");
+					} else {
+						php_error_docref(NULL, E_WARNING, "Failed to read cell in row " ZEND_LONG_FMT ", column " ZEND_LONG_FMT " with error '%s'", r, c, xlBookErrorMessage(book));
+					}
+					RETURN_FALSE;
+				}
 			}
 			add_next_index_zval(&row_value, &value);
 		}
@@ -4385,11 +4448,18 @@ EXCEL_METHOD(Sheet, readSparseRow)
 			continue;
 		}
 		ZVAL_UNDEF(&value);
-		if (!php_excel_read_cell((int) row, (int) c, &value, sheet, book, &format, read_formula)) {
-			zval_ptr_dtor(&value);
-			zval_ptr_dtor(return_value);
-			php_error_docref(NULL, E_WARNING, "Failed to read cell in row " ZEND_LONG_FMT ", column " ZEND_LONG_FMT " with error '%s'", row, c, xlBookErrorMessage(book));
-			RETURN_FALSE;
+		{
+			int read_rc = php_excel_read_cell((int) row, (int) c, &value, sheet, book, &format, read_formula);
+			if (read_rc != 1) {
+				zval_ptr_dtor(&value);
+				zval_ptr_dtor(return_value);
+				if (read_rc < 0) {
+					php_error_docref(NULL, E_WARNING, "Failed to convert Excel date to timestamp");
+				} else {
+					php_error_docref(NULL, E_WARNING, "Failed to read cell in row " ZEND_LONG_FMT ", column " ZEND_LONG_FMT " with error '%s'", row, c, xlBookErrorMessage(book));
+				}
+				RETURN_FALSE;
+			}
 		}
 		add_index_zval(return_value, (zend_ulong)c, &value);
 	}
@@ -4445,11 +4515,18 @@ EXCEL_METHOD(Sheet, readSparseCol)
 			continue;
 		}
 		ZVAL_UNDEF(&value);
-		if (!php_excel_read_cell((int) r, (int) col, &value, sheet, book, &format, read_formula)) {
-			zval_ptr_dtor(&value);
-			zval_ptr_dtor(return_value);
-			php_error_docref(NULL, E_WARNING, "Failed to read cell in row " ZEND_LONG_FMT ", column " ZEND_LONG_FMT " with error '%s'", r, col, xlBookErrorMessage(book));
-			RETURN_FALSE;
+		{
+			int read_rc = php_excel_read_cell((int) r, (int) col, &value, sheet, book, &format, read_formula);
+			if (read_rc != 1) {
+				zval_ptr_dtor(&value);
+				zval_ptr_dtor(return_value);
+				if (read_rc < 0) {
+					php_error_docref(NULL, E_WARNING, "Failed to convert Excel date to timestamp");
+				} else {
+					php_error_docref(NULL, E_WARNING, "Failed to read cell in row " ZEND_LONG_FMT ", column " ZEND_LONG_FMT " with error '%s'", r, col, xlBookErrorMessage(book));
+				}
+				RETURN_FALSE;
+			}
 		}
 		add_index_zval(return_value, (zend_ulong)r, &value);
 	}
@@ -4489,9 +4566,16 @@ EXCEL_METHOD(Sheet, read)
 	}
 	CHECK_BOOK_AND_SHEET_GENERATION_PR(sheet_obj, book_obj);
 
-	if (!php_excel_read_cell(row, col, return_value, sheet, book, &format, read_formula)) {
-		php_error_docref(NULL, E_WARNING, "Failed to read cell in row " ZEND_LONG_FMT ", column " ZEND_LONG_FMT " with error '%s'", row, col, xlBookErrorMessage(book));
-		RETURN_FALSE;
+	{
+		int read_rc = php_excel_read_cell(row, col, return_value, sheet, book, &format, read_formula);
+		if (read_rc != 1) {
+			if (read_rc < 0) {
+				php_error_docref(NULL, E_WARNING, "Failed to convert Excel date to timestamp");
+			} else {
+				php_error_docref(NULL, E_WARNING, "Failed to read cell in row " ZEND_LONG_FMT ", column " ZEND_LONG_FMT " with error '%s'", row, col, xlBookErrorMessage(book));
+			}
+			RETURN_FALSE;
+		}
 	}
 
 	if (oformat) {
@@ -4945,8 +5029,15 @@ EXCEL_METHOD(Sheet, isDate)
 	EXCEL_VALIDATE_ROW_COL(r, c, object);
 	SHEET_FROM_OBJECT(sheet, object);
 
-	if (xlSheetCellType(sheet, r, c) != CELLTYPE_NUMBER) {
-		RETURN_FALSE;
+	{
+		int ctype = xlSheetCellType(sheet, r, c);
+		if (ctype != CELLTYPE_NUMBER
+#ifdef CELLTYPE_STRICTDATE
+		    && ctype != CELLTYPE_STRICTDATE
+#endif
+		) {
+			RETURN_FALSE;
+		}
 	}
 
 	RETURN_BOOL(xlSheetIsDate(sheet, r, c));
@@ -5103,10 +5194,7 @@ EXCEL_METHOD(Sheet, setColWidth)
 			EXCEL_REQUIRE_SAME_BOOK(f, object);
 		}
 
-		if (e < s) {
-			php_error_docref(NULL, E_WARNING, "Start cell is greater then end cell");
-			RETURN_FALSE;
-		} else if (width < -1) {
+		if (width < -1) {
 			php_error_docref(NULL, E_WARNING, "Width cannot be less then -1");
 			RETURN_FALSE;
 		}
