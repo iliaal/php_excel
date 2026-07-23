@@ -6,13 +6,22 @@ on:
   pull_request:
     branches: [master]
 
+permissions:
+  contents: read
+
+concurrency:
+  group: tests-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   validate:
     name: Validate composer.json
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
-      - uses: shivammathur/setup-php@v2
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+        with:
+          persist-credentials: false
+      - uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # master
         with:
           php-version: '8.4'
           tools: composer
@@ -24,8 +33,10 @@ jobs:
     runs-on: ubuntu-latest
     needs: validate
     steps:
-      - uses: actions/checkout@v6
-      - uses: shivammathur/setup-php@v2
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+        with:
+          persist-credentials: false
+      - uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # master
         with:
           php-version: '8.4'
           tools: phpize, php-config
@@ -36,7 +47,7 @@ jobs:
           sudo apt-get install -y --no-install-recommends bison libtool-bin
       - name: Cache LibXL
         id: cache-libxl
-        uses: actions/cache@v5
+        uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25 # v5.1.0
         with:
           path: libxl-5.1.0
           key: libxl-lin-5.1.0-v1
@@ -64,6 +75,9 @@ jobs:
   linux:
     name: PHP ${{ matrix.php }} - libxl ${{ matrix.libxl }}
     runs-on: ubuntu-latest
+    env:
+      LIBXL_VERSION: ${{ matrix.libxl }}
+      WORKSPACE: ${{ github.workspace }}
     strategy:
       fail-fast: false
       matrix:
@@ -74,17 +88,19 @@ jobs:
             libxl: '4.6.0'
 
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+        with:
+          persist-credentials: false
 
       - name: Setup PHP
-        uses: shivammathur/setup-php@v2
+        uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # master
         with:
           php-version: ${{ matrix.php }}
           tools: phpize, php-config
 
       - name: Cache LibXL
         id: cache-libxl
-        uses: actions/cache@v5
+        uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25 # v5.1.0
         with:
           path: libxl-${{ matrix.libxl }}
           key: libxl-lin-${{ matrix.libxl }}-v1
@@ -92,22 +108,22 @@ jobs:
       - name: Download LibXL
         if: steps.cache-libxl.outputs.cache-hit != 'true'
         run: |
-          curl -fsSL "https://www.libxl.com/download/libxl-lin-${{ matrix.libxl }}.tar.gz" -o libxl.tar.gz
+          curl -fsSL "https://www.libxl.com/download/libxl-lin-${LIBXL_VERSION}.tar.gz" -o libxl.tar.gz
           tar xzf libxl.tar.gz
           # tarball extracts as libxl-X.Y.Z.0, normalize to libxl-X.Y.Z
           extracted=$(ls -d libxl-* | grep -v tar | head -1)
-          if [ "$extracted" != "libxl-${{ matrix.libxl }}" ]; then
-            mv "$extracted" "libxl-${{ matrix.libxl }}"
+          if [ "$extracted" != "libxl-${LIBXL_VERSION}" ]; then
+            mv "$extracted" "libxl-${LIBXL_VERSION}"
           fi
-          ls libxl-${{ matrix.libxl }}/include_c/libxl.h
+          ls "libxl-${LIBXL_VERSION}/include_c/libxl.h"
 
       - name: Build extension
         run: |
           phpize
           ./configure \
             --with-excel \
-            --with-libxl-incdir=${{ github.workspace }}/libxl-${{ matrix.libxl }}/include_c \
-            --with-libxl-libdir=${{ github.workspace }}/libxl-${{ matrix.libxl }}/lib64
+            --with-libxl-incdir="${WORKSPACE}/libxl-${LIBXL_VERSION}/include_c" \
+            --with-libxl-libdir="${WORKSPACE}/libxl-${LIBXL_VERSION}/lib64"
           WARNINGS=$(make -j$(nproc) 2>&1 | tee /dev/stderr | grep -c 'warning:' || true)
           if [ "$WARNINGS" -gt 0 ]; then
             echo "::error::Build produced $WARNINGS warning(s)"
@@ -117,7 +133,7 @@ jobs:
       - name: Run tests
         if: matrix.libxl == '5.1.0'
         run: |
-          export LD_LIBRARY_PATH="${{ github.workspace }}/libxl-${{ matrix.libxl }}/lib64"
+          export LD_LIBRARY_PATH="${WORKSPACE}/libxl-${LIBXL_VERSION}/lib64"
           export TEST_PHP_EXECUTABLE=$(which php)
           export TEST_PHP_ARGS="-d extension=$(pwd)/modules/excel.so"
           export NO_INTERACTION=1
@@ -134,16 +150,19 @@ jobs:
     runs-on: ubuntu-latest
     env:
       PHPTS: zts
+      WORKSPACE: ${{ github.workspace }}
     strategy:
       fail-fast: false
       matrix:
         php: ['8.4']
 
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+        with:
+          persist-credentials: false
 
       - name: Setup PHP (ZTS)
-        uses: shivammathur/setup-php@v2
+        uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # master
         with:
           php-version: ${{ matrix.php }}
           tools: phpize, php-config
@@ -151,7 +170,7 @@ jobs:
 
       - name: Cache LibXL
         id: cache-libxl
-        uses: actions/cache@v5
+        uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25 # v5.1.0
         with:
           path: libxl-5.1.0
           key: libxl-lin-5.1.0-v1
@@ -171,14 +190,14 @@ jobs:
           phpize
           ./configure \
             --with-excel \
-            --with-libxl-incdir=${{ github.workspace }}/libxl-5.1.0/include_c \
-            --with-libxl-libdir=${{ github.workspace }}/libxl-5.1.0/lib64 \
+            --with-libxl-incdir="${WORKSPACE}/libxl-5.1.0/include_c" \
+            --with-libxl-libdir="${WORKSPACE}/libxl-5.1.0/lib64" \
             --with-php-config=$(which php-config)
           make -j$(nproc)
 
       - name: Run tests under ZTS
         run: |
-          export LD_LIBRARY_PATH="${{ github.workspace }}/libxl-5.1.0/lib64"
+          export LD_LIBRARY_PATH="${WORKSPACE}/libxl-5.1.0/lib64"
           export TEST_PHP_EXECUTABLE=$(which php)
           export TEST_PHP_ARGS="-d extension=$(pwd)/modules/excel.so"
           export NO_INTERACTION=1
@@ -207,19 +226,23 @@ jobs:
       # ~/ai/wiki/debugging/asan-php-extension.md.
       ASAN_OPTIONS: exitcode=139:verify_asan_link_order=0:detect_odr_violation=0:detect_leaks=1
       LSAN_OPTIONS: suppressions=${{ github.workspace }}/.github/lsan-suppressions.txt:print_suppressions=0
+      PHP_VERSION: ${{ matrix.php }}
       UBSAN_OPTIONS: print_stacktrace=1
       USE_ZEND_ALLOC: 0
       USE_TRACKED_ALLOC: 1
+      WORKSPACE: ${{ github.workspace }}
 
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+        with:
+          persist-credentials: false
 
       - name: Install dependencies
         run: sudo apt-get update && sudo apt-get install -y llvm clang re2c bison autoconf
 
       - name: Build PHP with ASAN
         run: |
-          git clone --depth=1 --branch=PHP-${{ matrix.php }} https://github.com/php/php-src.git /tmp/php-src
+          git clone --depth=1 --branch="PHP-${PHP_VERSION}" https://github.com/php/php-src.git /tmp/php-src
           cd /tmp/php-src
           ./buildconf --force
           CC=clang CXX=clang++ \
@@ -236,7 +259,7 @@ jobs:
 
       - name: Cache LibXL
         id: cache-libxl
-        uses: actions/cache@v5
+        uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25 # v5.1.0
         with:
           path: libxl-5.1.0
           key: libxl-lin-5.1.0-v1
@@ -260,14 +283,14 @@ jobs:
           LDFLAGS="-fsanitize=address" \
           ./configure \
             --with-excel \
-            --with-libxl-incdir=${{ github.workspace }}/libxl-5.1.0/include_c \
-            --with-libxl-libdir=${{ github.workspace }}/libxl-5.1.0/lib64 \
+            --with-libxl-incdir="${WORKSPACE}/libxl-5.1.0/include_c" \
+            --with-libxl-libdir="${WORKSPACE}/libxl-5.1.0/lib64" \
             --with-php-config=/tmp/php-asan/bin/php-config
           make -j$(nproc)
 
       - name: Run tests under ASAN
         run: |
-          export LD_LIBRARY_PATH="${{ github.workspace }}/libxl-5.1.0/lib64"
+          export LD_LIBRARY_PATH="${WORKSPACE}/libxl-5.1.0/lib64"
           export LD_PRELOAD=$(clang -print-file-name=libclang_rt.asan-x86_64.so):$(dpkg -L libstdc++-dev | grep 'libstdc++.so$' | head -1 || echo /usr/lib/x86_64-linux-gnu/libstdc++.so)
           export TEST_PHP_EXECUTABLE=/tmp/php-asan/bin/php
           export TEST_PHP_ARGS="-d extension=$(pwd)/modules/excel.so"
