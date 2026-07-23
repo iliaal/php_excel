@@ -517,154 +517,247 @@ static zend_always_inline int php_excel_same_book(zval *arg_zv, zval *target_zv)
 	return ba && bb && ba == bb;
 }
 
+/* Warn-and-reject form of php_excel_same_book for method bodies. Returns true
+ * when the argument is usable; false after warning when books differ. */
+static zend_always_inline bool php_excel_require_same_book(zval *arg_zv, zval *target_zv)
+{
+	if (php_excel_same_book(arg_zv, target_zv)) {
+		return true;
+	}
+	php_error_docref(NULL, E_WARNING, "Argument belongs to a different ExcelBook");
+	return false;
+}
+
 #define EXCEL_REQUIRE_SAME_BOOK(arg_zv, target_zv) \
-	if (!php_excel_same_book((arg_zv), (target_zv))) { \
-		php_error_docref(NULL, E_WARNING, "Argument belongs to a different ExcelBook"); \
+	if (!php_excel_require_same_book((arg_zv), (target_zv))) { \
 		RETURN_FALSE; \
 	}
 
+/* Generation predicates and warn-path checks. Throw variants (below) share the
+ * same matchers so stale messages stay in one place per failure mode. */
+
+static zend_always_inline bool php_excel_book_generation_matches(excel_book_object *b, uint64_t stamped)
+{
+	return b && b->book && b->generation == stamped;
+}
+
+static zend_always_inline bool php_excel_book_generation_ok(excel_book_object *b, uint64_t stamped)
+{
+	if (php_excel_book_generation_matches(b, stamped)) {
+		return true;
+	}
+	php_error_docref(NULL, E_WARNING,
+		"Underlying ExcelBook handle is stale (parent was reloaded, cleared, or reinitialized)");
+	return false;
+}
+
+static zend_always_inline bool php_excel_sheet_generation_ok(excel_book_object *b, uint64_t stamped)
+{
+	if (b->sheet_generation == stamped) {
+		return true;
+	}
+	php_error_docref(NULL, E_WARNING,
+		"Underlying ExcelBook sheet topology changed; wrapper must be re-fetched");
+	return false;
+}
+
+static zend_always_inline bool php_excel_autofilter_generation_ok(excel_book_object *b, uint64_t stamped)
+{
+	if (b->autofilter_generation == stamped) {
+		return true;
+	}
+	php_error_docref(NULL, E_WARNING,
+		"Underlying ExcelBook autofilter state changed; wrapper must be re-fetched");
+	return false;
+}
+
+static zend_always_inline bool php_excel_conditional_formatting_generation_ok(excel_book_object *b, uint64_t stamped)
+{
+	if (b->conditional_formatting_generation == stamped) {
+		return true;
+	}
+	php_error_docref(NULL, E_WARNING,
+		"Underlying ExcelBook conditional formatting state changed; wrapper must be re-fetched");
+	return false;
+}
+
+/* Preresolved: caller already has the owning book (hot paths that also need
+ * coordinate limits can resolve once and feed both checks). */
+static zend_always_inline bool php_excel_check_book_generation_pr(excel_book_object *vb, uint64_t book_stamped)
+{
+	return php_excel_book_generation_ok(vb, book_stamped);
+}
+
+static zend_always_inline bool php_excel_check_book_and_sheet_generation_pr(
+	excel_book_object *vb, uint64_t book_stamped, uint64_t sheet_stamped)
+{
+	if (!php_excel_book_generation_ok(vb, book_stamped)) {
+		return false;
+	}
+	return php_excel_sheet_generation_ok(vb, sheet_stamped);
+}
+
+static zend_always_inline bool php_excel_check_book_sheet_and_autofilter_generation_pr(
+	excel_book_object *vb, uint64_t book_stamped, uint64_t sheet_stamped, uint64_t autofilter_stamped)
+{
+	if (!php_excel_check_book_and_sheet_generation_pr(vb, book_stamped, sheet_stamped)) {
+		return false;
+	}
+	return php_excel_autofilter_generation_ok(vb, autofilter_stamped);
+}
+
+static zend_always_inline bool php_excel_check_book_sheet_and_conditional_formatting_generation_pr(
+	excel_book_object *vb, uint64_t book_stamped, uint64_t sheet_stamped, uint64_t cf_stamped)
+{
+	if (!php_excel_check_book_and_sheet_generation_pr(vb, book_stamped, sheet_stamped)) {
+		return false;
+	}
+	return php_excel_conditional_formatting_generation_ok(vb, cf_stamped);
+}
+
+static zend_always_inline bool php_excel_check_book_generation(zval *parent_zv, uint64_t book_stamped)
+{
+	return php_excel_check_book_generation_pr(php_excel_resolve_book_obj(parent_zv), book_stamped);
+}
+
+static zend_always_inline bool php_excel_check_book_and_sheet_generation(
+	zval *parent_zv, uint64_t book_stamped, uint64_t sheet_stamped)
+{
+	return php_excel_check_book_and_sheet_generation_pr(
+		php_excel_resolve_book_obj(parent_zv), book_stamped, sheet_stamped);
+}
+
+static zend_always_inline bool php_excel_check_book_sheet_and_autofilter_generation(
+	zval *parent_zv, uint64_t book_stamped, uint64_t sheet_stamped, uint64_t autofilter_stamped)
+{
+	return php_excel_check_book_sheet_and_autofilter_generation_pr(
+		php_excel_resolve_book_obj(parent_zv), book_stamped, sheet_stamped, autofilter_stamped);
+}
+
+static zend_always_inline bool php_excel_check_book_sheet_and_conditional_formatting_generation(
+	zval *parent_zv, uint64_t book_stamped, uint64_t sheet_stamped, uint64_t cf_stamped)
+{
+	return php_excel_check_book_sheet_and_conditional_formatting_generation_pr(
+		php_excel_resolve_book_obj(parent_zv), book_stamped, sheet_stamped, cf_stamped);
+}
+
 #define CHECK_BOOK_GENERATION(child_obj) \
 	do { \
-		excel_book_object *_b = php_excel_resolve_book_obj(&(child_obj)->parent); \
-		if (!_b || !_b->book || _b->generation != (child_obj)->book_generation) { \
-			php_error_docref(NULL, E_WARNING, \
-				"Underlying ExcelBook handle is stale (parent was reloaded, cleared, or reinitialized)"); \
+		if (!php_excel_check_book_generation(&(child_obj)->parent, (child_obj)->book_generation)) { \
 			RETURN_FALSE; \
 		} \
 	} while (0)
 
 #define CHECK_BOOK_AND_SHEET_GENERATION(child_obj) \
 	do { \
-		excel_book_object *_b = php_excel_resolve_book_obj(&(child_obj)->parent); \
-		if (!_b || !_b->book || _b->generation != (child_obj)->book_generation) { \
-			php_error_docref(NULL, E_WARNING, \
-				"Underlying ExcelBook handle is stale (parent was reloaded, cleared, or reinitialized)"); \
-			RETURN_FALSE; \
-		} \
-		if (_b->sheet_generation != (child_obj)->sheet_generation) { \
-			php_error_docref(NULL, E_WARNING, \
-				"Underlying ExcelBook sheet topology changed; wrapper must be re-fetched"); \
+		if (!php_excel_check_book_and_sheet_generation(&(child_obj)->parent, \
+				(child_obj)->book_generation, (child_obj)->sheet_generation)) { \
 			RETURN_FALSE; \
 		} \
 	} while (0)
 
 #define CHECK_BOOK_SHEET_AND_AUTOFILTER_GENERATION(child_obj) \
 	do { \
-		excel_book_object *_b = php_excel_resolve_book_obj(&(child_obj)->parent); \
-		if (!_b || !_b->book || _b->generation != (child_obj)->book_generation) { \
-			php_error_docref(NULL, E_WARNING, \
-				"Underlying ExcelBook handle is stale (parent was reloaded, cleared, or reinitialized)"); \
-			RETURN_FALSE; \
-		} \
-		if (_b->sheet_generation != (child_obj)->sheet_generation) { \
-			php_error_docref(NULL, E_WARNING, \
-				"Underlying ExcelBook sheet topology changed; wrapper must be re-fetched"); \
-			RETURN_FALSE; \
-		} \
-		if (_b->autofilter_generation != (child_obj)->autofilter_generation) { \
-			php_error_docref(NULL, E_WARNING, \
-				"Underlying ExcelBook autofilter state changed; wrapper must be re-fetched"); \
+		if (!php_excel_check_book_sheet_and_autofilter_generation(&(child_obj)->parent, \
+				(child_obj)->book_generation, (child_obj)->sheet_generation, \
+				(child_obj)->autofilter_generation)) { \
 			RETURN_FALSE; \
 		} \
 	} while (0)
 
 #define CHECK_BOOK_SHEET_AND_CONDITIONALFORMATTING_GENERATION(child_obj) \
 	do { \
-		excel_book_object *_b = php_excel_resolve_book_obj(&(child_obj)->parent); \
-		if (!_b || !_b->book || _b->generation != (child_obj)->book_generation) { \
-			php_error_docref(NULL, E_WARNING, \
-				"Underlying ExcelBook handle is stale (parent was reloaded, cleared, or reinitialized)"); \
-			RETURN_FALSE; \
-		} \
-		if (_b->sheet_generation != (child_obj)->sheet_generation) { \
-			php_error_docref(NULL, E_WARNING, \
-				"Underlying ExcelBook sheet topology changed; wrapper must be re-fetched"); \
-			RETURN_FALSE; \
-		} \
-		if (_b->conditional_formatting_generation != (child_obj)->conditional_formatting_generation) { \
-			php_error_docref(NULL, E_WARNING, \
-				"Underlying ExcelBook conditional formatting state changed; wrapper must be re-fetched"); \
+		if (!php_excel_check_book_sheet_and_conditional_formatting_generation(&(child_obj)->parent, \
+				(child_obj)->book_generation, (child_obj)->sheet_generation, \
+				(child_obj)->conditional_formatting_generation)) { \
 			RETURN_FALSE; \
 		} \
 	} while (0)
 
-/* Preresolved variant of CHECK_BOOK_GENERATION. resolve_book_obj(child) and
- * resolve_book_obj(&child->parent) return the same owning book, so single-cell
- * hot paths can resolve the book once and feed it to both the stale check and
- * the coordinate-limit lookups instead of walking the parent chain each time. */
+/* Preresolved variants: resolve_book_obj once for stale check + coord limits. */
 #define CHECK_BOOK_GENERATION_PR(child_obj, vb) \
 	do { \
-		if (!(vb) || !(vb)->book || (vb)->generation != (child_obj)->book_generation) { \
-			php_error_docref(NULL, E_WARNING, \
-				"Underlying ExcelBook handle is stale (parent was reloaded, cleared, or reinitialized)"); \
+		if (!php_excel_check_book_generation_pr((vb), (child_obj)->book_generation)) { \
 			RETURN_FALSE; \
 		} \
 	} while (0)
 
 #define CHECK_BOOK_AND_SHEET_GENERATION_PR(child_obj, vb) \
 	do { \
-		if (!(vb) || !(vb)->book || (vb)->generation != (child_obj)->book_generation) { \
-			php_error_docref(NULL, E_WARNING, \
-				"Underlying ExcelBook handle is stale (parent was reloaded, cleared, or reinitialized)"); \
-			RETURN_FALSE; \
-		} \
-		if ((vb)->sheet_generation != (child_obj)->sheet_generation) { \
-			php_error_docref(NULL, E_WARNING, \
-				"Underlying ExcelBook sheet topology changed; wrapper must be re-fetched"); \
+		if (!php_excel_check_book_and_sheet_generation_pr((vb), \
+				(child_obj)->book_generation, (child_obj)->sheet_generation)) { \
 			RETURN_FALSE; \
 		} \
 	} while (0)
 
 /* Stamp child wrapper with current book generation and copy parent zval.
- * Use at every child creation site instead of a bare ZVAL_COPY(&x->parent, p). */
-/* Re-invoking a child __construct() reaches this macro with parent already
- * holding a refcounted zval from the first construct; drop it before the
- * overwrite or that reference leaks for the rest of the request. First
- * construct is safe: zend_object_alloc zeroed parent to IS_UNDEF. */
+ * Use at every child creation site instead of a bare ZVAL_COPY(&x->parent, p).
+ * Re-invoking a child __construct() reaches this with parent already holding a
+ * refcounted zval from the first construct; drop it before the overwrite or
+ * that reference leaks. First construct is safe: zend_object_alloc zeroed
+ * parent to IS_UNDEF. */
+static zend_always_inline void php_excel_replace_parent_zval(zval *parent_field, zval *parent_zv)
+{
+	if (Z_TYPE_P(parent_field) != IS_UNDEF) {
+		zval_ptr_dtor(parent_field);
+	}
+	ZVAL_COPY(parent_field, parent_zv);
+}
+
+static zend_always_inline void php_excel_init_parent(
+	uint64_t *book_generation, zval *parent_field, zval *parent_zv)
+{
+	excel_book_object *bg = php_excel_resolve_book_obj(parent_zv);
+	*book_generation = bg ? bg->generation : 0;
+	php_excel_replace_parent_zval(parent_field, parent_zv);
+}
+
+static zend_always_inline void php_excel_init_sheet_parent(
+	uint64_t *book_generation, uint64_t *sheet_generation, zval *parent_field, zval *parent_zv)
+{
+	excel_book_object *bg = php_excel_resolve_book_obj(parent_zv);
+	*book_generation = bg ? bg->generation : 0;
+	*sheet_generation = bg ? bg->sheet_generation : 0;
+	php_excel_replace_parent_zval(parent_field, parent_zv);
+}
+
+static zend_always_inline void php_excel_init_autofilter_parent(
+	uint64_t *book_generation, uint64_t *sheet_generation, uint64_t *autofilter_generation,
+	zval *parent_field, zval *parent_zv)
+{
+	excel_book_object *bg = php_excel_resolve_book_obj(parent_zv);
+	*book_generation = bg ? bg->generation : 0;
+	*sheet_generation = bg ? bg->sheet_generation : 0;
+	*autofilter_generation = bg ? bg->autofilter_generation : 0;
+	php_excel_replace_parent_zval(parent_field, parent_zv);
+}
+
+static zend_always_inline void php_excel_init_conditional_formatting_parent(
+	uint64_t *book_generation, uint64_t *sheet_generation, uint64_t *cf_generation,
+	zval *parent_field, zval *parent_zv)
+{
+	excel_book_object *bg = php_excel_resolve_book_obj(parent_zv);
+	*book_generation = bg ? bg->generation : 0;
+	*sheet_generation = bg ? bg->sheet_generation : 0;
+	*cf_generation = bg ? bg->conditional_formatting_generation : 0;
+	php_excel_replace_parent_zval(parent_field, parent_zv);
+}
+
 #define EXCEL_INIT_PARENT(child_obj, parent_zv) \
-	do { \
-		excel_book_object *_bg = php_excel_resolve_book_obj(parent_zv); \
-		(child_obj)->book_generation = _bg ? _bg->generation : 0; \
-		if (Z_TYPE((child_obj)->parent) != IS_UNDEF) { \
-			zval_ptr_dtor(&(child_obj)->parent); \
-		} \
-		ZVAL_COPY(&(child_obj)->parent, parent_zv); \
-	} while (0)
+	php_excel_init_parent(&(child_obj)->book_generation, &(child_obj)->parent, (parent_zv))
 
 #define EXCEL_INIT_SHEET_PARENT(child_obj, parent_zv) \
-	do { \
-		excel_book_object *_bg = php_excel_resolve_book_obj(parent_zv); \
-		(child_obj)->book_generation = _bg ? _bg->generation : 0; \
-		(child_obj)->sheet_generation = _bg ? _bg->sheet_generation : 0; \
-		if (Z_TYPE((child_obj)->parent) != IS_UNDEF) { \
-			zval_ptr_dtor(&(child_obj)->parent); \
-		} \
-		ZVAL_COPY(&(child_obj)->parent, parent_zv); \
-	} while (0)
+	php_excel_init_sheet_parent(&(child_obj)->book_generation, &(child_obj)->sheet_generation, \
+		&(child_obj)->parent, (parent_zv))
 
 #define EXCEL_INIT_AUTOFILTER_PARENT(child_obj, parent_zv) \
-	do { \
-		excel_book_object *_bg = php_excel_resolve_book_obj(parent_zv); \
-		(child_obj)->book_generation = _bg ? _bg->generation : 0; \
-		(child_obj)->sheet_generation = _bg ? _bg->sheet_generation : 0; \
-		(child_obj)->autofilter_generation = _bg ? _bg->autofilter_generation : 0; \
-		if (Z_TYPE((child_obj)->parent) != IS_UNDEF) { \
-			zval_ptr_dtor(&(child_obj)->parent); \
-		} \
-		ZVAL_COPY(&(child_obj)->parent, parent_zv); \
-	} while (0)
+	php_excel_init_autofilter_parent(&(child_obj)->book_generation, &(child_obj)->sheet_generation, \
+		&(child_obj)->autofilter_generation, &(child_obj)->parent, (parent_zv))
 
 #define EXCEL_INIT_CONDITIONALFORMATTING_PARENT(child_obj, parent_zv) \
-	do { \
-		excel_book_object *_bg = php_excel_resolve_book_obj(parent_zv); \
-		(child_obj)->book_generation = _bg ? _bg->generation : 0; \
-		(child_obj)->sheet_generation = _bg ? _bg->sheet_generation : 0; \
-		(child_obj)->conditional_formatting_generation = _bg ? _bg->conditional_formatting_generation : 0; \
-		if (Z_TYPE((child_obj)->parent) != IS_UNDEF) { \
-			zval_ptr_dtor(&(child_obj)->parent); \
-		} \
-		ZVAL_COPY(&(child_obj)->parent, parent_zv); \
-	} while (0)
+	php_excel_init_conditional_formatting_parent(&(child_obj)->book_generation, \
+		&(child_obj)->sheet_generation, &(child_obj)->conditional_formatting_generation, \
+		&(child_obj)->parent, (parent_zv))
 
 #define EXCEL_REJECT_RECONSTRUCTION(child_obj, handle_field) \
 	do { \
@@ -712,21 +805,22 @@ static inline void php_excel_book_reset_state(zval *book_zv) {
 
 /* Throw-on-stale variant for code paths that cannot use RETURN_FALSE — most
  * importantly clone handlers, which must always produce an object and signal
- * failure via exception. Returns 1 on valid, 0 (and throws) on stale. */
+ * failure via exception. Returns 1 on valid, 0 (and throws) on stale. Shares
+ * matchers with the warn-path helpers above. */
 static inline int php_excel_check_book_generation_throw(zval *parent_zv, uint64_t stamped) {
 	excel_book_object *b = php_excel_resolve_book_obj(parent_zv);
-	if (!b || !b->book || b->generation != stamped) {
-		zend_throw_exception(NULL,
-			"Underlying ExcelBook handle is stale (parent was reloaded, cleared, or reinitialized)",
-			0);
-		return 0;
+	if (php_excel_book_generation_matches(b, stamped)) {
+		return 1;
 	}
-	return 1;
+	zend_throw_exception(NULL,
+		"Underlying ExcelBook handle is stale (parent was reloaded, cleared, or reinitialized)",
+		0);
+	return 0;
 }
 
 static inline int php_excel_check_book_and_sheet_generation_throw(zval *parent_zv, uint64_t book_stamped, uint64_t sheet_stamped) {
 	excel_book_object *b = php_excel_resolve_book_obj(parent_zv);
-	if (!b || !b->book || b->generation != book_stamped) {
+	if (!php_excel_book_generation_matches(b, book_stamped)) {
 		zend_throw_exception(NULL,
 			"Underlying ExcelBook handle is stale (parent was reloaded, cleared, or reinitialized)",
 			0);
@@ -743,7 +837,7 @@ static inline int php_excel_check_book_and_sheet_generation_throw(zval *parent_z
 
 static inline int php_excel_check_book_sheet_and_autofilter_generation_throw(zval *parent_zv, uint64_t book_stamped, uint64_t sheet_stamped, uint64_t autofilter_stamped) {
 	excel_book_object *b = php_excel_resolve_book_obj(parent_zv);
-	if (!b || !b->book || b->generation != book_stamped) {
+	if (!php_excel_book_generation_matches(b, book_stamped)) {
 		zend_throw_exception(NULL,
 			"Underlying ExcelBook handle is stale (parent was reloaded, cleared, or reinitialized)",
 			0);
@@ -874,11 +968,7 @@ static zend_object *excel_object_new_ ## c_name(zend_class_entry *class_type) \
 EXCEL_CHILD_FREE_STORAGE(sheet)
 EXCEL_CHILD_OBJECT_NEW(sheet)
 
-static void excel_font_object_free_storage(zend_object *object)
-{
-	excel_font_object *intern = php_excel_font_object_fetch_object(object);
-	php_excel_child_object_std_dtor(&intern->parent, &intern->std);
-}
+EXCEL_CHILD_FREE_STORAGE(font)
 
 #define REGISTER_EXCEL_CLASS_CONST_LONG(class_name, const_name, value) \
 	zend_declare_class_constant_long(excel_ce_ ## class_name, const_name, sizeof(const_name)-1, (zend_long)value);
@@ -941,11 +1031,7 @@ static zend_object *excel_font_object_clone(zend_object *object)
 	return new_ov;
 }
 
-static void excel_format_object_free_storage(zend_object *object)
-{
-	excel_format_object *intern = php_excel_format_object_fetch_object(object);
-	php_excel_child_object_std_dtor(&intern->parent, &intern->std);
-}
+EXCEL_CHILD_FREE_STORAGE(format)
 
 static zend_object *excel_object_new_format_ex(zend_class_entry *class_type, excel_format_object **ptr)
 {
@@ -1064,26 +1150,50 @@ EXCEL_GET_GC_FN(table)
 #define EXCEL_METHOD(class_name, function_name) \
 	PHP_METHOD(Excel ## class_name, function_name)
 
-#define EXCEL_NON_EMPTY_STRING(string_zval) \
-	if (!string_zval || ZSTR_LEN(string_zval) < 1) {	\
-		RETURN_FALSE;	\
-	}
+/* String / size validators return true when the value is acceptable. Callers
+ * (or the EXCEL_* shims below) map false onto RETURN_FALSE. */
+
+static zend_always_inline bool php_excel_non_empty_string(zend_string *s)
+{
+	return s && ZSTR_LEN(s) >= 1;
+}
 
 /* PHP zend_string is binary-safe; libxl C ABI is NUL-terminated.
  * Reject embedded NUL bytes so libxl never sees a silently-truncated
  * value while the application-side validator saw the full string. */
-#define EXCEL_NUL_SAFE_STRING(string_zval) \
-	if ((string_zval) && ZSTR_LEN(string_zval) != strlen(ZSTR_VAL(string_zval))) { \
-		php_error_docref(NULL, E_WARNING, "String must not contain NUL bytes"); \
-		RETURN_FALSE; \
+static zend_always_inline bool php_excel_nul_safe_string(zend_string *s)
+{
+	if (s && ZSTR_LEN(s) != strlen(ZSTR_VAL(s))) {
+		php_error_docref(NULL, E_WARNING, "String must not contain NUL bytes");
+		return false;
 	}
+	return true;
+}
 
 /* libxl raw load/picture APIs take an `unsigned` size; zend_string length is
  * size_t. Reject buffers over UINT_MAX before the narrowing conversion so a
  * >4 GiB payload cannot silently truncate. Matches the loadPartially guard. */
+static zend_always_inline bool php_excel_validate_uint_size(zend_string *s)
+{
+	if (ZSTR_LEN(s) > UINT_MAX) {
+		php_error_docref(NULL, E_WARNING, "Data string too large");
+		return false;
+	}
+	return true;
+}
+
+#define EXCEL_NON_EMPTY_STRING(string_zval) \
+	if (!php_excel_non_empty_string(string_zval)) { \
+		RETURN_FALSE; \
+	}
+
+#define EXCEL_NUL_SAFE_STRING(string_zval) \
+	if (!php_excel_nul_safe_string(string_zval)) { \
+		RETURN_FALSE; \
+	}
+
 #define EXCEL_VALIDATE_UINT_SIZE(string_zval) \
-	if (ZSTR_LEN(string_zval) > UINT_MAX) { \
-		php_error_docref(NULL, E_WARNING, "Data string too large"); \
+	if (!php_excel_validate_uint_size(string_zval)) { \
 		RETURN_FALSE; \
 	}
 
@@ -1211,129 +1321,225 @@ static bool php_excel_wrapper_unlink_preserving_exception(zend_string *url)
 
 /* libxl APIs take int for row/col/dimension args; zend_long is 64-bit.
  * Reject out-of-int-range values before the implicit narrowing cast. */
-#define EXCEL_VALIDATE_INT_RANGE(arg) \
-	if ((arg) < 0 || (arg) > INT_MAX) { \
-		php_error_docref(NULL, E_WARNING, "Argument out of int range"); \
-		RETURN_FALSE; \
+static zend_always_inline bool php_excel_validate_int_range(zend_long arg)
+{
+	if (arg < 0 || arg > INT_MAX) {
+		php_error_docref(NULL, E_WARNING, "Argument out of int range");
+		return false;
 	}
+	return true;
+}
 
 /* RGB component setters take an int per channel; only 0-255 is meaningful.
  * Out-of-range values silently corrupt the colour, so reject them. */
-#define EXCEL_VALIDATE_RGB(arg) \
-	if ((arg) < 0 || (arg) > 255) { \
-		php_error_docref(NULL, E_WARNING, "RGB component out of range (0-255)"); \
-		RETURN_FALSE; \
+static zend_always_inline bool php_excel_validate_rgb(zend_long arg)
+{
+	if (arg < 0 || arg > 255) {
+		php_error_docref(NULL, E_WARNING, "RGB component out of range (0-255)");
+		return false;
 	}
+	return true;
+}
 
-#define EXCEL_VALIDATE_FINITE(arg) \
-	if (!zend_finite(arg)) { \
-		php_error_docref(NULL, E_WARNING, "Floating-point argument must be finite"); \
-		RETURN_FALSE; \
+static zend_always_inline bool php_excel_validate_finite(double arg)
+{
+	if (!zend_finite(arg)) {
+		php_error_docref(NULL, E_WARNING, "Floating-point argument must be finite");
+		return false;
 	}
+	return true;
+}
 
 /* Named-range scope crosses into a libxl int. SCOPE_UNDEFINED (-2) and
  * SCOPE_WORKBOOK (-1) are valid sentinels; a real sheet scope is 0..INT_MAX.
  * Reject anything outside [-2, INT_MAX] so a 64-bit value can't alias a
  * sentinel or a different sheet after narrowing. */
+static zend_always_inline bool php_excel_validate_scope(zend_long arg)
+{
+	if (arg < SCOPE_UNDEFINED || arg > INT_MAX) {
+		php_error_docref(NULL, E_WARNING, "Scope id out of range");
+		return false;
+	}
+	return true;
+}
+
+#define EXCEL_VALIDATE_INT_RANGE(arg) \
+	if (!php_excel_validate_int_range((arg))) { \
+		RETURN_FALSE; \
+	}
+
+#define EXCEL_VALIDATE_RGB(arg) \
+	if (!php_excel_validate_rgb((arg))) { \
+		RETURN_FALSE; \
+	}
+
+#define EXCEL_VALIDATE_FINITE(arg) \
+	if (!php_excel_validate_finite((arg))) { \
+		RETURN_FALSE; \
+	}
+
 #define EXCEL_VALIDATE_SCOPE(arg) \
-	if ((arg) < SCOPE_UNDEFINED || (arg) > INT_MAX) { \
-		php_error_docref(NULL, E_WARNING, "Scope id out of range"); \
+	if (!php_excel_validate_scope((arg))) { \
 		RETURN_FALSE; \
 	}
 
 /* Coordinate validation for sheet read/write paths. Limits depend on book
  * type: XLSX is 1048576 rows x 16384 cols; XLS is 65536 rows x 256 cols.
  * libxl write paths reject out-of-range writes themselves, but read paths
- * silently return empty cells, so the macro must run before either. */
+ * silently return empty cells, so the check must run before either. */
 #define EXCEL_MAX_ROW_XLSX 1048575
 #define EXCEL_MAX_COL_XLSX 16383
 #define EXCEL_MAX_ROW_XLS  65535
 #define EXCEL_MAX_COL_XLS  255
 #define PHP_EXCEL_MAX_RANGE_CELLS 1048576
 
-#define EXCEL_VALIDATE_ROW_COL(r, c, parent_zv) \
-	do { \
-		excel_book_object *_vb = php_excel_resolve_book_obj(parent_zv); \
-		zend_long _maxr = (_vb && _vb->is_xlsx) ? EXCEL_MAX_ROW_XLSX : EXCEL_MAX_ROW_XLS; \
-		zend_long _maxc = (_vb && _vb->is_xlsx) ? EXCEL_MAX_COL_XLSX : EXCEL_MAX_COL_XLS; \
-		if ((r) < 0 || (r) > _maxr || (c) < 0 || (c) > _maxc) { \
-			php_error_docref(NULL, E_WARNING, \
-				"Invalid coordinates: row=" ZEND_LONG_FMT ", column=" ZEND_LONG_FMT, \
-				(zend_long)(r), (zend_long)(c)); \
-			RETURN_FALSE; \
-		} \
-	} while (0)
+/* Unresolvable parent falls back to XLS limits (same as the prior macros). */
+static zend_always_inline void php_excel_book_coord_limits(
+	excel_book_object *vb, zend_long *maxr, zend_long *maxc)
+{
+	if (vb && vb->is_xlsx) {
+		*maxr = EXCEL_MAX_ROW_XLSX;
+		*maxc = EXCEL_MAX_COL_XLSX;
+	} else {
+		*maxr = EXCEL_MAX_ROW_XLS;
+		*maxc = EXCEL_MAX_COL_XLS;
+	}
+}
 
-/* Preresolved variant: the caller has already resolved the owning book object
- * (see CHECK_BOOK_GENERATION_PR). Identical limits and error message, no walk. */
-#define EXCEL_VALIDATE_ROW_COL_PR(r, c, vb) \
-	do { \
-		zend_long _maxr = ((vb) && (vb)->is_xlsx) ? EXCEL_MAX_ROW_XLSX : EXCEL_MAX_ROW_XLS; \
-		zend_long _maxc = ((vb) && (vb)->is_xlsx) ? EXCEL_MAX_COL_XLSX : EXCEL_MAX_COL_XLS; \
-		if ((r) < 0 || (r) > _maxr || (c) < 0 || (c) > _maxc) { \
-			php_error_docref(NULL, E_WARNING, \
-				"Invalid coordinates: row=" ZEND_LONG_FMT ", column=" ZEND_LONG_FMT, \
-				(zend_long)(r), (zend_long)(c)); \
-			RETURN_FALSE; \
-		} \
-	} while (0)
+static zend_always_inline bool php_excel_validate_row_col_pr(
+	zend_long r, zend_long c, excel_book_object *vb)
+{
+	zend_long maxr, maxc;
 
-/* Row-range validation for insertRow/removeRow, where both arguments are
- * row indices (row_first, row_last). The cell-coordinate macro above would
- * incorrectly check the second argument against the column limit. */
-#define EXCEL_VALIDATE_ROW_RANGE(rfirst, rlast, parent_zv) \
-	do { \
-		excel_book_object *_vb = php_excel_resolve_book_obj(parent_zv); \
-		zend_long _maxr = (_vb && _vb->is_xlsx) ? EXCEL_MAX_ROW_XLSX : EXCEL_MAX_ROW_XLS; \
-		if ((rfirst) < 0 || (rfirst) > _maxr || (rlast) < 0 || (rlast) > _maxr) { \
-			php_error_docref(NULL, E_WARNING, \
-				"Invalid row range: first=" ZEND_LONG_FMT ", last=" ZEND_LONG_FMT, \
-				(zend_long)(rfirst), (zend_long)(rlast)); \
-			RETURN_FALSE; \
-		} \
-		if ((rfirst) > (rlast)) { \
-			php_error_docref(NULL, E_WARNING, \
-				"The range row start cannot be greater than row end."); \
-			RETURN_FALSE; \
-		} \
-	} while (0)
+	php_excel_book_coord_limits(vb, &maxr, &maxc);
+	if (r < 0 || r > maxr || c < 0 || c > maxc) {
+		php_error_docref(NULL, E_WARNING,
+			"Invalid coordinates: row=" ZEND_LONG_FMT ", column=" ZEND_LONG_FMT,
+			r, c);
+		return false;
+	}
+	return true;
+}
+
+static zend_always_inline bool php_excel_validate_row_col(
+	zend_long r, zend_long c, zval *parent_zv)
+{
+	return php_excel_validate_row_col_pr(r, c, php_excel_resolve_book_obj(parent_zv));
+}
+
+/* Row-range validation for insertRow/removeRow (both args are rows). */
+static zend_always_inline bool php_excel_validate_row_range(
+	zend_long rfirst, zend_long rlast, zval *parent_zv)
+{
+	excel_book_object *vb = php_excel_resolve_book_obj(parent_zv);
+	zend_long maxr, maxc;
+
+	php_excel_book_coord_limits(vb, &maxr, &maxc);
+	(void)maxc;
+	if (rfirst < 0 || rfirst > maxr || rlast < 0 || rlast > maxr) {
+		php_error_docref(NULL, E_WARNING,
+			"Invalid row range: first=" ZEND_LONG_FMT ", last=" ZEND_LONG_FMT,
+			rfirst, rlast);
+		return false;
+	}
+	if (rfirst > rlast) {
+		php_error_docref(NULL, E_WARNING,
+			"The range row start cannot be greater than row end.");
+		return false;
+	}
+	return true;
+}
 
 /* Column-range validation for insertCol/removeCol. */
-#define EXCEL_VALIDATE_COL_RANGE(cfirst, clast, parent_zv) \
+static zend_always_inline bool php_excel_validate_col_range(
+	zend_long cfirst, zend_long clast, zval *parent_zv)
+{
+	excel_book_object *vb = php_excel_resolve_book_obj(parent_zv);
+	zend_long maxr, maxc;
+
+	php_excel_book_coord_limits(vb, &maxr, &maxc);
+	(void)maxr;
+	if (cfirst < 0 || cfirst > maxc || clast < 0 || clast > maxc) {
+		php_error_docref(NULL, E_WARNING,
+			"Invalid column range: first=" ZEND_LONG_FMT ", last=" ZEND_LONG_FMT,
+			cfirst, clast);
+		return false;
+	}
+	if (cfirst > clast) {
+		php_error_docref(NULL, E_WARNING,
+			"The range column start cannot be greater than column end.");
+		return false;
+	}
+	return true;
+}
+
+/* Single-axis validators (colWidth/rowHeight/setRowHidden/...). */
+static zend_always_inline bool php_excel_validate_row(zend_long r, zval *parent_zv)
+{
+	excel_book_object *vb = php_excel_resolve_book_obj(parent_zv);
+	zend_long maxr, maxc;
+
+	php_excel_book_coord_limits(vb, &maxr, &maxc);
+	(void)maxc;
+	if (r < 0 || r > maxr) {
+		php_error_docref(NULL, E_WARNING, "Invalid row: " ZEND_LONG_FMT, r);
+		return false;
+	}
+	return true;
+}
+
+static zend_always_inline bool php_excel_validate_col(zend_long c, zval *parent_zv)
+{
+	excel_book_object *vb = php_excel_resolve_book_obj(parent_zv);
+	zend_long maxr, maxc;
+
+	php_excel_book_coord_limits(vb, &maxr, &maxc);
+	(void)maxr;
+	if (c < 0 || c > maxc) {
+		php_error_docref(NULL, E_WARNING, "Invalid column: " ZEND_LONG_FMT, c);
+		return false;
+	}
+	return true;
+}
+
+#define EXCEL_VALIDATE_ROW_COL(r, c, parent_zv) \
 	do { \
-		excel_book_object *_vb = php_excel_resolve_book_obj(parent_zv); \
-		zend_long _maxc = (_vb && _vb->is_xlsx) ? EXCEL_MAX_COL_XLSX : EXCEL_MAX_COL_XLS; \
-		if ((cfirst) < 0 || (cfirst) > _maxc || (clast) < 0 || (clast) > _maxc) { \
-			php_error_docref(NULL, E_WARNING, \
-				"Invalid column range: first=" ZEND_LONG_FMT ", last=" ZEND_LONG_FMT, \
-				(zend_long)(cfirst), (zend_long)(clast)); \
-			RETURN_FALSE; \
-		} \
-		if ((cfirst) > (clast)) { \
-			php_error_docref(NULL, E_WARNING, \
-				"The range column start cannot be greater than column end."); \
+		if (!php_excel_validate_row_col((r), (c), (parent_zv))) { \
 			RETURN_FALSE; \
 		} \
 	} while (0)
 
-/* Single-axis validators for methods that take just one coordinate
- * (colWidth/rowHeight/setRowHidden/setColHidden/colWidthPx/rowHeightPx/...). */
+#define EXCEL_VALIDATE_ROW_COL_PR(r, c, vb) \
+	do { \
+		if (!php_excel_validate_row_col_pr((r), (c), (vb))) { \
+			RETURN_FALSE; \
+		} \
+	} while (0)
+
+#define EXCEL_VALIDATE_ROW_RANGE(rfirst, rlast, parent_zv) \
+	do { \
+		if (!php_excel_validate_row_range((rfirst), (rlast), (parent_zv))) { \
+			RETURN_FALSE; \
+		} \
+	} while (0)
+
+#define EXCEL_VALIDATE_COL_RANGE(cfirst, clast, parent_zv) \
+	do { \
+		if (!php_excel_validate_col_range((cfirst), (clast), (parent_zv))) { \
+			RETURN_FALSE; \
+		} \
+	} while (0)
+
 #define EXCEL_VALIDATE_ROW(r, parent_zv) \
 	do { \
-		excel_book_object *_vb = php_excel_resolve_book_obj(parent_zv); \
-		zend_long _maxr = (_vb && _vb->is_xlsx) ? EXCEL_MAX_ROW_XLSX : EXCEL_MAX_ROW_XLS; \
-		if ((r) < 0 || (r) > _maxr) { \
-			php_error_docref(NULL, E_WARNING, "Invalid row: " ZEND_LONG_FMT, (zend_long)(r)); \
+		if (!php_excel_validate_row((r), (parent_zv))) { \
 			RETURN_FALSE; \
 		} \
 	} while (0)
 
 #define EXCEL_VALIDATE_COL(c, parent_zv) \
 	do { \
-		excel_book_object *_vb = php_excel_resolve_book_obj(parent_zv); \
-		zend_long _maxc = (_vb && _vb->is_xlsx) ? EXCEL_MAX_COL_XLSX : EXCEL_MAX_COL_XLS; \
-		if ((c) < 0 || (c) > _maxc) { \
-			php_error_docref(NULL, E_WARNING, "Invalid column: " ZEND_LONG_FMT, (zend_long)(c)); \
+		if (!php_excel_validate_col((c), (parent_zv))) { \
 			RETURN_FALSE; \
 		} \
 	} while (0)
@@ -1356,6 +1562,22 @@ static inline int php_excel_validate_partial_load_args(zend_long sheet_index, ze
 	return 1;
 }
 #endif
+
+#define PE_RETURN_IS_LONG RETURN_LONG
+#define PE_RETURN_IS_BOOL RETURN_BOOL
+#define PE_RETURN_IS_DOUBLE RETURN_DOUBLE
+#define PE_RETURN_IS_STRING(data) if (data) { RETURN_STRING((char *)data); } else { RETURN_NULL(); }
+
+
+/* No-arg Book method: fetch handle, call xlBook{func_name}, return. */
+#define PHP_EXCEL_BOOK_INFO(func_name, type) \
+{ \
+	BookHandle book; \
+	zval *object = ZEND_THIS; \
+	ZEND_PARSE_PARAMETERS_NONE(); \
+	BOOK_FROM_OBJECT(book, object); \
+	PE_RETURN_ ## type (xlBook ## func_name (book)); \
+}
 
 /* {{{ proto bool ExcelBook::requiresKey()
 	true if license key is required. */
@@ -2009,14 +2231,7 @@ EXCEL_METHOD(Book, copySheet)
 	Get the number of sheets inside a file. */
 EXCEL_METHOD(Book, sheetCount)
 {
-	BookHandle book;
-	zval *object = ZEND_THIS;
-
-	ZEND_PARSE_PARAMETERS_NONE();
-
-	BOOK_FROM_OBJECT(book, object);
-
-	RETURN_LONG(xlBookSheetCount(book));
+	PHP_EXCEL_BOOK_INFO(SheetCount, IS_LONG)
 }
 /* }}} */
 
@@ -2344,14 +2559,7 @@ EXCEL_METHOD(Book, unpackDate)
 	Returns whether the 1904 date system is active: true - 1904 date system, false - 1900 date system */
 EXCEL_METHOD(Book, isDate1904)
 {
-	BookHandle book;
-	zval *object = ZEND_THIS;
-
-	ZEND_PARSE_PARAMETERS_NONE();
-
-	BOOK_FROM_OBJECT(book, object);
-
-	RETURN_BOOL(xlBookIsDate1904(book));
+	PHP_EXCEL_BOOK_INFO(IsDate1904, IS_BOOL)
 }
 /* }}} */
 
@@ -2379,14 +2587,7 @@ EXCEL_METHOD(Book, setDate1904)
 	Get the active sheet inside a file. */
 EXCEL_METHOD(Book, getActiveSheet)
 {
-	BookHandle book;
-	zval *object = ZEND_THIS;
-
-	ZEND_PARSE_PARAMETERS_NONE();
-
-	BOOK_FROM_OBJECT(book, object);
-
-	RETURN_LONG(xlBookActiveSheet(book));
+	PHP_EXCEL_BOOK_INFO(ActiveSheet, IS_LONG)
 }
 /* }}} */
 
@@ -2681,14 +2882,7 @@ EXCEL_METHOD(Book, addPictureFromString)
 	Returns whether the RGB mode is active. */
 EXCEL_METHOD(Book, rgbMode)
 {
-	BookHandle book;
-	zval *object = ZEND_THIS;
-
-	ZEND_PARSE_PARAMETERS_NONE();
-
-	BOOK_FROM_OBJECT(book, object);
-
-	RETURN_BOOL(xlBookRgbMode(book));
+	PHP_EXCEL_BOOK_INFO(RgbMode, IS_BOOL)
 }
 /* }}} */
 
@@ -2928,14 +3122,7 @@ EXCEL_METHOD(Book, addRichString)
 
 EXCEL_METHOD(Book, calcMode)
 {
-	BookHandle book;
-	zval *object = ZEND_THIS;
-
-	ZEND_PARSE_PARAMETERS_NONE();
-
-	BOOK_FROM_OBJECT(book, object);
-
-	RETURN_LONG(xlBookCalcMode(book));
+	PHP_EXCEL_BOOK_INFO(CalcMode, IS_LONG)
 }
 
 EXCEL_METHOD(Book, setCalcMode)
@@ -3009,26 +3196,12 @@ EXCEL_METHOD(Book, addFormatFromStyle)
 
 EXCEL_METHOD(Book, removeVBA)
 {
-	BookHandle book;
-	zval *object = ZEND_THIS;
-
-	ZEND_PARSE_PARAMETERS_NONE();
-
-	BOOK_FROM_OBJECT(book, object);
-
-	RETURN_BOOL(xlBookRemoveVBA(book));
+	PHP_EXCEL_BOOK_INFO(RemoveVBA, IS_BOOL)
 }
 
 EXCEL_METHOD(Book, removePrinterSettings)
 {
-	BookHandle book;
-	zval *object = ZEND_THIS;
-
-	ZEND_PARSE_PARAMETERS_NONE();
-
-	BOOK_FROM_OBJECT(book, object);
-
-	RETURN_BOOL(xlBookRemovePrinterSettings(book));
+	PHP_EXCEL_BOOK_INFO(RemovePrinterSettings, IS_BOOL)
 }
 
 #if LIBXL_VERSION >= 0x05000000
@@ -3052,14 +3225,7 @@ EXCEL_METHOD(Book, setPassword)
 
 EXCEL_METHOD(Book, dpiAwareness)
 {
-	BookHandle book;
-	zval *object = ZEND_THIS;
-
-	ZEND_PARSE_PARAMETERS_NONE();
-
-	BOOK_FROM_OBJECT(book, object);
-
-	RETURN_LONG(xlBookDpiAwareness(book));
+	PHP_EXCEL_BOOK_INFO(DpiAwareness, IS_LONG)
 }
 
 EXCEL_METHOD(Book, setDpiAwareness)
@@ -3107,14 +3273,7 @@ EXCEL_METHOD(Book, loadInfoRaw)
 #if LIBXL_VERSION >= 0x05010000
 EXCEL_METHOD(Book, errorCode)
 {
-	BookHandle book;
-	zval *object = ZEND_THIS;
-
-	ZEND_PARSE_PARAMETERS_NONE();
-
-	BOOK_FROM_OBJECT(book, object);
-
-	RETURN_LONG(xlBookErrorCode(book));
+	PHP_EXCEL_BOOK_INFO(ErrorCode, IS_LONG)
 }
 
 EXCEL_METHOD(Book, conditionalFormat)
@@ -3146,14 +3305,7 @@ EXCEL_METHOD(Book, conditionalFormat)
 
 EXCEL_METHOD(Book, conditionalFormatSize)
 {
-	BookHandle book;
-	zval *object = ZEND_THIS;
-
-	ZEND_PARSE_PARAMETERS_NONE();
-
-	BOOK_FROM_OBJECT(book, object);
-
-	RETURN_LONG(xlBookConditionalFormatSize(book));
+	PHP_EXCEL_BOOK_INFO(ConditionalFormatSize, IS_LONG)
 }
 
 EXCEL_METHOD(Book, clear)
@@ -5274,10 +5426,17 @@ EXCEL_METHOD(Sheet, copy)
 }
 /* }}} */
 
-#define PE_RETURN_IS_LONG RETURN_LONG
-#define PE_RETURN_IS_BOOL RETURN_BOOL
-#define PE_RETURN_IS_DOUBLE RETURN_DOUBLE
-#define PE_RETURN_IS_STRING(data) if (data) { RETURN_STRING((char *)data); } else { RETURN_NULL(); }
+
+/* No-arg Sheet method that calls a void libxl op and returns true. */
+#define PHP_EXCEL_SHEET_VOID(func_name) \
+{ \
+	SheetHandle sheet; \
+	zval *object = ZEND_THIS; \
+	ZEND_PARSE_PARAMETERS_NONE(); \
+	SHEET_FROM_OBJECT(sheet, object); \
+	xlSheet ## func_name (sheet); \
+	RETURN_TRUE; \
+}
 
 #define PHP_EXCEL_INFO(func_name, type) \
 { \
@@ -5404,16 +5563,7 @@ EXCEL_METHOD(Sheet, setHidden)
 	Returns whether sheet is hidden. */
 EXCEL_METHOD(Sheet, isHidden)
 {
-	SheetHandle sheet;
-	zval *object = ZEND_THIS;
-
-	if (zend_parse_parameters_none() == FAILURE) {
-		RETURN_FALSE;
-	}
-
-	SHEET_FROM_OBJECT(sheet, object);
-
-	RETURN_BOOL(xlSheetHidden(sheet));
+	PHP_EXCEL_INFO(Hidden, IS_BOOL)
 }
 /* }}} */
 
@@ -5425,9 +5575,7 @@ EXCEL_METHOD(Sheet, getTopLeftView)
 	zval *object = ZEND_THIS;
 	int r = 0, c = 0;
 
-	if (zend_parse_parameters_none() == FAILURE) {
-		RETURN_FALSE;
-	}
+	ZEND_PARSE_PARAMETERS_NONE();
 
 	SHEET_FROM_OBJECT(sheet, object);
 
@@ -6039,13 +6187,7 @@ EXCEL_METHOD(Sheet, setPrintRepeatCols)
 	Returns whether grouping rows summary is below. Returns 1 if summary is below and 0 if isn't. */
 EXCEL_METHOD(Sheet, getGroupSummaryBelow)
 {
-	SheetHandle sheet;
-	zval *object = ZEND_THIS;
-
-	ZEND_PARSE_PARAMETERS_NONE();
-
-	SHEET_FROM_OBJECT(sheet, object);
-	RETURN_BOOL(xlSheetGroupSummaryBelow(sheet));
+	PHP_EXCEL_INFO(GroupSummaryBelow, IS_BOOL)
 }
 /* }}} */
 
@@ -6072,13 +6214,7 @@ EXCEL_METHOD(Sheet, setGroupSummaryBelow)
 	Returns whether grouping columns summary is right. Returns 1 if summary is right and 0 if isn't. */
 EXCEL_METHOD(Sheet, getGroupSummaryRight)
 {
-	SheetHandle sheet;
-	zval *object = ZEND_THIS;
-
-	ZEND_PARSE_PARAMETERS_NONE();
-
-	SHEET_FROM_OBJECT(sheet, object);
-	RETURN_BOOL(xlSheetGroupSummaryRight(sheet));
+	PHP_EXCEL_INFO(GroupSummaryRight, IS_BOOL)
 }
 /* }}} */
 
@@ -6217,13 +6353,7 @@ EXCEL_METHOD(Sheet, getIndexRange)
 	Returns the number of named ranges in the sheet. */
 EXCEL_METHOD(Sheet, namedRangeSize)
 {
-	SheetHandle sheet;
-	zval *object = ZEND_THIS;
-
-	ZEND_PARSE_PARAMETERS_NONE();
-
-	SHEET_FROM_OBJECT(sheet, object);
-	RETURN_LONG(xlSheetNamedRangeSize(sheet));
+	PHP_EXCEL_INFO(NamedRangeSize, IS_LONG)
 }
 /* }}} */
 
@@ -6250,13 +6380,7 @@ EXCEL_METHOD(Sheet, getVerPageBreak)
 	Returns a number of vertical page breaks in the sheet. */
 EXCEL_METHOD(Sheet, getVerPageBreakSize)
 {
-	SheetHandle sheet;
-	zval *object = ZEND_THIS;
-
-	ZEND_PARSE_PARAMETERS_NONE();
-
-	SHEET_FROM_OBJECT(sheet, object);
-	RETURN_LONG(xlSheetGetVerPageBreakSize(sheet));
+	PHP_EXCEL_INFO(GetVerPageBreakSize, IS_LONG)
 }
 /* }}} */
 
@@ -6283,13 +6407,7 @@ EXCEL_METHOD(Sheet, getHorPageBreak)
 	Returns a number of horizontal page breaks in the sheet. */
 EXCEL_METHOD(Sheet, getHorPageBreakSize)
 {
-	SheetHandle sheet;
-	zval *object = ZEND_THIS;
-
-	ZEND_PARSE_PARAMETERS_NONE();
-
-	SHEET_FROM_OBJECT(sheet, object);
-	RETURN_LONG(xlSheetGetHorPageBreakSize(sheet));
+	PHP_EXCEL_INFO(GetHorPageBreakSize, IS_LONG)
 }
 /* }}} */
 
@@ -6332,13 +6450,7 @@ EXCEL_METHOD(Sheet, getPictureInfo)
 	Returns a number of pictures in this worksheet. */
 EXCEL_METHOD(Sheet, getNumPictures)
 {
-	SheetHandle sheet;
-	zval *object = ZEND_THIS;
-
-	ZEND_PARSE_PARAMETERS_NONE();
-
-	SHEET_FROM_OBJECT(sheet, object);
-	RETURN_LONG(xlSheetPictureSize(sheet));
+	PHP_EXCEL_INFO(PictureSize, IS_LONG)
 }
 /* }}} */
 
@@ -6365,13 +6477,7 @@ EXCEL_METHOD(Book, biffVersion)
 	Returns whether the R1C1 reference mode is active. */
 EXCEL_METHOD(Book, getRefR1C1)
 {
-	BookHandle book;
-	zval *object = ZEND_THIS;
-
-	ZEND_PARSE_PARAMETERS_NONE();
-
-	BOOK_FROM_OBJECT(book, object);
-	RETURN_BOOL(xlBookRefR1C1A(book));
+	PHP_EXCEL_BOOK_INFO(RefR1C1A, IS_BOOL)
 }
 /* }}} */
 
@@ -6427,13 +6533,7 @@ EXCEL_METHOD(Book, getPicture)
 	Returns a number of pictures in this workbook. */
 EXCEL_METHOD(Book, getNumPictures)
 {
-	BookHandle book;
-	zval *object = ZEND_THIS;
-
-	ZEND_PARSE_PARAMETERS_NONE();
-
-	BOOK_FROM_OBJECT(book, object);
-	RETURN_LONG(xlBookPictureSize(book));
+	PHP_EXCEL_BOOK_INFO(PictureSize, IS_LONG)
 }
 /* }}} */
 
@@ -6482,13 +6582,7 @@ EXCEL_METHOD(Book, insertSheet)
 	Returns whether the workbook is template. */
 EXCEL_METHOD(Book, isTemplate)
 {
-	BookHandle book;
-	zval *object = ZEND_THIS;
-
-	ZEND_PARSE_PARAMETERS_NONE();
-
-	BOOK_FROM_OBJECT(book, object);
-	RETURN_BOOL(xlBookIsTemplate(book));
+	PHP_EXCEL_BOOK_INFO(IsTemplate, IS_BOOL)
 }
 /* }}} */
 
@@ -6514,13 +6608,7 @@ EXCEL_METHOD(Book, setTemplate)
 	Returns whether the text is displayed in right-to-left mode: 1 - yes, 0 - no. */
 EXCEL_METHOD(Sheet, getRightToLeft)
 {
-	SheetHandle sheet;
-	zval *object = ZEND_THIS;
-
-	ZEND_PARSE_PARAMETERS_NONE();
-
-	SHEET_FROM_OBJECT(sheet, object);
-	RETURN_LONG(xlSheetRightToLeft(sheet));
+	PHP_EXCEL_INFO(RightToLeft, IS_LONG)
 }
 /* }}} */
 
@@ -6576,15 +6664,7 @@ EXCEL_METHOD(Sheet, setPrintArea)
 	Clears repeated rows and columns on each page. */
 EXCEL_METHOD(Sheet, clearPrintRepeats)
 {
-	zval *object = ZEND_THIS;
-	SheetHandle sheet;
-
-	ZEND_PARSE_PARAMETERS_NONE();
-
-	SHEET_FROM_OBJECT(sheet, object);
-	xlSheetClearPrintRepeats(sheet);
-
-	RETURN_TRUE;
+	PHP_EXCEL_SHEET_VOID(ClearPrintRepeats)
 }
 /* }}} */
 
@@ -6592,15 +6672,7 @@ EXCEL_METHOD(Sheet, clearPrintRepeats)
 	Clears the print area. */
 EXCEL_METHOD(Sheet, clearPrintArea)
 {
-	zval *object = ZEND_THIS;
-	SheetHandle sheet;
-
-	ZEND_PARSE_PARAMETERS_NONE();
-
-	SHEET_FROM_OBJECT(sheet, object);
-	xlSheetClearPrintArea(sheet);
-
-	RETURN_TRUE;
+	PHP_EXCEL_SHEET_VOID(ClearPrintArea)
 }
 /* }}} */
 
@@ -6616,13 +6688,7 @@ EXCEL_METHOD(Sheet, protect)
 	Returns the number of hyperlinks in the sheet. */
 EXCEL_METHOD(Sheet, hyperlinkSize)
 {
-	zval *object = ZEND_THIS;
-	SheetHandle sheet;
-
-	ZEND_PARSE_PARAMETERS_NONE();
-
-	SHEET_FROM_OBJECT(sheet, object);
-	RETURN_LONG(xlSheetHyperlinkSize(sheet));
+	PHP_EXCEL_INFO(HyperlinkSize, IS_LONG)
 }
 /* }}} */
 
@@ -6708,13 +6774,7 @@ EXCEL_METHOD(Sheet, addHyperlink)
 	Returns a number of merged cells in this worksheet. */
 EXCEL_METHOD(Sheet, mergeSize)
 {
-	zval *object = ZEND_THIS;
-	SheetHandle sheet;
-
-	ZEND_PARSE_PARAMETERS_NONE();
-
-	SHEET_FROM_OBJECT(sheet, object);
-	RETURN_LONG(xlSheetMergeSize(sheet));
+	PHP_EXCEL_INFO(MergeSize, IS_LONG)
 }
 /* }}} */
 
@@ -7525,18 +7585,21 @@ EXCEL_METHOD(FilterColumn, __construct)
 }
 /* }}} */
 
+
+#define PHP_EXCEL_FILTERCOLUMN_INFO(func_name, type) \
+{ \
+	zval *object = ZEND_THIS; \
+	FilterColumnHandle filtercolumn; \
+	ZEND_PARSE_PARAMETERS_NONE(); \
+	FILTERCOLUMN_FROM_OBJECT(filtercolumn, object); \
+	PE_RETURN_ ## type (xlFilterColumn ## func_name (filtercolumn)); \
+}
+
 /* {{{ proto long FilterColumn::index()
 	Returns the zero-based index of this AutoFilter column. */
 EXCEL_METHOD(FilterColumn, index)
 {
-	zval *object = ZEND_THIS;
-	FilterColumnHandle filtercolumn;
-
-	ZEND_PARSE_PARAMETERS_NONE();
-
-	FILTERCOLUMN_FROM_OBJECT(filtercolumn, object);
-
-	RETURN_LONG(xlFilterColumnIndex(filtercolumn));
+	PHP_EXCEL_FILTERCOLUMN_INFO(Index, IS_LONG)
 }
 /* }}} */
 
@@ -7544,14 +7607,7 @@ EXCEL_METHOD(FilterColumn, index)
 	Returns the filter type of this AutoFilter column. */
 EXCEL_METHOD(FilterColumn, filterType)
 {
-	zval *object = ZEND_THIS;
-	FilterColumnHandle filtercolumn;
-
-	ZEND_PARSE_PARAMETERS_NONE();
-
-	FILTERCOLUMN_FROM_OBJECT(filtercolumn, object);
-
-	RETURN_LONG(xlFilterColumnFilterType(filtercolumn));
+	PHP_EXCEL_FILTERCOLUMN_INFO(FilterType, IS_LONG)
 }
 /* }}} */
 
@@ -7559,14 +7615,7 @@ EXCEL_METHOD(FilterColumn, filterType)
 	Returns the number of filter values. */
 EXCEL_METHOD(FilterColumn, filterSize)
 {
-	zval *object = ZEND_THIS;
-	FilterColumnHandle filtercolumn;
-
-	ZEND_PARSE_PARAMETERS_NONE();
-
-	FILTERCOLUMN_FROM_OBJECT(filtercolumn, object);
-
-	RETURN_LONG(xlFilterColumnFilterSize(filtercolumn));
+	PHP_EXCEL_FILTERCOLUMN_INFO(FilterSize, IS_LONG)
 }
 /* }}} */
 
@@ -7944,15 +7993,7 @@ EXCEL_METHOD(Sheet, addDataValidationDouble)
 	Removes all data validations for the sheet (only for xlsx files). */
 EXCEL_METHOD(Sheet, removeDataValidations)
 {
-	zval *object = ZEND_THIS;
-	SheetHandle sheet;
-
-	ZEND_PARSE_PARAMETERS_NONE();
-
-	SHEET_FROM_OBJECT(sheet, object);
-	xlSheetRemoveDataValidations(sheet);
-
-	RETURN_TRUE;
+	PHP_EXCEL_SHEET_VOID(RemoveDataValidations)
 }
 /* }}} */
 
@@ -7961,14 +8002,7 @@ EXCEL_METHOD(Sheet, removeDataValidations)
 	Returns the number of data validations in the sheet (only for xlsx files). */
 EXCEL_METHOD(Sheet, dataValidationSize)
 {
-	zval *object = ZEND_THIS;
-	SheetHandle sheet;
-
-	ZEND_PARSE_PARAMETERS_NONE();
-
-	SHEET_FROM_OBJECT(sheet, object);
-
-	RETURN_LONG(xlSheetDataValidationSize(sheet));
+	PHP_EXCEL_INFO(DataValidationSize, IS_LONG)
 }
 /* }}} */
 
@@ -8121,14 +8155,7 @@ EXCEL_METHOD(Sheet, writeRichStr)
 
 EXCEL_METHOD(Sheet, formControlSize)
 {
-	SheetHandle sheet;
-	zval *object = ZEND_THIS;
-
-	ZEND_PARSE_PARAMETERS_NONE();
-
-	SHEET_FROM_OBJECT(sheet, object);
-
-	RETURN_LONG(xlSheetFormControlSize(sheet));
+	PHP_EXCEL_INFO(FormControlSize, IS_LONG)
 }
 
 EXCEL_METHOD(Sheet, formControl)
@@ -8230,27 +8257,12 @@ EXCEL_METHOD(Sheet, addSelectionRange)
 
 EXCEL_METHOD(Sheet, removeSelection)
 {
-	SheetHandle sheet;
-	zval *object = ZEND_THIS;
-
-	ZEND_PARSE_PARAMETERS_NONE();
-
-	SHEET_FROM_OBJECT(sheet, object);
-
-	xlSheetRemoveSelection(sheet);
-	RETURN_TRUE;
+	PHP_EXCEL_SHEET_VOID(RemoveSelection)
 }
 
 EXCEL_METHOD(Sheet, tabColor)
 {
-	SheetHandle sheet;
-	zval *object = ZEND_THIS;
-
-	ZEND_PARSE_PARAMETERS_NONE();
-
-	SHEET_FROM_OBJECT(sheet, object);
-
-	RETURN_LONG(xlSheetTabColor(sheet));
+	PHP_EXCEL_INFO(TabColor, IS_LONG)
 }
 
 EXCEL_METHOD(Sheet, getTabRgbColor)
@@ -8674,14 +8686,7 @@ EXCEL_METHOD(Sheet, removeConditionalFormatting)
 
 EXCEL_METHOD(Sheet, conditionalFormattingSize)
 {
-	SheetHandle sheet;
-	zval *object = ZEND_THIS;
-
-	ZEND_PARSE_PARAMETERS_NONE();
-
-	SHEET_FROM_OBJECT(sheet, object);
-
-	RETURN_LONG(xlSheetConditionalFormattingSize(sheet));
+	PHP_EXCEL_INFO(ConditionalFormattingSize, IS_LONG)
 }
 #endif
 
@@ -9767,6 +9772,43 @@ EXCEL_METHOD(Table, __construct)
 	EXCEL_INIT_SHEET_PARENT(obj, zsheet);
 }
 
+
+#define PHP_EXCEL_TABLE_INFO(func_name, type) \
+{ \
+	zval *object = ZEND_THIS; \
+	TableHandle table; \
+	ZEND_PARSE_PARAMETERS_NONE(); \
+	TABLE_FROM_OBJECT(table, object); \
+	PE_RETURN_ ## type (xlTable ## func_name (table)); \
+}
+
+#define PHP_EXCEL_TABLE_SET_BOOL(func_name) \
+{ \
+	zval *object = ZEND_THIS; \
+	TableHandle table; \
+	bool val; \
+	if (zend_parse_parameters(ZEND_NUM_ARGS(), "b", &val) == FAILURE) { \
+		RETURN_FALSE; \
+	} \
+	TABLE_FROM_OBJECT(table, object); \
+	xlTable ## func_name (table, val); \
+	RETURN_TRUE; \
+}
+
+#define PHP_EXCEL_TABLE_SET_LONG(func_name) \
+{ \
+	zval *object = ZEND_THIS; \
+	TableHandle table; \
+	zend_long val; \
+	if (zend_parse_parameters(ZEND_NUM_ARGS(), "l", &val) == FAILURE) { \
+		RETURN_FALSE; \
+	} \
+	EXCEL_VALIDATE_INT_RANGE(val) \
+	TABLE_FROM_OBJECT(table, object); \
+	xlTable ## func_name (table, val); \
+	RETURN_TRUE; \
+}
+
 EXCEL_METHOD(Table, name)
 {
 	zval *object = ZEND_THIS;
@@ -9850,13 +9892,7 @@ EXCEL_METHOD(Table, autoFilter)
 #if LIBXL_VERSION >= 0x05020000
 EXCEL_METHOD(Table, isAutoFilter)
 {
-	zval *object = ZEND_THIS;
-	TableHandle table;
-
-	ZEND_PARSE_PARAMETERS_NONE();
-
-	TABLE_FROM_OBJECT(table, object);
-	RETURN_BOOL(xlTableIsAutoFilter(table));
+	PHP_EXCEL_TABLE_INFO(IsAutoFilter, IS_BOOL)
 }
 
 EXCEL_METHOD(Table, removeFilter)
@@ -9874,128 +9910,57 @@ EXCEL_METHOD(Table, removeFilter)
 
 EXCEL_METHOD(Table, style)
 {
-	zval *object = ZEND_THIS;
-	TableHandle table;
-	ZEND_PARSE_PARAMETERS_NONE();
-
-	TABLE_FROM_OBJECT(table, object);
-	RETURN_LONG(xlTableStyle(table));
+	PHP_EXCEL_TABLE_INFO(Style, IS_LONG)
 }
 
 EXCEL_METHOD(Table, setStyle)
 {
-	zval *object = ZEND_THIS;
-	TableHandle table;
-	zend_long val;
-	if (zend_parse_parameters(ZEND_NUM_ARGS(), "l", &val) == FAILURE) {
-		RETURN_FALSE;
-	}
-	EXCEL_VALIDATE_INT_RANGE(val)
-	TABLE_FROM_OBJECT(table, object);
-	xlTableSetStyle(table, val);
-	RETURN_TRUE;
+	PHP_EXCEL_TABLE_SET_LONG(SetStyle)
 }
 
 EXCEL_METHOD(Table, showRowStripes)
 {
-	zval *object = ZEND_THIS;
-	TableHandle table;
-	ZEND_PARSE_PARAMETERS_NONE();
-
-	TABLE_FROM_OBJECT(table, object);
-	RETURN_BOOL(xlTableShowRowStripes(table));
+	PHP_EXCEL_TABLE_INFO(ShowRowStripes, IS_BOOL)
 }
 
 EXCEL_METHOD(Table, setShowRowStripes)
 {
-	zval *object = ZEND_THIS;
-	TableHandle table;
-	bool val;
-	if (zend_parse_parameters(ZEND_NUM_ARGS(), "b", &val) == FAILURE) {
-		RETURN_FALSE;
-	}
-	TABLE_FROM_OBJECT(table, object);
-	xlTableSetShowRowStripes(table, val);
-	RETURN_TRUE;
+	PHP_EXCEL_TABLE_SET_BOOL(SetShowRowStripes)
 }
 
 EXCEL_METHOD(Table, showColumnStripes)
 {
-	zval *object = ZEND_THIS;
-	TableHandle table;
-	ZEND_PARSE_PARAMETERS_NONE();
-
-	TABLE_FROM_OBJECT(table, object);
-	RETURN_BOOL(xlTableShowColumnStripes(table));
+	PHP_EXCEL_TABLE_INFO(ShowColumnStripes, IS_BOOL)
 }
 
 EXCEL_METHOD(Table, setShowColumnStripes)
 {
-	zval *object = ZEND_THIS;
-	TableHandle table;
-	bool val;
-	if (zend_parse_parameters(ZEND_NUM_ARGS(), "b", &val) == FAILURE) {
-		RETURN_FALSE;
-	}
-	TABLE_FROM_OBJECT(table, object);
-	xlTableSetShowColumnStripes(table, val);
-	RETURN_TRUE;
+	PHP_EXCEL_TABLE_SET_BOOL(SetShowColumnStripes)
 }
 
 EXCEL_METHOD(Table, showFirstColumn)
 {
-	zval *object = ZEND_THIS;
-	TableHandle table;
-	ZEND_PARSE_PARAMETERS_NONE();
-
-	TABLE_FROM_OBJECT(table, object);
-	RETURN_BOOL(xlTableShowFirstColumn(table));
+	PHP_EXCEL_TABLE_INFO(ShowFirstColumn, IS_BOOL)
 }
 
 EXCEL_METHOD(Table, setShowFirstColumn)
 {
-	zval *object = ZEND_THIS;
-	TableHandle table;
-	bool val;
-	if (zend_parse_parameters(ZEND_NUM_ARGS(), "b", &val) == FAILURE) {
-		RETURN_FALSE;
-	}
-	TABLE_FROM_OBJECT(table, object);
-	xlTableSetShowFirstColumn(table, val);
-	RETURN_TRUE;
+	PHP_EXCEL_TABLE_SET_BOOL(SetShowFirstColumn)
 }
 
 EXCEL_METHOD(Table, showLastColumn)
 {
-	zval *object = ZEND_THIS;
-	TableHandle table;
-	ZEND_PARSE_PARAMETERS_NONE();
-
-	TABLE_FROM_OBJECT(table, object);
-	RETURN_BOOL(xlTableShowLastColumn(table));
+	PHP_EXCEL_TABLE_INFO(ShowLastColumn, IS_BOOL)
 }
 
 EXCEL_METHOD(Table, setShowLastColumn)
 {
-	zval *object = ZEND_THIS;
-	TableHandle table;
-	bool val;
-	if (zend_parse_parameters(ZEND_NUM_ARGS(), "b", &val) == FAILURE) {
-		RETURN_FALSE;
-	}
-	TABLE_FROM_OBJECT(table, object);
-	xlTableSetShowLastColumn(table, val);
-	RETURN_TRUE;
+	PHP_EXCEL_TABLE_SET_BOOL(SetShowLastColumn)
 }
 
 EXCEL_METHOD(Table, columnSize)
 {
-	zval *object = ZEND_THIS;
-	TableHandle table;
-	ZEND_PARSE_PARAMETERS_NONE();
-
-	TABLE_FROM_OBJECT(table, object);
-	RETURN_LONG(xlTableColumnSize(table));
+	PHP_EXCEL_TABLE_INFO(ColumnSize, IS_LONG)
 }
 
 EXCEL_METHOD(Table, columnName)
