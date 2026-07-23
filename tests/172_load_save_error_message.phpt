@@ -30,8 +30,10 @@ echo "warnings:     " . count($warnings) . "\n";
 foreach (["load", "loadFile", "save"] as $i => $op) {
     $w = $warnings[$i] ?? "";
     $expect = $op === "save" ? "Failed to save workbook:" : "Failed to load workbook:";
+    // save may fail at stream open (after SaveRaw) with a staged path diagnostic,
+    // or at SaveRaw with an embedded libxl message — both start with the same prefix.
     echo "$op warning carries libxl error: " .
-        var_export(str_contains($w, $expect) && strlen($w) > strlen($expect) + 10, true) . "\n";
+        var_export(str_contains($w, $expect) && strlen($w) > strlen($expect) + 5, true) . "\n";
 }
 echo "OK\n";
 ?>

@@ -147,6 +147,9 @@ typedef struct _excel_book_object {
 	 * don't create one new format per cell and bloat the style table.
 	 * Reset along with `book` on __construct reuse. */
 	FormatHandle default_date_format;
+	/* True while a LibXL-owned buffer (SaveRaw/getPicture) is being copied
+	 * into a PHP string. Mutating APIs must not free/replace that buffer. */
+	bool native_buffer_borrowed;
 	zend_object std;
 } excel_book_object;
 
@@ -794,13 +797,19 @@ static inline void php_excel_book_bump_conditional_formatting_generation(zval *p
  * __construct reuse). Reusing the stale FormatHandle from
  * default_date_format after one of these would silently write cells with
  * no format, corrupting AS_DATE-typed output. */
-static inline void php_excel_book_reset_state(zval *book_zv) {
+static inline int php_excel_book_reset_state(zval *book_zv) {
 	excel_book_object *bobj = php_excel_book_object_fetch_object(Z_OBJ_P(book_zv));
+	if (bobj->native_buffer_borrowed) {
+		php_error_docref(NULL, E_WARNING,
+			"Cannot reinitialize workbook while a native I/O buffer is in use");
+		return 0;
+	}
 	bobj->generation++;
 	bobj->sheet_generation++;
 	bobj->autofilter_generation++;
 	bobj->conditional_formatting_generation++;
 	bobj->default_date_format = NULL;
+	return 1;
 }
 
 /* Throw-on-stale variant for code paths that cannot use RETURN_FALSE — most
@@ -826,36 +835,29 @@ static inline int php_excel_check_book_and_sheet_generation_throw(zval *parent_z
 			0);
 		return 0;
 	}
-	if (b->sheet_generation != sheet_stamped) {
-		zend_throw_exception(NULL,
-			"Underlying ExcelBook sheet topology changed; wrapper must be re-fetched",
-			0);
-		return 0;
+	if (b->sheet_generation == sheet_stamped) {
+		return 1;
 	}
-	return 1;
+	zend_throw_exception(NULL,
+		"Underlying ExcelBook sheet topology changed; wrapper must be re-fetched",
+		0);
+	return 0;
 }
 
 static inline int php_excel_check_book_sheet_and_autofilter_generation_throw(zval *parent_zv, uint64_t book_stamped, uint64_t sheet_stamped, uint64_t autofilter_stamped) {
-	excel_book_object *b = php_excel_resolve_book_obj(parent_zv);
-	if (!php_excel_book_generation_matches(b, book_stamped)) {
-		zend_throw_exception(NULL,
-			"Underlying ExcelBook handle is stale (parent was reloaded, cleared, or reinitialized)",
-			0);
+	if (!php_excel_check_book_and_sheet_generation_throw(parent_zv, book_stamped, sheet_stamped)) {
 		return 0;
 	}
-	if (b->sheet_generation != sheet_stamped) {
-		zend_throw_exception(NULL,
-			"Underlying ExcelBook sheet topology changed; wrapper must be re-fetched",
-			0);
-		return 0;
+	{
+		excel_book_object *b = php_excel_resolve_book_obj(parent_zv);
+		if (b->autofilter_generation == autofilter_stamped) {
+			return 1;
+		}
 	}
-	if (b->autofilter_generation != autofilter_stamped) {
-		zend_throw_exception(NULL,
-			"Underlying ExcelBook autofilter state changed; wrapper must be re-fetched",
-			0);
-		return 0;
-	}
-	return 1;
+	zend_throw_exception(NULL,
+		"Underlying ExcelBook autofilter state changed; wrapper must be re-fetched",
+		0);
+	return 0;
 }
 
 /* Throw-on-error variants of the FROM_OBJECT macros. Used in constructors,
@@ -1163,7 +1165,7 @@ static zend_always_inline bool php_excel_non_empty_string(zend_string *s)
  * value while the application-side validator saw the full string. */
 static zend_always_inline bool php_excel_nul_safe_string(zend_string *s)
 {
-	if (s && ZSTR_LEN(s) != strlen(ZSTR_VAL(s))) {
+	if (s && ZSTR_LEN(s) > 0 && memchr(ZSTR_VAL(s), 0, ZSTR_LEN(s))) {
 		php_error_docref(NULL, E_WARNING, "String must not contain NUL bytes");
 		return false;
 	}
@@ -1609,7 +1611,9 @@ EXCEL_METHOD(Book, load)
 
 	BOOK_FROM_OBJECT(book, object);
 
-	php_excel_book_reset_state(object);
+	if (!php_excel_book_reset_state(object)) {
+		RETURN_FALSE;
+	}
 	if (!xlBookLoadRaw(book, ZSTR_VAL(data_zs), ZSTR_LEN(data_zs))) {
 		php_error_docref(NULL, E_WARNING, "Failed to load workbook: %s", xlBookErrorMessage(book));
 		RETURN_FALSE;
@@ -1641,7 +1645,9 @@ EXCEL_METHOD(Book, loadFile)
 	if (!strstr(ZSTR_VAL(filename_zs), "://")
 	    && (!PG(open_basedir) || !*PG(open_basedir))) {
 		BOOK_FROM_OBJECT(book, object);
-		php_excel_book_reset_state(object);
+		if (!php_excel_book_reset_state(object)) {
+			RETURN_FALSE;
+		}
 		if (!xlBookLoad(book, ZSTR_VAL(filename_zs))) {
 			php_error_docref(NULL, E_WARNING, "Failed to load workbook: %s", xlBookErrorMessage(book));
 			RETURN_FALSE;
@@ -1693,7 +1699,10 @@ EXCEL_METHOD(Book, loadFile)
 	/* Stream callbacks may reconstruct the receiver while the file is read.
 	 * Fetch the current handle only after every open/read/close callback. */
 	BOOK_FROM_OBJECT_RELEASE_STR(book, object, contents);
-	php_excel_book_reset_state(object);
+	if (!php_excel_book_reset_state(object)) {
+		zend_string_release(contents);
+		RETURN_FALSE;
+	}
 	if (!xlBookLoadRaw(book, ZSTR_VAL(contents), ZSTR_LEN(contents))) {
 		php_error_docref(NULL, E_WARNING, "Failed to load workbook: %s", xlBookErrorMessage(book));
 		zend_string_release(contents);
@@ -1731,7 +1740,9 @@ EXCEL_METHOD(Book, loadPartially)
 
 	BOOK_FROM_OBJECT(book, object);
 
-	php_excel_book_reset_state(object);
+	if (!php_excel_book_reset_state(object)) {
+		RETURN_FALSE;
+	}
 	if (!xlBookLoadRawPartially(book, ZSTR_VAL(data_zs), (unsigned) ZSTR_LEN(data_zs), (int) sheet_index, (int) row_first, (int) row_last, keep_all_sheets)) {
 		php_error_docref(NULL, E_WARNING, "Failed to load workbook: %s", xlBookErrorMessage(book));
 		RETURN_FALSE;
@@ -1767,7 +1778,9 @@ EXCEL_METHOD(Book, loadFilePartially)
 	if (!strstr(ZSTR_VAL(filename_zs), "://")
 	    && (!PG(open_basedir) || !*PG(open_basedir))) {
 		BOOK_FROM_OBJECT(book, object);
-		php_excel_book_reset_state(object);
+		if (!php_excel_book_reset_state(object)) {
+			RETURN_FALSE;
+		}
 		if (!xlBookLoadPartially(book, ZSTR_VAL(filename_zs), (int) sheet_index, (int) row_first, (int) row_last, keep_all_sheets)) {
 			php_error_docref(NULL, E_WARNING, "Failed to load workbook: %s", xlBookErrorMessage(book));
 			RETURN_FALSE;
@@ -1813,7 +1826,10 @@ EXCEL_METHOD(Book, loadFilePartially)
 	}
 
 	BOOK_FROM_OBJECT_RELEASE_STR(book, object, contents);
-	php_excel_book_reset_state(object);
+	if (!php_excel_book_reset_state(object)) {
+		zend_string_release(contents);
+		RETURN_FALSE;
+	}
 	if (!xlBookLoadRawPartially(book, ZSTR_VAL(contents), (unsigned) ZSTR_LEN(contents), (int) sheet_index, (int) row_first, (int) row_last, keep_all_sheets)) {
 		zend_string_release(contents);
 		php_error_docref(NULL, E_WARNING, "Failed to load workbook: %s", xlBookErrorMessage(book));
@@ -1853,7 +1869,9 @@ EXCEL_METHOD(Book, loadFileWithoutEmptyCells)
 
 	BOOK_FROM_OBJECT(book, object);
 
-	php_excel_book_reset_state(object);
+	if (!php_excel_book_reset_state(object)) {
+		RETURN_FALSE;
+	}
 	if (!xlBookLoadWithoutEmptyCells(book, ZSTR_VAL(filename_zs))) {
 		php_error_docref(NULL, E_WARNING, "Failed to load workbook: %s", xlBookErrorMessage(book));
 		RETURN_FALSE;
@@ -1883,17 +1901,9 @@ EXCEL_METHOD(Book, save)
 
 	BOOK_FROM_OBJECT(book, object);
 
-	/* With open_basedir active, save through PHP streams so the policy check
-	 * and file creation are one operation. */
-	if (filename_zs && ZSTR_LEN(filename_zs) > 0
-	    && !strstr(ZSTR_VAL(filename_zs), "://")
-	    && (!PG(open_basedir) || !*PG(open_basedir))) {
-		if (!xlBookSave(book, ZSTR_VAL(filename_zs))) {
-			php_error_docref(NULL, E_WARNING, "Failed to save workbook: %s", xlBookErrorMessage(book));
-			RETURN_FALSE;
-		}
-		RETURN_TRUE;
-	}
+	/* All path-based saves go through SaveRaw + PHP streams so staging/rename
+	 * can preserve the destination on short write (including plain local
+	 * paths). open_basedir is enforced by the stream open itself. */
 	if (filename_zs && ZSTR_LEN(filename_zs) > 0
 	    && !strstr(ZSTR_VAL(filename_zs), "://")
 	    && PG(open_basedir) && *PG(open_basedir)
@@ -1909,7 +1919,14 @@ EXCEL_METHOD(Book, save)
 	if (filename_zs && ZSTR_LEN(filename_zs) > 0) {
 		ssize_t numbytes;
 		php_stream *stream;
-		zend_string *owned_contents = zend_string_init(contents, len, 0);
+		excel_book_object *book_obj = Z_EXCEL_BOOK_OBJ_P(object);
+		zend_string *owned_contents;
+
+		/* Borrow the LibXL buffer only for the duration of the copy into a
+		 * PHP string so a GC-driven load/clear cannot free it mid-memcpy. */
+		book_obj->native_buffer_borrowed = true;
+		owned_contents = zend_string_init(contents, len, 0);
+		book_obj->native_buffer_borrowed = false;
 
 		/* If the destination wrapper exposes rename+unlink, stage the full
 		 * buffer to a sibling temp URL and rename it into place. A short
@@ -1944,7 +1961,7 @@ EXCEL_METHOD(Book, save)
 
 			if (!tmp_name || !stream) {
 				zend_string_release(owned_contents);
-				php_error_docref(NULL, E_WARNING, "Could not create an exclusive temporary file for atomic save");
+				php_error_docref(NULL, E_WARNING, "Failed to save workbook: could not create an exclusive temporary file for atomic save");
 				RETURN_FALSE;
 			}
 
@@ -1992,6 +2009,7 @@ EXCEL_METHOD(Book, save)
 
 		if (!stream) {
 			zend_string_release(owned_contents);
+			php_error_docref(NULL, E_WARNING, "Failed to save workbook: could not open destination for writing");
 			RETURN_FALSE;
 		}
 
@@ -2021,7 +2039,13 @@ EXCEL_METHOD(Book, save)
 		zend_string_release(owned_contents);
 		RETURN_TRUE;
 	} else {
-		RETURN_STRINGL(contents, len);
+		excel_book_object *book_obj = Z_EXCEL_BOOK_OBJ_P(object);
+		zend_string *owned;
+
+		book_obj->native_buffer_borrowed = true;
+		owned = zend_string_init(contents, len, 0);
+		book_obj->native_buffer_borrowed = false;
+		RETURN_STR(owned);
 	}
 
 }
@@ -3058,7 +3082,10 @@ EXCEL_METHOD(Book, loadInfo)
 			RETURN_FALSE;
 		}
 		BOOK_FROM_OBJECT_RELEASE_STR(book, object, contents);
-		php_excel_book_reset_state(object);
+		if (!php_excel_book_reset_state(object)) {
+			zend_string_release(contents);
+			RETURN_FALSE;
+		}
 		if (!xlBookLoadInfoRaw(book, ZSTR_VAL(contents), (unsigned) ZSTR_LEN(contents))) {
 			php_error_docref(NULL, E_WARNING, "Failed to load workbook: %s", xlBookErrorMessage(book));
 			zend_string_release(contents);
@@ -3078,7 +3105,9 @@ EXCEL_METHOD(Book, loadInfo)
 #endif
 
 	BOOK_FROM_OBJECT(book, object);
-	php_excel_book_reset_state(object);
+	if (!php_excel_book_reset_state(object)) {
+		RETURN_FALSE;
+	}
 	if (!xlBookLoadInfo(book, ZSTR_VAL(filename_zs))) {
 		php_error_docref(NULL, E_WARNING, "Failed to load workbook: %s", xlBookErrorMessage(book));
 		RETURN_FALSE;
@@ -3276,7 +3305,9 @@ EXCEL_METHOD(Book, loadInfoRaw)
 
 	BOOK_FROM_OBJECT(book, object);
 
-	php_excel_book_reset_state(object);
+	if (!php_excel_book_reset_state(object)) {
+		RETURN_FALSE;
+	}
 	if (!xlBookLoadInfoRaw(book, ZSTR_VAL(data), ZSTR_LEN(data))) {
 		php_error_docref(NULL, E_WARNING, "Failed to load workbook: %s", xlBookErrorMessage(book));
 		RETURN_FALSE;
@@ -3332,7 +3363,9 @@ EXCEL_METHOD(Book, clear)
 
 	BOOK_FROM_OBJECT(book, object);
 
-	php_excel_book_reset_state(object);
+	if (!php_excel_book_reset_state(object)) {
+		RETURN_FALSE;
+	}
 	xlBookClear(book);
 	RETURN_TRUE;
 }
@@ -4628,6 +4661,25 @@ static int php_excel_write_date_serial(SheetHandle sheet, BookHandle book, excel
 	return xlSheetWriteNum(sheet, row, col, dt, format);
 }
 
+/* Explicit dtype must match a zval type that write_cell can honor; otherwise
+ * write would silently store a different kind (e.g. string + AS_DATE → text). */
+static zend_always_inline int php_excel_dtype_matches_zval(zend_long dtype, zval *data)
+{
+	if (dtype == -1) {
+		return 1;
+	}
+	switch (dtype) {
+		case PHP_EXCEL_DATE:
+			return Z_TYPE_P(data) == IS_LONG || Z_TYPE_P(data) == IS_DOUBLE;
+		case PHP_EXCEL_FORMULA:
+		case PHP_EXCEL_NUMERIC_STRING:
+		case PHP_EXCEL_TEXT:
+			return Z_TYPE_P(data) == IS_STRING;
+		default:
+			return 1;
+	}
+}
+
 /* Pre-scan predicate for writeRow/writeCol: returns 0 when php_excel_write_cell
  * would reject this value for a PHP-side reason knowable without touching the
  * sheet (unsupported type, embedded NUL, unpackable AS_DATE timestamp). Lets
@@ -4637,6 +4689,13 @@ static int php_excel_write_date_serial(SheetHandle sheet, BookHandle book, excel
 static int php_excel_cell_value_acceptable(BookHandle book, zval *data, zend_long dtype)
 {
 try_again:
+	if (Z_TYPE_P(data) == IS_REFERENCE) {
+		data = Z_REFVAL_P(data);
+		goto try_again;
+	}
+	if (!php_excel_dtype_matches_zval(dtype, data)) {
+		return 0;
+	}
 	switch (Z_TYPE_P(data)) {
 		case IS_NULL:
 		case IS_TRUE:
@@ -4654,7 +4713,7 @@ try_again:
 			}
 			return 1;
 		case IS_STRING:
-			if (ZSTR_LEN(Z_STR_P(data)) != strlen(ZSTR_VAL(Z_STR_P(data)))) {
+			if (ZSTR_LEN(Z_STR_P(data)) > 0 && memchr(ZSTR_VAL(Z_STR_P(data)), 0, ZSTR_LEN(Z_STR_P(data)))) {
 				return 0;
 			}
 			if (dtype == PHP_EXCEL_NUMERIC_STRING) {
@@ -4680,6 +4739,13 @@ bool php_excel_write_cell(SheetHandle sheet, excel_book_object *book_obj, int ro
 	BookHandle book = book_obj->book;
 
 	try_again:
+	if (Z_TYPE_P(data) == IS_REFERENCE) {
+		ZVAL_DEREF(data);
+		goto try_again;
+	}
+	if (!php_excel_dtype_matches_zval(dtype, data)) {
+		return 0;
+	}
 	switch (Z_TYPE_P(data)) {
 		case IS_NULL:
 			if (EXCEL_G(ini_skip_empty) > 0) {
@@ -4727,7 +4793,7 @@ bool php_excel_write_cell(SheetHandle sheet, excel_book_object *book_obj, int ro
 			data_zs = Z_STR_P(data);
 			/* libxl writes use NUL-terminated C strings; reject embedded
 			 * NULs so the caller's value isn't silently truncated. */
-			if (ZSTR_LEN(data_zs) != strlen(ZSTR_VAL(data_zs))) {
+			if (ZSTR_LEN(data_zs) > 0 && memchr(ZSTR_VAL(data_zs), 0, ZSTR_LEN(data_zs))) {
 				return 0;
 			}
 			/* AS_TEXT writes the value verbatim: no quote-prefix stripping, no
@@ -4855,42 +4921,49 @@ EXCEL_METHOD(Sheet, writeRow)
 		RETURN_FALSE;
 	}
 
-	/* Validate the start cell first so col is known to be in
-	 * 0..EXCEL_MAX_COL_XLSX before we do any signed arithmetic on it.
-	 * Then the (max - col) remaining-capacity computation is safe and
-	 * count <= remaining is the equivalent of (col + count - 1) <= max
-	 * without the signed-overflow risk on extreme starts. */
-	EXCEL_VALIDATE_ROW_COL(row, col, object);
+	/* One-shot book resolve for coordinate limits, generation check, and write. */
 	{
-		zend_ulong count = zend_array_count(Z_ARRVAL_P(data));
-		excel_book_object *_vb = php_excel_resolve_book_obj(object);
-		zend_long _maxc = (_vb && _vb->is_xlsx) ? EXCEL_MAX_COL_XLSX : EXCEL_MAX_COL_XLS;
-		if (count > (zend_ulong)(_maxc - col + 1)) {
-			php_error_docref(NULL, E_WARNING,
-				"writeRow would overflow column range: start=" ZEND_LONG_FMT
-				", count=" ZEND_ULONG_FMT, col, count);
+		excel_book_object *book_obj;
+		excel_sheet_object *sheet_obj;
+		zend_ulong count;
+
+		book_obj = php_excel_resolve_book_obj(object);
+		EXCEL_VALIDATE_ROW_COL_PR(row, col, book_obj);
+
+		count = zend_array_count(Z_ARRVAL_P(data));
+		{
+			zend_long _maxc = (book_obj && book_obj->is_xlsx) ? EXCEL_MAX_COL_XLSX : EXCEL_MAX_COL_XLS;
+			if (count > (zend_ulong)(_maxc - col + 1)) {
+				php_error_docref(NULL, E_WARNING,
+					"writeRow would overflow column range: start=" ZEND_LONG_FMT
+					", count=" ZEND_ULONG_FMT, col, count);
+				RETURN_FALSE;
+			}
+		}
+
+		sheet_obj = Z_EXCEL_SHEET_OBJ_P(object);
+		sheet = sheet_obj->sheet;
+		book = sheet_obj->book;
+		if (!sheet) {
+			php_error_docref(NULL, E_WARNING, "The sheet wasn't initialized");
 			RETURN_FALSE;
 		}
-	}
-	SHEET_AND_BOOK_FROM_OBJECT(sheet, book, object);
-	if (oformat) {
-		FORMAT_FROM_OBJECT(format, oformat);
-		EXCEL_REQUIRE_SAME_BOOK(oformat, object);
-	}
+		CHECK_BOOK_AND_SHEET_GENERATION_PR(sheet_obj, book_obj);
 
-	i = col;
-
-	/* Pre-scan so the row is all-or-nothing for PHP-side value errors: a
-	 * bad element must not leave earlier cells committed. */
-	ZEND_HASH_FOREACH_VAL(Z_ARRVAL_P(data), element) {
-		if (!php_excel_cell_value_acceptable(book, element, dtype)) {
-			php_error_docref(NULL, E_WARNING, "writeRow: a value in the data array cannot be written; no cells were modified");
-			RETURN_FALSE;
+		if (oformat) {
+			FORMAT_FROM_OBJECT(format, oformat);
+			EXCEL_REQUIRE_SAME_BOOK(oformat, object);
 		}
-	} ZEND_HASH_FOREACH_END();
 
-	{
-		excel_book_object *book_obj = php_excel_resolve_book_obj(object);
+		i = col;
+
+		ZEND_HASH_FOREACH_VAL(Z_ARRVAL_P(data), element) {
+			if (!php_excel_cell_value_acceptable(book, element, dtype)) {
+				php_error_docref(NULL, E_WARNING, "writeRow: a value in the data array cannot be written; no cells were modified");
+				RETURN_FALSE;
+			}
+		} ZEND_HASH_FOREACH_END();
+
 		ZEND_HASH_FOREACH_VAL(Z_ARRVAL_P(data), element) {
 			if (!php_excel_write_cell(sheet, book_obj, row, i++, element, (oformat ? format : 0), dtype)) {
 				php_error_docref(NULL, E_WARNING, "Failed to write cell in row " ZEND_LONG_FMT ", column " ZEND_LONG_FMT " with error '%s'", row, i-1, xlBookErrorMessage(book));
@@ -4922,36 +4995,48 @@ EXCEL_METHOD(Sheet, writeCol)
 		RETURN_FALSE;
 	}
 
-	EXCEL_VALIDATE_ROW_COL(row, col, object);
 	{
-		zend_ulong count = zend_array_count(Z_ARRVAL_P(data));
-		excel_book_object *_vb = php_excel_resolve_book_obj(object);
-		zend_long _maxr = (_vb && _vb->is_xlsx) ? EXCEL_MAX_ROW_XLSX : EXCEL_MAX_ROW_XLS;
-		if (count > (zend_ulong)(_maxr - row + 1)) {
-			php_error_docref(NULL, E_WARNING,
-				"writeCol would overflow row range: start=" ZEND_LONG_FMT
-				", count=" ZEND_ULONG_FMT, row, count);
+		excel_book_object *book_obj;
+		excel_sheet_object *sheet_obj;
+		zend_ulong count;
+
+		book_obj = php_excel_resolve_book_obj(object);
+		EXCEL_VALIDATE_ROW_COL_PR(row, col, book_obj);
+
+		count = zend_array_count(Z_ARRVAL_P(data));
+		{
+			zend_long _maxr = (book_obj && book_obj->is_xlsx) ? EXCEL_MAX_ROW_XLSX : EXCEL_MAX_ROW_XLS;
+			if (count > (zend_ulong)(_maxr - row + 1)) {
+				php_error_docref(NULL, E_WARNING,
+					"writeCol would overflow row range: start=" ZEND_LONG_FMT
+					", count=" ZEND_ULONG_FMT, row, count);
+				RETURN_FALSE;
+			}
+		}
+
+		sheet_obj = Z_EXCEL_SHEET_OBJ_P(object);
+		sheet = sheet_obj->sheet;
+		book = sheet_obj->book;
+		if (!sheet) {
+			php_error_docref(NULL, E_WARNING, "The sheet wasn't initialized");
 			RETURN_FALSE;
 		}
-	}
-	SHEET_AND_BOOK_FROM_OBJECT(sheet, book, object);
-	if (oformat) {
-		FORMAT_FROM_OBJECT(format, oformat);
-		EXCEL_REQUIRE_SAME_BOOK(oformat, object);
-	}
+		CHECK_BOOK_AND_SHEET_GENERATION_PR(sheet_obj, book_obj);
 
-	i = row;
-
-	/* Pre-scan so the column is all-or-nothing for PHP-side value errors. */
-	ZEND_HASH_FOREACH_VAL(Z_ARRVAL_P(data), element) {
-		if (!php_excel_cell_value_acceptable(book, element, dtype)) {
-			php_error_docref(NULL, E_WARNING, "writeCol: a value in the data array cannot be written; no cells were modified");
-			RETURN_FALSE;
+		if (oformat) {
+			FORMAT_FROM_OBJECT(format, oformat);
+			EXCEL_REQUIRE_SAME_BOOK(oformat, object);
 		}
-	} ZEND_HASH_FOREACH_END();
 
-	{
-		excel_book_object *book_obj = php_excel_resolve_book_obj(object);
+		i = row;
+
+		ZEND_HASH_FOREACH_VAL(Z_ARRVAL_P(data), element) {
+			if (!php_excel_cell_value_acceptable(book, element, dtype)) {
+				php_error_docref(NULL, E_WARNING, "writeCol: a value in the data array cannot be written; no cells were modified");
+				RETURN_FALSE;
+			}
+		} ZEND_HASH_FOREACH_END();
+
 		ZEND_HASH_FOREACH_VAL(Z_ARRVAL_P(data), element) {
 			if (!php_excel_write_cell(sheet, book_obj, i++, col, element, oformat ? format : 0, dtype)) {
 				php_error_docref(NULL, E_WARNING, "Failed to write cell in row " ZEND_LONG_FMT ", column " ZEND_LONG_FMT " with error '%s'", i-1, col, xlBookErrorMessage(book));
@@ -6611,9 +6696,18 @@ EXCEL_METHOD(Book, getPicture)
 		RETURN_FALSE;
 	}
 
-	array_init(return_value);
-	add_assoc_stringl(return_value, "data", (char *)buf, buf_len);
-	add_assoc_long(return_value, "type", type);
+	{
+		excel_book_object *book_obj = Z_EXCEL_BOOK_OBJ_P(object);
+		zend_string *owned;
+
+		book_obj->native_buffer_borrowed = true;
+		owned = zend_string_init(buf, buf_len, 0);
+		book_obj->native_buffer_borrowed = false;
+
+		array_init(return_value);
+		add_assoc_str(return_value, "data", owned);
+		add_assoc_long(return_value, "type", type);
+	}
 }
 /* }}} */
 
