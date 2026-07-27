@@ -1014,6 +1014,10 @@ ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_ExcelFormat_borderColor, 0
 	ZEND_ARG_TYPE_INFO_WITH_DEFAULT_VALUE(0, color, IS_LONG, 1, "null")
 ZEND_END_ARG_INFO()
 
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_MASK_EX(arginfo_class_ExcelFormat_borderDiagonal, 0, 0, MAY_BE_LONG|MAY_BE_FALSE)
+	ZEND_ARG_TYPE_INFO_WITH_DEFAULT_VALUE(0, borderDiagonal, IS_LONG, 1, "null")
+ZEND_END_ARG_INFO()
+
 ZEND_BEGIN_ARG_WITH_RETURN_TYPE_MASK_EX(arginfo_class_ExcelFormat_borderLeftStyle, 0, 0, MAY_BE_LONG|MAY_BE_FALSE)
 	ZEND_ARG_TYPE_INFO_WITH_DEFAULT_VALUE(0, style, IS_LONG, 1, "null")
 ZEND_END_ARG_INFO()
@@ -1834,6 +1838,7 @@ ZEND_METHOD(ExcelFormat, borderTopStyle);
 ZEND_METHOD(ExcelFormat, borderTopColor);
 ZEND_METHOD(ExcelFormat, borderBottomStyle);
 ZEND_METHOD(ExcelFormat, borderBottomColor);
+ZEND_METHOD(ExcelFormat, borderDiagonal);
 ZEND_METHOD(ExcelFormat, borderDiagonalStyle);
 ZEND_METHOD(ExcelFormat, borderDiagonalColor);
 ZEND_METHOD(ExcelFormat, fillPattern);
@@ -2304,6 +2309,7 @@ static const zend_function_entry class_ExcelFormat_methods[] = {
 	ZEND_ME(ExcelFormat, borderTopColor, arginfo_class_ExcelFormat_borderTopColor, ZEND_ACC_PUBLIC)
 	ZEND_ME(ExcelFormat, borderBottomStyle, arginfo_class_ExcelFormat_borderBottomStyle, ZEND_ACC_PUBLIC)
 	ZEND_ME(ExcelFormat, borderBottomColor, arginfo_class_ExcelFormat_borderBottomColor, ZEND_ACC_PUBLIC)
+	ZEND_ME(ExcelFormat, borderDiagonal, arginfo_class_ExcelFormat_borderDiagonal, ZEND_ACC_PUBLIC)
 	ZEND_ME(ExcelFormat, borderDiagonalStyle, arginfo_class_ExcelFormat_borderDiagonalStyle, ZEND_ACC_PUBLIC)
 	ZEND_ME(ExcelFormat, borderDiagonalColor, arginfo_class_ExcelFormat_borderDiagonalColor, ZEND_ACC_PUBLIC)
 	ZEND_ME(ExcelFormat, fillPattern, arginfo_class_ExcelFormat_fillPattern, ZEND_ACC_PUBLIC)
