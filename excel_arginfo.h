@@ -1,5 +1,5 @@
 /* This is a generated file, edit excel.stub.php instead.
- * Stub hash: 825f6c021916b7876dc84e46e4118964d6d4acab */
+ * Stub hash: e9720c226a5abc8f7ab73a4c540f6bfa81b67f6a */
 
 ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_ExcelBook_requiresKey, 0, 0, _IS_BOOL, 0)
 ZEND_END_ARG_INFO()
@@ -1014,10 +1014,6 @@ ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_ExcelFormat_borderColor, 0
 	ZEND_ARG_TYPE_INFO_WITH_DEFAULT_VALUE(0, color, IS_LONG, 1, "null")
 ZEND_END_ARG_INFO()
 
-ZEND_BEGIN_ARG_WITH_RETURN_TYPE_MASK_EX(arginfo_class_ExcelFormat_borderDiagonal, 0, 0, MAY_BE_LONG|MAY_BE_FALSE)
-	ZEND_ARG_TYPE_INFO_WITH_DEFAULT_VALUE(0, borderDiagonal, IS_LONG, 1, "null")
-ZEND_END_ARG_INFO()
-
 ZEND_BEGIN_ARG_WITH_RETURN_TYPE_MASK_EX(arginfo_class_ExcelFormat_borderLeftStyle, 0, 0, MAY_BE_LONG|MAY_BE_FALSE)
 	ZEND_ARG_TYPE_INFO_WITH_DEFAULT_VALUE(0, style, IS_LONG, 1, "null")
 ZEND_END_ARG_INFO()
@@ -1037,6 +1033,10 @@ ZEND_END_ARG_INFO()
 #define arginfo_class_ExcelFormat_borderBottomStyle arginfo_class_ExcelFormat_borderLeftStyle
 
 #define arginfo_class_ExcelFormat_borderBottomColor arginfo_class_ExcelFormat_borderLeftColor
+
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_MASK_EX(arginfo_class_ExcelFormat_borderDiagonal, 0, 0, MAY_BE_LONG|MAY_BE_FALSE)
+	ZEND_ARG_TYPE_INFO_WITH_DEFAULT_VALUE(0, border, IS_LONG, 1, "null")
+ZEND_END_ARG_INFO()
 
 #define arginfo_class_ExcelFormat_borderDiagonalStyle arginfo_class_ExcelFormat_borderLeftStyle
 

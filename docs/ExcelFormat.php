@@ -374,9 +374,19 @@ class ExcelFormat
 	}
 
 	/**
-	* Get, or set the border for the diagonal of a cell
+	* Get, or set which diagonals of a cell are drawn
 	*
-	* @param mixed $style (optional) One of ExcelFormat::BORDERDIAGONAL_* constants
+	* @param mixed $border (optional) One of ExcelFormat::BORDERDIAGONAL_* constants
+	* @return int|false
+	*/
+	public function borderDiagonal(?int $border = null): int|false
+	{
+	}
+
+	/**
+	* Get, or set the line style used for the diagonal of a cell
+	*
+	* @param mixed $style (optional) One of ExcelFormat::BORDERSTYLE_* constants
 	* @return int|false
 	*/
 	public function borderDiagonalStyle(?int $style = null): int|false
