@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.6.0] - 2026-07-27
+
 ### Breaking
 - ExcelFormat::borderDiagonalStyle() now addresses the diagonal line style (BORDERSTYLE_*) instead of the diagonal direction it had been wired to. Code passing a BORDERDIAGONAL_* constant keeps running without error but stops drawing its diagonal, and has to move to ExcelFormat::borderDiagonal().
 
@@ -769,7 +771,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.8] - 2010-08-01
 	* Initial Release
 
-[Unreleased]: https://github.com/iliaal/php_excel/compare/2.5.0...HEAD
+[Unreleased]: https://github.com/iliaal/php_excel/compare/2.6.0...HEAD
+[2.6.0]: https://github.com/iliaal/php_excel/releases/tag/2.6.0
 [2.5.0]: https://github.com/iliaal/php_excel/releases/tag/2.5.0
 [2.4.0]: https://github.com/iliaal/php_excel/releases/tag/2.4.0
 [2.3.0]: https://github.com/iliaal/php_excel/releases/tag/2.3.0
