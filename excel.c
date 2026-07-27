@@ -3998,11 +3998,19 @@ EXCEL_METHOD(Format, borderBottomColor)
 }
 /* }}} */
 
-/* {{{ proto int ExcelFormat::borderDiagonalStyle([int style])
+/* {{{ proto int ExcelFormat::borderDiagonal([int border])
 	Get or set the cell diagonal border */
-EXCEL_METHOD(Format, borderDiagonalStyle)
+EXCEL_METHOD(Format, borderDiagonal)
 {
 	PHP_EXCEL_LONG_FORMAT_OPTION(BorderDiagonal);
+}
+/* }}} */
+
+/* {{{ proto int ExcelFormat::borderDiagonalStyle([int style])
+	Get or set the cell diagonal border style */
+EXCEL_METHOD(Format, borderDiagonalStyle)
+{
+	PHP_EXCEL_LONG_FORMAT_OPTION(BorderDiagonalStyle);
 }
 /* }}} */
 
