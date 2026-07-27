@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- ExcelFormat::borderDiagonal() gets and sets which diagonals of a cell are drawn, one of the BORDERDIAGONAL_* constants.
+
+### Changed
+- ExcelFormat::borderDiagonalStyle() now addresses the diagonal line style (BORDERSTYLE_*) instead of the diagonal direction it had been wired to, so values above BORDERDIAGONAL_BOTH are no longer clamped away. Code passing a BORDERDIAGONAL_* constant must switch to borderDiagonal(), or its diagonal stops being drawn.
+
 ## [2.5.0] - 2026-07-27
 
 ### Security

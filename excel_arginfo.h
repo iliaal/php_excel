@@ -1,5 +1,5 @@
 /* This is a generated file, edit excel.stub.php instead.
- * Stub hash: 825f6c021916b7876dc84e46e4118964d6d4acab */
+ * Stub hash: e9720c226a5abc8f7ab73a4c540f6bfa81b67f6a */
 
 ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_ExcelBook_requiresKey, 0, 0, _IS_BOOL, 0)
 ZEND_END_ARG_INFO()
@@ -1034,6 +1034,10 @@ ZEND_END_ARG_INFO()
 
 #define arginfo_class_ExcelFormat_borderBottomColor arginfo_class_ExcelFormat_borderLeftColor
 
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_MASK_EX(arginfo_class_ExcelFormat_borderDiagonal, 0, 0, MAY_BE_LONG|MAY_BE_FALSE)
+	ZEND_ARG_TYPE_INFO_WITH_DEFAULT_VALUE(0, border, IS_LONG, 1, "null")
+ZEND_END_ARG_INFO()
+
 #define arginfo_class_ExcelFormat_borderDiagonalStyle arginfo_class_ExcelFormat_borderLeftStyle
 
 #define arginfo_class_ExcelFormat_borderDiagonalColor arginfo_class_ExcelFormat_borderLeftColor
@@ -1834,6 +1838,7 @@ ZEND_METHOD(ExcelFormat, borderTopStyle);
 ZEND_METHOD(ExcelFormat, borderTopColor);
 ZEND_METHOD(ExcelFormat, borderBottomStyle);
 ZEND_METHOD(ExcelFormat, borderBottomColor);
+ZEND_METHOD(ExcelFormat, borderDiagonal);
 ZEND_METHOD(ExcelFormat, borderDiagonalStyle);
 ZEND_METHOD(ExcelFormat, borderDiagonalColor);
 ZEND_METHOD(ExcelFormat, fillPattern);
@@ -2304,6 +2309,7 @@ static const zend_function_entry class_ExcelFormat_methods[] = {
 	ZEND_ME(ExcelFormat, borderTopColor, arginfo_class_ExcelFormat_borderTopColor, ZEND_ACC_PUBLIC)
 	ZEND_ME(ExcelFormat, borderBottomStyle, arginfo_class_ExcelFormat_borderBottomStyle, ZEND_ACC_PUBLIC)
 	ZEND_ME(ExcelFormat, borderBottomColor, arginfo_class_ExcelFormat_borderBottomColor, ZEND_ACC_PUBLIC)
+	ZEND_ME(ExcelFormat, borderDiagonal, arginfo_class_ExcelFormat_borderDiagonal, ZEND_ACC_PUBLIC)
 	ZEND_ME(ExcelFormat, borderDiagonalStyle, arginfo_class_ExcelFormat_borderDiagonalStyle, ZEND_ACC_PUBLIC)
 	ZEND_ME(ExcelFormat, borderDiagonalColor, arginfo_class_ExcelFormat_borderDiagonalColor, ZEND_ACC_PUBLIC)
 	ZEND_ME(ExcelFormat, fillPattern, arginfo_class_ExcelFormat_fillPattern, ZEND_ACC_PUBLIC)
