@@ -303,6 +303,7 @@ class ExcelFormat
     public function borderTopColor(?int $color = null): int|false {}  // ZPP "|l!"
     public function borderBottomStyle(?int $style = null): int|false {}  // ZPP "|l!"
     public function borderBottomColor(?int $color = null): int|false {}  // ZPP "|l!"
+    public function borderDiagonal(?int $border = null): int|false {}  // ZPP "|l!"
     public function borderDiagonalStyle(?int $style = null): int|false {}  // ZPP "|l!"
     public function borderDiagonalColor(?int $color = null): int|false {}  // ZPP "|l!"
     public function fillPattern(?int $pattern = null): int|false {}  // ZPP "|l!"
