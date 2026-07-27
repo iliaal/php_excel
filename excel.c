@@ -1299,23 +1299,19 @@ static bool php_excel_wrapper_supports_atomic_save(zend_string *url)
 }
 
 /* Claim an unused sibling URL of `target` by creating it exclusively, so a
- * pre-existing file or a planted symlink cannot capture the staged write. The
- * caller owns the returned name and must unlink it unless the rename succeeds.
- * `keep_open` receives the reserving stream, or is closed here when the writer
- * needs to open the path itself. Returns NULL after 8 failed attempts. */
-static zend_string *php_excel_reserve_staging_url(zend_string *target, php_stream **keep_open)
+ * pre-existing file or a planted symlink cannot capture the staged write. On
+ * success the caller owns both the returned name, which it must unlink unless
+ * the rename succeeds, and the open stream. Returns NULL after 8 attempts. */
+static zend_string *php_excel_reserve_staging_url(zend_string *target, php_stream **stream)
 {
 	int attempt;
 
-	if (keep_open) {
-		*keep_open = NULL;
-	}
+	*stream = NULL;
 
 	for (attempt = 0; attempt < 8; attempt++) {
 		unsigned char random_bytes[8];
 		char random_suffix[17];
 		zend_string *tmp_name;
-		php_stream *stream;
 		int i;
 
 		if (php_random_bytes_silent(random_bytes, sizeof(random_bytes)) == FAILURE) {
@@ -1326,13 +1322,8 @@ static zend_string *php_excel_reserve_staging_url(zend_string *target, php_strea
 		}
 		tmp_name = zend_strpprintf(0, "%s.%s.tmp", ZSTR_VAL(target), random_suffix);
 
-		stream = php_stream_open_wrapper(ZSTR_VAL(tmp_name), "xb", 0, NULL);
-		if (stream) {
-			if (keep_open) {
-				*keep_open = stream;
-			} else {
-				php_stream_close(stream);
-			}
+		*stream = php_stream_open_wrapper(ZSTR_VAL(tmp_name), "xb", 0, NULL);
+		if (*stream) {
 			return tmp_name;
 		}
 		zend_string_release(tmp_name);
@@ -1936,6 +1927,43 @@ EXCEL_METHOD(Book, loadFileWithoutEmptyCells)
 /* }}} */
 #endif
 
+/* Stage a plain local save through libxl's own pathname writer and rename it
+ * into place. xlBookSave() streams the archive to disk, where xlBookSaveRaw()
+ * would first materialize all of it in memory, so this keeps the save atomic
+ * without a peak-memory cost that scales with the workbook. Only reachable
+ * with open_basedir inactive; otherwise PHP has to perform the open itself. */
+static void php_excel_save_local_atomic(INTERNAL_FUNCTION_PARAMETERS, BookHandle book, zend_string *filename_zs)
+{
+	php_stream *stream;
+	zend_string *tmp_name = php_excel_reserve_staging_url(filename_zs, &stream);
+
+	if (!tmp_name) {
+		php_error_docref(NULL, E_WARNING, "Failed to save workbook: could not create an exclusive temporary file for atomic save");
+		RETURN_FALSE;
+	}
+	/* libxl reopens the path by name, so hand the reservation over to it. */
+	php_stream_close(stream);
+
+	if (!xlBookSave(book, ZSTR_VAL(tmp_name))) {
+		php_error_docref(NULL, E_WARNING, "Failed to save workbook: %s", xlBookErrorMessage(book));
+		php_excel_wrapper_unlink_preserving_exception(tmp_name);
+		zend_string_release(tmp_name);
+		RETURN_FALSE;
+	}
+
+	php_excel_copy_destination_mode(filename_zs, tmp_name);
+
+	if (!php_excel_wrapper_rename(tmp_name, filename_zs)) {
+		php_excel_wrapper_unlink_preserving_exception(tmp_name);
+		zend_string_release(tmp_name);
+		php_error_docref(NULL, E_WARNING, "Could not replace destination with completed temporary file; destination left unchanged");
+		RETURN_FALSE;
+	}
+
+	zend_string_release(tmp_name);
+	RETURN_TRUE;
+}
+
 /* {{{ proto mixed ExcelBook::save([string filename])
 	Save Excel file. */
 EXCEL_METHOD(Book, save)
@@ -1945,60 +1973,30 @@ EXCEL_METHOD(Book, save)
 	zend_string *filename_zs = NULL;
 	unsigned int len = 0;
 	char *contents = NULL;
+	bool has_path, is_local_path, basedir_active;
 
 	if (zend_parse_parameters(ZEND_NUM_ARGS(), "|S", &filename_zs) == FAILURE) {
 		RETURN_FALSE;
 	}
 
-	if (filename_zs && ZSTR_LEN(filename_zs) > 0) {
+	has_path = filename_zs && ZSTR_LEN(filename_zs) > 0;
+	if (has_path) {
 		EXCEL_NUL_SAFE_STRING(filename_zs)
 	}
+	is_local_path = has_path && !strstr(ZSTR_VAL(filename_zs), "://");
+	basedir_active = PG(open_basedir) && *PG(open_basedir);
 
 	BOOK_FROM_OBJECT(book, object);
 
-	/* Plain local path, open_basedir inactive: stage through libxl's own
-	 * pathname writer and rename into place. xlBookSave() streams the archive
-	 * to disk, where xlBookSaveRaw() would first materialize all of it in
-	 * memory, so this keeps the save atomic without a peak-memory cost that
-	 * scales with the workbook. The SaveRaw path below stays for stream
-	 * wrappers and for open_basedir, where PHP has to perform the open. */
-	if (filename_zs && ZSTR_LEN(filename_zs) > 0
-	    && !strstr(ZSTR_VAL(filename_zs), "://")
-	    && (!PG(open_basedir) || !*PG(open_basedir))) {
-		zend_string *tmp_name = php_excel_reserve_staging_url(filename_zs, NULL);
-
-		if (!tmp_name) {
-			php_error_docref(NULL, E_WARNING, "Failed to save workbook: could not create an exclusive temporary file for atomic save");
-			RETURN_FALSE;
-		}
-
-		if (!xlBookSave(book, ZSTR_VAL(tmp_name))) {
-			php_error_docref(NULL, E_WARNING, "Failed to save workbook: %s", xlBookErrorMessage(book));
-			php_excel_wrapper_unlink_preserving_exception(tmp_name);
-			zend_string_release(tmp_name);
-			RETURN_FALSE;
-		}
-
-		php_excel_copy_destination_mode(filename_zs, tmp_name);
-
-		if (!php_excel_wrapper_rename(tmp_name, filename_zs)) {
-			php_excel_wrapper_unlink_preserving_exception(tmp_name);
-			zend_string_release(tmp_name);
-			php_error_docref(NULL, E_WARNING, "Could not replace destination with completed temporary file; destination left unchanged");
-			RETURN_FALSE;
-		}
-
-		zend_string_release(tmp_name);
-		RETURN_TRUE;
+	if (is_local_path && !basedir_active) {
+		php_excel_save_local_atomic(INTERNAL_FUNCTION_PARAM_PASSTHRU, book, filename_zs);
+		return;
 	}
 
 	/* Remaining path-based saves go through SaveRaw + PHP streams so staging
 	 * and rename can preserve the destination on a short write. open_basedir
 	 * is enforced by the stream open itself. */
-	if (filename_zs && ZSTR_LEN(filename_zs) > 0
-	    && !strstr(ZSTR_VAL(filename_zs), "://")
-	    && PG(open_basedir) && *PG(open_basedir)
-	    && php_check_open_basedir(ZSTR_VAL(filename_zs))) {
+	if (is_local_path && basedir_active && php_check_open_basedir(ZSTR_VAL(filename_zs))) {
 		RETURN_FALSE;
 	}
 
@@ -2007,7 +2005,7 @@ EXCEL_METHOD(Book, save)
 		RETURN_FALSE;
 	}
 
-	if (filename_zs && ZSTR_LEN(filename_zs) > 0) {
+	if (has_path) {
 		ssize_t numbytes;
 		php_stream *stream;
 		excel_book_object *book_obj = Z_EXCEL_BOOK_OBJ_P(object);
@@ -2028,7 +2026,7 @@ EXCEL_METHOD(Book, save)
 			int flush_result = 0;
 			int close_result;
 
-			if (!tmp_name || !stream) {
+			if (!tmp_name) {
 				zend_string_release(owned_contents);
 				php_error_docref(NULL, E_WARNING, "Failed to save workbook: could not create an exclusive temporary file for atomic save");
 				RETURN_FALSE;
