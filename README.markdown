@@ -59,8 +59,9 @@ foreach ($data as $item) {
 $sheet->write($row, 1, '=SUM(B1:B3)');
 
 // untrusted input: AS_TEXT stores the value verbatim (no '=' -> formula
-// promotion), preventing spreadsheet formula injection. See SECURITY.md.
-$sheet->write($row, 2, $userSuppliedValue, null, ExcelFormat::AS_TEXT);
+// promotion), preventing spreadsheet formula injection. AS_TEXT takes a
+// string, so cast first. See SECURITY.md.
+$sheet->write($row, 2, (string) $userSuppliedValue, null, ExcelFormat::AS_TEXT);
 
 // date with format
 $dateFormat = new ExcelFormat($book);

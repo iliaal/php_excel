@@ -45,9 +45,16 @@ type so the string is stored verbatim with no formula promotion, no
 leading-quote stripping, and no numeric coercion:
 
 ```php
-$sheet->write($row, $col, $untrusted, null, ExcelFormat::AS_TEXT);
-$sheet->writeRow($row, $untrusted_array, 0, null, ExcelFormat::AS_TEXT);
+$sheet->write($row, $col, (string) $untrusted, null, ExcelFormat::AS_TEXT);
+$sheet->writeRow($row, array_map('strval', $untrusted_array), 0, null, ExcelFormat::AS_TEXT);
 ```
+
+`AS_TEXT` describes a string cell, so it accepts strings (and `null`, which
+writes a blank). Decoded JSON and form data routinely carry ints, floats and
+booleans, and passing one of those with an explicit data type is rejected
+rather than silently stored as another kind. Cast at the call site as above;
+for `writeRow()` and `writeCol()` a single unconvertible element rejects the
+whole row or column, leaving no cells modified.
 
 Implicit `=` promotion is retained as the default for backwards compatibility;
 it may be revisited in a future major version.

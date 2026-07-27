@@ -2066,12 +2066,20 @@ EXCEL_METHOD(Book, save)
 
 			php_excel_wrapper_unlink_preserving_exception(tmp_name);
 			zend_string_release(tmp_name);
-			zend_string_release(owned_contents);
 			if (EG(exception)) {
+				zend_string_release(owned_contents);
 				RETURN_THROWS();
 			}
-			php_error_docref(NULL, E_WARNING, "Could not replace destination with completed temporary file; destination left unchanged");
-			RETURN_FALSE;
+
+			/* The wrapper took the staged write but cannot rename it into
+			 * place. A user-defined wrapper that omits rename() lands here:
+			 * PHP installs a dispatcher in wops for every user wrapper whether
+			 * or not the class implements the method, so the capability probe
+			 * above cannot tell them apart. The staged file is already gone and
+			 * owned_contents still holds the whole workbook, so fall through to
+			 * the direct write instead of failing a save such a wrapper used to
+			 * complete. */
+			php_error_docref(NULL, E_WARNING, "Could not replace destination with the completed temporary file; falling back to a non-atomic direct write");
 		}
 
 		/* Wrapper cannot stage/rename: write directly. A short write here is

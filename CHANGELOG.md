@@ -16,17 +16,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - ExcelBook::save() to a local path now carries the destination's existing permission bits onto the staged file, so replacing a restricted workbook no longer widens it to the process umask.
 
 ### Changed
-- ExcelBook::save() now stages every write and renames it into place, including plain local paths. A failed or partial save leaves the destination untouched. Consequences on local paths: a symlink destination is replaced by a regular file instead of being written through, an existing hard link is broken, and saving into a writable file inside a non-writable directory now fails instead of succeeding.
+- ExcelBook::save() now stages every write and renames it into place, including plain local paths. A save that fails while writing the staged file leaves the destination untouched. Consequences on local paths: a symlink destination is replaced by a regular file instead of being written through, an existing hard link is broken, and saving into a writable file inside a non-writable directory now fails instead of succeeding.
 - ExcelSheet::write(), writeRow() and writeCol() now reject a value whose type cannot satisfy an explicitly requested data type, instead of silently storing a different kind (previously `AS_DATE` with a string stored text, and `AS_NUMERIC_STRING` with an int stored a plain number). `null` is still accepted for every data type and writes a blank cell, so bulk writes of a typed column with gaps keep working.
 - Write rejections now name the reason, and writeRow()/writeCol() name the cell they stopped at.
 - ExcelRichString::addText() once again accepts a font from another workbook. LibXL copies the font attributes into the rich string, so the source workbook can be released immediately after the call.
 - Re-invoking a constructor on a child wrapper now throws instead of rebinding or replacing its native handle.
 - ExcelSheet::addrToRowCol() now accepts only complete A1 references within the active XLS or XLSX limits; trailing text, row zero, and out-of-range addresses return false.
-- PHP user-defined stream wrappers used by ExcelBook::save() must implement rename() and unlink(). A failed staged replacement returns false and never retries with a non-atomic direct write.
+- ExcelBook::save() through a stream wrapper stages the workbook to a sibling temporary URL and renames it into place. A wrapper that does not implement rename() still saves: the staged replacement falls back to a direct write and warns that the save was not atomic. The same fallback now applies when a wrapper's rename() fails, so a failed rename no longer leaves the destination unchanged.
 
 ### Fixed
 - ExcelBook::save() to a local path streams through LibXL again rather than materializing the whole workbook in memory first, so its peak memory no longer scales with the workbook and the archive no longer counts against `memory_limit`. Measured on a 3.3 MB workbook: 67.7 MB of peak RSS back down to 0.7 MB, with no change in save time.
-- ExcelBook::save() now leaves the destination unchanged when a staged rename fails.
 - ExcelBook::save() now rejects flush and close failures, removes the staged file after write exceptions, and re-resolves wrapper metadata after every user callback.
 - Stream-backed load, partial load, metadata load, and picture import now reject read and close failures instead of passing accumulated bytes to LibXL.
 - ExcelBook::insertSheet() no longer invalidates wrappers for existing sheets; LibXL keeps those sheet handles stable across insertion.
@@ -50,6 +49,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### For contributors
 - CI now rejects all-skipped PHPT runs and verifies that the extension loaded before running the suite.
+- GitHub Actions workflows are pinned and permission-scoped, with a zizmor security lane.
+- The PHPTs that exercise LibXL 5.x-only APIs now skip cleanly against LibXL 4.6.0, so the minimum-version suite runs green.
 - The main ASan suite now runs without LibXL leak suppressions. Only the two tests that exercise a confirmed LibXL leak use the vendor suppression.
 - Configure now keeps automatic header and library discovery under one prefix and rejects a library that lacks symbols required by the selected LibXL headers.
 - CONTRIBUTING.md now states the supported PHP 8.1 minimum.
