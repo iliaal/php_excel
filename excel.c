@@ -1298,6 +1298,61 @@ static bool php_excel_wrapper_supports_atomic_save(zend_string *url)
 	return wrapper && wrapper->wops && wrapper->wops->rename && wrapper->wops->unlink;
 }
 
+/* Claim an unused sibling URL of `target` by creating it exclusively, so a
+ * pre-existing file or a planted symlink cannot capture the staged write. The
+ * caller owns the returned name and must unlink it unless the rename succeeds.
+ * `keep_open` receives the reserving stream, or is closed here when the writer
+ * needs to open the path itself. Returns NULL after 8 failed attempts. */
+static zend_string *php_excel_reserve_staging_url(zend_string *target, php_stream **keep_open)
+{
+	int attempt;
+
+	if (keep_open) {
+		*keep_open = NULL;
+	}
+
+	for (attempt = 0; attempt < 8; attempt++) {
+		unsigned char random_bytes[8];
+		char random_suffix[17];
+		zend_string *tmp_name;
+		php_stream *stream;
+		int i;
+
+		if (php_random_bytes_silent(random_bytes, sizeof(random_bytes)) == FAILURE) {
+			return NULL;
+		}
+		for (i = 0; i < (int) sizeof(random_bytes); i++) {
+			snprintf(random_suffix + (i * 2), 3, "%02x", random_bytes[i]);
+		}
+		tmp_name = zend_strpprintf(0, "%s.%s.tmp", ZSTR_VAL(target), random_suffix);
+
+		stream = php_stream_open_wrapper(ZSTR_VAL(tmp_name), "xb", 0, NULL);
+		if (stream) {
+			if (keep_open) {
+				*keep_open = stream;
+			} else {
+				php_stream_close(stream);
+			}
+			return tmp_name;
+		}
+		zend_string_release(tmp_name);
+	}
+	return NULL;
+}
+
+/* Carry the destination's permission bits onto the staged file so an atomic
+ * replace does not widen a deliberately restricted target. A missing
+ * destination keeps the umask-derived mode the reservation created. */
+static void php_excel_copy_destination_mode(zend_string *destination, zend_string *staged)
+{
+	zend_stat_t sb;
+
+	if (VCWD_STAT(ZSTR_VAL(destination), &sb) != 0) {
+		return;
+	}
+	VCWD_CHMOD(ZSTR_VAL(staged), sb.st_mode & 07777);
+}
+
 static bool php_excel_wrapper_rename(zend_string *from, zend_string *to)
 {
 	php_stream_wrapper *wrapper = php_stream_locate_url_wrapper(ZSTR_VAL(from), NULL, 0);
@@ -1901,9 +1956,45 @@ EXCEL_METHOD(Book, save)
 
 	BOOK_FROM_OBJECT(book, object);
 
-	/* All path-based saves go through SaveRaw + PHP streams so staging/rename
-	 * can preserve the destination on short write (including plain local
-	 * paths). open_basedir is enforced by the stream open itself. */
+	/* Plain local path, open_basedir inactive: stage through libxl's own
+	 * pathname writer and rename into place. xlBookSave() streams the archive
+	 * to disk, where xlBookSaveRaw() would first materialize all of it in
+	 * memory, so this keeps the save atomic without a peak-memory cost that
+	 * scales with the workbook. The SaveRaw path below stays for stream
+	 * wrappers and for open_basedir, where PHP has to perform the open. */
+	if (filename_zs && ZSTR_LEN(filename_zs) > 0
+	    && !strstr(ZSTR_VAL(filename_zs), "://")
+	    && (!PG(open_basedir) || !*PG(open_basedir))) {
+		zend_string *tmp_name = php_excel_reserve_staging_url(filename_zs, NULL);
+
+		if (!tmp_name) {
+			php_error_docref(NULL, E_WARNING, "Failed to save workbook: could not create an exclusive temporary file for atomic save");
+			RETURN_FALSE;
+		}
+
+		if (!xlBookSave(book, ZSTR_VAL(tmp_name))) {
+			php_error_docref(NULL, E_WARNING, "Failed to save workbook: %s", xlBookErrorMessage(book));
+			php_excel_wrapper_unlink_preserving_exception(tmp_name);
+			zend_string_release(tmp_name);
+			RETURN_FALSE;
+		}
+
+		php_excel_copy_destination_mode(filename_zs, tmp_name);
+
+		if (!php_excel_wrapper_rename(tmp_name, filename_zs)) {
+			php_excel_wrapper_unlink_preserving_exception(tmp_name);
+			zend_string_release(tmp_name);
+			php_error_docref(NULL, E_WARNING, "Could not replace destination with completed temporary file; destination left unchanged");
+			RETURN_FALSE;
+		}
+
+		zend_string_release(tmp_name);
+		RETURN_TRUE;
+	}
+
+	/* Remaining path-based saves go through SaveRaw + PHP streams so staging
+	 * and rename can preserve the destination on a short write. open_basedir
+	 * is enforced by the stream open itself. */
 	if (filename_zs && ZSTR_LEN(filename_zs) > 0
 	    && !strstr(ZSTR_VAL(filename_zs), "://")
 	    && PG(open_basedir) && *PG(open_basedir)
@@ -1933,31 +2024,9 @@ EXCEL_METHOD(Book, save)
 		 * write then fails against the temp, leaving the caller's existing
 		 * file untouched, instead of truncating the destination up front. */
 		if (php_excel_wrapper_supports_atomic_save(filename_zs)) {
-			zend_string *tmp_name = NULL;
-			unsigned char random_bytes[8];
-			char random_suffix[17];
+			zend_string *tmp_name = php_excel_reserve_staging_url(filename_zs, &stream);
 			int flush_result = 0;
 			int close_result;
-			int attempt;
-
-			stream = NULL;
-
-			for (attempt = 0; attempt < 8; attempt++) {
-				int i;
-				if (php_random_bytes_silent(random_bytes, sizeof(random_bytes)) == FAILURE) {
-					break;
-				}
-				for (i = 0; i < (int) sizeof(random_bytes); i++) {
-					snprintf(random_suffix + (i * 2), 3, "%02x", random_bytes[i]);
-				}
-				tmp_name = zend_strpprintf(0, "%s.%s.tmp", ZSTR_VAL(filename_zs), random_suffix);
-				stream = php_stream_open_wrapper(ZSTR_VAL(tmp_name), "xb", 0, NULL);
-				if (stream) {
-					break;
-				}
-				zend_string_release(tmp_name);
-				tmp_name = NULL;
-			}
 
 			if (!tmp_name || !stream) {
 				zend_string_release(owned_contents);
@@ -1986,6 +2055,10 @@ EXCEL_METHOD(Book, save)
 				php_error_docref(NULL, E_WARNING, "Only %zd of %u bytes written, possibly out of free disk space; destination left unchanged", numbytes, len);
 				RETURN_FALSE;
 			}
+
+			/* No-op for wrapper URLs, which do not stat; this only matters for
+			 * the local paths that reach here because open_basedir is active. */
+			php_excel_copy_destination_mode(filename_zs, tmp_name);
 
 			if (php_excel_wrapper_rename(tmp_name, filename_zs)) {
 				zend_string_release(tmp_name);
@@ -4607,6 +4680,13 @@ EXCEL_METHOD(Sheet, read)
 			} else {
 				php_error_docref(NULL, E_WARNING, "Failed to read cell in row " ZEND_LONG_FMT ", column " ZEND_LONG_FMT " with error '%s'", row, col, xlBookErrorMessage(book));
 			}
+			/* Clear the out-param last: it can run a userland destructor, so
+			 * no native work (including xlBookErrorMessage above) may follow. */
+			if (oformat) {
+				ZVAL_DEREF(oformat);
+				zval_ptr_dtor(oformat);
+				ZVAL_NULL(oformat);
+			}
 			RETURN_FALSE;
 		}
 	}
@@ -4668,6 +4748,12 @@ static zend_always_inline int php_excel_dtype_matches_zval(zend_long dtype, zval
 	if (dtype == -1) {
 		return 1;
 	}
+	/* A null writes a blank cell (or is skipped under excel.skip_empty)
+	 * whatever the dtype says, so it is never a mismatch. Rejecting it would
+	 * only break bulk writes of a typed column that has gaps. */
+	if (Z_TYPE_P(data) == IS_NULL) {
+		return 1;
+	}
 	switch (dtype) {
 		case PHP_EXCEL_DATE:
 			return Z_TYPE_P(data) == IS_LONG || Z_TYPE_P(data) == IS_DOUBLE;
@@ -4686,7 +4772,7 @@ static zend_always_inline int php_excel_dtype_matches_zval(zend_long dtype, zval
  * the bulk writers reject a bad row up front instead of committing the cells
  * before it and returning false mid-loop. libxl-side failures (style-table
  * exhaustion, disk) remain non-atomic and are out of scope. */
-static int php_excel_cell_value_acceptable(BookHandle book, zval *data, zend_long dtype)
+static const char *php_excel_cell_value_rejection(BookHandle book, zval *data, zend_long dtype)
 {
 try_again:
 	if (Z_TYPE_P(data) == IS_REFERENCE) {
@@ -4694,42 +4780,47 @@ try_again:
 		goto try_again;
 	}
 	if (!php_excel_dtype_matches_zval(dtype, data)) {
-		return 0;
+		return "value type does not match the requested data type";
 	}
 	switch (Z_TYPE_P(data)) {
 		case IS_NULL:
 		case IS_TRUE:
 		case IS_FALSE:
-			return 1;
+			return NULL;
 		case IS_LONG:
-			return !(dtype == PHP_EXCEL_DATE && _php_excel_date_pack(book, Z_LVAL_P(data)) == -1);
+			if (dtype == PHP_EXCEL_DATE && _php_excel_date_pack(book, Z_LVAL_P(data)) == -1) {
+				return "timestamp is outside the range Excel can store as a date";
+			}
+			return NULL;
 		case IS_DOUBLE:
 			if (!zend_finite(Z_DVAL_P(data))) {
-				return 0;
+				return "number is not finite (NAN/INF)";
 			}
 			if (dtype == PHP_EXCEL_DATE) {
-				return php_excel_double_in_long_range(Z_DVAL_P(data))
-				    && _php_excel_date_pack(book, (zend_long) Z_DVAL_P(data)) != -1;
+				if (!php_excel_double_in_long_range(Z_DVAL_P(data))
+				    || _php_excel_date_pack(book, (zend_long) Z_DVAL_P(data)) == -1) {
+					return "timestamp is outside the range Excel can store as a date";
+				}
 			}
-			return 1;
+			return NULL;
 		case IS_STRING:
 			if (ZSTR_LEN(Z_STR_P(data)) > 0 && memchr(ZSTR_VAL(Z_STR_P(data)), 0, ZSTR_LEN(Z_STR_P(data)))) {
-				return 0;
+				return "string must not contain NUL bytes";
 			}
 			if (dtype == PHP_EXCEL_NUMERIC_STRING) {
 				zend_long lval;
 				double dval;
 				if (is_numeric_string(Z_STRVAL_P(data), Z_STRLEN_P(data), &lval, &dval, 0) == IS_DOUBLE
 				    && !zend_finite(dval)) {
-					return 0;
+					return "numeric string does not represent a finite number";
 				}
 			}
-			return 1;
+			return NULL;
 		case IS_REFERENCE:
 			data = Z_REFVAL_P(data);
 			goto try_again;
 		default:
-			return 0;
+			return "value type is not supported for cell writes";
 	}
 }
 
@@ -4888,9 +4979,12 @@ EXCEL_METHOD(Sheet, write)
 		FORMAT_FROM_OBJECT(format, oformat);
 		EXCEL_REQUIRE_SAME_BOOK(oformat, object);
 	}
-	if (!php_excel_cell_value_acceptable(book, data, dtype)) {
-		php_error_docref(NULL, E_WARNING, "Cell value cannot be written");
-		RETURN_FALSE;
+	{
+		const char *rejection = php_excel_cell_value_rejection(book, data, dtype);
+		if (rejection) {
+			php_error_docref(NULL, E_WARNING, "Cell value cannot be written: %s", rejection);
+			RETURN_FALSE;
+		}
 	}
 
 	if (!php_excel_write_cell(sheet, book_obj, row, col, data, oformat ? format : 0, dtype)) {
@@ -4957,12 +5051,17 @@ EXCEL_METHOD(Sheet, writeRow)
 
 		i = col;
 
-		ZEND_HASH_FOREACH_VAL(Z_ARRVAL_P(data), element) {
-			if (!php_excel_cell_value_acceptable(book, element, dtype)) {
-				php_error_docref(NULL, E_WARNING, "writeRow: a value in the data array cannot be written; no cells were modified");
-				RETURN_FALSE;
-			}
-		} ZEND_HASH_FOREACH_END();
+		{
+			zend_long scan_col = col;
+			ZEND_HASH_FOREACH_VAL(Z_ARRVAL_P(data), element) {
+				const char *rejection = php_excel_cell_value_rejection(book, element, dtype);
+				if (rejection) {
+					php_error_docref(NULL, E_WARNING, "writeRow: value for column " ZEND_LONG_FMT " cannot be written: %s; no cells were modified", scan_col, rejection);
+					RETURN_FALSE;
+				}
+				scan_col++;
+			} ZEND_HASH_FOREACH_END();
+		}
 
 		ZEND_HASH_FOREACH_VAL(Z_ARRVAL_P(data), element) {
 			if (!php_excel_write_cell(sheet, book_obj, row, i++, element, (oformat ? format : 0), dtype)) {
@@ -5030,12 +5129,17 @@ EXCEL_METHOD(Sheet, writeCol)
 
 		i = row;
 
-		ZEND_HASH_FOREACH_VAL(Z_ARRVAL_P(data), element) {
-			if (!php_excel_cell_value_acceptable(book, element, dtype)) {
-				php_error_docref(NULL, E_WARNING, "writeCol: a value in the data array cannot be written; no cells were modified");
-				RETURN_FALSE;
-			}
-		} ZEND_HASH_FOREACH_END();
+		{
+			zend_long scan_row = row;
+			ZEND_HASH_FOREACH_VAL(Z_ARRVAL_P(data), element) {
+				const char *rejection = php_excel_cell_value_rejection(book, element, dtype);
+				if (rejection) {
+					php_error_docref(NULL, E_WARNING, "writeCol: value for row " ZEND_LONG_FMT " cannot be written: %s; no cells were modified", scan_row, rejection);
+					RETURN_FALSE;
+				}
+				scan_row++;
+			} ZEND_HASH_FOREACH_END();
+		}
 
 		ZEND_HASH_FOREACH_VAL(Z_ARRVAL_P(data), element) {
 			if (!php_excel_write_cell(sheet, book_obj, i++, col, element, oformat ? format : 0, dtype)) {

@@ -1592,6 +1592,7 @@ class ExcelSheet
 	/**
 	* Returns the number of data validations in the sheet (only for xlsx files, libxl 5.2.0+)
 	*
+	* @since libxl 5.2.0
 	* @return int|false
 	*/
 	public function dataValidationSize(): int|false
@@ -1606,6 +1607,7 @@ class ExcelSheet
 	* libxl only surfaces validations parsed from files written by Excel or another
 	* standards-compliant writer, not those added via addDataValidation() in the same session.
 	*
+	* @since libxl 5.2.0
 	* @param int $index
 	* @return array|false
 	*/

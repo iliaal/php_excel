@@ -13,14 +13,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Releasing a child wrapper no longer exposes a live WeakReference to an object whose native storage is already being destroyed.
 - Path operations now use PHP streams while open_basedir is active, closing the gap between a policy check and LibXL reopening a changed path. The LibXL APIs that require a pathname (ExcelBook::loadFileWithoutEmptyCells(), ExcelBook::addPictureAsLink(), and ExcelBook::loadInfo() with LibXL older than 5.0.1) reject calls while open_basedir is active.
 - Stream saves now create unpredictable temporary files exclusively, so an existing file or symlink cannot redirect the staged write.
+- ExcelBook::save() to a local path now carries the destination's existing permission bits onto the staged file, so replacing a restricted workbook no longer widens it to the process umask.
 
 ### Changed
+- ExcelBook::save() now stages every write and renames it into place, including plain local paths. A failed or partial save leaves the destination untouched. Consequences on local paths: a symlink destination is replaced by a regular file instead of being written through, an existing hard link is broken, and saving into a writable file inside a non-writable directory now fails instead of succeeding.
+- ExcelSheet::write(), writeRow() and writeCol() now reject a value whose type cannot satisfy an explicitly requested data type, instead of silently storing a different kind (previously `AS_DATE` with a string stored text, and `AS_NUMERIC_STRING` with an int stored a plain number). `null` is still accepted for every data type and writes a blank cell, so bulk writes of a typed column with gaps keep working.
+- Write rejections now name the reason, and writeRow()/writeCol() name the cell they stopped at.
 - ExcelRichString::addText() once again accepts a font from another workbook. LibXL copies the font attributes into the rich string, so the source workbook can be released immediately after the call.
 - Re-invoking a constructor on a child wrapper now throws instead of rebinding or replacing its native handle.
 - ExcelSheet::addrToRowCol() now accepts only complete A1 references within the active XLS or XLSX limits; trailing text, row zero, and out-of-range addresses return false.
 - PHP user-defined stream wrappers used by ExcelBook::save() must implement rename() and unlink(). A failed staged replacement returns false and never retries with a non-atomic direct write.
 
 ### Fixed
+- ExcelBook::save() to a local path streams through LibXL again rather than materializing the whole workbook in memory first, so its peak memory no longer scales with the workbook and the archive no longer counts against `memory_limit`. Measured on a 3.3 MB workbook: 67.7 MB of peak RSS back down to 0.7 MB, with no change in save time.
 - ExcelBook::save() now leaves the destination unchanged when a staged rename fails.
 - ExcelBook::save() now rejects flush and close failures, removes the staged file after write exceptions, and re-resolves wrapper metadata after every user callback.
 - Stream-backed load, partial load, metadata load, and picture import now reject read and close failures instead of passing accumulated bytes to LibXL.
@@ -30,6 +35,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Public double parameters now reject NAN and infinity before calling LibXL.
 - ExcelSheet::setHeader() and setFooter() now apply the 255-character limit by character when the book uses a UTF-8 locale.
 - ExcelBook::colorUnpack() now accepts packed black (`0`) and returns its RGB components.
+- ExcelBook::unpackDate() now accepts time-only Excel serials in `[0,1)` instead of returning false.
+- ExcelSheet::readRow(), readCol(), readSparseRow() and readSparseCol() return an empty array on a sheet with no used range, instead of false with a misleading "Invalid ending column number '-1'" warning.
+- ExcelBook::loadPartially() and loadFilePartially() now report the LibXL error message when a load fails.
+- ExcelSheet::cellFormat() rejects a null format handle instead of wrapping it.
+- Strict-date cells (`CELLTYPE_STRICTDATE`) are now recognized by ExcelSheet::read() and isDate().
+- ExcelSheet::read() clears its by-reference `$format` argument again when the cell read fails, rather than leaving the previous cell's format in place.
+- The API reference now carries an `@since` marker on every version-gated method.
 - Sparse row and column reads with an omitted end now start at LibXL's first filled row or column, avoiding full-sheet scans for data near the XLSX limits.
 - ExcelAutoFilter::getSort() now builds with both the transient LibXL 5.2.0 sort-level API and the restored 5.2.0.1 signature.
 - The API reference now matches every public runtime signature, including parameter names, types, defaults, and return types.

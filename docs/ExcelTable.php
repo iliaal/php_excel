@@ -98,6 +98,7 @@ class ExcelTable
 	/**
 	* Returns whether the table has an autofilter (only for xlsx files, libxl 5.2.0+)
 	*
+	* @since libxl 5.2.0
 	* @return bool
 	*/
 	public function isAutoFilter(): bool
@@ -107,6 +108,7 @@ class ExcelTable
 	/**
 	* Removes the table's autofilter (only for xlsx files, libxl 5.2.0+)
 	*
+	* @since libxl 5.2.0
 	* @return bool
 	*/
 	public function removeFilter(): bool

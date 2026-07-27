@@ -23,13 +23,18 @@ function run($label, $fn, &$warn) {
 run("str+AS_DATE", fn() => $s->write(1, 0, "not-a-date", null, ExcelFormat::AS_DATE), $warn);
 run("int+AS_FORMULA", fn() => $s->write(1, 1, 42, null, ExcelFormat::AS_FORMULA), $warn);
 run("bool+AS_TEXT", fn() => $s->write(1, 2, true, null, ExcelFormat::AS_TEXT), $warn);
+/* null writes a blank cell whatever the dtype says, so it is never a mismatch. */
 run("null+AS_NUMERIC_STRING", fn() => $s->write(1, 3, null, null, ExcelFormat::AS_NUMERIC_STRING), $warn);
+run("null+AS_DATE", fn() => $s->write(1, 4, null, null, ExcelFormat::AS_DATE), $warn);
 run("int+AS_DATE", fn() => $s->write(2, 0, time(), null, ExcelFormat::AS_DATE), $warn);
 run("str+AS_TEXT", fn() => $s->write(2, 1, "hello", null, ExcelFormat::AS_TEXT), $warn);
 run("str+AS_FORMULA", fn() => $s->write(2, 2, "A1+1", null, ExcelFormat::AS_FORMULA), $warn);
 run("str+default", fn() => $s->write(2, 3, "=B1"), $warn);
 run("writeRow mismatch", fn() => $s->writeRow(3, ["x", 1], 0, null, ExcelFormat::AS_DATE), $warn);
 run("writeRow ok", fn() => $s->writeRow(4, [time(), time()], 0, null, ExcelFormat::AS_DATE), $warn);
+/* A typed column with gaps must still write, leaving the gap blank. */
+run("writeRow gaps", fn() => $s->writeRow(5, [time(), null, time()], 0, null, ExcelFormat::AS_DATE), $warn);
+echo "gap cells: ", json_encode([$s->read(5, 0) !== '', $s->read(5, 1), $s->read(5, 2) !== '']), "\n";
 
 restore_error_handler();
 echo "OK\n";
@@ -38,11 +43,14 @@ echo "OK\n";
 str+AS_DATE: reject false
 int+AS_FORMULA: reject false
 bool+AS_TEXT: reject false
-null+AS_NUMERIC_STRING: reject false
+null+AS_NUMERIC_STRING: true
+null+AS_DATE: true
 int+AS_DATE: true
 str+AS_TEXT: true
 str+AS_FORMULA: true
 str+default: true
 writeRow mismatch: reject false
 writeRow ok: true
+writeRow gaps: true
+gap cells: [true,"",true]
 OK
