@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.5.0] - 2026-07-27
+
 ### Security
 - Stream-backed load, save, read, write, and picture operations now remain safe when user callbacks reconstruct the workbook during the operation.
 - Stream callbacks can now unregister their wrapper or throw during read, write, flush, or close without leaving native code with a freed wrapper pointer or committing incomplete input.
@@ -761,7 +763,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.8] - 2010-08-01
 	* Initial Release
 
-[Unreleased]: https://github.com/iliaal/php_excel/compare/2.4.0...HEAD
+[Unreleased]: https://github.com/iliaal/php_excel/compare/2.5.0...HEAD
+[2.5.0]: https://github.com/iliaal/php_excel/releases/tag/2.5.0
 [2.4.0]: https://github.com/iliaal/php_excel/releases/tag/2.4.0
 [2.3.0]: https://github.com/iliaal/php_excel/releases/tag/2.3.0
 [2.2.0]: https://github.com/iliaal/php_excel/releases/tag/2.2.0
