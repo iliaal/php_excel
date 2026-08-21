@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- ExcelRichString::addText() now rejects a font that belongs to a different ExcelBook, matching every other cross-book handle check. ExcelRichString::addFont() keeps accepting a foreign font as a copy template.
+
+### Fixed
+- ExcelBook::unpackDate() no longer rejects the valid timestamp -1 (the instant 1969-12-31T23:59:59 in the configured timezone), which mktime() returns as a legitimate value rather than only as an error code. Date cells holding that timestamp read back instead of failing.
+- ExcelBook::loadInfoRaw() now rejects an empty data string up front, like ExcelBook::load(), instead of forwarding it to LibXL.
+
 ## [2.6.0] - 2026-07-27
 
 ### Breaking

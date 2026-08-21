@@ -19,6 +19,7 @@
 #endif
 
 #include "libxl.h"
+#include <errno.h>
 #include <limits.h>
 #include <stdlib.h>
 
@@ -2628,20 +2629,31 @@ EXCEL_METHOD(Book, packDateValues)
 }
 /* }}} */
 
-static zend_long _php_excel_date_unpack(BookHandle book, double dt)
+/* Unpack an Excel serial into a unix timestamp. Returns true and sets *out on
+ * success. mktime() legitimately returns -1 for the valid instant
+ * 1969-12-31T23:59:59 local time, so a plain -1 sentinel would reject a real
+ * date; errno disambiguates an actual range error from that valid value. */
+static bool _php_excel_date_unpack(BookHandle book, double dt, zend_long *out)
 {
 	struct tm tm = {0};
 	int msec;
+	time_t t;
 
 	if (!xlBookDateUnpack(book, dt, (int *) &(tm.tm_year), (int *) &(tm.tm_mon), (int *) &(tm.tm_mday), (int *) &(tm.tm_hour), (int *) &(tm.tm_min), (int *) &(tm.tm_sec), &msec)) {
-		return -1;
+		return false;
 	}
 
 	tm.tm_year -= 1900;
 	tm.tm_mon -= 1;
 	tm.tm_isdst = -1;
 
-	return mktime(&tm);
+	errno = 0;
+	t = mktime(&tm);
+	if (t == (time_t) -1 && errno != 0) {
+		return false;
+	}
+	*out = (zend_long) t;
+	return true;
 }
 
 /* {{{ proto int ExcelBook::unpackDate(double date)
@@ -2651,7 +2663,7 @@ EXCEL_METHOD(Book, unpackDate)
 	BookHandle book;
 	zval *object = ZEND_THIS;
 	double dt;
-	time_t t;
+	zend_long ts;
 
 	if (zend_parse_parameters(ZEND_NUM_ARGS(), "d", &dt) == FAILURE) {
 		RETURN_FALSE;
@@ -2666,10 +2678,10 @@ EXCEL_METHOD(Book, unpackDate)
 
 	BOOK_FROM_OBJECT(book, object);
 
-	if ((t = _php_excel_date_unpack(book, dt)) == -1) {
+	if (!_php_excel_date_unpack(book, dt, &ts)) {
 		RETURN_FALSE;
 	}
-	RETURN_LONG(t);
+	RETURN_LONG(ts);
 }
 /* }}} */
 
@@ -3380,6 +3392,7 @@ EXCEL_METHOD(Book, loadInfoRaw)
 		RETURN_FALSE;
 	}
 
+	EXCEL_NON_EMPTY_STRING(data)
 	EXCEL_VALIDATE_UINT_SIZE(data)
 
 	BOOK_FROM_OBJECT(book, object);
@@ -4216,8 +4229,8 @@ static int php_excel_read_cell(int row, int col, zval *val, SheetHandle sheet, B
 		{
 			double d = xlSheetReadNum(sheet, row, col, format);
 			if (xlSheetIsDate(sheet, row, col)) {
-				zend_long dt = _php_excel_date_unpack(book, d);
-				if (dt == -1) {
+				zend_long dt;
+				if (!_php_excel_date_unpack(book, d, &dt)) {
 					return -1;
 				}
 				ZVAL_LONG(val, dt);
@@ -6800,7 +6813,9 @@ EXCEL_METHOD(Book, getPicture)
 	int type;
 	const char *buf;
 	unsigned int buf_len;
-	enum PictureType {PICTURETYPE_PNG, PICTURETYPE_JPEG, PICTURETYPE_WMF, PICTURETYPE_DIB, PICTURETYPE_EMF, PICTURETYPE_PICT, PICTURETYPE_TIFF, PICTURETYPE_ERROR = 0xFF};
+	/* PICTURETYPE_* and PICTURETYPE_ERROR come from libxl's own enum PictureType
+	 * (enum.h); a local shadowing copy could drift from the constants MINIT
+	 * registers, so it was removed. */
 
 	if (zend_parse_parameters(ZEND_NUM_ARGS(), "l", &index) == FAILURE) {
 		RETURN_FALSE;
@@ -9040,6 +9055,12 @@ EXCEL_METHOD(RichString, addFont)
 		FONT_FROM_OBJECT(font, zfont);
 	}
 
+	/* Like Book::addFont/addFormat, xlRichStringAddFont() copies the source
+	 * font into the rich string's book (per the libxl docs and confirmed
+	 * empirically: the source book can be freed afterwards and the string
+	 * still serializes correctly). Cross-book input is therefore a legitimate
+	 * template-copy and deliberately skips the EXCEL_REQUIRE_SAME_BOOK guard
+	 * that applies everywhere handles are consumed by reference. */
 	nfont = xlRichStringAddFont(rs, font);
 	if (!nfont) {
 		RETURN_FALSE;
@@ -9072,6 +9093,11 @@ EXCEL_METHOD(RichString, addText)
 
 	if (zfont) {
 		FONT_FROM_OBJECT(font, zfont);
+		/* Unlike addFont() above, addText() uses the run's font by reference in
+		 * the documented addFont()->addText() workflow, so a foreign-book font
+		 * is rejected here exactly like every other handle consumption site.
+		 * Pass fonts obtained from addFont() on the same rich string. */
+		EXCEL_REQUIRE_SAME_BOOK(zfont, object);
 	}
 
 	xlRichStringAddText(rs, ZSTR_VAL(text), font);
