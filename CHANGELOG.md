@@ -7,8 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Changed
-- ExcelRichString::addText() now rejects a font that belongs to a different ExcelBook, matching every other cross-book handle check. ExcelRichString::addFont() keeps accepting a foreign font as a copy template.
+## [2.7.0] - 2026-09-01
+
+### Breaking
+- ExcelRichString::addText() now rejects a font that belongs to a different ExcelBook, matching every other cross-book handle check. Code that passed a foreign font to addText() in 2.5.0 or 2.6.0 has to add the font to the rich string's own book first. ExcelRichString::addFont() keeps accepting a foreign font as a copy template.
 
 ### Fixed
 - ExcelBook::unpackDate() no longer rejects the valid timestamp -1 (the instant 1969-12-31T23:59:59 in the configured timezone), which mktime() returns as a legitimate value rather than only as an error code. Date cells holding that timestamp read back instead of failing.
@@ -778,7 +780,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.8] - 2010-08-01
 	* Initial Release
 
-[Unreleased]: https://github.com/iliaal/php_excel/compare/2.6.0...HEAD
+[Unreleased]: https://github.com/iliaal/php_excel/compare/2.7.0...HEAD
+[2.7.0]: https://github.com/iliaal/php_excel/releases/tag/2.7.0
 [2.6.0]: https://github.com/iliaal/php_excel/releases/tag/2.6.0
 [2.5.0]: https://github.com/iliaal/php_excel/releases/tag/2.5.0
 [2.4.0]: https://github.com/iliaal/php_excel/releases/tag/2.4.0
