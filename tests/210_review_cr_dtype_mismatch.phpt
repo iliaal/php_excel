@@ -26,6 +26,10 @@ run("bool+AS_TEXT", fn() => $s->write(1, 2, true, null, ExcelFormat::AS_TEXT), $
 /* null writes a blank cell whatever the dtype says, so it is never a mismatch. */
 run("null+AS_NUMERIC_STRING", fn() => $s->write(1, 3, null, null, ExcelFormat::AS_NUMERIC_STRING), $warn);
 run("null+AS_DATE", fn() => $s->write(1, 4, null, null, ExcelFormat::AS_DATE), $warn);
+run("int+AS_NUMERIC_STRING", fn() => $s->write(6, 0, 42, null, ExcelFormat::AS_NUMERIC_STRING), $warn);
+run("bool+AS_NUMERIC_STRING", fn() => $s->write(6, 1, true, null, ExcelFormat::AS_NUMERIC_STRING), $warn);
+run("float+AS_NUMERIC_STRING", fn() => $s->write(6, 2, 1.5, null, ExcelFormat::AS_NUMERIC_STRING), $warn);
+echo "rejected cells: ", json_encode([$s->read(6, 0), $s->read(6, 1), $s->read(6, 2)]), "\n";
 run("int+AS_DATE", fn() => $s->write(2, 0, time(), null, ExcelFormat::AS_DATE), $warn);
 run("str+AS_TEXT", fn() => $s->write(2, 1, "hello", null, ExcelFormat::AS_TEXT), $warn);
 run("str+AS_FORMULA", fn() => $s->write(2, 2, "A1+1", null, ExcelFormat::AS_FORMULA), $warn);
@@ -45,6 +49,10 @@ int+AS_FORMULA: reject false
 bool+AS_TEXT: reject false
 null+AS_NUMERIC_STRING: true
 null+AS_DATE: true
+int+AS_NUMERIC_STRING: reject false
+bool+AS_NUMERIC_STRING: reject false
+float+AS_NUMERIC_STRING: reject false
+rejected cells: ["","",""]
 int+AS_DATE: true
 str+AS_TEXT: true
 str+AS_FORMULA: true

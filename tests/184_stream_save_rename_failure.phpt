@@ -1,15 +1,14 @@
 --TEST--
-Stream save falls back to a direct write when a staged rename fails
+Stream save fails without touching the destination when a staged rename fails
 --EXTENSIONS--
 excel
 --FILE--
 <?php
-/* A user-defined wrapper always presents rename/unlink entries in its wrapper
- * ops, whether or not the PHP class implements those methods, so save() cannot
- * tell "wrapper has no rename()" from "rename() returned false". It treats both
- * as a fallback to the direct write: a wrapper that omits rename() keeps
- * working, at the cost of no longer preserving the destination when a rename
- * genuinely fails. */
+/* This wrapper implements rename() and fails it, so the save fails closed:
+ * it returns false with a "destination left unchanged" warning, the
+ * destination keeps its original content, and the staged copy is removed
+ * instead of falling back to a non-atomic direct write. Wrappers whose class
+ * omits rename() still take the non-atomic direct-write fallback (see 215). */
 class RenameFailureStream
 {
     public $context;
@@ -43,13 +42,11 @@ $book->addSheet('S')->write(1, 0, 'x');
 var_dump($book->save('rename-failure://' . $destination));
 restore_error_handler();
 
-/* The caller is told the save was not atomic. */
-var_dump(count(array_filter($warnings, fn($m) => str_contains($m, 'non-atomic direct write'))) === 1);
+/* The caller is told the destination was left unchanged. */
+var_dump(count(array_filter($warnings, fn($m) => str_contains($m, 'destination left unchanged'))) === 1);
 
-/* The workbook landed, and the staged copy did not leak. */
-$reloaded = new ExcelBook(null, null, true);
-var_dump($reloaded->loadFile($destination));
-var_dump($reloaded->getSheet(0)->read(1, 0));
+/* The destination keeps its original content, and the staged copy did not leak. */
+var_dump(file_get_contents($destination) === 'ORIGINAL');
 var_dump(count(glob($destination . '.*.tmp')));
 
 foreach (glob($destination . '.*.tmp') as $temporary) {
@@ -59,9 +56,8 @@ foreach (glob($destination . '.*.tmp') as $temporary) {
 echo "OK\n";
 ?>
 --EXPECT--
+bool(false)
 bool(true)
 bool(true)
-bool(true)
-string(1) "x"
 int(0)
 OK

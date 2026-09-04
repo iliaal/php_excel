@@ -7,7 +7,7 @@ Most realistic threat surface is parsing untrusted XLS/XLSX files.
 
 | Version | Supported          |
 |---------|--------------------|
-| 2.0.x   | :white_check_mark: |
+| 2.x     | :white_check_mark: |
 
 Once 3.0 ships, the two most recent minor versions will receive
 security fixes. Pre-2.0 (PHP 5/7 era) is unsupported.
@@ -58,6 +58,33 @@ whole row or column, leaving no cells modified.
 
 Implicit `=` promotion is retained as the default for backwards compatibility;
 it may be revisited in a future major version.
+
+## External links (picture links, hyperlinks)
+
+`ExcelBook::addPictureAsLink()` stores the caller-supplied path as an
+external relationship: UNC paths and http(s) URLs persist in the file and
+are resolved by Excel on open, which can leak NTLM hashes (UNC) or signal
+file opens (remote URLs). Allowlist caller-supplied paths and never pass
+untrusted input as the link target. The same applies to
+`ExcelSheet::addHyperlink()`: the string is stored verbatim, so validate
+the scheme (e.g. allow only `https:`/`mailto:`) and never store untrusted
+strings.
+
+## Memory use when loading (buffering)
+
+`load()`, `loadFile()`, `loadPartially()`, `loadInfo()`, and
+`addPictureFromFile()` fully buffer stream sources in memory (capped at
+UINT_MAX, ~4 GiB, beyond which the call fails). Enforce an app-side size
+bound before calling so one upload cannot exhaust PHP memory:
+
+```php
+$maxBytes = 64 * 1024 * 1024; // app policy
+$size = filesize($path);
+if ($size === false || $size > $maxBytes) {
+    throw new RuntimeException('spreadsheet too large');
+}
+$book->loadFile($path);
+```
 
 ## Scope
 

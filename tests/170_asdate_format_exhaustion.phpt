@@ -27,7 +27,8 @@ echo "write AS_DATE: "; var_dump($ret);
 echo "isDate:        "; var_dump($s->isDate(1, 0));
 echo "OK\n";
 ?>
---EXPECT--
+--EXPECTF--
+Warning: ExcelBook::addFormat(): Failed to add format: too many different cell formats in %s on line %d
 exhausted: bool(true)
 write AS_DATE: bool(false)
 isDate:        bool(false)

@@ -5,9 +5,12 @@
 class ExcelBook
 {
     public static function requiresKey(): bool {}  // ZPP ""
+    /** @note Stream sources are fully buffered (cap UINT_MAX); enforce an app-side size bound before calling. */
     public function load(string $data): bool {}  // ZPP "S"
+    /** @note Stream sources are fully buffered (cap UINT_MAX); enforce an app-side size bound before calling. */
     public function loadFile(string $filename): bool {}  // ZPP "S"
 #if LIBXL_VERSION >= 0x05000000
+    /** @note Stream sources are fully buffered (cap UINT_MAX); enforce an app-side size bound before calling. */
     public function loadPartially(string $data, int $sheet_index, int $row_first, int $row_last, bool $keep_all_sheets = false): bool {}  // ZPP "Slll|b"
     public function loadFilePartially(string $filename, int $sheet_index, int $row_first, int $row_last, bool $keep_all_sheets = false): bool {}  // ZPP "Slll|b"
     public function loadFileWithoutEmptyCells(string $filename): bool {}  // ZPP "S"
@@ -37,6 +40,7 @@ class ExcelBook
     public function setLocale(string $locale): mixed {}  // ZPP "S"
     public function __construct(?string $license_name = null, ?string $license_key = null, bool $excel_2007 = false) {}  // ZPP "|s!s!b"
     public function setActiveSheet(int $sheet): bool {}  // ZPP "l"
+    /** @note Stream sources are fully buffered (cap UINT_MAX); enforce an app-side size bound before calling. */
     public function addPictureFromFile(string $filename): int|false {}  // ZPP "S"
     public function addPictureFromString(string $data): int|false {}  // ZPP "S"
     public function rgbMode(): bool {}  // ZPP ""
@@ -45,6 +49,7 @@ class ExcelBook
     public function colorUnpack(int $color): array|false {}  // ZPP "l"
     public function getLibXlVersion(): string {}  // ZPP ""
     public function getPhpExcelVersion(): string {}  // ZPP ""
+    /** @note Stream sources are fully buffered (cap UINT_MAX); enforce an app-side size bound before calling. */
     public function loadInfo(string $filename): bool {}  // ZPP "S"
     public function getSheetName(int $index): string|false {}  // ZPP "l"
     public function addRichString(): ExcelRichString|false {}  // ZPP ""
@@ -89,6 +94,7 @@ class ExcelBook
     public function isTemplate(): bool {}  // ZPP ""
     public function setTemplate(bool $mode): bool {}  // ZPP "b"
     public function sheetType(int $sheet): int|false {}  // ZPP "l"
+    /** @note Caller-supplied paths persist as external relationships (UNC/http included); allowlist them. */
     public function addPictureAsLink(string $filename, bool $insert = false): int|false {}  // ZPP "S|b"
     public function moveSheet(int $src_index, int $dest_index): bool {}  // ZPP "ll"
 }
@@ -105,8 +111,14 @@ class ExcelSheet
     public function readSparseRow(int $row, int $start_col = 0, int $end_column = -1, bool $read_formula = true): array|false {}  // ZPP "l|llb"
     public function readSparseCol(int $column, int $start_row = 0, int $end_row = -1, bool $read_formula = true): array|false {}  // ZPP "l|llb"
     public function read(int $row, int $column, mixed &$format = null, bool $read_formula = true): mixed {}  // ZPP "ll|zb"
+    /** @note Spelling split: write() uses $datatype while writeRow()/writeCol() use $data_type; use the matching name per method. */
+    /** @note Formula injection: a string starting with '=' becomes a live formula unless an explicit dtype (e.g. ExcelFormat::AS_TEXT) is passed; never pass untrusted input without a dtype. */
     public function write(int $row, int $column, mixed $data, ?ExcelFormat $format = null, int $datatype = -1): bool {}  // ZPP "llz|O!l"
+    /** @note Spelling split: writeRow()/writeCol() use $data_type while write() uses $datatype. Non-atomic on libxl-side failure: PHP-side validation rejects the whole row before any write, but a libxl failure can leave earlier cells committed. */
+    /** @note Formula injection: a string starting with '=' becomes a live formula unless an explicit dtype (e.g. ExcelFormat::AS_TEXT) is passed; never pass untrusted input without a dtype. */
     public function writeRow(int $row, array $data, int $start_column = 0, ?ExcelFormat $format = null, int $data_type = -1): bool {}  // ZPP "la|lO!l"
+    /** @note Spelling split: writeRow()/writeCol() use $data_type while write() uses $datatype. Non-atomic on libxl-side failure: PHP-side validation rejects the whole column before any write, but a libxl failure can leave earlier cells committed. */
+    /** @note Formula injection: a string starting with '=' becomes a live formula unless an explicit dtype (e.g. ExcelFormat::AS_TEXT) is passed; never pass untrusted input without a dtype. */
     public function writeCol(int $column, array $data, int $start_row = 0, ?ExcelFormat $format = null, int $data_type = -1): bool {}  // ZPP "la|lO!l"
     public function isFormula(int $row, int $column): bool {}  // ZPP "ll"
     public function isDate(int $row, int $column): bool {}  // ZPP "ll"
@@ -204,6 +216,7 @@ class ExcelSheet
     public function hyperlinkSize(): int|false {}  // ZPP ""
     public function hyperlink(int $index): array|false {}  // ZPP "l"
     public function delHyperlink(int $index): bool {}  // ZPP "l"
+    /** @note The string is stored verbatim; validate the scheme and never store untrusted strings. */
     public function addHyperlink(string $hyperlink, int $row_first, int $row_last, int $col_first, int $col_last): bool {}  // ZPP "Sllll"
     public function mergeSize(): int|false {}  // ZPP ""
     public function merge(int $index): array|false {}  // ZPP "l"
@@ -228,7 +241,7 @@ class ExcelSheet
     public function writeError(int $row, int $col, int $iError, ?ExcelFormat $format = null): mixed {}  // ZPP "lll|O!"
     public function removeComment(int $row, int $col): mixed {}  // ZPP "ll"
     public function addDataValidation(int $type, int $op, int $row_first, int $row_last, int $col_first, int $col_last, string $val_1, ?string $val_2 = null, bool $allow_blank = true, bool $hide_dropdown = false, bool $show_inputmessage = true, bool $show_errormessage = true, string $prompt_title = "", string $prompt = "", string $error_title = "", string $error = "", int $error_style = 1): bool {}  // ZPP "llllllS|S!bbbbSSSSl"
-    public function addDataValidationDouble(int $type, int $op, int $row_first, int $row_last, int $col_first, int $col_last, float $val_1, ?float $val_2 = null, bool $allow_blank = true, bool $hide_dropdown = false, bool $show_inputmessage = true, bool $show_errormessage = true, string $prompt_title = "", string $prompt = "", string $error_title = "", string $error = "", int $error_style = 1): bool {}  // FAST_ZPP llllllD|D!bbbbSSSSl
+    public function addDataValidationDouble(int $type, int $op, int $row_first, int $row_last, int $col_first, int $col_last, float $val_1, ?float $val_2 = null, bool $allow_blank = true, bool $hide_dropdown = false, bool $show_inputmessage = true, bool $show_errormessage = true, string $prompt_title = "", string $prompt = "", string $error_title = "", string $error = "", int $error_style = 1): bool {}  // ZPP "llllllD|D!bbbbSSSSl"
     public function removeDataValidations(): bool {}  // ZPP ""
 #if LIBXL_VERSION >= 0x05020000
     public function dataValidationSize(): int|false {}  // ZPP ""
@@ -266,9 +279,9 @@ class ExcelSheet
     public function getTableByIndex(int $index): ExcelTable|false {}  // ZPP "l"
     public function applyFilter2(ExcelAutoFilter $autoFilter): bool {}  // ZPP "O"
 #if LIBXL_VERSION >= 0x05010000
-    public function addConditionalFormatting(int $rowFirst, int $rowLast, int $colFirst, int $colLast): ExcelConditionalFormatting|false {}
+    public function addConditionalFormatting(int $rowFirst, int $rowLast, int $colFirst, int $colLast): ExcelConditionalFormatting|false {}  // ZPP "llll"
 #else
-    public function addConditionalFormatting(): ExcelConditionalFormatting|false {}
+    public function addConditionalFormatting(): ExcelConditionalFormatting|false {}  // ZPP ""
 #endif
 #if LIBXL_VERSION >= 0x05010000
     public function conditionalFormatting(int $index): ExcelConditionalFormatting|false {}  // ZPP "l"
@@ -475,29 +488,29 @@ class ExcelCoreProperties
      * COREPROPERTIES_STRING_SETTER C macros (PE_RETURN_IS_STRING returns
      * NULL when the libxl call returns null; COREPROPERTIES_FROM_OBJECT
      * returns false on an uninitialized handle or stale parent book). */
-    public function title(): string|null|false {}
-    public function setTitle(string $value): bool {}
-    public function subject(): string|null|false {}
-    public function setSubject(string $value): bool {}
-    public function creator(): string|null|false {}
-    public function setCreator(string $value): bool {}
-    public function lastModifiedBy(): string|null|false {}
-    public function setLastModifiedBy(string $value): bool {}
-    public function created(): string|null|false {}
-    public function setCreated(string $value): bool {}
-    public function modified(): string|null|false {}
-    public function setModified(string $value): bool {}
-    public function tags(): string|null|false {}
-    public function setTags(string $value): bool {}
-    public function categories(): string|null|false {}
-    public function setCategories(string $value): bool {}
-    public function comments(): string|null|false {}
-    public function setComments(string $value): bool {}
-    public function createdAsDouble(): mixed {}
-    public function setCreatedAsDouble(float $value): bool {}
-    public function modifiedAsDouble(): mixed {}
-    public function setModifiedAsDouble(float $value): bool {}
-    public function removeAll(): mixed {}
+    public function title(): string|null|false {}  // ZPP ""
+    public function setTitle(string $value): bool {}  // ZPP "S"
+    public function subject(): string|null|false {}  // ZPP ""
+    public function setSubject(string $value): bool {}  // ZPP "S"
+    public function creator(): string|null|false {}  // ZPP ""
+    public function setCreator(string $value): bool {}  // ZPP "S"
+    public function lastModifiedBy(): string|null|false {}  // ZPP ""
+    public function setLastModifiedBy(string $value): bool {}  // ZPP "S"
+    public function created(): string|null|false {}  // ZPP ""
+    public function setCreated(string $value): bool {}  // ZPP "S"
+    public function modified(): string|null|false {}  // ZPP ""
+    public function setModified(string $value): bool {}  // ZPP "S"
+    public function tags(): string|null|false {}  // ZPP ""
+    public function setTags(string $value): bool {}  // ZPP "S"
+    public function categories(): string|null|false {}  // ZPP ""
+    public function setCategories(string $value): bool {}  // ZPP "S"
+    public function comments(): string|null|false {}  // ZPP ""
+    public function setComments(string $value): bool {}  // ZPP "S"
+    public function createdAsDouble(): mixed {}  // ZPP ""
+    public function setCreatedAsDouble(float $value): bool {}  // ZPP "d"
+    public function modifiedAsDouble(): mixed {}  // ZPP ""
+    public function setModifiedAsDouble(float $value): bool {}  // ZPP "d"
+    public function removeAll(): mixed {}  // ZPP ""
 }
 
 class ExcelTable
@@ -507,6 +520,7 @@ class ExcelTable
     public function setName(string $value): bool {}  // ZPP "S"
     public function ref(): mixed {}  // ZPP ""
     public function setRef(string $value): bool {}  // ZPP "S"
+    /** @return ExcelAutoFilter|false False when libxl yields no handle; probe with isAutoFilter() before chaining. */
     public function autoFilter(): mixed {}  // ZPP ""
 #if LIBXL_VERSION >= 0x05020000
     public function isAutoFilter(): bool {}  // ZPP ""

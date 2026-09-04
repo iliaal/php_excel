@@ -60,12 +60,13 @@ class ExcelConditionalFormatting
 	* Create a conditional formatting object for a sheet
 	*
 	* @see ExcelSheet::addConditionalFormatting()
+	* @since libxl 5.1.0 for the five-argument range form below.
 	* @param ExcelSheet $sheet
 	* @param int $rowFirst (required for libxl 5.1.0+)
 	* @param int $rowLast (required for libxl 5.1.0+)
 	* @param int $colFirst (required for libxl 5.1.0+)
 	* @param int $colLast (required for libxl 5.1.0+)
-	* @note With libxl 4.6.0 through 5.0.x, the constructor accepts only
+	* @note Dual arity: with libxl 4.6.0 through 5.0.x, the constructor accepts only
 	*       ExcelSheet $sheet; add ranges afterward with addRange().
 	*/
 	public function __construct(ExcelSheet $sheet, int $rowFirst, int $rowLast, int $colFirst, int $colLast)

@@ -73,7 +73,7 @@ echo "protect state (enhanced): ";
 var_dump($sheet4->protect());
 
 // verify protection persists after save+reload
-$tmp = tempnam("/tmp", "xl_protect_") . ".xlsx";
+$tmp = tempnam(sys_get_temp_dir(), "xl_protect_") . ".xlsx";
 $book->save($tmp);
 
 $book2 = new ExcelBook(null, null, true);

@@ -5,7 +5,7 @@ date.timezone=America/Toronto
 --EXTENSIONS--
 excel
 --SKIPIF--
-<?php if (!ExcelBook::requiresKey()) print "skip"; ?>
+<?php if (!extension_loaded("excel") || !ExcelBook::requiresKey() || !ini_get("excel.license_name") || !ini_get("excel.license_key")) print "skip"; ?>
 --FILE--
 <?php
     $data = array("foo");

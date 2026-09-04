@@ -28,7 +28,7 @@ var_dump($book->getSheetName(2));
 
 // load (from raw data)
 $sheet->write(1, 0, "test_data");
-$tmpf = tempnam("/tmp", "xls") . ".xlsx";
+$tmpf = tempnam(sys_get_temp_dir(), "xls") . ".xlsx";
 $book->save($tmpf);
 $data = file_get_contents($tmpf);
 

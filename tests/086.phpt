@@ -3,7 +3,7 @@ test Sheet::isLicensed()
 --EXTENSIONS--
 excel
 --SKIPIF--
-<?php if (!ExcelBook::requiresKey() || !ini_get("excel.license_name") || !ini_get("excel.license_key")) print "skip"; ?>
+<?php if (!extension_loaded("excel") || !ExcelBook::requiresKey() || !ini_get("excel.license_name") || !ini_get("excel.license_key")) print "skip"; ?>
 --FILE--
 <?php
 

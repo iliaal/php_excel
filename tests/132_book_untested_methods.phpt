@@ -12,7 +12,7 @@ excel
 $book = new ExcelBook(null, null, true);
 
 // Create a minimal valid 1x1 PNG file
-$tmpPic = tempnam("/tmp", "xlpic") . ".png";
+$tmpPic = tempnam(sys_get_temp_dir(), "xlpic") . ".png";
 $png = base64_decode("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==");
 file_put_contents($tmpPic, $png);
 
@@ -29,7 +29,7 @@ $id3 = $book->addPictureAsLink($tmpPic, false);
 var_dump(is_int($id3) && $id3 >= 0);
 
 // Non-existent file returns false
-var_dump(@$book->addPictureAsLink("/tmp/nonexistent_xlpic_test.png"));
+var_dump(@$book->addPictureAsLink(sys_get_temp_dir() . "/nonexistent_xlpic_test.png"));
 
 unlink($tmpPic);
 
@@ -53,15 +53,15 @@ $retrieved1 = $book2->conditionalFormat(1);
 var_dump($retrieved1 instanceof ExcelConditionalFormat);
 
 // Invalid index returns false
-var_dump($book2->conditionalFormat(999));
+var_dump(@$book2->conditionalFormat(999));
 
 // --- ExcelSheet::removeComment (XLS format -- comments not readable in xlsx without save/load) ---
 
 $book3 = new ExcelBook();
 $sheet3 = $book3->addSheet("Comments");
 
-// Write a comment
-$sheet3->writeComment(1, 0, "Test comment", "Author", 100, 50);
+// writeComment wraps a void libxl op: null on success, false on failure.
+var_dump($sheet3->writeComment(1, 0, "Test comment", "Author", 100, 50));
 
 // Verify comment exists
 $comment = $sheet3->readComment(1, 0);
@@ -89,6 +89,7 @@ conditionalFormatSize: 2
 bool(true)
 bool(true)
 bool(false)
+NULL
 comment: Test comment
 bool(false)
 OK

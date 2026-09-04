@@ -89,7 +89,8 @@ class ExcelTable
 	/**
 	* Returns the AutoFilter for this table
 	*
-	* @return ExcelAutoFilter
+	* @return ExcelAutoFilter|false The table autofilter, or false when libxl yields no handle.
+	* @note Probe with isAutoFilter() before chaining: `$t->isAutoFilter() ? $t->autoFilter()->getRef() : null`.
 	*/
 	public function autoFilter(): mixed
 	{

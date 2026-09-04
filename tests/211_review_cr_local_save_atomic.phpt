@@ -31,6 +31,32 @@ var_dump($s2 ? $s2->read(1, 0) : false);
 $temps = glob($dest . ".*.tmp") ?: [];
 echo "temps: " . count($temps) . "\n";
 
+// Failure atomicity: a destination that cannot be replaced (a read-only
+// directory) must fail without touching existing content and without
+// leaving staging temps behind. A directory is used because rename()
+// fails onto it deterministically on every lane and uid, while a mode-only
+// read-only file would still be replaceable via directory write permission.
+$rodir = $dir . "/211_rodir_" . getmypid();
+foreach (glob($rodir . ".*.tmp") ?: [] as $t) {
+	@unlink($t);
+}
+@unlink($rodir . "/keep.txt");
+@rmdir($rodir);
+@mkdir($rodir);
+file_put_contents($rodir . "/keep.txt", "sentinel");
+chmod($rodir, 0555);
+echo "ro save: ";
+var_dump(@$b->save($rodir));
+echo "ro preserved: ";
+var_dump(is_dir($rodir) && file_get_contents($rodir . "/keep.txt") === "sentinel");
+$rotemps = glob($rodir . ".*.tmp") ?: [];
+echo "ro temps: " . count($rotemps) . "\n";
+chmod($rodir, 0777);
+@unlink($rodir . "/keep.txt");
+foreach ($rotemps as $t) {
+	@unlink($t);
+}
+@rmdir($rodir);
 @unlink($dest);
 foreach ($temps as $t) {
 	@unlink($t);
@@ -43,4 +69,7 @@ exists: bool(true)
 reload: bool(true)
 read: string(7) "payload"
 temps: 0
+ro save: bool(false)
+ro preserved: bool(true)
+ro temps: 0
 OK

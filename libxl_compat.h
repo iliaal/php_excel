@@ -14,33 +14,21 @@
   +----------------------------------------------------------------------+
 */
 
-#ifndef PHP_EXCEL_H
-#define PHP_EXCEL_H 1
+/* Private libxl compatibility shims for the excel extension. Included by
+ * excel.c only (after libxl.h); never installed or included elsewhere. */
 
-extern zend_module_entry excel_module_entry;
-#define phpext_excel_ptr &excel_module_entry
+#ifndef PHP_EXCEL_LIBXL_COMPAT_H
+#define PHP_EXCEL_LIBXL_COMPAT_H 1
 
-ZEND_BEGIN_MODULE_GLOBALS(excel)
-	char *ini_license_name;
-	char *ini_license_key;
-	zend_long ini_skip_empty;
-ZEND_END_MODULE_GLOBALS(excel)
-
-#define EXCEL_G(v) ZEND_MODULE_GLOBALS_ACCESSOR(excel, v)
-
-#if defined(ZTS) && defined(COMPILE_DL_EXCEL)
-ZEND_TSRMLS_CACHE_EXTERN()
+/* work-around for buggy/missing macros in libxl.h */
+#if LIBXL_VERSION >= 0x05010000
+#undef xlSheetRemoveConditionalFormatting
+#define xlSheetRemoveConditionalFormatting xlSheetRemoveConditionalFormattingA
+#undef xlSheetConditionalFormattingSize
+#define xlSheetConditionalFormattingSize xlSheetConditionalFormattingSizeA
+#endif
+#ifndef xlSheetSetBorder
+#define xlSheetSetBorder xlSheetSetBorderA
 #endif
 
-#ifdef PHP_WIN32
-#define PHP_EXCEL_API __declspec(dllexport)
-#else
-#define PHP_EXCEL_API
-#endif
-
-/* Removed: PHP_EXCEL_ERROR_HANDLING / PHP_EXCEL_RESTORE_ERRORS -- dead code since PHP 8.0 */
-
-/* The zend_register_internal_class_with_flags() polyfill for PHP < 8.4 lives
- * in excel.c (static); this header must not emit definitions. */
-
-#endif	/* PHP_EXCEL_H */
+#endif	/* PHP_EXCEL_LIBXL_COMPAT_H */

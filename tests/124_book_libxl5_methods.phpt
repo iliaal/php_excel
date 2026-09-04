@@ -3,7 +3,11 @@ Book: setPassword, dpiAwareness, loadInfoRaw, errorCode, conditionalFormatSize, 
 --EXTENSIONS--
 excel
 --SKIPIF--
-<?php if (!method_exists('ExcelBook', 'setPassword')) print "skip"; ?>
+<?php
+/* Newest-tier gate: this file spans three libxl generations (setPassword/dpiAwareness,
+ * loadInfoRaw, errorCode/conditionalFormatSize/clear); errorCode is the youngest, so its
+ * presence implies the rest. A partial tier would pass SKIPIF yet fatal on a missing method. */
+if (!method_exists("ExcelBook", "errorCode")) print "skip"; ?>
 --FILE--
 <?php
 $book = new ExcelBook(null, null, true);
@@ -21,7 +25,7 @@ $book->setDpiAwareness(1);
 var_dump($book->dpiAwareness());
 
 // save and loadInfoRaw
-$tmp = tempnam("/tmp", "xl") . ".xlsx";
+$tmp = tempnam(sys_get_temp_dir(), "xl") . ".xlsx";
 $book->save($tmp);
 $raw = file_get_contents($tmp);
 

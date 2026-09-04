@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.8.0] - 2026-09-03
+
+### Docs
+- Documented that `ExcelSheet::writeRow()`/`writeCol()` are non-atomic on libxl-side failure: PHP-side validation rejects the whole row or column before any cell is written, but a failure inside libxl can leave earlier cells committed.
+
+### Fixed
+- Stream-wrapper saves whose rename() is present but fails now also fail closed (destination left unchanged) instead of falling back to a truncating direct write. Only wrappers that omit rename() keep the warned fallback.
+- ExcelBook::save() to a local path no longer falls back to a truncating direct write when replacing the destination with the staged file fails. It now removes the staged file, warns that the destination was left unchanged, and returns false. Stream wrappers that do not implement rename() keep the previous direct-write fallback with its warning.
+- ExcelBook::load(), loadFile(), loadPartially(), loadFilePartially(), loadFileWithoutEmptyCells(), loadInfo(), and loadInfoRaw() no longer destroy the previously loaded workbook when the new load fails. The existing book and its live child wrappers survive a failed reload.
+- ExcelBook::save() to a local path now checks the staging-stream close result before handing the path to LibXL instead of saving over a failed reservation.
+- Failed handle creation (getSheet, sheet copies, fonts, formats, custom number formats, default font) and rejected header, footer, font-size, and staging inputs now emit warnings naming the cause instead of failing silently.
+### Changed
+- Stream-backed loads set a read timeout where the wrapper supports it, and bulk read and write loops now honor executor interruption. Wrappers without stream_set_option support are unaffected.
+
 ## [2.7.0] - 2026-09-01
 
 ### Breaking
@@ -201,8 +215,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `setColWidth`/`setRowHeight`/`setColPx`/`setRowPx`/`writeRichStr`/
   `applyFilter2`, `ExcelFormat::setFont`, and the `ExcelConditionalFormatting`
   rule methods now return `false` with a warning instead. Template-copy
-  methods (`ExcelBook::addFormat`/`addFont`/`insertSheet`) still accept a
-  handle from another book by design.
+  methods (`ExcelBook::addFormat`/`addFont`) still accept a
+  handle from another book by design (`ExcelBook::insertSheet` requires the same book).
 - Reject out-of-range values at every public libxl integer/enum/color boundary
   instead of silently truncating the 64-bit argument to `int`. This covers the
   full surface, not only `set*` methods:
@@ -780,8 +794,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.8] - 2010-08-01
 	* Initial Release
 
-[Unreleased]: https://github.com/iliaal/php_excel/compare/2.7.0...HEAD
+[Unreleased]: https://github.com/iliaal/php_excel/compare/2.8.0...HEAD
 [2.7.0]: https://github.com/iliaal/php_excel/releases/tag/2.7.0
+[2.8.0]: https://github.com/iliaal/php_excel/releases/tag/2.8.0
 [2.6.0]: https://github.com/iliaal/php_excel/releases/tag/2.6.0
 [2.5.0]: https://github.com/iliaal/php_excel/releases/tag/2.5.0
 [2.4.0]: https://github.com/iliaal/php_excel/releases/tag/2.4.0

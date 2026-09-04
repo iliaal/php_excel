@@ -72,6 +72,8 @@ $sheet2->write(1, 0, (new DateTime('2024-08-02'))->getTimestamp(), $dateFormat, 
 $book->save('output.xlsx');
 ```
 
+`save()` stages the workbook to a temporary sibling file and renames it into place, so a failed save leaves the destination untouched. If the rename fails, local-path saves fail closed (return `false`); stream wrappers that omit `rename()` fall back to a direct write with a warning. Failed handle creation and rejected header, footer, font-size, and staging inputs emit warnings naming the cause — suppress with `@` only where you handle `false` explicitly.
+
 ## 📊 Performance
 
 Write 100,000 rows × 20 columns vs PhpSpreadsheet 5.5.0 on PHP 8.4.19 NTS, Apple M3:

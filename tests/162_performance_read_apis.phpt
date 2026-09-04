@@ -15,7 +15,7 @@ $sheet->write(2, 3, "=10*2");
 $sheet->write(3, 0, true);
 $sheet->write(3, 3, "");
 
-$tmp = tempnam("/tmp", "xl_range_") . ".xlsx";
+$tmp = tempnam(sys_get_temp_dir(), "xl_range_") . ".xlsx";
 $book->save($tmp);
 
 $book2 = new ExcelBook(null, null, true);

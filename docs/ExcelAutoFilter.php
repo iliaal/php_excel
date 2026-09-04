@@ -86,7 +86,7 @@ class ExcelAutoFilter
 	/**
 	* Gets the zero-based index of sorted column in AutoFilter and its sort order
 	*
-	* @return array|false Array with keys "column_index"(int), "descending"(bool)
+	* @return array|false Array with keys "column_index"(int), "descending"(int 0/1)
 	*/
 	public function getSort(): array|false
 	{

@@ -2,6 +2,11 @@ ARG_WITH("excel", "Excel support", "no");
 ARG_WITH("libxl", "Path to LibXL", "no");
 
 if (PHP_EXCEL != "no") {
+    // Mirror config.m4: the extension requires PHP 8.1+.
+    if (PHP_VERSION < 8 || (PHP_VERSION == 8 && PHP_MINOR_VERSION < 1)) {
+        ERROR("php_excel requires PHP 8.1.0 or later");
+    }
+
     var header_search = PHP_PHP_BUILD + "\\include";
     var lib_search = PHP_PHP_BUILD + "\\lib";
 
@@ -12,9 +17,24 @@ if (PHP_EXCEL != "no") {
 
     if (CHECK_HEADER_ADD_INCLUDE("libxl.h", "CFLAGS_EXCEL", header_search) &&
         CHECK_LIB("libxl.lib", "excel", lib_search)) {
+        // Mirror config.m4: libxl headers must be >= 4.6.0. excel.c also
+        // hard-errors below that floor; fail here with a clear message.
+        if (GREP_HEADER("libxl.h", "define\\s+LIBXL_VERSION\\s+(0x[0-9a-fA-F]+)", header_search)) {
+            var libxl_version = parseInt(RegExp.$1, 16);
+            if (libxl_version < 0x04060000) {
+                ERROR("php_excel requires libxl headers >= 4.6.0");
+            }
+        } else {
+            WARNING("could not determine LIBXL_VERSION from libxl.h; assuming it meets the 4.6.0 minimum");
+        }
+        // Mirror config.m4's xlBookSetKeyA link probe: only define
+        // HAVE_LIBXL_SETKEY when the license-key symbol is present, so
+        // headers without it build with requiresKey() == false.
+        if (GREP_HEADER("libxl.h", "xlBookSetKeyA", header_search)) {
+            AC_DEFINE("HAVE_LIBXL_SETKEY", 1, "Have LibXL license key support");
+        }
         EXTENSION("excel", "excel.c");
         AC_DEFINE("HAVE_EXCELLIB", 1, "Have LibXL library");
-        AC_DEFINE("HAVE_LIBXL_SETKEY", 1, "Have LibXL license key support");
     } else {
         WARNING("excel not enabled; libxl libraries and headers not found");
         PHP_EXCEL = "no";

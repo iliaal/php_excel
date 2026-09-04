@@ -37,15 +37,17 @@ $rs3 = $bookA->addRichString();
 $rs3->addFont()->bold(true);
 $rs3->addText('ok');
 var_dump($sheet->writeRichStr(1, 1, $rs3));
-var_dump($bookA->save('/tmp/217_rs.xlsx'));
+$tmp217 = sys_get_temp_dir() . "/217_rs_" . getmypid() . ".xlsx";
+var_dump($bookA->save($tmp217));
 unset($bookB);
 
 $read = new ExcelBook(null, null, true);
-var_dump($read->loadFile('/tmp/217_rs.xlsx'));
+var_dump($read->loadFile($tmp217));
 $s = $read->getSheet(0);
 $back = $s->readRichStr(1, 1);
 var_dump($back->textSize());
 var_dump($back->getText(0)['text']);
+@unlink($tmp217);
 ?>
 --EXPECTF--
 bool(true)

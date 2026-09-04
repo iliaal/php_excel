@@ -16,6 +16,12 @@ $raw = $b2->save();
 var_dump($b->load($raw));
 var_dump($s->write(1, 0, "after-load"));
 
+// Mixed getters on a stale sheet warn and return false, like the setters.
+echo "stale read: ";
+var_dump($s->read(1, 0));
+echo "stale readRow: ";
+var_dump($s->readRow(1, 0, 1));
+
 // load() invalidates existing format wrappers
 $b = new ExcelBook(null, null, true);
 $f = $b->addFormat();
@@ -112,6 +118,12 @@ bool(true)
 bool(true)
 
 Warning: ExcelSheet::write(): Underlying ExcelBook handle is stale (parent was reloaded, cleared, or reinitialized) in %s on line %d
+bool(false)
+stale read: 
+Warning: ExcelSheet::read(): Underlying ExcelBook handle is stale (parent was reloaded, cleared, or reinitialized) in %s on line %d
+bool(false)
+stale readRow: 
+Warning: ExcelSheet::readRow(): Underlying ExcelBook handle is stale (parent was reloaded, cleared, or reinitialized) in %s on line %d
 bool(false)
 bool(true)
 

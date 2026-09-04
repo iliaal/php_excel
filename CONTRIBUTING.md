@@ -50,6 +50,10 @@ Check if the issue is already reported and try to reproduce with the latest `mas
 - Keep cell count under ~300 per workbook (trial read limit); create fresh `ExcelBook` instances to reset
 - Test both success and failure/edge cases
 - Use `new ExcelBook(null, null, true)` for xlsx-specific features
+- Tests needing a licensed LibXL (row 0, large cell counts, 5.x-only APIs where noted) must skip cleanly without a key with this `--SKIPIF--` snippet:
+  ```php
+  <?php if (!extension_loaded("excel") || !ExcelBook::requiresKey() || !ini_get("excel.license_name") || !ini_get("excel.license_key")) print "skip"; ?>
+  ```
 
 ### Code style
 

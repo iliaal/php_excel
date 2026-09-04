@@ -12,7 +12,7 @@ $sheet->write(1, 1, 100);
 $sheet->write(2, 0, "keep");
 $sheet->write(2, 1, 200);
 
-$tmp = tempnam("/tmp", "xl") . ".xlsx";
+$tmp = tempnam(sys_get_temp_dir(), "xl") . ".xlsx";
 $book->save($tmp);
 
 // Step 2: Load, modify, save

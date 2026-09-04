@@ -10,7 +10,7 @@ $sheet->write(1, 0, "from memory");
 $sheet->write(1, 1, 42);
 
 // Save to memory (save without filename returns raw data)
-$tmp = tempnam("/tmp", "xl") . ".xlsx";
+$tmp = tempnam(sys_get_temp_dir(), "xl") . ".xlsx";
 $book->save($tmp);
 $raw = file_get_contents($tmp);
 unlink($tmp);

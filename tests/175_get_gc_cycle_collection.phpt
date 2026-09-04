@@ -10,13 +10,17 @@ and leaked. The get_gc handlers now surface the parent so gc_collect_cycles()
 reclaims it.
 --FILE--
 <?php
+// Drain any startup garbage so the count below reflects only our cycle;
+// interpreter lanes (ZTS, debug, instrumented) warm up differently.
+gc_collect_cycles();
 class BookX extends ExcelBook { public $ref; }
 $b = new BookX(null, null, true);
 $s = $b->addSheet("S");
 $b->ref = $s;                      // book -> sheet; sheet -> hidden parent book
 $w = WeakReference::create($b);
 unset($b, $s);
-var_dump(gc_collect_cycles() > 0); // the cycle was reclaimed
+$collected = gc_collect_cycles();
+var_dump($collected >= 1);         // our cycle was reclaimed (extra roots tolerated)
 var_dump($w->get() === null);      // book freed, not leaked
 ?>
 --EXPECT--

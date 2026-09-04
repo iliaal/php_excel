@@ -20,22 +20,26 @@ $b->addSheet("Z");
 var_dump(is_int($b->sheetCount()));
 var_dump(is_string($b->getLibXlVersion()));
 
-// A surplus argument to a zero-arg method must not crash the process (it
-// throws ArgumentCountError on a debug build, is ignored on a release build);
-// either way the token below must print, proving no arginfo/zpp fatal.
+// A surplus argument to a zero-arg method must throw ArgumentCountError:
+// every zero-arg method uses ZEND_PARSE_PARAMETERS_NONE(), which rejects
+// extra arguments unconditionally (no silent truncation, no process fatal).
 foreach ([
     fn() => $b->getPhpExcelVersion(1),
     fn() => $b->coreProperties()->title(1),
     fn() => $b->getLibXlVersion(1, 2),
 ] as $call) {
-    try { $call(); } catch (\ArgumentCountError $e) { /* debug build */ }
-    echo "no-fatal\n";
+    try {
+        $call();
+        echo "NO-THROW\n";
+    } catch (\ArgumentCountError $e) {
+        echo "ArgumentCountError\n";
+    }
 }
 ?>
 --EXPECT--
 named-arg: ok
 bool(true)
 bool(true)
-no-fatal
-no-fatal
-no-fatal
+ArgumentCountError
+ArgumentCountError
+ArgumentCountError

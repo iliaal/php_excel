@@ -15,7 +15,7 @@ $s1->write(5, 0, "first-r5");
 $s2->write(1, 0, "second-r1");
 $s2->write(5, 0, "second-r5");
 
-$tmp = tempnam("/tmp", "xl_partial_") . ".xlsx";
+$tmp = tempnam(sys_get_temp_dir(), "xl_partial_") . ".xlsx";
 $book->save($tmp);
 $raw = file_get_contents($tmp);
 
@@ -41,7 +41,7 @@ $xls1->write(1, 0, "first-r1");
 $xls1->write(5, 0, "first-r5");
 $xls2->write(1, 0, "second-r1");
 $xls2->write(5, 0, "second-r5");
-$xlsTmp = tempnam("/tmp", "xl_compact_") . ".xls";
+$xlsTmp = tempnam(sys_get_temp_dir(), "xl_compact_") . ".xls";
 $xlsBook->save($xlsTmp);
 
 $compactBook = new ExcelBook(null, null, false);

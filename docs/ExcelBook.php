@@ -132,6 +132,7 @@ class ExcelBook
 	* On failure the return is false and an E_WARNING carries the libxl error
 	* (also available via getError()).
 	*
+	* @note Stream sources are fully buffered (cap UINT_MAX); enforce an app-side size bound first, e.g. `if (filesize($path) > $maxBytes) throw new RuntimeException('spreadsheet too large');`. See SECURITY.md.
 	* @param string $filename
 	* @return bool
 	*/
@@ -142,6 +143,7 @@ class ExcelBook
 	/**
 	* Load a row slice from Excel data string
 	*
+	* @note Stream sources are fully buffered (cap UINT_MAX); enforce an app-side size bound first. See ExcelBook::loadFile() for an example.
 	* @since libxl 5.0.0
 	* @param string $data
 	* @param int $sheet_index 0-based sheet index to load
@@ -190,6 +192,7 @@ class ExcelBook
 	* On failure the return is false and an E_WARNING carries the libxl error
 	* (also available via getError()).
 	*
+	* @note Stream sources are fully buffered (cap UINT_MAX); enforce an app-side size bound first. See ExcelBook::loadFile() for an example.
 	* @param string $data
 	* @return bool
 	*/
@@ -402,6 +405,7 @@ class ExcelBook
 	/**
 	* Add a picture from file
 	*
+	* @note Stream sources are fully buffered (cap UINT_MAX); enforce an app-side size bound first. See ExcelBook::loadFile() for an example.
 	* @see ExcelBook::addPictureFromString()
 	* @see ExcelSheet::addPictureScaled()
 	* @see ExcelSheet::addPictureDim()
@@ -598,6 +602,7 @@ class ExcelBook
 	/**
 	* Adds a picture to the workbook as link (only for xlsx files)
 	*
+	* @note The path persists as an external relationship (UNC/http included); allowlist caller-supplied paths and never pass untrusted input as the link target.
 	* @param string $filename
 	* @param bool $insert (optional, default=false) false stores only a link, true stores picture and link
 	* @return int|false Picture identifier
@@ -620,6 +625,7 @@ class ExcelBook
 	/**
 	* Load Excel sheet info without loading the full file
 	*
+	* @note Stream sources are fully buffered (cap UINT_MAX); enforce an app-side size bound first. See ExcelBook::loadFile() for an example.
 	* @param string $filename
 	* @return bool
 	*/

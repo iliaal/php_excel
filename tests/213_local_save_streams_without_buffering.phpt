@@ -4,7 +4,7 @@ Atomic local save streams through LibXL instead of buffering the workbook in PHP
 excel
 --SKIPIF--
 <?php
-if (!ExcelBook::requiresKey() || !ini_get("excel.license_name") || !ini_get("excel.license_key")) print "skip needs a license for a workbook large enough to measure";
+if (!extension_loaded("excel") || !ExcelBook::requiresKey() || !ini_get("excel.license_name") || !ini_get("excel.license_key")) print "skip needs a license for a workbook large enough to measure";
 ?>
 --FILE--
 <?php

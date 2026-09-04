@@ -34,6 +34,7 @@
 #include "ext/date/php_date.h"
 
 #include "php_excel.h"
+#include "libxl_compat.h"
 #include "zend_exceptions.h"
 #include "Zend/zend_smart_str.h"
 
@@ -41,23 +42,44 @@
 #error "LibXL version 4.6.0+ required"
 #endif
 
-/* work-around for buggy/missing macros in libxl.h */
-#if LIBXL_VERSION >= 0x05010000
-#undef xlSheetRemoveConditionalFormatting
-#define xlSheetRemoveConditionalFormatting xlSheetRemoveConditionalFormattingA
-#undef xlSheetConditionalFormattingSize
-#define xlSheetConditionalFormattingSize xlSheetConditionalFormattingSizeA
+/* gen_stub.php on PHP master emits register_class_*() functions that call
+ * zend_register_internal_class_with_flags(), which only exists in PHP 8.4+.
+ * Polyfill for older targets (we support 8.1+) so the generated arginfo
+ * header compiles unchanged. */
+#if PHP_VERSION_ID < 80400
+static zend_always_inline zend_class_entry *zend_register_internal_class_with_flags(
+    zend_class_entry *class_entry,
+    zend_class_entry *parent_ce,
+    uint32_t ce_flags)
+{
+    zend_class_entry *ce = zend_register_internal_class_ex(class_entry, parent_ce);
+    if (ce && ce_flags) {
+        ce->ce_flags |= ce_flags;
+    }
+    return ce;
+}
 #endif
-#ifndef xlSheetSetBorder
-#define xlSheetSetBorder xlSheetSetBorderA
-#endif
+
+/* DEFERRED decomposition (deliberately not done at stable 2.7.0):
+ * - full 5-file split of this translation unit (book/sheet/format+font/
+ *   helpers/glue): the 12 classes share the generation-guard macros, the
+ *   bulk read/write helpers, and the save-phase helpers below. Splitting
+ *   would trade one self-contained unit for cross-file static linkage and
+ *   wider review surface, for no user-visible gain.
+ * - generation-ladder collapse (one counter instead of generation,
+ *   sheet_generation, autofilter/conditional_formatting generations):
+ *   collapsing would re-couple handle families that fail independently
+ *   today (e.g. sheet-topology changes must not invalidate formats).
+ * - docs-from-stub generation: the docs directory carries hand-written descriptions
+ *   the stub cannot reproduce; generating them would lose content.
+ * Kept as a single unit until a behavior change forces the split. */
 
 #define PHP_EXCEL_DATE 1
 #define PHP_EXCEL_FORMULA 2
 #define PHP_EXCEL_NUMERIC_STRING 3
 #define PHP_EXCEL_TEXT 4
 
-#define PHP_EXCEL_VERSION "2.7.0"
+#define PHP_EXCEL_VERSION "2.8.0"
 
 #ifdef COMPILE_DL_EXCEL
 #ifdef ZTS
@@ -143,6 +165,15 @@ typedef struct _excel_book_object {
 	 * reject impossible coordinates per book type. */
 	bool is_xlsx;
 	bool locale_is_utf8;
+	/* Explicit per-book license credentials from __construct (NULL when the
+	 * INI fallback supplied the key). Re-applied to scratch reload handles
+	 * so a licensed book stays licensed across a successful reload-swap.
+	 * INI credentials need no storage: PHP_INI_SYSTEM pins them process-wide. */
+	char *license_name;
+	char *license_key;
+	/* Locale string accepted by setLocale(), re-applied to scratch reload
+	 * handles so encoding behavior survives a successful reload-swap. */
+	char *locale;
 	/* Lazily-allocated default format used by IS_DATE writes when the
 	 * caller doesn't supply an explicit format, so bulk date exports
 	 * don't create one new format per cell and bloat the style table.
@@ -813,6 +844,100 @@ static inline int php_excel_book_reset_state(zval *book_zv) {
 	return 1;
 }
 
+/* Reload contract (CR-002): every load* path verifies into a scratch handle
+ * and adopts it only on success. A failed reload leaves the live BookHandle,
+ * all generation counters, and default_date_format untouched, so existing
+ * child wrappers keep working against the previous workbook. Generations
+ * bump (invalidating children) only via php_excel_book_commit_scratch().
+ * Children stash the raw BookHandle at creation, but the stale-generation
+ * check always runs before any dereference, so a committed swap cannot
+ * strand them on the released handle. */
+
+/* Allocate a scratch book with the object's own flavor for one reload
+ * attempt. The stored per-book credentials (or the INI fallback, which is
+ * process-pinned) and the stored locale are applied so a committed swap
+ * preserves licensing and encoding behavior. Returns NULL on failure. */
+static BookHandle php_excel_book_create_scratch(zval *object)
+{
+	excel_book_object *bobj = Z_EXCEL_BOOK_OBJ_P(object);
+	BookHandle scratch = bobj->is_xlsx ? xlCreateXMLBook() : xlCreateBook();
+
+	if (!scratch) {
+		return NULL;
+	}
+#if defined(HAVE_LIBXL_SETKEY)
+	if (bobj->license_name && bobj->license_key) {
+		xlBookSetKey(scratch, bobj->license_name, bobj->license_key);
+	} else if (EXCEL_G(ini_license_name) && EXCEL_G(ini_license_key)
+	    && *EXCEL_G(ini_license_name) && *EXCEL_G(ini_license_key)) {
+		xlBookSetKey(scratch, EXCEL_G(ini_license_name), EXCEL_G(ini_license_key));
+	}
+#endif
+	if (bobj->locale) {
+		/* The live book accepted this string; re-apply it so the scratch
+		 * decodes identically. A failure here is cosmetic next to the load
+		 * itself, so it never fails the reload. */
+		xlBookSetLocale(scratch, bobj->locale);
+	}
+	return scratch;
+}
+
+/* Adopt a successfully-loaded scratch book: release the live handle, install
+ * the scratch, and invalidate children through the standard reset. Refuses
+ * while a native buffer is borrowed (same guard as
+ * php_excel_book_reset_state); the caller releases the scratch on refusal.
+ * Returns 1 on commit, 0 with a warning otherwise. */
+static int php_excel_book_commit_scratch(zval *object, BookHandle scratch)
+{
+	excel_book_object *bobj = Z_EXCEL_BOOK_OBJ_P(object);
+
+	if (bobj->native_buffer_borrowed) {
+		php_error_docref(NULL, E_WARNING,
+			"Cannot reinitialize workbook while a native I/O buffer is in use");
+		return 0;
+	}
+	if (bobj->book) {
+		xlBookRelease(bobj->book);
+	}
+	bobj->book = scratch;
+	/* Scratch carries the object's own flavor, credentials, and locale, so
+	 * is_xlsx, license_*, and locale_* fields remain correct as-is. */
+	return php_excel_book_reset_state(object);
+}
+
+/* Scratch-reload prologue: refuse an uninitialized book without exposing the
+ * live handle, then allocate the scratch. Warns and RETURN_FALSE on either
+ * failure (the stream-owned variant also releases the caller's buffer). */
+#define BOOK_BEGIN_SCRATCH_RELOAD(scratch, object) \
+	{ \
+		excel_book_object *scratch_bobj = Z_EXCEL_BOOK_OBJ_P(object); \
+		if (!scratch_bobj->book) { \
+			php_error_docref(NULL, E_WARNING, "The book wasn't initialized"); \
+			RETURN_FALSE; \
+		} \
+		scratch = php_excel_book_create_scratch(object); \
+		if (!scratch) { \
+			php_error_docref(NULL, E_WARNING, "Failed to create workbook"); \
+			RETURN_FALSE; \
+		} \
+	}
+
+#define BOOK_BEGIN_SCRATCH_RELOAD_RELEASE_STR(scratch, object, contents_zs) \
+	{ \
+		excel_book_object *scratch_bobj = Z_EXCEL_BOOK_OBJ_P(object); \
+		if (!scratch_bobj->book) { \
+			zend_string_release(contents_zs); \
+			php_error_docref(NULL, E_WARNING, "The book wasn't initialized"); \
+			RETURN_FALSE; \
+		} \
+		scratch = php_excel_book_create_scratch(object); \
+		if (!scratch) { \
+			zend_string_release(contents_zs); \
+			php_error_docref(NULL, E_WARNING, "Failed to create workbook"); \
+			RETURN_FALSE; \
+		} \
+	}
+
 /* Throw-on-stale variant for code paths that cannot use RETURN_FALSE — most
  * importantly clone handlers, which must always produce an object and signal
  * failure via exception. Returns 1 on valid, 0 (and throws) on stale. Shares
@@ -913,6 +1038,15 @@ static void excel_book_object_free_storage(zend_object *object)
 		xlBookRelease(intern->book);
 		intern->book = NULL;
 	}
+	if (intern->license_name) {
+		efree(intern->license_name);
+	}
+	if (intern->license_key) {
+		efree(intern->license_key);
+	}
+	if (intern->locale) {
+		efree(intern->locale);
+	}
 }
 
 static zend_object *excel_object_new_book(zend_class_entry *class_type)
@@ -931,6 +1065,9 @@ static zend_object *excel_object_new_book(zend_class_entry *class_type)
 	intern->conditional_formatting_generation = 0;
 	intern->is_xlsx = false;
 	intern->locale_is_utf8 = false;
+	intern->license_name = NULL;
+	intern->license_key = NULL;
+	intern->locale = NULL;
 	intern->default_date_format = NULL;
 	intern->std.handlers = &excel_object_handlers_book;
 
@@ -1236,6 +1373,36 @@ static int php_excel_stream_close_preserving_exception(php_stream *stream)
 	return result;
 }
 
+/* Blocking/timeout contract for stream I/O. PHP opens blocking streams by
+ * default: plain-file transfers never stall observably, but network and
+ * user-space wrappers can block a worker indefinitely. Wrappers that honor
+ * it get a finite read timeout below (best-effort: an unsupported option
+ * fails silently and keeps blocking semantics). The streams API offers no
+ * write-timeout knob, so writes stay blocking and rely on the per-chunk
+ * EG(exception) checks at every step to abort promptly on executor
+ * interruption instead of looping on. */
+static void php_excel_stream_set_read_timeout(php_stream *stream)
+{
+	struct timeval tv;
+
+	/* The userspace set_option dispatcher warns when the PHP class omits
+	 * stream_set_option. Probe the wrapper object first (an open user
+	 * stream carries a copy of it in wrapperdata) and skip those streams
+	 * silently; the timeout simply does not apply to them. Plain wrappers
+	 * without set_option already fail silently inside the setter. */
+	if (Z_TYPE(stream->wrapperdata) == IS_OBJECT) {
+		zend_class_entry *ce = Z_OBJ(stream->wrapperdata)->ce;
+		if (!zend_hash_str_exists(&ce->function_table, "stream_set_option", sizeof("stream_set_option") - 1)) {
+			return;
+		}
+	}
+	tv.tv_sec = 30;
+	tv.tv_usec = 0;
+	/* Return intentionally ignored: plain files and wrappers without
+	 * timeout support report failure and keep blocking semantics. */
+	(void) php_stream_set_option(stream, PHP_STREAM_OPTION_READ_TIMEOUT, 0, &tv);
+}
+
 /* Seekable streams are rejected from stat before allocating. Wrappers without
  * stat support are capped during the read. A zero-byte read is EOF only when
  * the wrapper reports EOF; otherwise it is an I/O failure. */
@@ -1249,6 +1416,8 @@ static zend_string *php_excel_stream_read_all(php_stream *stream, php_excel_stre
 	int close_result;
 
 	*status = PHP_EXCEL_STREAM_READ_OK;
+	/* Best-effort stall guard for network/user wrappers; plain files ignore it. */
+	php_excel_stream_set_read_timeout(stream);
 	if (php_stream_stat(stream, &ssb) == 0 && ssb.sb.st_size > 0
 	    && (zend_ulong) ssb.sb.st_size >= UINT_MAX) {
 		*status = PHP_EXCEL_STREAM_READ_TOO_LARGE;
@@ -1302,10 +1471,13 @@ static bool php_excel_wrapper_supports_atomic_save(zend_string *url)
 /* Claim an unused sibling URL of `target` by creating it exclusively, so a
  * pre-existing file or a planted symlink cannot capture the staged write. On
  * success the caller owns both the returned name, which it must unlink unless
- * the rename succeeds, and the open stream. Returns NULL after 8 attempts. */
+ * the rename succeeds, and the open stream. Returns NULL after warning with
+ * the specific failure class: CSPRNG failure, repeated collisions, or an
+ * uncreatable destination (permissions, missing directory, wrapper). */
 static zend_string *php_excel_reserve_staging_url(zend_string *target, php_stream **stream)
 {
 	int attempt;
+	int collisions = 0;
 
 	*stream = NULL;
 
@@ -1316,6 +1488,7 @@ static zend_string *php_excel_reserve_staging_url(zend_string *target, php_strea
 		int i;
 
 		if (php_random_bytes_silent(random_bytes, sizeof(random_bytes)) == FAILURE) {
+			php_error_docref(NULL, E_WARNING, "Failed to save workbook: could not generate random bytes for a temporary file name");
 			return NULL;
 		}
 		for (i = 0; i < (int) sizeof(random_bytes); i++) {
@@ -1327,7 +1500,22 @@ static zend_string *php_excel_reserve_staging_url(zend_string *target, php_strea
 		if (*stream) {
 			return tmp_name;
 		}
+		/* The exclusive open either lost a race on the random sibling or the
+		 * destination cannot be created there at all. A leftover sibling
+		 * means collision; anything else points at permissions, a missing
+		 * directory, or a read-only wrapper. */
+		{
+			zend_stat_t sb;
+			if (VCWD_STAT(ZSTR_VAL(tmp_name), &sb) == 0) {
+				collisions++;
+			}
+		}
 		zend_string_release(tmp_name);
+	}
+	if (collisions == 8) {
+		php_error_docref(NULL, E_WARNING, "Failed to save workbook: could not claim an unused temporary file name after 8 attempts");
+	} else {
+		php_error_docref(NULL, E_WARNING, "Failed to save workbook: could not create a temporary file for atomic save (check directory permissions)");
 	}
 	return NULL;
 }
@@ -1342,7 +1530,9 @@ static void php_excel_copy_destination_mode(zend_string *destination, zend_strin
 	if (VCWD_STAT(ZSTR_VAL(destination), &sb) != 0) {
 		return;
 	}
-	VCWD_CHMOD(ZSTR_VAL(staged), sb.st_mode & 07777);
+	if (VCWD_CHMOD(ZSTR_VAL(staged), sb.st_mode & 07777) != 0) {
+		php_error_docref(NULL, E_WARNING, "Failed to save workbook: could not preserve permissions on temporary file %s", ZSTR_VAL(staged));
+	}
 }
 
 static bool php_excel_wrapper_rename(zend_string *from, zend_string *to)
@@ -1366,6 +1556,15 @@ static bool php_excel_wrapper_unlink_preserving_exception(zend_string *url)
 	}
 	php_excel_restore_exception(exception);
 	return result;
+}
+
+/* Best-effort removal of a leftover staging file. A failed unlink leaves a
+ * sibling temp file behind, so warn naming it instead of failing silently. */
+static void php_excel_unlink_staging_or_warn(zend_string *tmp_name)
+{
+	if (!php_excel_wrapper_unlink_preserving_exception(tmp_name)) {
+		php_error_docref(NULL, E_WARNING, "Failed to save workbook: could not remove temporary file %s", ZSTR_VAL(tmp_name));
+	}
 }
 
 /* libxl APIs take int for row/col/dimension args; zend_long is 64-bit.
@@ -1628,8 +1827,6 @@ static inline int php_excel_validate_partial_load_args(zend_long sheet_index, ze
 	PE_RETURN_ ## type (xlBook ## func_name (book)); \
 }
 
-/* {{{ proto bool ExcelBook::requiresKey()
-	true if license key is required. */
 EXCEL_METHOD(Book, requiresKey)
 {
 	ZEND_PARSE_PARAMETERS_NONE();
@@ -1641,11 +1838,9 @@ EXCEL_METHOD(Book, requiresKey)
 }
 /* }}} */
 
-/* {{{ proto bool ExcelBook::load(string data)
-	Load Excel data string. */
 EXCEL_METHOD(Book, load)
 {
-	BookHandle book;
+	BookHandle scratch;
 	zval *object = ZEND_THIS;
 	zend_string *data_zs = NULL;
 
@@ -1656,24 +1851,23 @@ EXCEL_METHOD(Book, load)
 	EXCEL_NON_EMPTY_STRING(data_zs)
 	EXCEL_VALIDATE_UINT_SIZE(data_zs)
 
-	BOOK_FROM_OBJECT(book, object);
-
-	if (!php_excel_book_reset_state(object)) {
+	BOOK_BEGIN_SCRATCH_RELOAD(scratch, object);
+	if (!xlBookLoadRaw(scratch, ZSTR_VAL(data_zs), ZSTR_LEN(data_zs))) {
+		php_error_docref(NULL, E_WARNING, "Failed to load workbook: %s", xlBookErrorMessage(scratch));
+		xlBookRelease(scratch);
 		RETURN_FALSE;
 	}
-	if (!xlBookLoadRaw(book, ZSTR_VAL(data_zs), ZSTR_LEN(data_zs))) {
-		php_error_docref(NULL, E_WARNING, "Failed to load workbook: %s", xlBookErrorMessage(book));
+	if (!php_excel_book_commit_scratch(object, scratch)) {
+		xlBookRelease(scratch);
 		RETURN_FALSE;
 	}
 	RETURN_TRUE;
 }
 /* }}} */
 
-/* {{{ proto bool ExcelBook::loadFile(string filename)
-	Load Excel from file. */
 EXCEL_METHOD(Book, loadFile)
 {
-	BookHandle book;
+	BookHandle scratch;
 	zval *object = ZEND_THIS;
 	zend_string *filename_zs = NULL;
 	php_stream *stream;
@@ -1691,12 +1885,14 @@ EXCEL_METHOD(Book, loadFile)
 	 * policy check followed by a libxl path open has a rename/symlink race. */
 	if (!strstr(ZSTR_VAL(filename_zs), "://")
 	    && (!PG(open_basedir) || !*PG(open_basedir))) {
-		BOOK_FROM_OBJECT(book, object);
-		if (!php_excel_book_reset_state(object)) {
+		BOOK_BEGIN_SCRATCH_RELOAD(scratch, object);
+		if (!xlBookLoad(scratch, ZSTR_VAL(filename_zs))) {
+			php_error_docref(NULL, E_WARNING, "Failed to load workbook: %s", xlBookErrorMessage(scratch));
+			xlBookRelease(scratch);
 			RETURN_FALSE;
 		}
-		if (!xlBookLoad(book, ZSTR_VAL(filename_zs))) {
-			php_error_docref(NULL, E_WARNING, "Failed to load workbook: %s", xlBookErrorMessage(book));
+		if (!php_excel_book_commit_scratch(object, scratch)) {
+			xlBookRelease(scratch);
 			RETURN_FALSE;
 		}
 		RETURN_TRUE;
@@ -1744,14 +1940,16 @@ EXCEL_METHOD(Book, loadFile)
 	}
 
 	/* Stream callbacks may reconstruct the receiver while the file is read.
-	 * Fetch the current handle only after every open/read/close callback. */
-	BOOK_FROM_OBJECT_RELEASE_STR(book, object, contents);
-	if (!php_excel_book_reset_state(object)) {
+	 * Verify into a scratch handle only after every open/read/close callback. */
+	BOOK_BEGIN_SCRATCH_RELOAD_RELEASE_STR(scratch, object, contents);
+	if (!xlBookLoadRaw(scratch, ZSTR_VAL(contents), ZSTR_LEN(contents))) {
+		php_error_docref(NULL, E_WARNING, "Failed to load workbook: %s", xlBookErrorMessage(scratch));
+		xlBookRelease(scratch);
 		zend_string_release(contents);
 		RETURN_FALSE;
 	}
-	if (!xlBookLoadRaw(book, ZSTR_VAL(contents), ZSTR_LEN(contents))) {
-		php_error_docref(NULL, E_WARNING, "Failed to load workbook: %s", xlBookErrorMessage(book));
+	if (!php_excel_book_commit_scratch(object, scratch)) {
+		xlBookRelease(scratch);
 		zend_string_release(contents);
 		RETURN_FALSE;
 	}
@@ -1761,11 +1959,9 @@ EXCEL_METHOD(Book, loadFile)
 /* }}} */
 
 #if LIBXL_VERSION >= 0x05000000
-/* {{{ proto bool ExcelBook::loadPartially(string data, int sheet_index, int row_first, int row_last [, bool keep_all_sheets])
-	Load a row slice from Excel data string. */
 EXCEL_METHOD(Book, loadPartially)
 {
-	BookHandle book;
+	BookHandle scratch;
 	zval *object = ZEND_THIS;
 	zend_string *data_zs = NULL;
 	zend_long sheet_index, row_first, row_last;
@@ -1785,24 +1981,23 @@ EXCEL_METHOD(Book, loadPartially)
 		RETURN_FALSE;
 	}
 
-	BOOK_FROM_OBJECT(book, object);
-
-	if (!php_excel_book_reset_state(object)) {
+	BOOK_BEGIN_SCRATCH_RELOAD(scratch, object);
+	if (!xlBookLoadRawPartially(scratch, ZSTR_VAL(data_zs), (unsigned) ZSTR_LEN(data_zs), (int) sheet_index, (int) row_first, (int) row_last, keep_all_sheets)) {
+		php_error_docref(NULL, E_WARNING, "Failed to load workbook: %s", xlBookErrorMessage(scratch));
+		xlBookRelease(scratch);
 		RETURN_FALSE;
 	}
-	if (!xlBookLoadRawPartially(book, ZSTR_VAL(data_zs), (unsigned) ZSTR_LEN(data_zs), (int) sheet_index, (int) row_first, (int) row_last, keep_all_sheets)) {
-		php_error_docref(NULL, E_WARNING, "Failed to load workbook: %s", xlBookErrorMessage(book));
+	if (!php_excel_book_commit_scratch(object, scratch)) {
+		xlBookRelease(scratch);
 		RETURN_FALSE;
 	}
 	RETURN_TRUE;
 }
 /* }}} */
 
-/* {{{ proto bool ExcelBook::loadFilePartially(string filename, int sheet_index, int row_first, int row_last [, bool keep_all_sheets])
-	Load a row slice from Excel file. */
 EXCEL_METHOD(Book, loadFilePartially)
 {
-	BookHandle book;
+	BookHandle scratch;
 	zval *object = ZEND_THIS;
 	zend_string *filename_zs = NULL;
 	zend_long sheet_index, row_first, row_last;
@@ -1824,12 +2019,14 @@ EXCEL_METHOD(Book, loadFilePartially)
 
 	if (!strstr(ZSTR_VAL(filename_zs), "://")
 	    && (!PG(open_basedir) || !*PG(open_basedir))) {
-		BOOK_FROM_OBJECT(book, object);
-		if (!php_excel_book_reset_state(object)) {
+		BOOK_BEGIN_SCRATCH_RELOAD(scratch, object);
+		if (!xlBookLoadPartially(scratch, ZSTR_VAL(filename_zs), (int) sheet_index, (int) row_first, (int) row_last, keep_all_sheets)) {
+			php_error_docref(NULL, E_WARNING, "Failed to load workbook: %s", xlBookErrorMessage(scratch));
+			xlBookRelease(scratch);
 			RETURN_FALSE;
 		}
-		if (!xlBookLoadPartially(book, ZSTR_VAL(filename_zs), (int) sheet_index, (int) row_first, (int) row_last, keep_all_sheets)) {
-			php_error_docref(NULL, E_WARNING, "Failed to load workbook: %s", xlBookErrorMessage(book));
+		if (!php_excel_book_commit_scratch(object, scratch)) {
+			xlBookRelease(scratch);
 			RETURN_FALSE;
 		}
 		RETURN_TRUE;
@@ -1872,14 +2069,16 @@ EXCEL_METHOD(Book, loadFilePartially)
 		RETURN_FALSE;
 	}
 
-	BOOK_FROM_OBJECT_RELEASE_STR(book, object, contents);
-	if (!php_excel_book_reset_state(object)) {
+	BOOK_BEGIN_SCRATCH_RELOAD_RELEASE_STR(scratch, object, contents);
+	if (!xlBookLoadRawPartially(scratch, ZSTR_VAL(contents), (unsigned) ZSTR_LEN(contents), (int) sheet_index, (int) row_first, (int) row_last, keep_all_sheets)) {
+		php_error_docref(NULL, E_WARNING, "Failed to load workbook: %s", xlBookErrorMessage(scratch));
+		xlBookRelease(scratch);
 		zend_string_release(contents);
 		RETURN_FALSE;
 	}
-	if (!xlBookLoadRawPartially(book, ZSTR_VAL(contents), (unsigned) ZSTR_LEN(contents), (int) sheet_index, (int) row_first, (int) row_last, keep_all_sheets)) {
+	if (!php_excel_book_commit_scratch(object, scratch)) {
+		xlBookRelease(scratch);
 		zend_string_release(contents);
-		php_error_docref(NULL, E_WARNING, "Failed to load workbook: %s", xlBookErrorMessage(book));
 		RETURN_FALSE;
 	}
 	zend_string_release(contents);
@@ -1887,11 +2086,9 @@ EXCEL_METHOD(Book, loadFilePartially)
 }
 /* }}} */
 
-/* {{{ proto bool ExcelBook::loadFileWithoutEmptyCells(string filename)
-	Load Excel from file without empty cells. */
 EXCEL_METHOD(Book, loadFileWithoutEmptyCells)
 {
-	BookHandle book;
+	BookHandle scratch;
 	zval *object = ZEND_THIS;
 	zend_string *filename_zs = NULL;
 
@@ -1914,13 +2111,14 @@ EXCEL_METHOD(Book, loadFileWithoutEmptyCells)
 		RETURN_FALSE;
 	}
 
-	BOOK_FROM_OBJECT(book, object);
-
-	if (!php_excel_book_reset_state(object)) {
+	BOOK_BEGIN_SCRATCH_RELOAD(scratch, object);
+	if (!xlBookLoadWithoutEmptyCells(scratch, ZSTR_VAL(filename_zs))) {
+		php_error_docref(NULL, E_WARNING, "Failed to load workbook: %s", xlBookErrorMessage(scratch));
+		xlBookRelease(scratch);
 		RETURN_FALSE;
 	}
-	if (!xlBookLoadWithoutEmptyCells(book, ZSTR_VAL(filename_zs))) {
-		php_error_docref(NULL, E_WARNING, "Failed to load workbook: %s", xlBookErrorMessage(book));
+	if (!php_excel_book_commit_scratch(object, scratch)) {
+		xlBookRelease(scratch);
 		RETURN_FALSE;
 	}
 	RETURN_TRUE;
@@ -1933,21 +2131,34 @@ EXCEL_METHOD(Book, loadFileWithoutEmptyCells)
  * would first materialize all of it in memory, so this keeps the save atomic
  * without a peak-memory cost that scales with the workbook. Only reachable
  * with open_basedir inactive; otherwise PHP has to perform the open itself. */
-static void php_excel_save_local_atomic(INTERNAL_FUNCTION_PARAMETERS, BookHandle book, zend_string *filename_zs)
+static void php_excel_save_to_local(INTERNAL_FUNCTION_PARAMETERS, BookHandle book, zend_string *filename_zs)
 {
 	php_stream *stream;
 	zend_string *tmp_name = php_excel_reserve_staging_url(filename_zs, &stream);
 
 	if (!tmp_name) {
-		php_error_docref(NULL, E_WARNING, "Failed to save workbook: could not create an exclusive temporary file for atomic save");
+		/* php_excel_reserve_staging_url already warned with the cause. */
 		RETURN_FALSE;
 	}
-	/* libxl reopens the path by name, so hand the reservation over to it. */
-	php_stream_close(stream);
+	/* libxl reopens the path by name, so the reservation must be handed
+	 * over closed. A failed close (or a pending wrapper exception) means
+	 * the staged path is unreliable; abort before libxl touches it.
+	 * Keeping the reservation open instead is not an option: libxl takes
+	 * only a pathname, and an open handle would break the reopen on
+	 * Windows file sharing and on wrappers with exclusive creates. */
+	if (php_stream_close(stream) != 0 || EG(exception)) {
+		php_excel_unlink_staging_or_warn(tmp_name);
+		zend_string_release(tmp_name);
+		if (EG(exception)) {
+			RETURN_THROWS();
+		}
+		php_error_docref(NULL, E_WARNING, "Failed to save workbook: could not close temporary file; destination left unchanged");
+		RETURN_FALSE;
+	}
 
 	if (!xlBookSave(book, ZSTR_VAL(tmp_name))) {
 		php_error_docref(NULL, E_WARNING, "Failed to save workbook: %s", xlBookErrorMessage(book));
-		php_excel_wrapper_unlink_preserving_exception(tmp_name);
+		php_excel_unlink_staging_or_warn(tmp_name);
 		zend_string_release(tmp_name);
 		RETURN_FALSE;
 	}
@@ -1955,7 +2166,7 @@ static void php_excel_save_local_atomic(INTERNAL_FUNCTION_PARAMETERS, BookHandle
 	php_excel_copy_destination_mode(filename_zs, tmp_name);
 
 	if (!php_excel_wrapper_rename(tmp_name, filename_zs)) {
-		php_excel_wrapper_unlink_preserving_exception(tmp_name);
+		php_excel_unlink_staging_or_warn(tmp_name);
 		zend_string_release(tmp_name);
 		php_error_docref(NULL, E_WARNING, "Could not replace destination with completed temporary file; destination left unchanged");
 		RETURN_FALSE;
@@ -1965,15 +2176,159 @@ static void php_excel_save_local_atomic(INTERNAL_FUNCTION_PARAMETERS, BookHandle
 	RETURN_TRUE;
 }
 
-/* {{{ proto mixed ExcelBook::save([string filename])
-	Save Excel file. */
+/* Materialize the workbook with SaveRaw and copy the libxl-owned buffer into
+ * a PHP string. The borrow guard brackets only the memcpy so a GC-driven
+ * load/clear cannot free the buffer mid-copy. Returns NULL (with warning)
+ * when libxl cannot produce the image. */
+static zend_string *php_excel_save_raw(BookHandle book, zval *object)
+{
+	unsigned int len = 0;
+	char *contents = NULL;
+	excel_book_object *book_obj = Z_EXCEL_BOOK_OBJ_P(object);
+	zend_string *owned;
+
+	if (!xlBookSaveRaw(book, (const char **) &contents, &len)) {
+		php_error_docref(NULL, E_WARNING, "Failed to save workbook: %s", xlBookErrorMessage(book));
+		return NULL;
+	}
+	book_obj->native_buffer_borrowed = true;
+	owned = zend_string_init(contents, len, 0);
+	book_obj->native_buffer_borrowed = false;
+	return owned;
+}
+
+/* Stream out an already-materialized workbook. Takes ownership of
+ * owned_contents (released on every path) and always RETURNs. Stream writes
+ * stay blocking — the streams API offers no write-timeout knob — so every
+ * write/flush/close step below checks EG(exception) to abort promptly on
+ * executor interruption. */
+static void php_excel_save_to_stream(INTERNAL_FUNCTION_PARAMETERS, zend_string *owned_contents, zend_string *filename_zs, unsigned int len)
+{
+	ssize_t numbytes;
+	php_stream *stream;
+
+	/* If the destination wrapper exposes rename+unlink, stage the full
+	 * buffer to a sibling temp URL and rename it into place. A short
+	 * write then fails against the temp, leaving the caller's existing
+	 * file untouched, instead of truncating the destination up front. */
+	if (php_excel_wrapper_supports_atomic_save(filename_zs)) {
+		zend_string *tmp_name = php_excel_reserve_staging_url(filename_zs, &stream);
+		int flush_result = 0;
+		int close_result;
+
+		if (!tmp_name) {
+			/* php_excel_reserve_staging_url already warned with the cause. */
+			zend_string_release(owned_contents);
+			RETURN_FALSE;
+		}
+		/* PHP installs rename/unlink dispatchers in wops for every user
+		 * wrapper, so the capability probe above cannot tell "class omits
+		 * rename()" from "rename() failed". An open user stream carries a
+		 * copy of the wrapper object in wrapperdata: inspect it for a
+		 * rename method now, while the staging stream is still open. */
+		bool wrapper_has_rename = true;
+		if (Z_TYPE(stream->wrapperdata) == IS_OBJECT) {
+			zend_class_entry *wrapper_ce = Z_OBJ(stream->wrapperdata)->ce;
+			wrapper_has_rename = zend_hash_str_exists(&wrapper_ce->function_table, "rename", sizeof("rename") - 1);
+		}
+
+		numbytes = php_stream_write(stream, ZSTR_VAL(owned_contents), ZSTR_LEN(owned_contents));
+		if (!EG(exception) && numbytes == (ssize_t) ZSTR_LEN(owned_contents)) {
+			flush_result = php_stream_flush(stream);
+		}
+		close_result = php_excel_stream_close_preserving_exception(stream);
+
+		if (numbytes != (ssize_t) ZSTR_LEN(owned_contents)
+		    || flush_result != 0 || close_result != 0 || EG(exception)) {
+			php_excel_unlink_staging_or_warn(tmp_name);
+			zend_string_release(tmp_name);
+			zend_string_release(owned_contents);
+			if (EG(exception)) {
+				RETURN_THROWS();
+			}
+			if (flush_result != 0 || close_result != 0) {
+				php_error_docref(NULL, E_WARNING, "Failed to flush or close completed temporary file; destination left unchanged");
+				RETURN_FALSE;
+			}
+			php_error_docref(NULL, E_WARNING, "Only %zd of %u bytes written, possibly out of free disk space; destination left unchanged", numbytes, len);
+			RETURN_FALSE;
+		}
+
+		/* No-op for wrapper URLs, which do not stat; this only matters for
+		 * the local paths that reach here because open_basedir is active. */
+		php_excel_copy_destination_mode(filename_zs, tmp_name);
+
+		if (php_excel_wrapper_rename(tmp_name, filename_zs)) {
+			zend_string_release(tmp_name);
+			zend_string_release(owned_contents);
+			RETURN_TRUE;
+		}
+
+		php_excel_wrapper_unlink_preserving_exception(tmp_name);
+		zend_string_release(tmp_name);
+		if (EG(exception)) {
+			zend_string_release(owned_contents);
+			RETURN_THROWS();
+		}
+		if (!wrapper_has_rename) {
+			/* The wrapper class implements no rename() method: the staged
+			 * file is already gone and owned_contents still holds the whole
+			 * workbook, so fall through to the direct write below instead
+			 * of failing a save such a wrapper used to complete. */
+			php_error_docref(NULL, E_WARNING, "Could not replace destination with the completed temporary file; falling back to a non-atomic direct write");
+		} else {
+			/* A present-but-failing rename leaves the destination
+			 * untouched: falling through here would truncate the file the
+			 * atomic path just preserved, so fail instead. */
+			zend_string_release(owned_contents);
+			php_error_docref(NULL, E_WARNING, "Could not replace destination with the completed temporary file; destination left unchanged");
+			RETURN_FALSE;
+		}
+	}
+
+	/* Wrapper cannot stage/rename: write directly. A short write here is
+	 * inherently non-atomic and may leave the target truncated. */
+	stream = php_stream_open_wrapper(ZSTR_VAL(filename_zs), "wb", REPORT_ERRORS, NULL);
+
+	if (!stream) {
+		zend_string_release(owned_contents);
+		php_error_docref(NULL, E_WARNING, "Failed to save workbook: could not open destination for writing");
+		RETURN_FALSE;
+	}
+
+	{
+		int flush_result = 0;
+		int close_result;
+
+		numbytes = php_stream_write(stream, ZSTR_VAL(owned_contents), ZSTR_LEN(owned_contents));
+		if (!EG(exception) && numbytes == (ssize_t) ZSTR_LEN(owned_contents)) {
+			flush_result = php_stream_flush(stream);
+		}
+		close_result = php_excel_stream_close_preserving_exception(stream);
+		if (numbytes != (ssize_t) ZSTR_LEN(owned_contents)
+		    || flush_result != 0 || close_result != 0 || EG(exception)) {
+			zend_string_release(owned_contents);
+			if (EG(exception)) {
+				RETURN_THROWS();
+			}
+			if (flush_result != 0 || close_result != 0) {
+				php_error_docref(NULL, E_WARNING, "Failed to flush or close destination stream");
+				RETURN_FALSE;
+			}
+			php_error_docref(NULL, E_WARNING, "Only %zd of %u bytes written, possibly out of free disk space", numbytes, len);
+			RETURN_FALSE;
+		}
+	}
+	zend_string_release(owned_contents);
+	RETURN_TRUE;
+}
+
 EXCEL_METHOD(Book, save)
 {
 	BookHandle book;
 	zval *object = ZEND_THIS;
 	zend_string *filename_zs = NULL;
-	unsigned int len = 0;
-	char *contents = NULL;
+	zend_string *owned_contents;
 	bool has_path, is_local_path, basedir_active;
 
 	if (zend_parse_parameters(ZEND_NUM_ARGS(), "|S", &filename_zs) == FAILURE) {
@@ -1990,7 +2345,7 @@ EXCEL_METHOD(Book, save)
 	BOOK_FROM_OBJECT(book, object);
 
 	if (is_local_path && !basedir_active) {
-		php_excel_save_local_atomic(INTERNAL_FUNCTION_PARAM_PASSTHRU, book, filename_zs);
+		php_excel_save_to_local(INTERNAL_FUNCTION_PARAM_PASSTHRU, book, filename_zs);
 		return;
 	}
 
@@ -2001,138 +2356,20 @@ EXCEL_METHOD(Book, save)
 		RETURN_FALSE;
 	}
 
-	if (!xlBookSaveRaw(book, (const char **) &contents, &len)) {
-		php_error_docref(NULL, E_WARNING, "Failed to save workbook: %s", xlBookErrorMessage(book));
+	owned_contents = php_excel_save_raw(book, object);
+	if (!owned_contents) {
 		RETURN_FALSE;
 	}
 
 	if (has_path) {
-		ssize_t numbytes;
-		php_stream *stream;
-		excel_book_object *book_obj = Z_EXCEL_BOOK_OBJ_P(object);
-		zend_string *owned_contents;
-
-		/* Borrow the LibXL buffer only for the duration of the copy into a
-		 * PHP string so a GC-driven load/clear cannot free it mid-memcpy. */
-		book_obj->native_buffer_borrowed = true;
-		owned_contents = zend_string_init(contents, len, 0);
-		book_obj->native_buffer_borrowed = false;
-
-		/* If the destination wrapper exposes rename+unlink, stage the full
-		 * buffer to a sibling temp URL and rename it into place. A short
-		 * write then fails against the temp, leaving the caller's existing
-		 * file untouched, instead of truncating the destination up front. */
-		if (php_excel_wrapper_supports_atomic_save(filename_zs)) {
-			zend_string *tmp_name = php_excel_reserve_staging_url(filename_zs, &stream);
-			int flush_result = 0;
-			int close_result;
-
-			if (!tmp_name) {
-				zend_string_release(owned_contents);
-				php_error_docref(NULL, E_WARNING, "Failed to save workbook: could not create an exclusive temporary file for atomic save");
-				RETURN_FALSE;
-			}
-
-			numbytes = php_stream_write(stream, ZSTR_VAL(owned_contents), ZSTR_LEN(owned_contents));
-			if (!EG(exception) && numbytes == (ssize_t) ZSTR_LEN(owned_contents)) {
-				flush_result = php_stream_flush(stream);
-			}
-			close_result = php_excel_stream_close_preserving_exception(stream);
-
-			if (numbytes != (ssize_t) ZSTR_LEN(owned_contents)
-			    || flush_result != 0 || close_result != 0 || EG(exception)) {
-				php_excel_wrapper_unlink_preserving_exception(tmp_name);
-				zend_string_release(tmp_name);
-				zend_string_release(owned_contents);
-				if (EG(exception)) {
-					RETURN_THROWS();
-				}
-				if (flush_result != 0 || close_result != 0) {
-					php_error_docref(NULL, E_WARNING, "Failed to flush or close completed temporary file; destination left unchanged");
-					RETURN_FALSE;
-				}
-				php_error_docref(NULL, E_WARNING, "Only %zd of %u bytes written, possibly out of free disk space; destination left unchanged", numbytes, len);
-				RETURN_FALSE;
-			}
-
-			/* No-op for wrapper URLs, which do not stat; this only matters for
-			 * the local paths that reach here because open_basedir is active. */
-			php_excel_copy_destination_mode(filename_zs, tmp_name);
-
-			if (php_excel_wrapper_rename(tmp_name, filename_zs)) {
-				zend_string_release(tmp_name);
-				zend_string_release(owned_contents);
-				RETURN_TRUE;
-			}
-
-			php_excel_wrapper_unlink_preserving_exception(tmp_name);
-			zend_string_release(tmp_name);
-			if (EG(exception)) {
-				zend_string_release(owned_contents);
-				RETURN_THROWS();
-			}
-
-			/* The wrapper took the staged write but cannot rename it into
-			 * place. A user-defined wrapper that omits rename() lands here:
-			 * PHP installs a dispatcher in wops for every user wrapper whether
-			 * or not the class implements the method, so the capability probe
-			 * above cannot tell them apart. The staged file is already gone and
-			 * owned_contents still holds the whole workbook, so fall through to
-			 * the direct write instead of failing a save such a wrapper used to
-			 * complete. */
-			php_error_docref(NULL, E_WARNING, "Could not replace destination with the completed temporary file; falling back to a non-atomic direct write");
-		}
-
-		/* Wrapper cannot stage/rename: write directly. A short write here is
-		 * inherently non-atomic and may leave the target truncated. */
-		stream = php_stream_open_wrapper(ZSTR_VAL(filename_zs), "wb", REPORT_ERRORS, NULL);
-
-		if (!stream) {
-			zend_string_release(owned_contents);
-			php_error_docref(NULL, E_WARNING, "Failed to save workbook: could not open destination for writing");
-			RETURN_FALSE;
-		}
-
-		{
-			int flush_result = 0;
-			int close_result;
-
-			numbytes = php_stream_write(stream, ZSTR_VAL(owned_contents), ZSTR_LEN(owned_contents));
-			if (!EG(exception) && numbytes == (ssize_t) ZSTR_LEN(owned_contents)) {
-				flush_result = php_stream_flush(stream);
-			}
-			close_result = php_excel_stream_close_preserving_exception(stream);
-			if (numbytes != (ssize_t) ZSTR_LEN(owned_contents)
-			    || flush_result != 0 || close_result != 0 || EG(exception)) {
-				zend_string_release(owned_contents);
-				if (EG(exception)) {
-					RETURN_THROWS();
-				}
-				if (flush_result != 0 || close_result != 0) {
-					php_error_docref(NULL, E_WARNING, "Failed to flush or close destination stream");
-					RETURN_FALSE;
-				}
-				php_error_docref(NULL, E_WARNING, "Only %zd of %u bytes written, possibly out of free disk space", numbytes, len);
-				RETURN_FALSE;
-			}
-		}
-		zend_string_release(owned_contents);
-		RETURN_TRUE;
-	} else {
-		excel_book_object *book_obj = Z_EXCEL_BOOK_OBJ_P(object);
-		zend_string *owned;
-
-		book_obj->native_buffer_borrowed = true;
-		owned = zend_string_init(contents, len, 0);
-		book_obj->native_buffer_borrowed = false;
-		RETURN_STR(owned);
+		php_excel_save_to_stream(INTERNAL_FUNCTION_PARAM_PASSTHRU, owned_contents, filename_zs, (unsigned int) ZSTR_LEN(owned_contents));
+		return;
 	}
+	RETURN_STR(owned_contents);
 
 }
 /* }}} */
 
-/* {{{ proto ExcelSheet ExcelBook::getSheet([int sheet])
-	Get an excel sheet. */
 EXCEL_METHOD(Book, getSheet)
 {
 	BookHandle book;
@@ -2150,6 +2387,7 @@ EXCEL_METHOD(Book, getSheet)
 	BOOK_FROM_OBJECT(book, object);
 
 	if (!(sh = xlBookGetSheet(book, sheet))) {
+		php_error_docref(NULL, E_WARNING, "Failed to get sheet: %s", xlBookErrorMessage(book));
 		RETURN_FALSE;
 	}
 
@@ -2161,8 +2399,6 @@ EXCEL_METHOD(Book, getSheet)
 }
 /* }}} */
 
-/* {{{ proto ExcelSheet ExcelBook::getSheetByName(string name [, bool case_insensitive])
-	Get an excel sheet by name. */
 EXCEL_METHOD(Book, getSheetByName)
 {
 	BookHandle book;
@@ -2209,8 +2445,6 @@ EXCEL_METHOD(Book, getSheetByName)
 }
 /* }}} */
 
-/* {{{ proto bool ExcelBook::deleteSheet(int sheet)
-	Delete an excel sheet. */
 EXCEL_METHOD(Book, deleteSheet)
 {
 	BookHandle book;
@@ -2239,8 +2473,6 @@ EXCEL_METHOD(Book, deleteSheet)
 }
 /* }}} */
 
-/* {{{ proto int ExcelBook::activeSheet([int sheet])
-	Get or set an active excel sheet. */
 EXCEL_METHOD(Book, activeSheet)
 {
 	BookHandle book;
@@ -2272,8 +2504,6 @@ EXCEL_METHOD(Book, activeSheet)
 }
 /* }}} */
 
-/* {{{ proto ExcelSheet ExcelBook::addSheet(string name)
-	Add an excel sheet. */
 EXCEL_METHOD(Book, addSheet)
 {
 	BookHandle book;
@@ -2304,8 +2534,6 @@ EXCEL_METHOD(Book, addSheet)
 }
 /* }}} */
 
-/* {{{ proto ExcelSheet ExcelBook::copySheet(string name, int sheet_number)
-	Copy an excel sheet. */
 EXCEL_METHOD(Book, copySheet)
 {
 	BookHandle book;
@@ -2333,6 +2561,7 @@ EXCEL_METHOD(Book, copySheet)
 	sh = xlBookAddSheet(book, ZSTR_VAL(name_zs), osh);
 
 	if (!sh) {
+		php_error_docref(NULL, E_WARNING, "Failed to copy sheet: %s", xlBookErrorMessage(book));
 		RETURN_FALSE;
 	}
 
@@ -2344,16 +2573,12 @@ EXCEL_METHOD(Book, copySheet)
 }
 /* }}} */
 
-/* {{{ proto int ExcelBook::sheetCount()
-	Get the number of sheets inside a file. */
 EXCEL_METHOD(Book, sheetCount)
 {
 	PHP_EXCEL_BOOK_INFO(SheetCount, IS_LONG)
 }
 /* }}} */
 
-/* {{{ proto string ExcelBook::getError()
-	Get Excel error string. */
 EXCEL_METHOD(Book, getError)
 {
 	BookHandle book;
@@ -2377,8 +2602,6 @@ EXCEL_METHOD(Book, getError)
 }
 /* }}} */
 
-/* {{{ proto ExcelFont ExcelBook::addFont([ExcelFont font])
-	Add or Copy ExcelFont object. */
 EXCEL_METHOD(Book, addFont)
 {
 	BookHandle book;
@@ -2399,6 +2622,7 @@ EXCEL_METHOD(Book, addFont)
 
 	nfont = xlBookAddFont(book, font);
 	if (!nfont) {
+		php_error_docref(NULL, E_WARNING, "Failed to add font: %s", xlBookErrorMessage(book));
 		RETURN_FALSE;
 	}
 
@@ -2410,8 +2634,6 @@ EXCEL_METHOD(Book, addFont)
 }
 /* }}} */
 
-/* {{{ proto ExcelFormat ExcelBook::addFormat([ExcelFormat format])
-	Add or Copy ExcelFormat object. */
 EXCEL_METHOD(Book, addFormat)
 {
 	BookHandle book;
@@ -2432,6 +2654,7 @@ EXCEL_METHOD(Book, addFormat)
 
 	nformat = xlBookAddFormat(book, format);
 	if (!nformat) {
+		php_error_docref(NULL, E_WARNING, "Failed to add format: %s", xlBookErrorMessage(book));
 		RETURN_FALSE;
 	}
 
@@ -2443,8 +2666,6 @@ EXCEL_METHOD(Book, addFormat)
 }
 /* }}} */
 
-/* {{{ proto array ExcelBook::getAllFormats()
-	Get an array of all ExcelFormat objects used inside a document. */
 EXCEL_METHOD(Book, getAllFormats)
 {
 	BookHandle book;
@@ -2483,8 +2704,6 @@ EXCEL_METHOD(Book, getAllFormats)
 }
 /* }}} */
 
-/* {{{ proto int ExcelBook::addCustomFormat(string format)
-	Create a custom cell format */
 EXCEL_METHOD(Book, addCustomFormat)
 {
 	BookHandle book;
@@ -2502,14 +2721,13 @@ EXCEL_METHOD(Book, addCustomFormat)
 	BOOK_FROM_OBJECT(book, object);
 
 	if (!(id = xlBookAddCustomNumFormat(book, ZSTR_VAL(format_zs)))) {
+		php_error_docref(NULL, E_WARNING, "Failed to add custom number format: %s", xlBookErrorMessage(book));
 		RETURN_FALSE;
 	}
 	RETURN_LONG(id);
 }
 /* }}} */
 
-/* {{{ proto string ExcelBook::getCustomFormat(int id)
-	Get a custom cell format */
 EXCEL_METHOD(Book, getCustomFormat)
 {
 	BookHandle book;
@@ -2528,6 +2746,7 @@ EXCEL_METHOD(Book, getCustomFormat)
 	BOOK_FROM_OBJECT(book, object);
 
 	if (!(data = (char *)xlBookCustomNumFormat(book, id))) {
+		php_error_docref(NULL, E_WARNING, "Failed to get custom number format: %s", xlBookErrorMessage(book));
 		RETURN_FALSE;
 	}
 	RETURN_STRING(data);
@@ -2548,8 +2767,6 @@ static double _php_excel_date_pack(BookHandle book, zend_long ts)
 	return xlBookDatePack(book, tm.tm_year, tm.tm_mon, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec, 0);
 }
 
-/* {{{ proto float ExcelBook::packDate(int timestamp)
-	Pack a unix timestamp into an Excel Double */
 EXCEL_METHOD(Book, packDate)
 {
 	BookHandle book;
@@ -2575,8 +2792,6 @@ EXCEL_METHOD(Book, packDate)
 /* }}} */
 
 
-/* {{{ proto float ExcelBook::packDateValues(int year, int month, int day, int hour, int minute, int second)
-	Pack a date by single values into an Excel Double */
 EXCEL_METHOD(Book, packDateValues)
 {
 	BookHandle book;
@@ -2656,8 +2871,6 @@ static bool _php_excel_date_unpack(BookHandle book, double dt, zend_long *out)
 	return true;
 }
 
-/* {{{ proto int ExcelBook::unpackDate(double date)
-	Unpack a unix timestamp from an Excel Double */
 EXCEL_METHOD(Book, unpackDate)
 {
 	BookHandle book;
@@ -2685,16 +2898,12 @@ EXCEL_METHOD(Book, unpackDate)
 }
 /* }}} */
 
-/* {{{ proto bool ExcelBook::isDate1904()
-	Returns whether the 1904 date system is active: true - 1904 date system, false - 1900 date system */
 EXCEL_METHOD(Book, isDate1904)
 {
 	PHP_EXCEL_BOOK_INFO(IsDate1904, IS_BOOL)
 }
 /* }}} */
 
-/* {{{ proto bool ExcelBook::setDate1904(bool date_type)
-	Sets the date system mode: true - 1904 date system, false - 1900 date system (default) */
 EXCEL_METHOD(Book, setDate1904)
 {
 	BookHandle book;
@@ -2713,16 +2922,12 @@ EXCEL_METHOD(Book, setDate1904)
 }
 /* }}} */
 
-/* {{{ proto int ExcelBook::getActiveSheet()
-	Get the active sheet inside a file. */
 EXCEL_METHOD(Book, getActiveSheet)
 {
 	PHP_EXCEL_BOOK_INFO(ActiveSheet, IS_LONG)
 }
 /* }}} */
 
-/* {{{ proto array ExcelBook::getDefaultFont()
-	Get the default font. */
 EXCEL_METHOD(Book, getDefaultFont)
 {
 	BookHandle book;
@@ -2735,6 +2940,7 @@ EXCEL_METHOD(Book, getDefaultFont)
 	BOOK_FROM_OBJECT(book, object);
 
 	if (!(font = xlBookDefaultFont(book, &font_size))) {
+		php_error_docref(NULL, E_WARNING, "Failed to get default font: %s", xlBookErrorMessage(book));
 		RETURN_FALSE;
 	}
 
@@ -2744,8 +2950,6 @@ EXCEL_METHOD(Book, getDefaultFont)
 }
 /* }}} */
 
-/* {{{ proto void ExcelBook::setDefaultFont(string font, int font_size)
-	Set the default font, and size. */
 EXCEL_METHOD(Book, setDefaultFont)
 {
 	BookHandle book;
@@ -2753,7 +2957,12 @@ EXCEL_METHOD(Book, setDefaultFont)
 	zend_long font_size;
 	zend_string *font_zs = NULL;
 
-	if (zend_parse_parameters(ZEND_NUM_ARGS(), "Sl", &font_zs, &font_size) == FAILURE || font_size < 1 || font_size > INT_MAX) {
+	if (zend_parse_parameters(ZEND_NUM_ARGS(), "Sl", &font_zs, &font_size) == FAILURE) {
+		RETURN_FALSE;
+	}
+
+	if (font_size < 1 || font_size > INT_MAX) {
+		php_error_docref(NULL, E_WARNING, "Font size out of range (1-%d)", INT_MAX);
 		RETURN_FALSE;
 	}
 
@@ -2792,8 +3001,6 @@ static bool php_excel_locale_is_utf8(zend_string *locale)
 	return false;
 }
 
-/* {{{ proto void ExcelBook::setLocale(string locale)
-	Set the locale. */
 EXCEL_METHOD(Book, setLocale)
 {
 	BookHandle book;
@@ -2812,12 +3019,16 @@ EXCEL_METHOD(Book, setLocale)
 	if (xlBookSetLocale(book, ZSTR_VAL(locale_zs))) {
 		excel_book_object *book_obj = Z_EXCEL_BOOK_OBJ_P(object);
 		book_obj->locale_is_utf8 = php_excel_locale_is_utf8(locale_zs);
+		/* Remember the accepted string so scratch reload handles can
+		 * re-apply it; the live handle keeps working either way. */
+		if (book_obj->locale) {
+			efree(book_obj->locale);
+		}
+		book_obj->locale = estrdup(ZSTR_VAL(locale_zs));
 	}
 }
 /* }}} */
 
-/* {{{ proto ExcelBook ExcelBook::__construct([string license_name, string license_key [, bool excel_2007 = false]])
-	Book Constructor. */
 EXCEL_METHOD(Book, __construct)
 {
 	BookHandle book;
@@ -2859,11 +3070,29 @@ EXCEL_METHOD(Book, __construct)
 			obj->sheet_generation++;
 			obj->autofilter_generation++;
 			obj->conditional_formatting_generation++;
+			if (obj->license_name) {
+				efree(obj->license_name);
+				obj->license_name = NULL;
+			}
+			if (obj->license_key) {
+				efree(obj->license_key);
+				obj->license_key = NULL;
+			}
+			if (obj->locale) {
+				efree(obj->locale);
+				obj->locale = NULL;
+			}
 		}
 		obj->book = book;
 		obj->is_xlsx = new_excel;
 		obj->locale_is_utf8 = false;
 		obj->default_date_format = NULL;
+		/* Remember explicit credentials (before the INI fallback below
+		 * repoints name/key) so scratch reload handles stay licensed. */
+		if (name && name_len >= 1 && key && key_len >= 1) {
+			obj->license_name = estrndup(name, name_len);
+			obj->license_key = estrndup(key, key_len);
+		}
 	}
 
 #if defined(HAVE_LIBXL_SETKEY)
@@ -2891,8 +3120,6 @@ EXCEL_METHOD(Book, __construct)
 }
 /* }}} */
 
-/* {{{ proto bool ExcelBook::setActiveSheet(int sheet)
-	Set the sheet active. */
 EXCEL_METHOD(Book, setActiveSheet)
 {
 	BookHandle book;
@@ -2992,32 +3219,24 @@ picture_done:
 	}
 }
 
-/* {{{ proto int ExcelBook::addPictureFromFile(string filename)
-	Add picture from file. */
 EXCEL_METHOD(Book, addPictureFromFile)
 {
 	php_excel_add_picture(INTERNAL_FUNCTION_PARAM_PASSTHRU, 0);
 }
 /* }}} */
 
-/* {{{ proto int ExcelBook::addPictureFromString(string data)
-	Add picture from string. */
 EXCEL_METHOD(Book, addPictureFromString)
 {
 	php_excel_add_picture(INTERNAL_FUNCTION_PARAM_PASSTHRU, 1);
 }
 /* }}} */
 
-/* {{{ proto bool ExcelBook::rgbMode()
-	Returns whether the RGB mode is active. */
 EXCEL_METHOD(Book, rgbMode)
 {
 	PHP_EXCEL_BOOK_INFO(RgbMode, IS_BOOL)
 }
 /* }}} */
 
-/* {{{ proto void ExcelBook::setRGBMode(bool mode)
-	Sets a RGB mode on or off. */
 EXCEL_METHOD(Book, setRGBMode)
 {
 	BookHandle book;
@@ -3035,8 +3254,6 @@ EXCEL_METHOD(Book, setRGBMode)
 }
 /* }}} */
 
-/* {{{ proto int ExcelBook::colorPack(int r, int g, int b)
-	Packs red, green and blue components in color value. Used for xlsx format only. */
 EXCEL_METHOD(Book, colorPack)
 {
 	BookHandle book;
@@ -3064,8 +3281,6 @@ EXCEL_METHOD(Book, colorPack)
 }
 /* }}} */
 
-/* {{{ proto array ExcelBook::colorUnpack(int color)
-	Unpacks color value to red, green and blue components. Used for xlsx format only. */
 EXCEL_METHOD(Book, colorUnpack)
 {
 	BookHandle book;
@@ -3093,8 +3308,6 @@ EXCEL_METHOD(Book, colorUnpack)
 }
 /* }}} */
 
-/* {{{ proto string ExcelBook::getLibXlVersion()
-	Returns the version of libXL library */
 EXCEL_METHOD(Book, getLibXlVersion)
 {
 	char libxl_api[25];
@@ -3106,8 +3319,6 @@ EXCEL_METHOD(Book, getLibXlVersion)
 }
 /* }}} */
 
-/* {{{ proto string ExcelBook::getPhpExcelVersion()
-	Returns the version of PHP Excel extension */
 EXCEL_METHOD(Book, getPhpExcelVersion)
 {
 	ZEND_PARSE_PARAMETERS_NONE();
@@ -3116,13 +3327,9 @@ EXCEL_METHOD(Book, getPhpExcelVersion)
 }
 /* }}} */
 
-/* {{{ proto bool ExcelBook::loadInfo(string filename)
-	Loads only information about sheets. Afterwards you can call Book::sheetCount()
-	and Book::getSheetName() methods. Returns false if error occurs. Get error
-	info with Book::errorMessage(). */
 EXCEL_METHOD(Book, loadInfo)
 {
-	BookHandle book;
+	BookHandle scratch;
 	zval *object = ZEND_THIS;
 	zend_string *filename_zs = NULL;
 #if LIBXL_VERSION >= 0x05000100
@@ -3172,13 +3379,15 @@ EXCEL_METHOD(Book, loadInfo)
 			php_error_docref(NULL, E_WARNING, "Source file too large");
 			RETURN_FALSE;
 		}
-		BOOK_FROM_OBJECT_RELEASE_STR(book, object, contents);
-		if (!php_excel_book_reset_state(object)) {
+		BOOK_BEGIN_SCRATCH_RELOAD_RELEASE_STR(scratch, object, contents);
+		if (!xlBookLoadInfoRaw(scratch, ZSTR_VAL(contents), (unsigned) ZSTR_LEN(contents))) {
+			php_error_docref(NULL, E_WARNING, "Failed to load workbook: %s", xlBookErrorMessage(scratch));
+			xlBookRelease(scratch);
 			zend_string_release(contents);
 			RETURN_FALSE;
 		}
-		if (!xlBookLoadInfoRaw(book, ZSTR_VAL(contents), (unsigned) ZSTR_LEN(contents))) {
-			php_error_docref(NULL, E_WARNING, "Failed to load workbook: %s", xlBookErrorMessage(book));
+		if (!php_excel_book_commit_scratch(object, scratch)) {
+			xlBookRelease(scratch);
 			zend_string_release(contents);
 			RETURN_FALSE;
 		}
@@ -3194,22 +3403,20 @@ EXCEL_METHOD(Book, loadInfo)
 		RETURN_FALSE;
 	}
 #endif
-
-	BOOK_FROM_OBJECT(book, object);
-	if (!php_excel_book_reset_state(object)) {
+	BOOK_BEGIN_SCRATCH_RELOAD(scratch, object);
+	if (!xlBookLoadInfo(scratch, ZSTR_VAL(filename_zs))) {
+		php_error_docref(NULL, E_WARNING, "Failed to load workbook: %s", xlBookErrorMessage(scratch));
+		xlBookRelease(scratch);
 		RETURN_FALSE;
 	}
-	if (!xlBookLoadInfo(book, ZSTR_VAL(filename_zs))) {
-		php_error_docref(NULL, E_WARNING, "Failed to load workbook: %s", xlBookErrorMessage(book));
+	if (!php_excel_book_commit_scratch(object, scratch)) {
+		xlBookRelease(scratch);
 		RETURN_FALSE;
 	}
 	RETURN_TRUE;
 }
 /* }}} */
 
-/* {{{ proto string ExcelBook::getSheetName(int index)
-	Returns a sheet name with specified index. Returns
-	NULL if error occurs. Get error info with xlBookErrorMessage(). */
 EXCEL_METHOD(Book, getSheetName)
 {
 	BookHandle book;
@@ -3384,7 +3591,7 @@ EXCEL_METHOD(Book, setDpiAwareness)
 #if LIBXL_VERSION >= 0x05000100
 EXCEL_METHOD(Book, loadInfoRaw)
 {
-	BookHandle book;
+	BookHandle scratch;
 	zval *object = ZEND_THIS;
 	zend_string *data;
 
@@ -3395,13 +3602,14 @@ EXCEL_METHOD(Book, loadInfoRaw)
 	EXCEL_NON_EMPTY_STRING(data)
 	EXCEL_VALIDATE_UINT_SIZE(data)
 
-	BOOK_FROM_OBJECT(book, object);
-
-	if (!php_excel_book_reset_state(object)) {
+	BOOK_BEGIN_SCRATCH_RELOAD(scratch, object);
+	if (!xlBookLoadInfoRaw(scratch, ZSTR_VAL(data), ZSTR_LEN(data))) {
+		php_error_docref(NULL, E_WARNING, "Failed to load workbook: %s", xlBookErrorMessage(scratch));
+		xlBookRelease(scratch);
 		RETURN_FALSE;
 	}
-	if (!xlBookLoadInfoRaw(book, ZSTR_VAL(data), ZSTR_LEN(data))) {
-		php_error_docref(NULL, E_WARNING, "Failed to load workbook: %s", xlBookErrorMessage(book));
+	if (!php_excel_book_commit_scratch(object, scratch)) {
+		xlBookRelease(scratch);
 		RETURN_FALSE;
 	}
 	RETURN_TRUE;
@@ -3499,8 +3707,6 @@ EXCEL_METHOD(Book, removeAllPhonetics)
 	RETURN_TRUE;
 }
 
-/* {{{ proto int ExcelFont::size([int size])
-	Get or set the font size */
 EXCEL_METHOD(Font, size)
 {
 	zval *object = ZEND_THIS;
@@ -3570,40 +3776,30 @@ EXCEL_METHOD(Font, size)
 		RETURN_BOOL(xlFont ## api_name (font)); \
 	}
 
-/* {{{ proto bool ExcelFont::italics([bool italics])
-	Get or set the if italics are enabled */
 EXCEL_METHOD(Font, italics)
 {
 	PHP_EXCEL_BOOL_FONT_OPTION(italics, Italic);
 }
 /* }}} */
 
-/* {{{ proto bool ExcelFont::strike([bool strike])
-	Get or set the font strike-through */
 EXCEL_METHOD(Font, strike)
 {
 	PHP_EXCEL_BOOL_FONT_OPTION(strike, StrikeOut);
 }
 /* }}} */
 
-/* {{{ proto bool ExcelFont::bold([bool bold])
-	Get or set the font bold */
 EXCEL_METHOD(Font, bold)
 {
 	PHP_EXCEL_BOOL_FONT_OPTION(bold, Bold);
 }
 /* }}} */
 
-/* {{{ proto int ExcelFont::color([int color])
-	Get or set the font color */
 EXCEL_METHOD(Font, color)
 {
 	PHP_EXCEL_LONG_FONT_OPTION(color, Color);
 }
 /* }}} */
 
-/* {{{ proto int ExcelFont::mode([int mode])
-	Get or set the font mode */
 EXCEL_METHOD(Font, mode)
 {
 	/* LibXL names this "Script" (super/subscript); PHP API is mode(). */
@@ -3611,16 +3807,12 @@ EXCEL_METHOD(Font, mode)
 }
 /* }}} */
 
-/* {{{ proto int ExcelFont::underline([int underline_style])
-	Get or set the font underline style */
 EXCEL_METHOD(Font, underline)
 {
 	PHP_EXCEL_LONG_FONT_OPTION(underline, Underline);
 }
 /* }}} */
 
-/* {{{ proto string ExcelFont::name([string name])
-	Get or set the font name */
 EXCEL_METHOD(Font, name)
 {
 	zval *object = ZEND_THIS;
@@ -3652,8 +3844,6 @@ EXCEL_METHOD(Font, name)
 }
 /* }}} */
 
-/* {{{ proto ExcelFormat ExcelFormat::__construct(ExcelBook book)
-	Format Constructor. */
 EXCEL_METHOD(Format, __construct)
 {
 	BookHandle book;
@@ -3683,8 +3873,6 @@ EXCEL_METHOD(Format, __construct)
 }
 /* }}} */
 
-/* {{{ proto ExcelFont ExcelFont::__construct(ExcelBook book)
-	Font Constructor. */
 EXCEL_METHOD(Font, __construct)
 {
 	BookHandle book;
@@ -3714,8 +3902,6 @@ EXCEL_METHOD(Font, __construct)
 }
 /* }}} */
 
-/* {{{ proto bool ExcelFormat::setFont(ExcelFont font)
-	Set the font for a format. */
 EXCEL_METHOD(Format, setFont)
 {
 	FormatHandle format;
@@ -3738,8 +3924,6 @@ EXCEL_METHOD(Format, setFont)
 }
 /* }}} */
 
-/* {{{ proto ExcelFont ExcelFormat::getFont()
-	Get the font for this format. */
 EXCEL_METHOD(Format, getFont)
 {
 	FormatHandle format;
@@ -3835,40 +4019,30 @@ EXCEL_METHOD(Format, getFont)
 		RETURN_BOOL(xlFormat ## func_name (format)); \
 	}
 
-/* {{{ proto int ExcelFormat::numberFormat([int format])
-	Get or set the cell number format */
 EXCEL_METHOD(Format, numberFormat)
 {
 	PHP_EXCEL_LONG_FORMAT_OPTION(NumFormat);
 }
 /* }}} */
 
-/* {{{ proto int ExcelFormat::horizontalAlign([int align_mode])
-	Get or set the cell horizontal alignment */
 EXCEL_METHOD(Format, horizontalAlign)
 {
 	PHP_EXCEL_LONG_FORMAT_OPTION(AlignH);
 }
 /* }}} */
 
-/* {{{ proto int ExcelFormat::verticalAlign([int align_mode])
-	Get or set the cell vertical alignment */
 EXCEL_METHOD(Format, verticalAlign)
 {
 	PHP_EXCEL_LONG_FORMAT_OPTION(AlignV);
 }
 /* }}} */
 
-/* {{{ proto bool ExcelFormat::wrap([bool wrap])
-	Get or set the cell wrapping */
 EXCEL_METHOD(Format, wrap)
 {
 	PHP_EXCEL_BOOL_FORMAT_OPTION(Wrap);
 }
 /* }}} */
 
-/* {{{ proto int ExcelFormat::rotate([int angle])
-	Get or set the cell data rotation */
 EXCEL_METHOD(Format, rotate)
 {
 	FormatHandle format;
@@ -3895,8 +4069,6 @@ EXCEL_METHOD(Format, rotate)
 }
 /* }}} */
 
-/* {{{ proto int ExcelFormat::indent([int indent])
-	Get or set the cell text indentation level */
 EXCEL_METHOD(Format, indent)
 {
 	FormatHandle format;
@@ -3923,160 +4095,120 @@ EXCEL_METHOD(Format, indent)
 }
 /* }}} */
 
-/* {{{ proto bool ExcelFormat::shrinkToFit([bool shrink])
-	Get or set whether the cell is shrink-to-fit */
 EXCEL_METHOD(Format, shrinkToFit)
 {
 	PHP_EXCEL_BOOL_FORMAT_OPTION(ShrinkToFit);
 }
 /* }}} */
 
-/* {{{ proto int ExcelFormat::borderStyle([int style])
-	Get or set the cell border */
 EXCEL_METHOD(Format, borderStyle)
 {
 	PHP_EXCEL_LONG_FORMAT_OPTION_WRITEONLY(Border);
 }
 /* }}} */
 
-/* {{{ proto int ExcelFormat::borderColor([int color])
-	Get or set the cell color */
 EXCEL_METHOD(Format, borderColor)
 {
 	PHP_EXCEL_LONG_FORMAT_OPTION_WRITEONLY(BorderColor);
 }
 /* }}} */
 
-/* {{{ proto int ExcelFormat::borderLeftStyle([int style])
-	Get or set the cell left border */
 EXCEL_METHOD(Format, borderLeftStyle)
 {
 	PHP_EXCEL_LONG_FORMAT_OPTION(BorderLeft);
 }
 /* }}} */
 
-/* {{{ proto int ExcelFormat::borderLeftColor([int color])
-	Get or set the cell left color */
 EXCEL_METHOD(Format, borderLeftColor)
 {
 	PHP_EXCEL_LONG_FORMAT_OPTION(BorderLeftColor);
 }
 /* }}} */
 
-/* {{{ proto int ExcelFormat::borderRightStyle([int style])
-	Get or set the cell right border */
 EXCEL_METHOD(Format, borderRightStyle)
 {
 	PHP_EXCEL_LONG_FORMAT_OPTION(BorderRight);
 }
 /* }}} */
 
-/* {{{ proto int ExcelFormat::borderRightColor([int color])
-	Get or set the cell right color */
 EXCEL_METHOD(Format, borderRightColor)
 {
 	PHP_EXCEL_LONG_FORMAT_OPTION(BorderRightColor);
 }
 /* }}} */
 
-/* {{{ proto int ExcelFormat::borderTopStyle([int style])
-	Get or set the cell top border */
 EXCEL_METHOD(Format, borderTopStyle)
 {
 	PHP_EXCEL_LONG_FORMAT_OPTION(BorderTop);
 }
 /* }}} */
 
-/* {{{ proto int ExcelFormat::borderTopColor([int color])
-	Get or set the cell top color */
 EXCEL_METHOD(Format, borderTopColor)
 {
 	PHP_EXCEL_LONG_FORMAT_OPTION(BorderTopColor);
 }
 /* }}} */
 
-/* {{{ proto int ExcelFormat::borderBottomStyle([int style])
-	Get or set the cell bottom border */
 EXCEL_METHOD(Format, borderBottomStyle)
 {
 	PHP_EXCEL_LONG_FORMAT_OPTION(BorderBottom);
 }
 /* }}} */
 
-/* {{{ proto int ExcelFormat::borderBottomColor([int color])
-	Get or set the cell bottom color */
 EXCEL_METHOD(Format, borderBottomColor)
 {
 	PHP_EXCEL_LONG_FORMAT_OPTION(BorderBottomColor);
 }
 /* }}} */
 
-/* {{{ proto int ExcelFormat::borderDiagonal([int border])
-	Get or set the cell diagonal border */
 EXCEL_METHOD(Format, borderDiagonal)
 {
 	PHP_EXCEL_LONG_FORMAT_OPTION(BorderDiagonal);
 }
 /* }}} */
 
-/* {{{ proto int ExcelFormat::borderDiagonalStyle([int style])
-	Get or set the cell diagonal border style */
 EXCEL_METHOD(Format, borderDiagonalStyle)
 {
 	PHP_EXCEL_LONG_FORMAT_OPTION(BorderDiagonalStyle);
 }
 /* }}} */
 
-/* {{{ proto int ExcelFormat::borderDiagonalColor([int color])
-	Get or set the cell diagonal color */
 EXCEL_METHOD(Format, borderDiagonalColor)
 {
 	PHP_EXCEL_LONG_FORMAT_OPTION(BorderDiagonalColor);
 }
 /* }}} */
 
-/* {{{ proto int ExcelFormat::fillPattern([int patern])
-	Get or set the cell fill pattern */
 EXCEL_METHOD(Format, fillPattern)
 {
 	PHP_EXCEL_LONG_FORMAT_OPTION(FillPattern);
 }
 /* }}} */
 
-/* {{{ proto int ExcelFormat::patternForegroundColor([int color])
-	Get or set the cell pattern foreground color */
 EXCEL_METHOD(Format, patternForegroundColor)
 {
 	PHP_EXCEL_LONG_FORMAT_OPTION(PatternForegroundColor);
 }
 /* }}} */
 
-/* {{{ proto int ExcelFormat::patternBackgroundColor([int color])
-	Get or set the cell pattern background color */
 EXCEL_METHOD(Format, patternBackgroundColor)
 {
 	PHP_EXCEL_LONG_FORMAT_OPTION(PatternBackgroundColor);
 }
 /* }}} */
 
-/* {{{ proto bool ExcelFormat::locked([bool locked])
-	Get or set whether the cell is locked */
 EXCEL_METHOD(Format, locked)
 {
 	PHP_EXCEL_BOOL_FORMAT_OPTION(Locked);
 }
 /* }}} */
 
-/* {{{ proto bool ExcelFormat::hidden([bool hidden])
-	Get or set whether the cell is hidden */
 EXCEL_METHOD(Format, hidden)
 {
 	PHP_EXCEL_BOOL_FORMAT_OPTION(Hidden);
 }
 /* }}} */
 
-/* {{{ proto ExcelSheet ExcelSheet::__construct(ExcelBook book, string name)
-	Sheet Constructor. */
 EXCEL_METHOD(Sheet, __construct)
 {
 	BookHandle book;
@@ -4121,8 +4253,6 @@ EXCEL_METHOD(Sheet, __construct)
 }
 /* }}} */
 
-/* {{{ proto int ExcelSheet::cellType(int row, int column)
-	Get cell type */
 EXCEL_METHOD(Sheet, cellType)
 {
 	zval *object = ZEND_THIS;
@@ -4140,8 +4270,6 @@ EXCEL_METHOD(Sheet, cellType)
 }
 /* }}} */
 
-/* {{{ proto ExcelFormat ExcelSheet::cellFormat(int row, int column)
-	Get cell format */
 EXCEL_METHOD(Sheet, cellFormat)
 {
 	zval *object = ZEND_THIS;
@@ -4171,8 +4299,6 @@ EXCEL_METHOD(Sheet, cellFormat)
 }
 /* }}} */
 
-/* {{{ proto void ExcelFormat ExcelSheet::setCellFormat(int row, int column, ExcelFormat format)
-	Set cell format */
 EXCEL_METHOD(Sheet, setCellFormat)
 {
 	zval *object = ZEND_THIS;
@@ -4196,11 +4322,20 @@ EXCEL_METHOD(Sheet, setCellFormat)
 
 /* Returns 1 on success, 0 on failure (caller may use xlBookErrorMessage),
  * -1 when date→timestamp conversion failed (caller should use a dedicated
- * message — the book error is unrelated). */
-static int php_excel_read_cell(int row, int col, zval *val, SheetHandle sheet, BookHandle book, FormatHandle *format, bool read_formula)
+ * message — the book error is unrelated).
+ *
+ * `format` is always a valid out-param: libxl rejects a NULL format in its
+ * Read* calls, so every bulk reader passes a local handle even though only
+ * read() exposes it to the caller. Date probing stays in both modes:
+ * IsDate/unpack determines the returned value (timestamp vs double), so
+ * skipping it would change results instead of just saving work. */
+static int php_excel_read_cell_with_type(int cell_type, int row, int col, zval *val, SheetHandle sheet, BookHandle book, FormatHandle *format, bool read_formula)
 {
 	const char *s;
-	if (read_formula && xlSheetIsFormula(sheet, row, col)) {
+	/* EMPTY cells never carry a formula, so the probe is pure overhead
+	 * there; every other type may hold one (including ERROR, whose cached
+	 * value can be a failed formula result). */
+	if (read_formula && cell_type != CELLTYPE_EMPTY && xlSheetIsFormula(sheet, row, col)) {
 		s = xlSheetReadFormula(sheet, row, col, format);
 		if (!s) {
 			return 0;
@@ -4209,7 +4344,7 @@ static int php_excel_read_cell(int row, int col, zval *val, SheetHandle sheet, B
 		return 1;
 	}
 
-	switch (xlSheetCellType(sheet, row, col)) {
+	switch (cell_type) {
 		case CELLTYPE_EMPTY:
 			*format = xlSheetCellFormat(sheet, row, col);
 			ZVAL_EMPTY_STRING(val);
@@ -4262,6 +4397,11 @@ static int php_excel_read_cell(int row, int col, zval *val, SheetHandle sheet, B
 	return 0;
 }
 
+static int php_excel_read_cell(int row, int col, zval *val, SheetHandle sheet, BookHandle book, FormatHandle *format, bool read_formula)
+{
+	return php_excel_read_cell_with_type(xlSheetCellType(sheet, row, col), row, col, val, sheet, book, format, read_formula);
+}
+
 static inline int php_excel_validate_read_row_bounds(SheetHandle sheet, zend_long row_start, zend_long *row_end, bool allow_default_end)
 {
 	int lr = xlSheetLastRow(sheet);
@@ -4307,8 +4447,6 @@ static inline int php_excel_validate_read_col_bounds(SheetHandle sheet, zend_lon
 	return 1;
 }
 
-/* {{{ proto array ExcelSheet::readRow(int row [, int start_col [, int end_column [, bool read_formula]]])
-	Read an entire row worth of data */
 EXCEL_METHOD(Sheet, readRow)
 {
 	zval *object = ZEND_THIS;
@@ -4318,6 +4456,7 @@ EXCEL_METHOD(Sheet, readRow)
 	int lc;
 	SheetHandle sheet;
 	BookHandle book;
+	FormatHandle format;
 	bool read_formula = 1;
 
 	if (zend_parse_parameters(ZEND_NUM_ARGS(), "l|llb", &row, &col_start, &col_end, &read_formula) == FAILURE) {
@@ -4368,7 +4507,11 @@ EXCEL_METHOD(Sheet, readRow)
 	while (lc < (col_end + 1)) {
 		zval value;
 		ZVAL_UNDEF(&value);
-		FormatHandle format = NULL;
+
+		if (EG(exception)) {
+			zval_ptr_dtor(return_value);
+			RETURN_THROWS();
+		}
 
 		{
 			int read_rc = php_excel_read_cell(row, lc, &value, sheet, book, &format, read_formula);
@@ -4390,8 +4533,6 @@ EXCEL_METHOD(Sheet, readRow)
 }
 /* }}} */
 
-/* {{{ proto array ExcelSheet::readCol(int column [, int start_row [, int end_row [, bool read_formula]]])
-	Read an entire column worth of data */
 EXCEL_METHOD(Sheet, readCol)
 {
 	zval *object = ZEND_THIS;
@@ -4401,6 +4542,7 @@ EXCEL_METHOD(Sheet, readCol)
 	int lc;
 	SheetHandle sheet;
 	BookHandle book;
+	FormatHandle format;
 	bool read_formula = 1;
 
 	if (zend_parse_parameters(ZEND_NUM_ARGS(), "l|llb", &col, &row_start, &row_end, &read_formula) == FAILURE) {
@@ -4450,7 +4592,11 @@ EXCEL_METHOD(Sheet, readCol)
 	while (lc < (row_end + 1)) {
 		zval value;
 		ZVAL_UNDEF(&value);
-		FormatHandle format = NULL;
+
+		if (EG(exception)) {
+			zval_ptr_dtor(return_value);
+			RETURN_THROWS();
+		}
 
 		{
 			int read_rc = php_excel_read_cell(lc, col, &value, sheet, book, &format, read_formula);
@@ -4472,8 +4618,6 @@ EXCEL_METHOD(Sheet, readCol)
 }
 /* }}} */
 
-/* {{{ proto array ExcelSheet::readRange(int row_start, int row_end, int col_start, int col_end [, bool read_formula])
-	Read a rectangular range of cells */
 EXCEL_METHOD(Sheet, readRange)
 {
 	zval *object = ZEND_THIS;
@@ -4482,6 +4626,7 @@ EXCEL_METHOD(Sheet, readRange)
 	zend_ulong row_count, col_count;
 	SheetHandle sheet;
 	BookHandle book;
+	FormatHandle format;
 	bool read_formula = 1;
 
 	if (zend_parse_parameters(ZEND_NUM_ARGS(), "llll|b", &row_start, &row_end, &col_start, &col_end, &read_formula) == FAILURE) {
@@ -4508,9 +4653,13 @@ EXCEL_METHOD(Sheet, readRange)
 		array_init_size(&row_value, col_count);
 		for (c = col_start; c <= col_end; c++) {
 			zval value;
-			FormatHandle format = NULL;
 
 			ZVAL_UNDEF(&value);
+			if (EG(exception)) {
+				zval_ptr_dtor(&row_value);
+				zval_ptr_dtor(return_value);
+				RETURN_THROWS();
+			}
 			{
 				int read_rc = php_excel_read_cell((int) r, (int) c, &value, sheet, book, &format, read_formula);
 				if (read_rc != 1) {
@@ -4532,8 +4681,6 @@ EXCEL_METHOD(Sheet, readRange)
 }
 /* }}} */
 
-/* {{{ proto array ExcelSheet::readSparseRow(int row [, int start_col [, int end_column [, bool read_formula]]])
-	Read non-empty cells from a row, keyed by original column index */
 EXCEL_METHOD(Sheet, readSparseRow)
 {
 	zval *object = ZEND_THIS;
@@ -4544,6 +4691,7 @@ EXCEL_METHOD(Sheet, readSparseRow)
 	int lr;
 	SheetHandle sheet;
 	BookHandle book;
+	FormatHandle format;
 	bool read_formula = 1;
 	bool default_end;
 
@@ -4575,14 +4723,21 @@ EXCEL_METHOD(Sheet, readSparseRow)
 	}
 	for (c = col_start; c <= col_end; c++) {
 		zval value;
-		FormatHandle format = NULL;
+		int cell_type;
 
-		if (xlSheetCellType(sheet, (int) row, (int) c) == CELLTYPE_EMPTY) {
+		if (EG(exception)) {
+			zval_ptr_dtor(return_value);
+			RETURN_THROWS();
+		}
+		/* Thread the probe into the read below instead of re-probing
+		 * the same cell inside php_excel_read_cell. */
+		cell_type = xlSheetCellType(sheet, (int) row, (int) c);
+		if (cell_type == CELLTYPE_EMPTY) {
 			continue;
 		}
 		ZVAL_UNDEF(&value);
 		{
-			int read_rc = php_excel_read_cell((int) row, (int) c, &value, sheet, book, &format, read_formula);
+			int read_rc = php_excel_read_cell_with_type(cell_type, (int) row, (int) c, &value, sheet, book, &format, read_formula);
 			if (read_rc != 1) {
 				zval_ptr_dtor(&value);
 				zval_ptr_dtor(return_value);
@@ -4599,8 +4754,6 @@ EXCEL_METHOD(Sheet, readSparseRow)
 }
 /* }}} */
 
-/* {{{ proto array ExcelSheet::readSparseCol(int column [, int start_row [, int end_row [, bool read_formula]]])
-	Read non-empty cells from a column, keyed by original row index */
 EXCEL_METHOD(Sheet, readSparseCol)
 {
 	zval *object = ZEND_THIS;
@@ -4611,6 +4764,7 @@ EXCEL_METHOD(Sheet, readSparseCol)
 	int lc;
 	SheetHandle sheet;
 	BookHandle book;
+	FormatHandle format;
 	bool read_formula = 1;
 	bool default_end;
 
@@ -4642,14 +4796,21 @@ EXCEL_METHOD(Sheet, readSparseCol)
 	}
 	for (r = row_start; r <= row_end; r++) {
 		zval value;
-		FormatHandle format = NULL;
+		int cell_type;
 
-		if (xlSheetCellType(sheet, (int) r, (int) col) == CELLTYPE_EMPTY) {
+		if (EG(exception)) {
+			zval_ptr_dtor(return_value);
+			RETURN_THROWS();
+		}
+		/* Thread the probe into the read below instead of re-probing
+		 * the same cell inside php_excel_read_cell. */
+		cell_type = xlSheetCellType(sheet, (int) r, (int) col);
+		if (cell_type == CELLTYPE_EMPTY) {
 			continue;
 		}
 		ZVAL_UNDEF(&value);
 		{
-			int read_rc = php_excel_read_cell((int) r, (int) col, &value, sheet, book, &format, read_formula);
+			int read_rc = php_excel_read_cell_with_type(cell_type, (int) r, (int) col, &value, sheet, book, &format, read_formula);
 			if (read_rc != 1) {
 				zval_ptr_dtor(&value);
 				zval_ptr_dtor(return_value);
@@ -4666,8 +4827,6 @@ EXCEL_METHOD(Sheet, readSparseCol)
 }
 /* }}} */
 
-/* {{{ proto mixed ExcelSheet::read(int row, int column [, mixed &format [, bool read_formula]])
-	Read data stored inside a cell */
 EXCEL_METHOD(Sheet, read)
 {
 	zval *object = ZEND_THIS;
@@ -4851,7 +5010,14 @@ try_again:
 	}
 }
 
-bool php_excel_write_cell(SheetHandle sheet, excel_book_object *book_obj, int row, int col, zval *data, FormatHandle format, zend_long dtype)
+/* Commit-loop entry point shares this implementation with prevalidated = true:
+ * the writeRow/writeCol pre-scan already proved
+ * php_excel_cell_value_rejection() returns NULL for the same (value, dtype)
+ * pair, so the PHP-side rejections below are skipped. Not a general
+ * shortcut: callers must pre-scan with no userland in between (guaranteed —
+ * plain-array traversal runs no user code), and libxl-side failures still
+ * return 0 through the same paths. */
+static bool php_excel_write_cell_impl(SheetHandle sheet, excel_book_object *book_obj, int row, int col, zval *data, FormatHandle format, zend_long dtype, bool prevalidated)
 {
 	zend_string *data_zs;
 	BookHandle book = book_obj->book;
@@ -4861,7 +5027,7 @@ bool php_excel_write_cell(SheetHandle sheet, excel_book_object *book_obj, int ro
 		ZVAL_DEREF(data);
 		goto try_again;
 	}
-	if (!php_excel_dtype_matches_zval(dtype, data)) {
+	if (!prevalidated && !php_excel_dtype_matches_zval(dtype, data)) {
 		return 0;
 	}
 	switch (Z_TYPE_P(data)) {
@@ -4885,8 +5051,9 @@ bool php_excel_write_cell(SheetHandle sheet, excel_book_object *book_obj, int ro
 		case IS_DOUBLE:
 			/* NAN/INF serialize to a corrupt cell that reads back as garbage,
 			 * and the AS_DATE cast to zend_long below is undefined for a
-			 * non-finite double. Reject before either. */
-			if (!zend_finite(Z_DVAL_P(data))) {
+			 * non-finite double. Reject before either (pre-scan already
+			 * proved finiteness on the prevalidated path). */
+			if (!prevalidated && !zend_finite(Z_DVAL_P(data))) {
 				return 0;
 			}
 			if (dtype == PHP_EXCEL_DATE) {
@@ -4910,8 +5077,9 @@ bool php_excel_write_cell(SheetHandle sheet, excel_book_object *book_obj, int ro
 		case IS_STRING:
 			data_zs = Z_STR_P(data);
 			/* libxl writes use NUL-terminated C strings; reject embedded
-			 * NULs so the caller's value isn't silently truncated. */
-			if (ZSTR_LEN(data_zs) > 0 && memchr(ZSTR_VAL(data_zs), 0, ZSTR_LEN(data_zs))) {
+			 * NULs so the caller's value isn't silently truncated
+			 * (pre-scan already proved NUL-free on the prevalidated path). */
+			if (!prevalidated && ZSTR_LEN(data_zs) > 0 && memchr(ZSTR_VAL(data_zs), 0, ZSTR_LEN(data_zs))) {
 				return 0;
 			}
 			/* AS_TEXT writes the value verbatim: no quote-prefix stripping, no
@@ -4968,8 +5136,11 @@ bool php_excel_write_cell(SheetHandle sheet, excel_book_object *book_obj, int ro
 	}
 }
 
-/* {{{ proto bool ExcelSheet::write(int row, int column, mixed data [, ExcelFormat format [, int datatype]])
-	Write data into a cell */
+bool php_excel_write_cell(SheetHandle sheet, excel_book_object *book_obj, int row, int col, zval *data, FormatHandle format, zend_long dtype)
+{
+	return php_excel_write_cell_impl(sheet, book_obj, row, col, data, format, dtype, false);
+}
+
 EXCEL_METHOD(Sheet, write)
 {
 	zval *object = ZEND_THIS;
@@ -5023,8 +5194,6 @@ EXCEL_METHOD(Sheet, write)
 }
 /* }}} */
 
-/* {{{ proto bool ExcelSheet::writeRow(int row, array data [, int start_column [, ExcelFormat format [, int datatype]]])
-	Write an array of values into a row */
 EXCEL_METHOD(Sheet, writeRow)
 {
 	zval *object = ZEND_THIS;
@@ -5081,7 +5250,11 @@ EXCEL_METHOD(Sheet, writeRow)
 		{
 			zend_long scan_col = col;
 			ZEND_HASH_FOREACH_VAL(Z_ARRVAL_P(data), element) {
-				const char *rejection = php_excel_cell_value_rejection(book, element, dtype);
+				const char *rejection;
+				if (EG(exception)) {
+					RETURN_THROWS();
+				}
+				rejection = php_excel_cell_value_rejection(book, element, dtype);
 				if (rejection) {
 					php_error_docref(NULL, E_WARNING, "writeRow: value for column " ZEND_LONG_FMT " cannot be written: %s; no cells were modified", scan_col, rejection);
 					RETURN_FALSE;
@@ -5091,7 +5264,11 @@ EXCEL_METHOD(Sheet, writeRow)
 		}
 
 		ZEND_HASH_FOREACH_VAL(Z_ARRVAL_P(data), element) {
-			if (!php_excel_write_cell(sheet, book_obj, row, i++, element, (oformat ? format : 0), dtype)) {
+			if (EG(exception)) {
+				RETURN_THROWS();
+			}
+			/* Pre-scan above proved every element committable; skip re-validation. */
+			if (!php_excel_write_cell_impl(sheet, book_obj, row, i++, element, (oformat ? format : 0), dtype, true)) {
 				php_error_docref(NULL, E_WARNING, "Failed to write cell in row " ZEND_LONG_FMT ", column " ZEND_LONG_FMT " with error '%s'", row, i-1, xlBookErrorMessage(book));
 				RETURN_FALSE;
 			}
@@ -5102,8 +5279,6 @@ EXCEL_METHOD(Sheet, writeRow)
 }
 /* }}} */
 
-/* {{{ proto bool ExcelSheet::writeCol(int column, array data [, int start_row [, ExcelFormat format [, int datatype]]])
-	Write an array of values into a column */
 EXCEL_METHOD(Sheet, writeCol)
 {
 	zval *object = ZEND_THIS;
@@ -5159,7 +5334,11 @@ EXCEL_METHOD(Sheet, writeCol)
 		{
 			zend_long scan_row = row;
 			ZEND_HASH_FOREACH_VAL(Z_ARRVAL_P(data), element) {
-				const char *rejection = php_excel_cell_value_rejection(book, element, dtype);
+				const char *rejection;
+				if (EG(exception)) {
+					RETURN_THROWS();
+				}
+				rejection = php_excel_cell_value_rejection(book, element, dtype);
 				if (rejection) {
 					php_error_docref(NULL, E_WARNING, "writeCol: value for row " ZEND_LONG_FMT " cannot be written: %s; no cells were modified", scan_row, rejection);
 					RETURN_FALSE;
@@ -5169,7 +5348,11 @@ EXCEL_METHOD(Sheet, writeCol)
 		}
 
 		ZEND_HASH_FOREACH_VAL(Z_ARRVAL_P(data), element) {
-			if (!php_excel_write_cell(sheet, book_obj, i++, col, element, oformat ? format : 0, dtype)) {
+			if (EG(exception)) {
+				RETURN_THROWS();
+			}
+			/* Pre-scan above proved every element committable; skip re-validation. */
+			if (!php_excel_write_cell_impl(sheet, book_obj, i++, col, element, oformat ? format : 0, dtype, true)) {
 				php_error_docref(NULL, E_WARNING, "Failed to write cell in row " ZEND_LONG_FMT ", column " ZEND_LONG_FMT " with error '%s'", i-1, col, xlBookErrorMessage(book));
 				RETURN_FALSE;
 			}
@@ -5222,16 +5405,12 @@ EXCEL_METHOD(Sheet, writeCol)
 		RETURN_BOOL(xlSheet ## func_name (sheet, cfirst, clast)); \
 	}
 
-/* {{{ proto bool ExcelSheet::isFormula(int row, int column)
-	Determine if the cell contains a formula */
 EXCEL_METHOD(Sheet, isFormula)
 {
 	PHP_EXCEL_SHEET_GET_BOOL_STATE(IsFormula)
 }
 /* }}} */
 
-/* {{{ proto bool ExcelSheet::isDate(int row, int column)
-	Determine if the cell contains a date */
 EXCEL_METHOD(Sheet, isDate)
 {
 	zval *object = ZEND_THIS;
@@ -5260,32 +5439,24 @@ EXCEL_METHOD(Sheet, isDate)
 }
 /* }}} */
 
-/* {{{ proto bool ExcelSheet::insertRow(int row_first, int row_last)
-	Inserts rows from rowFirst to rowLast */
 EXCEL_METHOD(Sheet, insertRow)
 {
 	PHP_EXCEL_SHEET_ROW_RANGE_OP(InsertRow)
 }
 /* }}} */
 
-/* {{{ proto bool ExcelSheet::insertCol(int col_first, int col_last)
-	Inserts columns from colFirst to colLast */
 EXCEL_METHOD(Sheet, insertCol)
 {
 	PHP_EXCEL_SHEET_COL_RANGE_OP(InsertCol)
 }
 /* }}} */
 
-/* {{{ proto bool ExcelSheet::removeRow(int row_first, int row_last)
-	Removes rows from rowFirst to rowLast */
 EXCEL_METHOD(Sheet, removeRow)
 {
 	PHP_EXCEL_SHEET_ROW_RANGE_OP(RemoveRow)
 }
 /* }}} */
 
-/* {{{ proto bool ExcelSheet::removeCol(int col_first, int col_last)
-	Removes columns from colFirst to colLast */
 EXCEL_METHOD(Sheet, removeCol)
 {
 	PHP_EXCEL_SHEET_COL_RANGE_OP(RemoveCol)
@@ -5318,24 +5489,18 @@ EXCEL_METHOD(Sheet, removeCol)
 		RETURN_DOUBLE(xlSheet ## func_name (sheet, val)); \
 	}
 
-/* {{{ proto double ExcelSheet::colWidth(int column)
-	Returns the cell width */
 EXCEL_METHOD(Sheet, colWidth)
 {
 	PHP_EXCEL_SHEET_GET_DOUBLE_BY_COL(ColWidth)
 }
 /* }}} */
 
-/* {{{ proto double ExcelSheet::rowHeight(int row)
-	Returns the cell height */
 EXCEL_METHOD(Sheet, rowHeight)
 {
 	PHP_EXCEL_SHEET_GET_DOUBLE_BY_ROW(RowHeight)
 }
 /* }}} */
 
-/* {{{ proto string ExcelSheet::readComment(int row, int column)
-	Read comment from a cell */
 EXCEL_METHOD(Sheet, readComment)
 {
 		SheetHandle sheet;
@@ -5358,8 +5523,6 @@ EXCEL_METHOD(Sheet, readComment)
 }
 /* }}} */
 
-/* {{{ proto void ExcelSheet::writeComment(int row, int column, string value, string author, int width, int height)
-	Write comment to a cell */
 EXCEL_METHOD(Sheet, writeComment)
 {
 		SheetHandle sheet;
@@ -5385,8 +5548,6 @@ EXCEL_METHOD(Sheet, writeComment)
 }
 /* }}} */
 
-/* {{{ proto void ExcelSheet::setColWidth(int column_start, int column_end, double width [, bool hidden [, ExcelFormat format]])
-	Set width of cells within column(s); Value -1 is used for autofit column widths in LibXL 3.6+ */
 EXCEL_METHOD(Sheet, setColWidth)
 {
 		SheetHandle sheet;
@@ -5419,8 +5580,6 @@ EXCEL_METHOD(Sheet, setColWidth)
 }
 /* }}} */
 
-/* {{{ proto bool ExcelSheet::setRowHeight(int row, double height [, ExcelFormat format [, bool hidden]])
-	Set row height */
 EXCEL_METHOD(Sheet, setRowHeight)
 {
 		SheetHandle sheet;
@@ -5460,8 +5619,6 @@ EXCEL_METHOD(Sheet, setRowHeight)
 }
 /* }}} */
 
-/* {{{ proto array ExcelSheet::getMerge(int row, int column)
-	Get cell merge range */
 EXCEL_METHOD(Sheet, getMerge)
 {
 		SheetHandle sheet;
@@ -5488,8 +5645,6 @@ EXCEL_METHOD(Sheet, getMerge)
 }
 /* }}} */
 
-/* {{{ proto bool ExcelSheet::setMerge(int row_start, int row_end, int col_start, int col_end)
-	Set cell merge range */
 EXCEL_METHOD(Sheet, setMerge)
 {
 	SheetHandle sheet;
@@ -5508,8 +5663,6 @@ EXCEL_METHOD(Sheet, setMerge)
 }
 /* }}} */
 
-/* {{{ proto bool ExcelSheet::deleteMerge(int row, int column)
-	Delete cell merge */
 EXCEL_METHOD(Sheet, deleteMerge)
 {
 	SheetHandle sheet;
@@ -5527,8 +5680,6 @@ EXCEL_METHOD(Sheet, deleteMerge)
 }
 /* }}} */
 
-/* {{{ proto void ExcelSheet::addPictureScaled(int row, int column, int pic_id, double scale [, int x_offset [, int y_offset]])
-	Insert picture into a cell with a set scale */
 EXCEL_METHOD(Sheet, addPictureScaled)
 {
 	SheetHandle sheet;
@@ -5555,8 +5706,6 @@ EXCEL_METHOD(Sheet, addPictureScaled)
 }
 /* }}} */
 
-/* {{{ proto void ExcelSheet::addPictureDim(int row, int column, int pic_id, int width, int height [, int x_offset [, int y_offset]])
-	Insert picture into a cell with a given dimensions */
 EXCEL_METHOD(Sheet, addPictureDim)
 {
 	SheetHandle sheet;
@@ -5611,24 +5760,18 @@ EXCEL_METHOD(Sheet, addPictureDim)
 		RETURN_BOOL(xlSheet ## func_name (sheet, val, brk)); \
 	}
 
-/* {{{ proto bool ExcelSheet::horPageBreak(int row, bool break)
-	Set/Remove horizontal page break */
 EXCEL_METHOD(Sheet, horPageBreak)
 {
 	PHP_EXCEL_SHEET_SET_ROW_BREAK(SetHorPageBreak)
 }
 /* }}} */
 
-/* {{{ proto bool ExcelSheet::verPageBreak(int col, bool break)
-	Set/Remove vertical page break */
 EXCEL_METHOD(Sheet, verPageBreak)
 {
 	PHP_EXCEL_SHEET_SET_COL_BREAK(SetVerPageBreak)
 }
 /* }}} */
 
-/* {{{ proto void ExcelSheet::splitSheet(int row, int column)
-	Split sheet at indicated position */
 EXCEL_METHOD(Sheet, splitSheet)
 {
 	SheetHandle sheet;
@@ -5674,24 +5817,18 @@ EXCEL_METHOD(Sheet, splitSheet)
 		RETURN_BOOL(xlSheet ## func_name (sheet, s, e, brk)); \
 	}
 
-/* {{{ proto bool ExcelSheet::groupRows(int start_row, int end_row [, bool collapse])
-	Group rows from rowFirst to rowLast */
 EXCEL_METHOD(Sheet, groupRows)
 {
 	PHP_EXCEL_SHEET_GROUP_ROWS(GroupRows)
 }
 /* }}} */
 
-/* {{{ proto bool ExcelSheet::groupCols(int start_column, int end_column [, bool collapse])
-	Group columns from colFirst to colLast */
 EXCEL_METHOD(Sheet, groupCols)
 {
 	PHP_EXCEL_SHEET_GROUP_COLS(GroupCols)
 }
 /* }}} */
 
-/* {{{ proto void ExcelSheet::clear(int row_s, int row_e, int col_s, int col_e)
-	Clear cells in specified area. */
 EXCEL_METHOD(Sheet, clear)
 {
 	SheetHandle sheet;
@@ -5710,8 +5847,6 @@ EXCEL_METHOD(Sheet, clear)
 }
 /* }}} */
 
-/* {{{ proto void ExcelSheet::copy(int row, int col, int to_row, int to_col)
-	Copy a cell */
 EXCEL_METHOD(Sheet, copy)
 {
 	SheetHandle sheet;
@@ -5789,64 +5924,48 @@ EXCEL_METHOD(Sheet, copy)
 		xlSheet ## func_name (sheet, val); \
 	}
 
-/* {{{ proto int ExcelSheet::firstRow()
-	Returns the first row in the sheet that contains a used cell. */
 EXCEL_METHOD(Sheet, firstRow)
 {
 	PHP_EXCEL_INFO(FirstRow, IS_LONG)
 }
 /* }}} */
 
-/* {{{ proto int ExcelSheet::lastRow()
-	Returns the zero-based index of the row after the last row in the sheet that contains a used cell. */
 EXCEL_METHOD(Sheet, lastRow)
 {
 	PHP_EXCEL_INFO(LastRow, IS_LONG)
 }
 /* }}} */
 
-/* {{{ proto int ExcelSheet::firstCol()
-	Returns the first column in the sheet that contains a used cell. */
 EXCEL_METHOD(Sheet, firstCol)
 {
 	PHP_EXCEL_INFO(FirstCol, IS_LONG)
 }
 /* }}} */
 
-/* {{{ proto int ExcelSheet::lastCol()
-	Returns the zero-based index of the column after the last column in the sheet that contains a used cell. */
 EXCEL_METHOD(Sheet, lastCol)
 {
 	PHP_EXCEL_INFO(LastCol, IS_LONG)
 }
 /* }}} */
 
-/* {{{ proto bool ExcelSheet::displayGridlines()
-	Returns whether the gridlines are displayed */
 EXCEL_METHOD(Sheet, displayGridlines)
 {
 	PHP_EXCEL_INFO(DisplayGridlines, IS_BOOL)
 }
 /* }}} */
 
-/* {{{ proto bool ExcelSheet::printGridlines()
-	Returns whether the gridlines are printed */
 EXCEL_METHOD(Sheet, printGridlines)
 {
 	PHP_EXCEL_INFO(PrintGridlines, IS_BOOL)
 }
 /* }}} */
 
-/* {{{ proto void ExcelSheet::setDisplayGridlines(bool value)
-	Sets gridlines for displaying */
 EXCEL_METHOD(Sheet, setDisplayGridlines)
 {
 	PHP_EXCEL_SET_BOOL_VAL(SetDisplayGridlines)
 }
 /* }}} */
 
-/* {{{ proto bool ExcelSheet::setHidden(bool value)
-	Hides/unhides the sheet. */
 EXCEL_METHOD(Sheet, setHidden)
 {
 	SheetHandle sheet;
@@ -5863,16 +5982,12 @@ EXCEL_METHOD(Sheet, setHidden)
 }
 /* }}} */
 
-/* {{{ proto bool ExcelSheet::isHidden()
-	Returns whether sheet is hidden. */
 EXCEL_METHOD(Sheet, isHidden)
 {
 	PHP_EXCEL_INFO(Hidden, IS_BOOL)
 }
 /* }}} */
 
-/* {{{ proto array ExcelSheet::getTopLeftView()
-	Extracts the first visible row and the leftmost visible column of the sheet. */
 EXCEL_METHOD(Sheet, getTopLeftView)
 {
 	SheetHandle sheet;
@@ -5891,8 +6006,6 @@ EXCEL_METHOD(Sheet, getTopLeftView)
 }
 /* }}} */
 
-/* {{{ proto bool ExcelSheet::setTopLeftView(int row, int column)
-	Sets the first visible row and the leftmost visible column of the sheet. */
 EXCEL_METHOD(Sheet, setTopLeftView)
 {
 	SheetHandle sheet;
@@ -5912,8 +6025,6 @@ EXCEL_METHOD(Sheet, setTopLeftView)
 }
 /* }}} */
 
-/* {{{ proto string ExcelSheet::rowColToAddr(int row, int col, boolean row_relative, boolean col_relative)
-	Converts row and column to a cell reference. */
 EXCEL_METHOD(Sheet, rowColToAddr)
 {
 	SheetHandle sheet;
@@ -5999,8 +6110,6 @@ static bool php_excel_parse_cell_reference(
 	return true;
 }
 
-/* {{{ proto array ExcelSheet::addrToRowCol(string cell_reference)
-	Converts a cell reference to row and column. */
 EXCEL_METHOD(Sheet, addrToRowCol)
 {
 	SheetHandle sheet;
@@ -6039,95 +6148,76 @@ EXCEL_METHOD(Sheet, addrToRowCol)
 }
 /* }}} */
 
-/* {{{ proto void ExcelSheet::setPrintGridlines(bool value)
-	Sets gridlines for printing */
 EXCEL_METHOD(Sheet, setPrintGridlines)
 {
 	PHP_EXCEL_SET_BOOL_VAL(SetPrintGridlines)
 }
 /* }}} */
 
-/* {{{ proto int ExcelSheet::zoom()
-	Returns the zoom level of the current view as a percentage. */
 EXCEL_METHOD(Sheet, zoom)
 {
 	PHP_EXCEL_INFO(Zoom, IS_LONG)
 }
 /* }}} */
 
-/* {{{ proto int ExcelSheet::zoomPrint()
-	Returns the scaling factor for printing as a percentage. */
 EXCEL_METHOD(Sheet, zoomPrint)
 {
 	PHP_EXCEL_INFO(PrintZoom, IS_LONG)
 }
 /* }}} */
 
-/* {{{ proto void ExcelSheet::setZoom(long value)
-	Sets the zoom level of the current view. 100 is a usual view. */
 EXCEL_METHOD(Sheet, setZoom)
 {
 	PHP_EXCEL_SET_LONG_VAL(SetZoom)
 }
 /* }}} */
 
-/* {{{ proto void ExcelSheet::setZoomPrint(long value)
-	Sets the scaling factor for printing as a percentage. */
 EXCEL_METHOD(Sheet, setZoomPrint)
 {
 	PHP_EXCEL_SET_LONG_VAL(SetPrintZoom)
 }
 /* }}} */
 
-/* {{{ proto void ExcelSheet::setLandscape(bool value)
-	Sets landscape or portrait mode for printing, 1 - pages are printed using landscape mode, 0 - pages are printed using portrait mode. */
 EXCEL_METHOD(Sheet, setLandscape)
 {
 	PHP_EXCEL_SET_BOOL_VAL(SetLandscape)
 }
 /* }}} */
 
-/* {{{ proto bool ExcelSheet::landscape()
-	Returns a page orientation mode, 1 - landscape mode, 0 - portrait mode. */
 EXCEL_METHOD(Sheet, landscape)
 {
 	PHP_EXCEL_INFO(Landscape, IS_BOOL)
 }
 /* }}} */
 
-/* {{{ proto int ExcelSheet::paper()
-	Returns the paper size. */
 EXCEL_METHOD(Sheet, paper)
 {
 	PHP_EXCEL_INFO(Paper, IS_LONG)
 }
 /* }}} */
 
-/* {{{ proto void ExcelSheet::setPaper(long value)
-	Sets the paper size. */
 EXCEL_METHOD(Sheet, setPaper)
 {
 	PHP_EXCEL_SET_LONG_VAL(SetPaper)
 }
 /* }}} */
 
-/* {{{ proto string ExcelSheet::header()
-	Returns the header text of the sheet when printed. */
 EXCEL_METHOD(Sheet, header)
 {
 	PHP_EXCEL_INFO(Header, IS_STRING)
 }
 /* }}} */
 
-/* {{{ proto string ExcelSheet::footer()
-	Returns the footer text of the sheet when printed. */
 EXCEL_METHOD(Sheet, footer)
 {
 	PHP_EXCEL_INFO(Footer, IS_STRING)
 }
 /* }}} */
 
-static bool php_excel_utf8_length_within(zend_string *value, size_t limit)
+/* Character count of a UTF-8 string, or (size_t)-1 when the input is malformed.
+ * Shared core so callers can tell invalid encoding apart from text that is
+ * merely too long. */
+static size_t php_excel_utf8_char_count(zend_string *value)
 {
 	const unsigned char *p = (const unsigned char *) ZSTR_VAL(value);
 	const unsigned char *end = p + ZSTR_LEN(value);
@@ -6145,33 +6235,43 @@ static bool php_excel_utf8_length_within(zend_string *value, size_t limit)
 		} else if (*p >= 0xf0 && *p <= 0xf4) {
 			width = 4;
 		} else {
-			return false;
+			return (size_t)-1;
 		}
 		if ((size_t) (end - p) < width) {
-			return false;
+			return (size_t)-1;
 		}
 		if (width >= 2 && (p[1] < 0x80 || p[1] > 0xbf)) {
-			return false;
+			return (size_t)-1;
 		}
 		if (width >= 3 && (p[2] < 0x80 || p[2] > 0xbf)) {
-			return false;
+			return (size_t)-1;
 		}
 		if (width == 4 && (p[3] < 0x80 || p[3] > 0xbf)) {
-			return false;
+			return (size_t)-1;
 		}
 		if ((p[0] == 0xe0 && p[1] < 0xa0)
 		    || (p[0] == 0xed && p[1] > 0x9f)
 		    || (p[0] == 0xf0 && p[1] < 0x90)
 		    || (p[0] == 0xf4 && p[1] > 0x8f)) {
-			return false;
+			return (size_t)-1;
 		}
 		count++;
-		if (count > limit) {
-			return false;
-		}
 		p += width;
 	}
-	return true;
+	return count;
+}
+
+/* Validity check without a length limit, so the header/footer macro can warn
+ * about malformed input separately from over-long input. */
+static bool php_excel_is_valid_utf8(zend_string *value)
+{
+	return php_excel_utf8_char_count(value) != (size_t)-1;
+}
+
+static bool php_excel_utf8_length_within(zend_string *value, size_t limit)
+{
+	size_t count = php_excel_utf8_char_count(value);
+	return count != (size_t)-1 && count <= limit;
 }
 
 #define PHP_EXCEL_SET_HF(func_name) \
@@ -6191,168 +6291,136 @@ static bool php_excel_utf8_length_within(zend_string *value, size_t limit)
 		EXCEL_NUL_SAFE_STRING(val_zs); \
 		SHEET_FROM_OBJECT(sheet, object); \
 		book_obj = php_excel_resolve_book_obj(object); \
-		if ((book_obj && book_obj->locale_is_utf8 \
-		     && !php_excel_utf8_length_within(val_zs, 255)) \
-		    || ((!book_obj || !book_obj->locale_is_utf8) && ZSTR_LEN(val_zs) > 255)) { \
+		if (book_obj && book_obj->locale_is_utf8) { \
+			if (!php_excel_is_valid_utf8(val_zs)) { \
+				php_error_docref(NULL, E_WARNING, "Header/footer text contains invalid UTF-8"); \
+				RETURN_FALSE; \
+			} \
+			if (!php_excel_utf8_length_within(val_zs, 255)) { \
+				php_error_docref(NULL, E_WARNING, "Header/footer text too long, maximum is 255 characters"); \
+				RETURN_FALSE; \
+			} \
+		} else if (ZSTR_LEN(val_zs) > 255) { \
+			php_error_docref(NULL, E_WARNING, "Header/footer text too long, maximum is 255 bytes"); \
 			RETURN_FALSE; \
 		} \
 		RETURN_BOOL(xlSheet ## func_name (sheet, ZSTR_VAL(val_zs), margin)); \
 	}
 
-/* {{{ proto bool ExcelSheet::setHeader(string header, double margin)
-	Sets the header text of the sheet when printed. */
 EXCEL_METHOD(Sheet, setHeader)
 {
 	PHP_EXCEL_SET_HF(SetHeader)
 }
 /* }}} */
 
-/* {{{ proto bool ExcelSheet::setFooter(string footer, double margin)
-	Sets the footer text of the sheet when printed. */
 EXCEL_METHOD(Sheet, setFooter)
 {
 	PHP_EXCEL_SET_HF(SetFooter)
 }
 /* }}} */
 
-/* {{{ proto double ExcelSheet::headerMargin()
-	Returns the header margin in inches. */
 EXCEL_METHOD(Sheet, headerMargin)
 {
 	PHP_EXCEL_INFO(HeaderMargin, IS_DOUBLE)
 }
 /* }}} */
 
-/* {{{ proto double ExcelSheet::footerMargin()
-	Returns the footer margin in inches. */
 EXCEL_METHOD(Sheet, footerMargin)
 {
 	PHP_EXCEL_INFO(FooterMargin, IS_DOUBLE)
 }
 /* }}} */
 
-/* {{{ proto bool ExcelSheet::hcenter()
-	Returns whether the sheet is centered horizontally when printed: 1 - yes, 0 - no. */
 EXCEL_METHOD(Sheet, hcenter)
 {
 	PHP_EXCEL_INFO(HCenter, IS_BOOL)
 }
 /* }}} */
 
-/* {{{ proto bool ExcelSheet::vcenter()
-	Returns whether the sheet is centered vertically when printed: 1 - yes, 0 - no. */
 EXCEL_METHOD(Sheet, vcenter)
 {
 	PHP_EXCEL_INFO(VCenter, IS_BOOL)
 }
 /* }}} */
 
-/* {{{ proto bool ExcelSheet::setHCenter(bool value)
-	Sets a flag that the sheet is centered horizontally when printed: 1 - yes, 0 - no. */
 EXCEL_METHOD(Sheet, setHCenter)
 {
 	PHP_EXCEL_SET_BOOL_VAL(SetHCenter)
 }
 /* }}} */
 
-/* {{{ proto bool ExcelSheet::setVCenter(bool value)
-	Sets a flag that the sheet is centered vertically when printed: 1 - yes, 0 - no. */
 EXCEL_METHOD(Sheet, setVCenter)
 {
 	PHP_EXCEL_SET_BOOL_VAL(SetVCenter)
 }
 /* }}} */
 
-/* {{{ proto double ExcelSheet::marginLeft()
-	Returns the left margin of the sheet in inches. */
 EXCEL_METHOD(Sheet, marginLeft)
 {
 	PHP_EXCEL_INFO(MarginLeft, IS_DOUBLE)
 }
 /* }}} */
 
-/* {{{ proto double ExcelSheet::marginRight()
-	Returns the right margin of the sheet in inches. */
 EXCEL_METHOD(Sheet, marginRight)
 {
 	PHP_EXCEL_INFO(MarginRight, IS_DOUBLE)
 }
 /* }}} */
 
-/* {{{ proto double ExcelSheet::marginTop()
-	Returns the top margin of the sheet in inches. */
 EXCEL_METHOD(Sheet, marginTop)
 {
 	PHP_EXCEL_INFO(MarginTop, IS_DOUBLE)
 }
 /* }}} */
 
-/* {{{ proto double ExcelSheet::marginBottom()
-	Returns the bottom margin of the sheet in inches. */
 EXCEL_METHOD(Sheet, marginBottom)
 {
 	PHP_EXCEL_INFO(MarginBottom, IS_DOUBLE)
 }
 /* }}} */
 
-/* {{{ proto void ExcelSheet::setMarginLeft(double value)
-	Sets the left margin of the sheet in inches. */
 EXCEL_METHOD(Sheet, setMarginLeft)
 {
 	PHP_EXCEL_SET_DOUBLE_VAL(SetMarginLeft)
 }
 /* }}} */
 
-/* {{{ proto void ExcelSheet::setMarginRight(double value)
-	Sets the right margin of the sheet in inches. */
 EXCEL_METHOD(Sheet, setMarginRight)
 {
 	PHP_EXCEL_SET_DOUBLE_VAL(SetMarginRight)
 }
 /* }}} */
 
-/* {{{ proto void ExcelSheet::setMarginTop(double value)
-	Sets the top margin of the sheet in inches. */
 EXCEL_METHOD(Sheet, setMarginTop)
 {
 	PHP_EXCEL_SET_DOUBLE_VAL(SetMarginTop)
 }
 /* }}} */
 
-/* {{{ proto void ExcelSheet::setMarginBottom(double value)
-	Sets the bottom margin of the sheet in inches. */
 EXCEL_METHOD(Sheet, setMarginBottom)
 {
 	PHP_EXCEL_SET_DOUBLE_VAL(SetMarginBottom)
 }
 /* }}} */
 
-/* {{{ proto bool ExcelSheet::printHeaders()
-	Returns whether the row and column headers are printed: 1 - yes, 0 - no. */
 EXCEL_METHOD(Sheet, printHeaders)
 {
 	PHP_EXCEL_INFO(PrintRowCol, IS_BOOL)
 }
 /* }}} */
 
-/* {{{ proto bool ExcelSheet::setPrintHeaders(bool value)
-	Sets a flag that the row and column headers are printed: 1 - yes, 0 - no. */
 EXCEL_METHOD(Sheet, setPrintHeaders)
 {
 	PHP_EXCEL_SET_BOOL_VAL(SetPrintRowCol)
 }
 /* }}} */
 
-/* {{{ proto string ExcelSheet::name()
-	Returns the name of the sheet. */
 EXCEL_METHOD(Sheet, name)
 {
 	PHP_EXCEL_INFO(Name, IS_STRING)
 }
 /* }}} */
 
-/* {{{ proto void ExcelSheet::setName(string name)
-	Sets the name of the sheet. */
 EXCEL_METHOD(Sheet, setName)
 {
 	SheetHandle sheet;
@@ -6372,8 +6440,6 @@ EXCEL_METHOD(Sheet, setName)
 }
 /* }}} */
 
-/* {{{ proto bool ExcelSheet::setNamedRange(string name, int row_first, int row_last, int col_first, int col_last [, int scope_id])
-	Create a named range */
 EXCEL_METHOD(Sheet, setNamedRange)
 {
 	SheetHandle sheet;
@@ -6409,8 +6475,6 @@ EXCEL_METHOD(Sheet, setNamedRange)
 }
 /* }}} */
 
-/* {{{ proto bool ExcelSheet::delNamedRange(string name)
-	Delete a named range. */
 EXCEL_METHOD(Sheet, delNamedRange)
 {
 	SheetHandle sheet;
@@ -6471,32 +6535,24 @@ EXCEL_METHOD(Sheet, delNamedRange)
 		RETURN_TRUE; \
 	}
 
-/* {{{ proto bool ExcelSheet::setPrintRepeatRows(int rowFirst, int rowLast)
-	Sets repeated rows on each page from rowFirst to rowLast. */
 EXCEL_METHOD(Sheet, setPrintRepeatRows)
 {
 	PHP_EXCEL_SHEET_PRINT_REPEAT_ROWS(SetPrintRepeatRows)
 }
 /* }}} */
 
-/* {{{ proto bool ExcelSheet::setPrintRepeatCols(int colFirst, int colLast)
-	Sets repeated columns on each page from colFirst to colLast. */
 EXCEL_METHOD(Sheet, setPrintRepeatCols)
 {
 	PHP_EXCEL_SHEET_PRINT_REPEAT_COLS(SetPrintRepeatCols)
 }
 /* }}} */
 
-/* {{{ proto bool ExcelSheet::getGroupSummaryBelow()
-	Returns whether grouping rows summary is below. Returns 1 if summary is below and 0 if isn't. */
 EXCEL_METHOD(Sheet, getGroupSummaryBelow)
 {
 	PHP_EXCEL_INFO(GroupSummaryBelow, IS_BOOL)
 }
 /* }}} */
 
-/* {{{ proto bool ExcelSheet::setGroupSummaryBelow(bool direction)
-	Sets a flag of grouping rows summary: 1 - below, 0 - above. */
 EXCEL_METHOD(Sheet, setGroupSummaryBelow)
 {
 	SheetHandle sheet;
@@ -6514,16 +6570,12 @@ EXCEL_METHOD(Sheet, setGroupSummaryBelow)
 }
 /* }}} */
 
-/* {{{ proto bool ExcelSheet::getGroupSummaryRight()
-	Returns whether grouping columns summary is right. Returns 1 if summary is right and 0 if isn't. */
 EXCEL_METHOD(Sheet, getGroupSummaryRight)
 {
 	PHP_EXCEL_INFO(GroupSummaryRight, IS_BOOL)
 }
 /* }}} */
 
-/* {{{ proto bool ExcelSheet::setGroupSummaryRight(bool direction)
-	Sets a flag of grouping columns summary: 1 - right, 0 - left. */
 EXCEL_METHOD(Sheet, setGroupSummaryRight)
 {
 	SheetHandle sheet;
@@ -6541,8 +6593,6 @@ EXCEL_METHOD(Sheet, setGroupSummaryRight)
 }
 /* }}} */
 
-/* {{{ proto bool ExcelSheet::setPrintFit(int wPages, int hPages)
-	Fits sheet width and sheet height to wPages and hPages respectively. */
 EXCEL_METHOD(Sheet, setPrintFit)
 {
 	SheetHandle sheet;
@@ -6563,8 +6613,6 @@ EXCEL_METHOD(Sheet, setPrintFit)
 }
 /* }}} */
 
-/* {{{ proto mixed ExcelSheet::getPrintFit()
-	Returns whether fit to page option is enabled, and if so to what width & height */
 EXCEL_METHOD(Sheet, getPrintFit)
 {
 	SheetHandle sheet;
@@ -6584,8 +6632,6 @@ EXCEL_METHOD(Sheet, getPrintFit)
 }
 /* }}} */
 
-/* {{{ proto array ExcelSheet::getNamedRange(string name [, int scope_id])
-	Gets the named range coordinates by name, returns false if range is not found. */
 EXCEL_METHOD(Sheet, getNamedRange)
 {
 	SheetHandle sheet;
@@ -6617,8 +6663,6 @@ EXCEL_METHOD(Sheet, getNamedRange)
 	}
 }
 
-/* {{{ proto array ExcelSheet::getIndexRange(int index [, int scope_id])
-	Gets the named range coordinates by index, returns false if range is not found. */
 EXCEL_METHOD(Sheet, getIndexRange)
 {
 	SheetHandle sheet;
@@ -6653,16 +6697,12 @@ EXCEL_METHOD(Sheet, getIndexRange)
 }
 /* }}} */
 
-/* {{{ proto long ExcelSheet::namedRangeSize()
-	Returns the number of named ranges in the sheet. */
 EXCEL_METHOD(Sheet, namedRangeSize)
 {
 	PHP_EXCEL_INFO(NamedRangeSize, IS_LONG)
 }
 /* }}} */
 
-/* {{{ proto long ExcelSheet::getVerPageBreak(int index)
-	Returns column with vertical page break at position index. */
 EXCEL_METHOD(Sheet, getVerPageBreak)
 {
 	SheetHandle sheet;
@@ -6680,16 +6720,12 @@ EXCEL_METHOD(Sheet, getVerPageBreak)
 }
 /* }}} */
 
-/* {{{ proto long ExcelSheet::getVerPageBreakSize()
-	Returns a number of vertical page breaks in the sheet. */
 EXCEL_METHOD(Sheet, getVerPageBreakSize)
 {
 	PHP_EXCEL_INFO(GetVerPageBreakSize, IS_LONG)
 }
 /* }}} */
 
-/* {{{ proto long ExcelSheet::getHorPageBreak(int index)
-	Returns column with horizontal page break at position index. */
 EXCEL_METHOD(Sheet, getHorPageBreak)
 {
 	SheetHandle sheet;
@@ -6707,16 +6743,12 @@ EXCEL_METHOD(Sheet, getHorPageBreak)
 }
 /* }}} */
 
-/* {{{ proto long ExcelSheet::getHorPageBreakSize()
-	Returns a number of horizontal page breaks in the sheet. */
 EXCEL_METHOD(Sheet, getHorPageBreakSize)
 {
 	PHP_EXCEL_INFO(GetHorPageBreakSize, IS_LONG)
 }
 /* }}} */
 
-/* {{{ proto array ExcelSheet::getPictureInfo(int index)
-	Returns a information about a workbook picture at position index in worksheet. */
 EXCEL_METHOD(Sheet, getPictureInfo)
 {
 	SheetHandle sheet;
@@ -6750,16 +6782,12 @@ EXCEL_METHOD(Sheet, getPictureInfo)
 }
 /* }}} */
 
-/* {{{ proto long ExcelSheet::getNumPictures()
-	Returns a number of pictures in this worksheet. */
 EXCEL_METHOD(Sheet, getNumPictures)
 {
 	PHP_EXCEL_INFO(PictureSize, IS_LONG)
 }
 /* }}} */
 
-/* {{{ proto long ExcelBook::biffVersion()
-	Returns BIFF version of binary file. Used for xls format only. */
 EXCEL_METHOD(Book, biffVersion)
 {
 	BookHandle book;
@@ -6777,16 +6805,12 @@ EXCEL_METHOD(Book, biffVersion)
 }
 /* }}} */
 
-/* {{{ proto bool ExcelBook::getRefR1C1()
-	Returns whether the R1C1 reference mode is active. */
 EXCEL_METHOD(Book, getRefR1C1)
 {
 	PHP_EXCEL_BOOK_INFO(RefR1C1A, IS_BOOL)
 }
 /* }}} */
 
-/* {{{ proto void ExcelBook::setRefR1C1(bool active)
-	Sets the R1C1 reference mode. */
 EXCEL_METHOD(Book, setRefR1C1)
 {
 	BookHandle book;
@@ -6803,8 +6827,6 @@ EXCEL_METHOD(Book, setRefR1C1)
 }
 /* }}} */
 
-/* {{{ proto array ExcelBook::getPicture(int picture_index)
-	Returns a picture at position index. */
 EXCEL_METHOD(Book, getPicture)
 {
 	BookHandle book;
@@ -6844,16 +6866,12 @@ EXCEL_METHOD(Book, getPicture)
 }
 /* }}} */
 
-/* {{{ proto long ExcelBook::getNumPictures()
-	Returns a number of pictures in this workbook. */
 EXCEL_METHOD(Book, getNumPictures)
 {
 	PHP_EXCEL_BOOK_INFO(PictureSize, IS_LONG)
 }
 /* }}} */
 
-/* {{{ proto ExcelSheet ExcelBook::insertSheet(int index, string name [, ExcelSheet sh])
-	Inserts a new sheet to this book at position index, returns the sheet handle. Set initSheet to 0 if you wish to add a new empty sheet or use existing sheet's handle for copying. */
 EXCEL_METHOD(Book, insertSheet)
 {
 	BookHandle book;
@@ -6893,16 +6911,12 @@ EXCEL_METHOD(Book, insertSheet)
 }
 /* }}} */
 
-/* {{{ proto bool ExcelBook::isTemplate()
-	Returns whether the workbook is template. */
 EXCEL_METHOD(Book, isTemplate)
 {
 	PHP_EXCEL_BOOK_INFO(IsTemplate, IS_BOOL)
 }
 /* }}} */
 
-/* {{{ proto void ExcelBook::setTemplate(bool mode)
-	Sets the template flag, if the workbook is template. */
 EXCEL_METHOD(Book, setTemplate)
 {
 	BookHandle book;
@@ -6919,16 +6933,12 @@ EXCEL_METHOD(Book, setTemplate)
 }
 /* }}} */
 
-/* {{{ proto long ExcelSheet::getRightToLeft()
-	Returns whether the text is displayed in right-to-left mode: 1 - yes, 0 - no. */
 EXCEL_METHOD(Sheet, getRightToLeft)
 {
 	PHP_EXCEL_INFO(RightToLeft, IS_LONG)
 }
 /* }}} */
 
-/* {{{ proto void ExcelBook::setRightToLeft(bool mode)
-	Sets the right-to-left mode: 1 - the text is displayed in right-to-left mode, 0 - the text is displayed in left-to-right mode. */
 EXCEL_METHOD(Sheet, setRightToLeft)
 {
 	SheetHandle sheet;
@@ -6946,8 +6956,6 @@ EXCEL_METHOD(Sheet, setRightToLeft)
 }
 /* }}} */
 
-/* {{{ proto bool ExcelSheet::setPrintArea()
-	Sets the print area. */
 EXCEL_METHOD(Sheet, setPrintArea)
 {
 	zval *object = ZEND_THIS;
@@ -6975,40 +6983,30 @@ EXCEL_METHOD(Sheet, setPrintArea)
 }
 /* }}} */
 
-/* {{{ proto bool ExcelSheet::clearPrintRepeats()
-	Clears repeated rows and columns on each page. */
 EXCEL_METHOD(Sheet, clearPrintRepeats)
 {
 	PHP_EXCEL_SHEET_VOID(ClearPrintRepeats)
 }
 /* }}} */
 
-/* {{{ proto bool ExcelSheet::clearPrintArea()
-	Clears the print area. */
 EXCEL_METHOD(Sheet, clearPrintArea)
 {
 	PHP_EXCEL_SHEET_VOID(ClearPrintArea)
 }
 /* }}} */
 
-/* {{{ proto bool ExcelSheet::protect()
-	Returns whether sheet is protected: 1 - yes, 0 - no. */
 EXCEL_METHOD(Sheet, protect)
 {
 	PHP_EXCEL_INFO(Protect, IS_BOOL)
 }
 /* }}} */
 
-/* {{{ proto long ExcelSheet::hyperlinkSize()
-	Returns the number of hyperlinks in the sheet. */
 EXCEL_METHOD(Sheet, hyperlinkSize)
 {
 	PHP_EXCEL_INFO(HyperlinkSize, IS_LONG)
 }
 /* }}} */
 
-/* {{{ proto array ExcelSheet::hyperlink(int index)
-	Gets the hyperlink and its coordinates by index. */
 EXCEL_METHOD(Sheet, hyperlink)
 {
 	SheetHandle sheet;
@@ -7040,8 +7038,6 @@ EXCEL_METHOD(Sheet, hyperlink)
 }
 /* }}} */
 
-/* {{{ proto bool ExcelSheet::delHyperlink(int index)
-	Removes hyperlink by index. */
 EXCEL_METHOD(Sheet, delHyperlink)
 {
 	zval *object = ZEND_THIS;
@@ -7059,8 +7055,6 @@ EXCEL_METHOD(Sheet, delHyperlink)
 }
 /* }}} */
 
-/* {{{ proto void ExcelSheet::addHyperlink(string hyperlink, int row_first, int row_last, int col_first, int col_last)
-	Adds the new hyperlink. */
 EXCEL_METHOD(Sheet, addHyperlink)
 {
 	SheetHandle sheet;
@@ -7085,16 +7079,12 @@ EXCEL_METHOD(Sheet, addHyperlink)
 }
 /* }}} */
 
-/* {{{ proto long ExcelSheet::mergeSize()
-	Returns a number of merged cells in this worksheet. */
 EXCEL_METHOD(Sheet, mergeSize)
 {
 	PHP_EXCEL_INFO(MergeSize, IS_LONG)
 }
 /* }}} */
 
-/* {{{ proto array ExcelSheet::merge(int index)
-	Gets the merged cells by index. */
 EXCEL_METHOD(Sheet, merge)
 {
 	SheetHandle sheet;
@@ -7122,8 +7112,6 @@ EXCEL_METHOD(Sheet, merge)
 }
 /* }}} */
 
-/* {{{ proto bool ExcelSheet::delMergeByIndex(int index)
-	Removes merged cells by index. */
 EXCEL_METHOD(Sheet, delMergeByIndex)
 {
 	zval *object = ZEND_THIS;
@@ -7141,8 +7129,6 @@ EXCEL_METHOD(Sheet, delMergeByIndex)
 }
 /* }}} */
 
-/* {{{ proto bool ExcelSheet::splitInfo()
-	Gets the split information (position of frozen pane) in the sheet: row - vertical position of the split; col - horizontal position of the split. */
 EXCEL_METHOD(Sheet, splitInfo)
 {
 	SheetHandle sheet;
@@ -7163,8 +7149,6 @@ EXCEL_METHOD(Sheet, splitInfo)
 }
 /* }}} */
 
-/* {{{ proto bool ExcelSheet::rowHidden(int row)
-	Returns whether row is hidden. */
 EXCEL_METHOD(Sheet, rowHidden)
 {
 	zval *object = ZEND_THIS;
@@ -7181,8 +7165,6 @@ EXCEL_METHOD(Sheet, rowHidden)
 }
 /* }}} */
 
-/* {{{ proto bool ExcelSheet::setRowHidden(int row, bool hidden)
-	Hides row. */
 EXCEL_METHOD(Sheet, setRowHidden)
 {
 	zval *object = ZEND_THIS;
@@ -7200,8 +7182,6 @@ EXCEL_METHOD(Sheet, setRowHidden)
 }
 /* }}} */
 
-/* {{{ proto bool ExcelSheet::colHidden(int col)
-	Returns whether column is hidden. */
 EXCEL_METHOD(Sheet, colHidden)
 {
 	zval *object = ZEND_THIS;
@@ -7218,8 +7198,6 @@ EXCEL_METHOD(Sheet, colHidden)
 }
 /* }}} */
 
-/* {{{ proto bool ExcelSheet::setColHidden(int col, bool hidden)
-	Hides column. */
 EXCEL_METHOD(Sheet, setColHidden)
 {
 	zval *object = ZEND_THIS;
@@ -7237,8 +7215,6 @@ EXCEL_METHOD(Sheet, setColHidden)
 }
 /* }}} */
 
-/* {{{ proto long ExcelBook::sheetType(int sheet)
-	Returns type of sheet with specified index. */
 EXCEL_METHOD(Book, sheetType)
 {
 	zval *object = ZEND_THIS;
@@ -7256,8 +7232,6 @@ EXCEL_METHOD(Book, sheetType)
 }
 /* }}} */
 
-/* {{{ proto bool ExcelSheet::isLicensed()
-	Get license status */
 EXCEL_METHOD(Sheet, isLicensed)
 {
 	char *err;
@@ -7286,10 +7260,6 @@ EXCEL_METHOD(Sheet, isLicensed)
 }
 /* }}} */
 
-/* {{{ proto void ExcelSheet::setAutoFitArea(int rowFirst, int colFirst, int rowLast, int colLast)
-	Sets the borders for autofit column widths feature.
-	The function xlSheetSetCol() with -1 width value will
-	affect only to the specified limited area. */
 EXCEL_METHOD(Sheet, setAutoFitArea)
 {
 	zval *object = ZEND_THIS;
@@ -7327,9 +7297,6 @@ EXCEL_METHOD(Sheet, setAutoFitArea)
 }
 /* }}} */
 
-/* {{{ proto long ExcelSheet::printRepeatRows()
-	Gets repeated rows on each page from rowFirst to rowLast.
-	Returns 0 if repeated rows aren't found. */
 EXCEL_METHOD(Sheet, printRepeatRows)
 {
 	zval *object = ZEND_THIS;
@@ -7350,9 +7317,6 @@ EXCEL_METHOD(Sheet, printRepeatRows)
 }
 /* }}} */
 
-/* {{{ proto long ExcelSheet::printRepeatCols()
-	Gets repeated columns on each page from colFirst to colLast.
-	Returns 0 if repeated columns aren't found. */
 EXCEL_METHOD(Sheet, printRepeatCols)
 {
 	zval *object = ZEND_THIS;
@@ -7373,8 +7337,6 @@ EXCEL_METHOD(Sheet, printRepeatCols)
 }
 /* }}} */
 
-/* {{{ proto long ExcelSheet::printArea()
-	Gets the print area. Returns 0 if print area isn't found. */
 EXCEL_METHOD(Sheet, printArea)
 {
 	zval *object = ZEND_THIS;
@@ -7398,8 +7360,6 @@ EXCEL_METHOD(Sheet, printArea)
 /* }}} */
 
 
-/* {{{ proto void ExcelSheet::setProtect(bool protect, string password, int enhancedProtection)
-	Protects the sheet with password and enchanced parameters below. It is possible to combine a few EnhancedProtection values with operator |. */
 EXCEL_METHOD(Sheet, setProtect)
 {
 	zval *object = ZEND_THIS;
@@ -7428,8 +7388,6 @@ EXCEL_METHOD(Sheet, setProtect)
 }
 /* }}} */
 
-/* {{{ proto long ExcelSheet::table()
-	Gets the table parameters by index. */
 EXCEL_METHOD(Sheet, table)
 {
 	zval *object = ZEND_THIS;
@@ -7461,8 +7419,6 @@ EXCEL_METHOD(Sheet, table)
 }
 /* }}} */
 
-/* {{{ proto long ExcelSheet::setTabColor([int color])
-	Sets the color for the sheet's tab. */
 EXCEL_METHOD(Sheet, setTabColor)
 {
 	zval *object = ZEND_THIS;
@@ -7483,8 +7439,6 @@ EXCEL_METHOD(Sheet, setTabColor)
 }
 /* }}} */
 
-/* {{{ proto long ExcelSheet::autoFilter()
-	Returns the AutoFilter. Creates it if it doesn't exist. */
 EXCEL_METHOD(Sheet, autoFilter)
 {
 	zval *object = ZEND_THIS;
@@ -7509,8 +7463,6 @@ EXCEL_METHOD(Sheet, autoFilter)
 }
 /* }}} */
 
-/* {{{ proto long ExcelSheet::applyFilter()
-	Applies the AutoFilter to the sheet. */
 EXCEL_METHOD(Sheet, applyFilter)
 {
 	zval *object = ZEND_THIS;
@@ -7527,8 +7479,6 @@ EXCEL_METHOD(Sheet, applyFilter)
 }
 /* }}} */
 
-/* {{{ proto long ExcelSheet::removeFilter()
-	Removes the AutoFilter from the sheet. */
 EXCEL_METHOD(Sheet, removeFilter)
 {
 	zval *object = ZEND_THIS;
@@ -7546,8 +7496,6 @@ EXCEL_METHOD(Sheet, removeFilter)
 }
 /* }}} */
 
-/* {{{ proto long ExcelSheet::addIgnoredError()
-	Adds the ignored error for specified range. It allows to hide green triangles on left sides of cells. */
 EXCEL_METHOD(Sheet, addIgnoredError)
 {
 	zval *object = ZEND_THIS;
@@ -7571,8 +7519,6 @@ EXCEL_METHOD(Sheet, addIgnoredError)
 }
 /* }}} */
 
-/* {{{ proto long ExcelSheet::writeError()
-	Writes error into the cell with specified format. If format equals 0 then format is ignored. */
 EXCEL_METHOD(Sheet, writeError)
 {
 	zval *object = ZEND_THIS;
@@ -7599,8 +7545,6 @@ EXCEL_METHOD(Sheet, writeError)
 }
 /* }}} */
 
-/* {{{ proto long ExcelSheet::removeComment()
-	Removes a comment from the cell (only for xls format). */
 EXCEL_METHOD(Sheet, removeComment)
 {
 	zval *object = ZEND_THIS;
@@ -7618,8 +7562,6 @@ EXCEL_METHOD(Sheet, removeComment)
 }
 /* }}} */
 
-/* {{{ proto ExcelAutoFilter ExcelAutoFilter::__construct(ExcelSheet sheet)
-	Sheet Constructor. */
 EXCEL_METHOD(AutoFilter, __construct)
 {
 	AutoFilterHandle afh;
@@ -7650,8 +7592,6 @@ EXCEL_METHOD(AutoFilter, __construct)
 }
 /* }}} */
 
-/* {{{ proto long AutoFilter::getRef()
-	Gets the cell range of AutoFilter with header. Returns 0 if error. */
 EXCEL_METHOD(AutoFilter, getRef)
 {
 	zval *object = ZEND_THIS;
@@ -7674,8 +7614,6 @@ EXCEL_METHOD(AutoFilter, getRef)
 }
 /* }}} */
 
-/* {{{ proto long AutoFilter::setRef()
-	Sets the cell range of AutoFilter with header. */
 EXCEL_METHOD(AutoFilter, setRef)
 {
 	zval *object = ZEND_THIS;
@@ -7694,8 +7632,6 @@ EXCEL_METHOD(AutoFilter, setRef)
 }
 /* }}} */
 
-/* {{{ proto long AutoFilter::column()
-	Returns the AutoFilter column by zero-based index. Creates it if it doesn't exist. */
 EXCEL_METHOD(AutoFilter, column)
 {
 	zval *object = ZEND_THIS;
@@ -7724,8 +7660,6 @@ EXCEL_METHOD(AutoFilter, column)
 }
 /* }}} */
 
-/* {{{ proto long AutoFilter::columnSize()
-	Returns the number of specified AutoFilter columns which have a filter information. */
 EXCEL_METHOD(AutoFilter, columnSize)
 {
 	zval *object = ZEND_THIS;
@@ -7739,8 +7673,6 @@ EXCEL_METHOD(AutoFilter, columnSize)
 }
 /* }}} */
 
-/* {{{ proto long AutoFilter::columnByIndex()
-	Returns the specified AutoFilter column which have a filter information by index. */
 EXCEL_METHOD(AutoFilter, columnByIndex)
 {
 	zval *object = ZEND_THIS;
@@ -7769,8 +7701,6 @@ EXCEL_METHOD(AutoFilter, columnByIndex)
 }
 /* }}} */
 
-/* {{{ proto long AutoFilter::getSortRange()
-	Gets the whole range of data to sort. Returns 0 if error. */
 EXCEL_METHOD(AutoFilter, getSortRange)
 {
 	zval *object = ZEND_THIS;
@@ -7793,8 +7723,6 @@ EXCEL_METHOD(AutoFilter, getSortRange)
 }
 /* }}} */
 
-/* {{{ proto long AutoFilter::getSort()
-	Gets the zero-based index of sorted column in AutoFilter and its sort order. Returns 0 if error. */
 EXCEL_METHOD(AutoFilter, getSort)
 {
 	zval *object = ZEND_THIS;
@@ -7819,8 +7747,6 @@ EXCEL_METHOD(AutoFilter, getSort)
 }
 /* }}} */
 
-/* {{{ proto long AutoFilter::setSort()
-	Sets the sorted column in AutoFilter by zero-based index and its sort order. Returns 0 if error. */
 EXCEL_METHOD(AutoFilter, setSort)
 {
 	zval *object = ZEND_THIS;
@@ -7862,8 +7788,6 @@ EXCEL_METHOD(AutoFilter, addSort)
 	RETURN_BOOL(xlAutoFilterAddSort(autofilter, columnIndex, descending));
 }
 
-/* {{{ proto ExcelFilterColumn ExcelFilterColumn::__construct(ExcelAutoFilter autofilter)
-	Sheet Constructor. */
 EXCEL_METHOD(FilterColumn, __construct)
 {
 	FilterColumnHandle fch;
@@ -7910,32 +7834,24 @@ EXCEL_METHOD(FilterColumn, __construct)
 	PE_RETURN_ ## type (xlFilterColumn ## func_name (filtercolumn)); \
 }
 
-/* {{{ proto long FilterColumn::index()
-	Returns the zero-based index of this AutoFilter column. */
 EXCEL_METHOD(FilterColumn, index)
 {
 	PHP_EXCEL_FILTERCOLUMN_INFO(Index, IS_LONG)
 }
 /* }}} */
 
-/* {{{ proto long FilterColumn::filterType()
-	Returns the filter type of this AutoFilter column. */
 EXCEL_METHOD(FilterColumn, filterType)
 {
 	PHP_EXCEL_FILTERCOLUMN_INFO(FilterType, IS_LONG)
 }
 /* }}} */
 
-/* {{{ proto long FilterColumn::filterSize()
-	Returns the number of filter values. */
 EXCEL_METHOD(FilterColumn, filterSize)
 {
 	PHP_EXCEL_FILTERCOLUMN_INFO(FilterSize, IS_LONG)
 }
 /* }}} */
 
-/* {{{ proto long FilterColumn::filter()
-	Returns the filter value by index. */
 EXCEL_METHOD(FilterColumn, filter)
 {
 	zval *object = ZEND_THIS;
@@ -7958,8 +7874,6 @@ EXCEL_METHOD(FilterColumn, filter)
 }
 /* }}} */
 
-/* {{{ proto long FilterColumn::addFilter()
-	Adds the filter value. */
 EXCEL_METHOD(FilterColumn, addFilter)
 {
 	zval *object = ZEND_THIS;
@@ -7980,8 +7894,6 @@ EXCEL_METHOD(FilterColumn, addFilter)
 }
 /* }}} */
 
-/* {{{ proto long FilterColumn::getTop10()
-	Gets the number of top or bottom items: */
 EXCEL_METHOD(FilterColumn, getTop10)
 {
 	zval *object = ZEND_THIS;
@@ -8004,8 +7916,6 @@ EXCEL_METHOD(FilterColumn, getTop10)
 }
 /* }}} */
 
-/* {{{ proto long FilterColumn::setTop10()
-	Sets the number of top or bottom items: */
 EXCEL_METHOD(FilterColumn, setTop10)
 {
 	zval *object = ZEND_THIS;
@@ -8026,8 +7936,6 @@ EXCEL_METHOD(FilterColumn, setTop10)
 }
 /* }}} */
 
-/* {{{ proto long FilterColumn::getCustomFilter()
-	Gets the custom filter criteria: */
 EXCEL_METHOD(FilterColumn, getCustomFilter)
 {
 	zval *object = ZEND_THIS;
@@ -8052,8 +7960,6 @@ EXCEL_METHOD(FilterColumn, getCustomFilter)
 }
 /* }}} */
 
-/* {{{ proto long FilterColumn::setCustomFilter()
-	Sets the custom filter criteria: */
 EXCEL_METHOD(FilterColumn, setCustomFilter)
 {
 	zval *object = ZEND_THIS;
@@ -8092,8 +7998,6 @@ EXCEL_METHOD(FilterColumn, setCustomFilter)
 }
 /* }}} */
 
-/* {{{ proto long FilterColumn::clear()
-	Clear the filter criteria. */
 EXCEL_METHOD(FilterColumn, clear)
 {
 	zval *object = ZEND_THIS;
@@ -8109,8 +8013,6 @@ EXCEL_METHOD(FilterColumn, clear)
 }
 /* }}} */
 
-/* {{{ proto long ExcelBook::addPictureAsLink(str filename, bool insert)
-	Adds a picture to the workbook as link (only for xlsx files) */
 EXCEL_METHOD(Book, addPictureAsLink)
 {
 	zval *object = ZEND_THIS;
@@ -8147,8 +8049,6 @@ EXCEL_METHOD(Book, addPictureAsLink)
 }
 /* }}} */
 
-/* {{{ proto bool ExcelBook::moveSheet(int src_index, int dest_index)
-	Moves a sheet with specified index to a new position. Returns 0 if error occurs. */
 EXCEL_METHOD(Book, moveSheet)
 {
 	BookHandle book;
@@ -8176,8 +8076,6 @@ EXCEL_METHOD(Book, moveSheet)
 }
 /* }}} */
 
-/* {{{ proto bool Sheet::addDataValidation()
-	Adds a data validation for the specified range (only for xlsx files). */
 EXCEL_METHOD(Sheet, addDataValidation)
 {
 	zval *object = ZEND_THIS;
@@ -8234,9 +8132,6 @@ EXCEL_METHOD(Sheet, addDataValidation)
 }
 /* }}} */
 
-/* {{{ proto bool Sheet::addDataValidationDouble()
-	Adds a data validation for the specified range with double or date values for the relational operator
-	(only for xlsx files). See parameters in the xlSheetAddDataValidation() method. */
 EXCEL_METHOD(Sheet, addDataValidationDouble)
 {
 	zval *object = ZEND_THIS;
@@ -8304,8 +8199,6 @@ EXCEL_METHOD(Sheet, addDataValidationDouble)
 }
 /* }}} */
 
-/* {{{ proto bool Sheet::removeDataValidations()
-	Removes all data validations for the sheet (only for xlsx files). */
 EXCEL_METHOD(Sheet, removeDataValidations)
 {
 	PHP_EXCEL_SHEET_VOID(RemoveDataValidations)
@@ -8313,16 +8206,12 @@ EXCEL_METHOD(Sheet, removeDataValidations)
 /* }}} */
 
 #if LIBXL_VERSION >= 0x05020000
-/* {{{ proto int Sheet::dataValidationSize()
-	Returns the number of data validations in the sheet (only for xlsx files). */
 EXCEL_METHOD(Sheet, dataValidationSize)
 {
 	PHP_EXCEL_INFO(DataValidationSize, IS_LONG)
 }
 /* }}} */
 
-/* {{{ proto array Sheet::dataValidation(int $index)
-	Returns the data validation at the zero-based index (only for xlsx files). */
 EXCEL_METHOD(Sheet, dataValidation)
 {
 	zval *object = ZEND_THIS;

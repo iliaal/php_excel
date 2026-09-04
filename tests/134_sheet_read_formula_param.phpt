@@ -13,7 +13,7 @@ $sheet->write(1, 2, "hello");
 $sheet->write(2, 0, "=100+1");
 $sheet->write(3, 0, "=200+2");
 
-$tmp = tempnam("/tmp", "xl_formula_") . ".xlsx";
+$tmp = tempnam(sys_get_temp_dir(), "xl_formula_") . ".xlsx";
 $book->save($tmp);
 
 $book2 = new ExcelBook(null, null, true);

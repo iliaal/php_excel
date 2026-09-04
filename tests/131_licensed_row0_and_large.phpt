@@ -3,7 +3,7 @@ Licensed: row 0 access and large cell count (>300)
 --EXTENSIONS--
 excel
 --SKIPIF--
-<?php if (!ExcelBook::requiresKey() || !ini_get("excel.license_name") || !ini_get("excel.license_key")) print "skip"; ?>
+<?php if (!extension_loaded("excel") || !ExcelBook::requiresKey() || !ini_get("excel.license_name") || !ini_get("excel.license_key")) print "skip"; ?>
 --FILE--
 <?php
 $book = new ExcelBook(null, null, true);
@@ -44,7 +44,7 @@ for ($r = 1; $r <= 50; $r++) {
 echo "read back $count cells\n";
 
 // Save/reload and verify row 0 persists
-$tmp = tempnam("/tmp", "xl") . ".xlsx";
+$tmp = tempnam(sys_get_temp_dir(), "xl") . ".xlsx";
 $book->save($tmp);
 
 $book2 = new ExcelBook(null, null, true);

@@ -80,9 +80,13 @@ jobs:
       matrix:
         php: ['8.1', '8.2', '8.3', '8.4', '8.5']
         libxl: ['5.2.0.1']
+        # Non-ceiling libxl lanes are build-only: the Run tests step below
+        # runs only on the ceiling (5.2.0.1) lane.
         include:
           - php: '8.4'
             libxl: '4.6.0'
+          - php: '8.4'
+            libxl: '5.1.0'
     env:
       LIBXL_VERSION: ${{ matrix.libxl }}
       WORKSPACE: ${{ github.workspace }}
@@ -165,6 +169,40 @@ jobs:
             echo "::error::No PHPT tests passed"
             exit 1
           fi
+
+  stub-freshness:
+    name: Stub freshness (PHP ${{ matrix.php }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # Floor/ceiling only: regen output is PHP-version independent, so
+        # exercising the oldest and newest supported runtimes is enough.
+        php: ['8.1', '8.5']
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # master
+        with:
+          php-version: ${{ matrix.php }}
+          # gen_stub.php tokenizes the stub; tokenizer is core but make the
+          # dependency explicit so a slim PHP never fails this job oddly.
+          extensions: tokenizer
+          coverage: none
+
+      - name: Fetch gen_stub.php
+        # excel_arginfo.h is generated with php-src master gen_stub.php, so
+        # fetch that same generator instead of pinning a stale copy.
+        run: |
+          curl -fsSL "https://raw.githubusercontent.com/php/php-src/master/build/gen_stub.php" -o /tmp/gen_stub.php
+
+      - name: Verify excel_arginfo.h is up to date
+        run: |
+          php /tmp/gen_stub.php excel.stub.php
+          git diff --exit-code -- excel_arginfo.h
 
   linux-zts:
     name: PHP ${{ matrix.php }} ZTS - Linux (canary)

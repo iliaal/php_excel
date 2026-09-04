@@ -177,6 +177,7 @@ class ExcelSheet
 	/**
 	* Read data from a specific cell
 	*
+	* @note For bulk reads prefer readRange()/readRow()/readCol() over per-cell read() loops; each read() call pays full engine dispatch per cell.
 	* @param int $row 0-based row number
 	* @param int $column 0-based column number
 	* @param mixed &$format (optional, default=null) ExcelFormat object will be assigned here
@@ -190,6 +191,7 @@ class ExcelSheet
 	/**
 	* Read an entire row worth of data
 	*
+	* @note For rectangular bulk reads prefer readRange() over repeated read()/readRow() calls; one call avoids per-cell PHP dispatch.
 	* @param int $row 0-based row number
 	* @param int $start_col (optional, default=0)
 	* @param int $end_column (optional, default=-1)
@@ -203,6 +205,7 @@ class ExcelSheet
 	/**
 	* Read an entire column worth of data
 	*
+	* @note For rectangular bulk reads prefer readRange() over repeated read()/readCol() calls; one call avoids per-cell PHP dispatch.
 	* @param int $column 0-based column number
 	* @param int $start_row (optional, default=0)
 	* @param int $end_row (optional, default=-1)
@@ -256,6 +259,8 @@ class ExcelSheet
 	/**
 	* Write data into a cell
 	*
+	* @note Spelling split: this method names the type parameter $datatype, while writeRow()/writeCol() name it $data_type. Use positional args or the matching name per method; cross-method named-arg reuse fatals.
+	* @note Formula injection: a string starting with `=` becomes a live formula unless an explicit dtype (e.g. ExcelFormat::AS_TEXT) is passed; never pass untrusted input without a dtype. See SECURITY.md.
 	* @param int $row 0-based row number
 	* @param int $column 0-based column number
 	* @param mixed $data
@@ -270,6 +275,9 @@ class ExcelSheet
 	/**
 	* Write an array of values into a row
 	*
+	* @note Spelling split: writeRow()/writeCol() name the type parameter $data_type, while write() names it $datatype. Use positional args or the matching name per method; cross-method named-arg reuse fatals.
+	* @note Non-atomic on libxl-side failure: values rejected by PHP-side validation (bad type, embedded NUL, unpackable AS_DATE) reject the whole row before any cell is written, but a failure inside libxl (e.g. exhausted style table) can leave earlier cells committed.
+	* @note Formula injection: a string starting with `=` becomes a live formula unless an explicit dtype (e.g. ExcelFormat::AS_TEXT) is passed; never pass untrusted input without a dtype. See SECURITY.md.
 	* @param int $row 0-based row number
 	* @param array $data
 	* @param int $start_column (optional, default=0)
@@ -284,6 +292,9 @@ class ExcelSheet
 	/**
 	* Write an array of values into a column
 	*
+	* @note Spelling split: writeRow()/writeCol() name the type parameter $data_type, while write() names it $datatype. Use positional args or the matching name per method; cross-method named-arg reuse fatals.
+	* @note Non-atomic on libxl-side failure: values rejected by PHP-side validation (bad type, embedded NUL, unpackable AS_DATE) reject the whole column before any cell is written, but a failure inside libxl (e.g. exhausted style table) can leave earlier cells committed.
+	* @note Formula injection: a string starting with `=` becomes a live formula unless an explicit dtype (e.g. ExcelFormat::AS_TEXT) is passed; never pass untrusted input without a dtype. See SECURITY.md.
 	* @param int $column 0-based column number
 	* @param array $data
 	* @param int $start_row (optional, default=0)
@@ -1314,6 +1325,7 @@ class ExcelSheet
 	/**
 	* Adds the new hyperlink
 	*
+	* @note The string is stored verbatim as an external relationship; validate the scheme (e.g. allow only `https:`/`mailto:`) and never store untrusted strings.
 	* @param string $hyperlink
 	* @param int $row_first 0-based
 	* @param int $row_last 0-based
@@ -1946,7 +1958,8 @@ class ExcelSheet
 	/**
 	* Adds conditional formatting to the sheet
 	*
-	* @since libxl 4.6.0; with libxl 4.6.0 through 5.0.x, call this method
+	* @since libxl 5.1.0 for the four-argument range form below.
+	* @note Dual arity: with libxl 4.6.0 through 5.0.x, call this method
 	*        with no arguments and add ranges through ExcelConditionalFormatting::addRange().
 	*        LibXL 5.1.0+ requires the four range parameters shown below.
 	* @param int $rowFirst 0-based first row

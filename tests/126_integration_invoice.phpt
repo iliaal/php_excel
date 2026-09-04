@@ -65,7 +65,7 @@ $fmt->numberFormat($customFmt);
 $sheet2->write(1, 0, 25.718, $fmt);
 
 // Save
-$tmp = tempnam("/tmp", "xl") . ".xlsx";
+$tmp = tempnam(sys_get_temp_dir(), "xl") . ".xlsx";
 var_dump($book->save($tmp));
 echo "sheetCount: " . $book->sheetCount() . "\n";
 
