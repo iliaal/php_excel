@@ -1,5 +1,5 @@
 --TEST--
-CR-009: explicit dtype mismatches are rejected instead of silent wrong-type writes
+Explicit dtype mismatches are rejected instead of silent wrong-type writes
 --EXTENSIONS--
 excel
 --FILE--

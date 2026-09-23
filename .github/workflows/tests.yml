@@ -291,12 +291,9 @@ jobs:
         php: ['8.4']
 
     env:
-      # detect_leaks=1 pinned explicitly. LSan's default is on under
-      # Linux ASan; pinning prevents a future ASAN_OPTIONS edit from
-      # silently flipping it. Known-good leaks from the vendored libxl
-      # SDK (if any surface) go in .github/lsan-suppressions.txt;
-      # prefer narrow suppressions over blanket detect_leaks=0. See
-      # ~/ai/wiki/debugging/asan-php-extension.md.
+      # detect_leaks=1 is LSan's Linux default; pinning it keeps a future
+      # ASAN_OPTIONS edit from turning it off. Known-good libxl leaks go in
+      # .github/lsan-suppressions.txt, not detect_leaks=0.
       ASAN_OPTIONS: exitcode=139:verify_asan_link_order=0:detect_odr_violation=0:detect_leaks=1
       UBSAN_OPTIONS: print_stacktrace=1
       USE_ZEND_ALLOC: 0

@@ -1,5 +1,5 @@
 --TEST--
-CR-002 loadPartially/loadFilePartially surface libxl error on failure
+loadPartially/loadFilePartially surface libxl error on failure
 --SKIPIF--
 <?php
 if (!extension_loaded('excel')) die('skip excel missing');

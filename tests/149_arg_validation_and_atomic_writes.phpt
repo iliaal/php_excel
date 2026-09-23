@@ -14,7 +14,7 @@ if ((new ReflectionMethod("ExcelSheet", "addConditionalFormatting"))->getNumberO
 $b = new ExcelBook(null, null, true);
 $s = $b->addSheet("S");
 
-// CR-001: scalar format must raise TypeError, not crash
+// Scalar format must raise TypeError, not crash
 foreach ([
     "setColWidth"  => fn() => $s->setColWidth(0, 5, 10.0, false, "not a format"),
     "setRowHeight" => fn() => $s->setRowHeight(1, 15.0, "not a format"),
@@ -23,7 +23,7 @@ foreach ([
     catch (TypeError $e) { echo "$name: TypeError\n"; }
 }
 
-// CR-002: stale object arguments must be detected before libxl call
+// Stale object arguments must be detected before libxl call
 $staleSheet = $s;
 $staleAF = $staleSheet->autoFilter();
 $staleRS = $b->addRichString();
@@ -42,7 +42,7 @@ var_dump(@$s2->writeRichStr(1, 0, $staleRS));
 $cfing2 = $s2->addConditionalFormatting(1, 3, 0, 0);
 var_dump(@$cfing2->addRule(1, $staleCF, "A1"));
 
-// CR-003: moveSheet must invalidate sheet wrappers
+// moveSheet must invalidate sheet wrappers
 $b = new ExcelBook(null, null, true);
 $a = $b->addSheet("A");
 $bs = $b->addSheet("B");
@@ -62,7 +62,7 @@ $b->deleteSheet(0);
 echo "format after delete: "; var_dump($fmt->numberFormat() === ExcelFormat::NUMFORMAT_TEXT);
 echo "font after delete: "; var_dump(is_int($font->size()));
 
-// CR-004: writeRow / writeCol must reject overflowing run before any write
+// writeRow / writeCol must reject overflowing run before any write
 $xls = new ExcelBook();
 $xs = $xls->addSheet("X");
 var_dump(@$xs->writeRow(1, ["a", "b"], 255));   // start col 255, 2 cells -> 256 (>255)
@@ -72,7 +72,7 @@ var_dump(@$xs->writeCol(0, ["a", "b"], 65535)); // start row 65535, 2 cells -> 6
 echo "cell at start: ";
 var_dump($xs->read(65535, 0));
 
-// Re-scan CR-001: extreme starts must not trigger signed overflow.
+// Extreme starts must not trigger signed overflow.
 // Validate-start-then-capacity ordering keeps the (max - start) math
 // safe under UBSan even for PHP_INT_MIN / PHP_INT_MAX inputs.
 var_dump(@$xs->writeRow(1, [], PHP_INT_MIN));
@@ -81,11 +81,11 @@ var_dump(@$xs->writeRow(1, ["a", "b"], PHP_INT_MAX));
 var_dump(@$xs->writeCol(0, ["a", "b"], PHP_INT_MIN));
 var_dump(@$xs->writeCol(0, ["a", "b"], PHP_INT_MAX));
 
-// Re-scan CR-002: writeCol's first arg is a column, not a row.
+// writeCol's first arg is a column, not a row.
 $r = new ReflectionMethod(ExcelSheet::class, "writeCol");
 echo "writeCol[0]: " . $r->getParameters()[0]->getName() . "\n";
 
-// CR-006: nullable parameters must accept explicit null
+// Nullable parameters must accept explicit null
 $bookN = new ExcelBook(null, null, true);
 var_dump($bookN->addFont(null) instanceof ExcelFont);
 var_dump($bookN->addFormat(null) instanceof ExcelFormat);

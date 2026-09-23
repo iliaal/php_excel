@@ -77,7 +77,7 @@ var_dump(@$s->groupCols(0, PHP_INT_MAX));
 var_dump(@$s->setAutoFitArea(PHP_INT_MAX, 0, 0, 0));
 var_dump(@$s->addIgnoredError(0, 0, 0, PHP_INT_MAX, 0));
 
-// XLS book — 70000 row out of XLS range
+// XLS book: 70000 row out of XLS range
 $xls = new ExcelBook();
 $xs = $xls->addSheet("X");
 var_dump(@$xs->colWidth(300));   // 300 > 255 col limit on XLS
@@ -85,18 +85,18 @@ var_dump(@$xs->rowHeight(70000));// 70000 > 65535 row limit on XLS
 var_dump(@$xs->setRowHidden(70000, true));
 var_dump(@$xs->setColHidden(300, true));
 
-// Page-break coordinate validation (CR-002)
+// Page-break coordinate validation
 var_dump(@$s->horPageBreak(1048576, true));   // XLSX: row > max
 var_dump(@$s->verPageBreak(16384, true));     // XLSX: col > max
 var_dump(@$xs->horPageBreak(70000, true));    // XLS: row > max
 var_dump(@$xs->verPageBreak(300, true));      // XLS: col > max
 
-// addHyperlink workbook-aware (CR-003)
+// addHyperlink workbook-aware
 var_dump(@$s->addHyperlink("http://x", 1048576, 1048576, 0, 0));  // XLSX: row > max
 var_dump(@$xs->addHyperlink("http://x", 70000, 70000, 0, 0));     // XLS: row > max
 var_dump(@$xs->addHyperlink("http://x", 0, 0, 300, 300));         // XLS: col > max
 
-// ExcelConditionalFormatting::__construct on 5.1.0+ now throws on bad coords (CR-001)
+// ExcelConditionalFormatting::__construct on 5.1.0+ now throws on bad coords
 if (method_exists("ExcelBook", "conditionalFormatSize")) {
     $sheet2 = $b->addSheet("CF");
     try {

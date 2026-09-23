@@ -3,7 +3,7 @@ Stream-path save() does not destroy the destination on a short write
 --EXTENSIONS--
 excel
 --DESCRIPTION--
-CR-001: the stream-path save() opened the destination with "wb" (truncating)
+The stream-path save() opened the destination with "wb" (truncating)
 and then wrote; a short write (disk full / interrupted) left the caller's file
 destroyed. save() now stages the buffer to a sibling temp URL and renames it
 into place, so a failed write leaves the existing file untouched.

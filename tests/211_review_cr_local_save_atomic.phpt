@@ -1,5 +1,5 @@
 --TEST--
-CR-006: plain local save stages via SaveRaw and preserves destination on failure
+Plain local save stages via SaveRaw and preserves destination on failure
 --EXTENSIONS--
 excel
 --FILE--

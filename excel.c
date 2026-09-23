@@ -60,19 +60,13 @@ static zend_always_inline zend_class_entry *zend_register_internal_class_with_fl
 }
 #endif
 
-/* DEFERRED decomposition (deliberately not done at stable 2.7.0):
- * - full 5-file split of this translation unit (book/sheet/format+font/
- *   helpers/glue): the 12 classes share the generation-guard macros, the
- *   bulk read/write helpers, and the save-phase helpers below. Splitting
- *   would trade one self-contained unit for cross-file static linkage and
- *   wider review surface, for no user-visible gain.
- * - generation-ladder collapse (one counter instead of generation,
- *   sheet_generation, autofilter/conditional_formatting generations):
- *   collapsing would re-couple handle families that fail independently
- *   today (e.g. sheet-topology changes must not invalidate formats).
- * - docs-from-stub generation: the docs directory carries hand-written descriptions
- *   the stub cannot reproduce; generating them would lose content.
- * Kept as a single unit until a behavior change forces the split. */
+/* Deliberately not done:
+ * - Splitting this file: the 12 classes share the generation-guard macros
+ *   and the bulk read/write and save helpers below.
+ * - One generation counter instead of several: handle families must fail
+ *   independently (sheet-topology changes must not invalidate formats).
+ * - Generating docs/ from the stub: docs/ has hand-written descriptions
+ *   the stub cannot carry. */
 
 #define PHP_EXCEL_DATE 1
 #define PHP_EXCEL_FORMULA 2
@@ -539,7 +533,7 @@ static inline excel_book_object *php_excel_resolve_book_obj(zval *parent_zv) {
 }
 
 /* libxl Format/Font/RichString/AutoFilter/ConditionalFormat handles are scoped
- * to the workbook that created them — they index into that book's internal
+ * to the workbook that created them and index into that book's internal
  * tables. Applying one to a different workbook's sheet/cell/rule silently
  * produces wrong output and dangles once the source book is freed. Reject a
  * child-wrapper argument whose owning book differs from the target's. Returns 1
@@ -844,7 +838,7 @@ static inline int php_excel_book_reset_state(zval *book_zv) {
 	return 1;
 }
 
-/* Reload contract (CR-002): every load* path verifies into a scratch handle
+/* Reload contract: every load* path verifies into a scratch handle
  * and adopts it only on success. A failed reload leaves the live BookHandle,
  * all generation counters, and default_date_format untouched, so existing
  * child wrappers keep working against the previous workbook. Generations
@@ -938,9 +932,9 @@ static int php_excel_book_commit_scratch(zval *object, BookHandle scratch)
 		} \
 	}
 
-/* Throw-on-stale variant for code paths that cannot use RETURN_FALSE — most
- * importantly clone handlers, which must always produce an object and signal
- * failure via exception. Returns 1 on valid, 0 (and throws) on stale. Shares
+/* Throw-on-stale variant for code paths that cannot use RETURN_FALSE, such
+ * as clone handlers, which must always produce an object and signal failure
+ * via exception. Returns 1 on valid, 0 (and throws) on stale. Shares
  * matchers with the warn-path helpers above. */
 static inline int php_excel_check_book_generation_throw(zval *parent_zv, uint64_t stamped) {
 	excel_book_object *b = php_excel_resolve_book_obj(parent_zv);
@@ -1641,7 +1635,7 @@ static zend_always_inline bool php_excel_validate_scope(zend_long arg)
 #define EXCEL_MAX_COL_XLS  255
 #define PHP_EXCEL_MAX_RANGE_CELLS 1048576
 
-/* Unresolvable parent falls back to XLS limits (same as the prior macros). */
+/* Unresolvable parent falls back to XLS limits. */
 static zend_always_inline void php_excel_book_coord_limits(
 	excel_book_object *vb, zend_long *maxr, zend_long *maxc)
 {
@@ -2199,7 +2193,7 @@ static zend_string *php_excel_save_raw(BookHandle book, zval *object)
 
 /* Stream out an already-materialized workbook. Takes ownership of
  * owned_contents (released on every path) and always RETURNs. Stream writes
- * stay blocking — the streams API offers no write-timeout knob — so every
+ * stay blocking because the streams API has no write-timeout knob, so every
  * write/flush/close step below checks EG(exception) to abort promptly on
  * executor interruption. */
 static void php_excel_save_to_stream(INTERNAL_FUNCTION_PARAMETERS, zend_string *owned_contents, zend_string *filename_zs, unsigned int len)
@@ -2803,8 +2797,6 @@ EXCEL_METHOD(Book, packDateValues)
 		RETURN_FALSE;
 	}
 
-	// if it is a date or just a time - hout, min & sec must be checked
-
 	if (hour < 0 || hour > 23) {
 		php_error_docref(NULL, E_WARNING, "Invalid '" ZEND_LONG_FMT "' value for hour", hour);
 		RETURN_FALSE;
@@ -2818,8 +2810,7 @@ EXCEL_METHOD(Book, packDateValues)
 		RETURN_FALSE;
 	}
 
-	// check date only if there are values
-	// is every value=0 - it's okay for generating a time
+	// all-zero date fields generate a time-only value
 	if (year != 0 || month != 0 || day != 0) {
 		if (year < 1 || year > INT_MAX) {
 			php_error_docref(NULL, E_WARNING, "Invalid '" ZEND_LONG_FMT "' value for year", year);
@@ -3042,7 +3033,7 @@ EXCEL_METHOD(Book, __construct)
 	}
 
 	/* Reject NUL-bearing license arguments before creating the libxl book.
-	 * PHP ignores constructor return values, so we throw — otherwise the
+	 * PHP ignores constructor return values, so throw; otherwise the
 	 * caller would get a usable workbook back from rejected input. */
 	if ((name && name_len != strlen(name)) || (key && key_len != strlen(key))) {
 		zend_throw_exception(NULL, "License name/key must not contain NUL bytes", 0);
@@ -3108,8 +3099,7 @@ EXCEL_METHOD(Book, __construct)
 	 * (passed explicitly, or sourced from the INI settings above). A
 	 * missing license is not a construction error: the workbook has
 	 * already been created and is usable, and PHP ignores constructor
-	 * return values anyway -- the previous RETURN_FALSE here was dead,
-	 * misleading code. Explicitly-passed NUL-bearing arguments are
+	 * return values anyway. Explicitly-passed NUL-bearing arguments are
 	 * already rejected at the top of the constructor; INI-sourced values
 	 * are NUL-free by construction (their length came from strlen()). */
 	if (name && name_len >= 1 && key && key_len >= 1) {
@@ -3736,7 +3726,7 @@ EXCEL_METHOD(Font, size)
 }
 /* }}} */
 
-/* Font long/bool option helpers — same pattern as Format options.
+/* Font long/bool option helpers, same pattern as Format options.
  * size() and name() stay hand-written (size rejects <=0; name is string). */
 #define PHP_EXCEL_LONG_FONT_OPTION(method_name, api_name) \
 	{ \
@@ -3819,8 +3809,8 @@ EXCEL_METHOD(Font, name)
 	FontHandle font;
 	zend_string *name_zs = NULL;
 
-	/* null = getter; previously `|S` weak-coerced null to "" and reset
-	 * the font name to empty (e.g. name(null) reset "Arial" -> ""). */
+	/* null = getter; `|S` would weak-coerce null to "" and reset the
+	 * font name to empty. */
 	ZEND_PARSE_PARAMETERS_START(0, 1)
 		Z_PARAM_OPTIONAL
 		Z_PARAM_STR_OR_NULL(name_zs)
@@ -3952,10 +3942,8 @@ EXCEL_METHOD(Format, getFont)
 /* }}} */
 
 /* Optional-setter macro: null or omitted => getter. Any int => setter,
- * range-checked against the libxl int boundary. Without LONG_OR_NULL the
- * stub-declared `mixed = null` got coerced to 0 and silently mutated the
- * underlying format slot to 0 (e.g. numberFormat(null) reset format 7 -> 0).
- */
+ * range-checked against the libxl int boundary. LONG_OR_NULL keeps null
+ * from coercing to 0 and resetting the format slot. */
 #define PHP_EXCEL_LONG_FORMAT_OPTION(func_name) \
 	{ \
 		FormatHandle format; \
@@ -4322,7 +4310,7 @@ EXCEL_METHOD(Sheet, setCellFormat)
 
 /* Returns 1 on success, 0 on failure (caller may use xlBookErrorMessage),
  * -1 when date→timestamp conversion failed (caller should use a dedicated
- * message — the book error is unrelated).
+ * message, since the book error is unrelated).
  *
  * `format` is always a valid out-param: libxl rejects a NULL format in its
  * Read* calls, so every bulk reader passes a local handle even though only
@@ -4844,8 +4832,8 @@ EXCEL_METHOD(Sheet, read)
 		RETURN_FALSE;
 	}
 
-	/* Resolve the owning book once and reuse it for the coordinate limits and
-	 * the stale-generation check (previously two parent-chain walks). */
+	/* Resolve the owning book once for the coordinate limits and the
+	 * stale-generation check. */
 	book_obj = php_excel_resolve_book_obj(object);
 	EXCEL_VALIDATE_ROW_COL_PR(row, col, book_obj);
 
@@ -5014,8 +5002,8 @@ try_again:
  * the writeRow/writeCol pre-scan already proved
  * php_excel_cell_value_rejection() returns NULL for the same (value, dtype)
  * pair, so the PHP-side rejections below are skipped. Not a general
- * shortcut: callers must pre-scan with no userland in between (guaranteed —
- * plain-array traversal runs no user code), and libxl-side failures still
+ * shortcut: callers must pre-scan with no userland in between (plain-array
+ * traversal runs no user code), and libxl-side failures still
  * return 0 through the same paths. */
 static bool php_excel_write_cell_impl(SheetHandle sheet, excel_book_object *book_obj, int row, int col, zval *data, FormatHandle format, zend_long dtype, bool prevalidated)
 {
@@ -5158,9 +5146,8 @@ EXCEL_METHOD(Sheet, write)
 		RETURN_FALSE;
 	}
 
-	/* Resolve the owning book once and reuse it for the coordinate limits, the
-	 * stale-generation check, and the write (previously three separate
-	 * parent-chain walks per single-cell write). */
+	/* Resolve the owning book once for the coordinate limits, the
+	 * stale-generation check, and the write. */
 	book_obj = php_excel_resolve_book_obj(object);
 	EXCEL_VALIDATE_ROW_COL_PR(row, col, book_obj);
 
@@ -6835,9 +6822,8 @@ EXCEL_METHOD(Book, getPicture)
 	int type;
 	const char *buf;
 	unsigned int buf_len;
-	/* PICTURETYPE_* and PICTURETYPE_ERROR come from libxl's own enum PictureType
-	 * (enum.h); a local shadowing copy could drift from the constants MINIT
-	 * registers, so it was removed. */
+	/* PICTURETYPE_* come from libxl's enum PictureType (enum.h); don't add a
+	 * local copy, it could drift from the constants MINIT registers. */
 
 	if (zend_parse_parameters(ZEND_NUM_ARGS(), "l", &index) == FAILURE) {
 		RETURN_FALSE;

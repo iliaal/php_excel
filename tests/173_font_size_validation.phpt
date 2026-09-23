@@ -3,7 +3,7 @@ ExcelFont::size() rejects a non-positive size instead of silently acting as a ge
 --EXTENSIONS--
 excel
 --DESCRIPTION--
-CR-021: size(0) / size(negative) passed the setter guard's `size > 0` test and
+size(0) / size(negative) passed the setter guard's `size > 0` test and
 fell through to the getter, silently returning the current size with no signal
 that the set was ignored. An explicit non-positive size is now rejected
 (warning + false), while getter mode (no argument / null) and valid sizes work.

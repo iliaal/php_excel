@@ -38,8 +38,6 @@ ZEND_TSRMLS_CACHE_EXTERN()
 #define PHP_EXCEL_API
 #endif
 
-/* Removed: PHP_EXCEL_ERROR_HANDLING / PHP_EXCEL_RESTORE_ERRORS -- dead code since PHP 8.0 */
-
 /* The zend_register_internal_class_with_flags() polyfill for PHP < 8.4 lives
  * in excel.c (static); this header must not emit definitions. */
 

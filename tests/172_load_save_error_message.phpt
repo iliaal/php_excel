@@ -3,7 +3,7 @@ load() / loadFile() / save() surface the libxl error message on failure
 --EXTENSIONS--
 excel
 --DESCRIPTION--
-CR-019: load and save previously returned a bare false on libxl failure with
+Load and save previously returned a bare false on libxl failure with
 no diagnostic, unlike Sheet::write which surfaces xlBookErrorMessage(). They
 now emit an E_WARNING carrying the underlying libxl error so failures are
 diagnosable without a separate getError() call.
@@ -31,7 +31,7 @@ foreach (["load", "loadFile", "save"] as $i => $op) {
     $w = $warnings[$i] ?? "";
     $expect = $op === "save" ? "Failed to save workbook:" : "Failed to load workbook:";
     // save may fail at stream open (after SaveRaw) with a staged path diagnostic,
-    // or at SaveRaw with an embedded libxl message — both start with the same prefix.
+    // or at SaveRaw with an embedded libxl message; both start with the same prefix.
     echo "$op warning carries libxl error: " .
         var_export(str_contains($w, $expect) && strlen($w) > strlen($expect) + 5, true) . "\n";
 }

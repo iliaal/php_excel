@@ -3,7 +3,7 @@ writeRow / writeCol are all-or-nothing on a PHP-side value error (no partial com
 --EXTENSIONS--
 excel
 --DESCRIPTION--
-CR-009: a bad element mid-array (unsupported type, embedded NUL) aborted the
+A bad element mid-array (unsupported type, embedded NUL) aborted the
 write loop after earlier cells were already committed. A pre-scan now rejects
 the whole row/column up front so no cell is modified. The column-overflow
 preflight (test 149) stays atomic; libxl-side failures remain out of scope.

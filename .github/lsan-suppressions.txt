@@ -1,28 +1,19 @@
 # LeakSanitizer suppressions for php_excel CI.
 #
-# Format: "leak:<substring>" — substring must appear in any frame of
-# the leak's stack trace.
-#
-# This file is intentionally empty at landing — php_excel's leak surface
-# has not surfaced any process-lifetime allocations under the ASan
-# CI job to date. Entries are added narrowly as known-good leaks are
-# identified (e.g. vendored-library MINIT singletons). Prefer adding
-# a narrow entry here over flipping ASAN_OPTIONS detect_leaks=0 in
-# .github/workflows/tests.yml — see
-# ~/ai/wiki/debugging/asan-php-extension.md for the recipe.
+# Format: "leak:<substring>", where the substring must appear in some frame
+# of the leak's stack trace. Add narrow entries here rather than setting
+# ASAN_OPTIONS detect_leaks=0 in .github/workflows/tests.yml; see
+# ~/ai/wiki/debugging/asan-php-extension.md.
 #
 # To audit a new leak locally:
 #   ASAN_OPTIONS=detect_leaks=1 LSAN_OPTIONS=fast_unwind_on_malloc=0 \
 #     <asan-php> -d extension=php_excel.so -r '<repro>'
 
 # libxl 5.2.0's xlTableRemoveFilter() leaks 72 bytes per call inside the SDK
-# (operator new in libxl.so, not freed at xlBookRelease). Confirmed with a
-# pure-C repro that never touches the extension, so it is a vendor bug, not an
-# extension-side missing free — our ExcelTable::removeFilter() binding only
-# calls the void libxl function and has no handle to release. libxl is shipped
-# stripped (frames are bare libxl.so+offset with no symbol), so the narrowest
-# practical match is the library name. This file is applied only to the two
-# PHPTs that exercise the affected vendor call; the main ASan suite runs with
-# no LSan suppression. Reported to libxl support; remove this entry once a
-# fixed SDK ships.
+# (operator new in libxl.so, not freed at xlBookRelease); a pure-C repro
+# confirms it. ExcelTable::removeFilter() only calls the void libxl function
+# and has nothing to release. libxl ships stripped, so the library name is the
+# narrowest match. Applied only to the two PHPTs that call it; the main ASan
+# suite runs unsuppressed. Reported to libxl support; remove once a fixed SDK
+# ships.
 leak:libxl.so

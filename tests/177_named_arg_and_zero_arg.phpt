@@ -3,8 +3,8 @@ fillPattern() accepts its documented named argument; zero-arg methods parse args
 --EXTENSIONS--
 excel
 --DESCRIPTION--
-CR-007: the fillPattern() parameter shipped as $patern in arginfo, so a call
-using the documented name (pattern:) failed. CR-002: zero-arg methods that
+The fillPattern() parameter shipped as $patern in arginfo, so a call
+using the documented name (pattern:) failed. Zero-arg methods that
 omitted ZEND_PARSE_PARAMETERS_NONE() are now well-formed and callable.
 --FILE--
 <?php

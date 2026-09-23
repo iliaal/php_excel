@@ -3,7 +3,7 @@ AS_DATE fails closed when a default date format cannot be allocated (style table
 --EXTENSIONS--
 excel
 --DESCRIPTION--
-CR-008: on the AS_DATE path with no explicit format, the book lazily creates
+On the AS_DATE path with no explicit format, the book lazily creates
 a shared date format. If xlBookAddFormat returns NULL (the xlsx style table
 tops out near 65k formats), the cell was written as a bare number yet reported
 success. It now fails closed (write returns false).

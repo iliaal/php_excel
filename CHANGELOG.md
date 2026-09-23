@@ -194,17 +194,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - libxl 5.2.0 support. New methods, available when built against
   libxl 5.2.0 or newer:
-  - `ExcelSheet::dataValidationSize()` — number of data validations on
+  - `ExcelSheet::dataValidationSize()`: number of data validations on
     the sheet.
-  - `ExcelSheet::dataValidation(int $index)` — read a data validation by
+  - `ExcelSheet::dataValidation(int $index)`: read a data validation by
     zero-based index, returned as an associative array (`type`, `op`,
     `row_first`, `row_last`, `col_first`, `col_last`, `value1`,
     `value2`); `false` for an out-of-range index. Note: libxl only
     surfaces validations parsed from xlsx files written by Excel (or
     another standards-compliant writer), not those added in the same
     session via `addDataValidation()`.
-  - `ExcelTable::isAutoFilter()` — whether the table has an autofilter.
-  - `ExcelTable::removeFilter()` — remove the table's autofilter.
+  - `ExcelTable::isAutoFilter()`: whether the table has an autofilter.
+  - `ExcelTable::removeFilter()`: remove the table's autofilter.
 
 ### Fixed
 - Reject child-wrapper handles from a different `ExcelBook`. libxl
@@ -229,10 +229,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     `setDropLines`, `setDx`, `setFirstButton`, `setHoriz`, `setInc`, `setMax`,
     `setMin`, `setSel`), `ExcelTable::setStyle`, and
     `ExcelFilterColumn::setCustomFilter` operators.
-  - Other `ExcelBook` int boundaries: `colorUnpack` (colour index — now also
+  - Other `ExcelBook` int boundaries: `colorUnpack` (colour index, now also
     upper-bounded), `addFormatFromStyle` (builtin-style id), `packDateValues`
     (year upper bound; month/day/time were already checked), and
-    `getCustomFormat` (id — had a `< 1` check but no upper bound).
+    `getCustomFormat` (id; had a `< 1` check but no upper bound).
   - Named-range scope: `ExcelSheet::setNamedRange`, `delNamedRange`, and
     `getNamedRange` passed `scope_id` to libxl unchecked, so a 64-bit value
     could alias the `SCOPE_WORKBOOK (-1)` sentinel or a different sheet after
@@ -263,7 +263,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Optional getter/setter methods on `ExcelFormat` and `ExcelFont` now
   treat explicit `null` as "getter mode" instead of silently mutating
   state. Previously the `|l` ZPP weak-coerced `null` to `0`, fired the
-  setter, and reset the underlying slot — `$F->numberFormat(null)`
+  setter, and reset the underlying slot: `$F->numberFormat(null)`
   reset format `7` to `0` on a Format already pointed at format `7`,
   and `$f->name(null)` reset `"Arial"` to `""` because `|S` weak-
   coerced `null` to `""`. The new semantics: argument omitted or
@@ -280,7 +280,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `?string $name = null`).
 
 ### Added
-- Comprehensive test coverage for FormControl (all 7 control types)
+- Test coverage for all 7 FormControl control types
 - Tests for previously untested methods: Book::addPictureAsLink,
   Book::conditionalFormat, Sheet::removeComment
 - Tests for untested optional parameters across ExcelBook, ExcelSheet,
@@ -327,7 +327,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `deleteSheet(2**32)` deleted sheet `0`; the same narrowing
   applied to every other `zend_long`-to-libxl-`int` boundary,
   including `addPictureScaled` / `addPictureDim` where `pic_id`
-  and the dimensional / offset / pos arguments wrapped — a
+  and the dimensional / offset / pos arguments wrapped. A
   `pic_id = 2**32` call used to alias to picture index 0 and
   silently embed the wrong picture into the sheet.
 - Non-index integer setters on `ExcelFormat` and `ExcelFont`
@@ -335,7 +335,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `fillPattern`, `pattern*Color`, `Font::size`, `Font::color`,
   `Font::mode`, `Font::underline`, `rotate`, `indent`) now reject
   values outside `[0, INT_MAX]` instead of silently truncating
-  on the implicit `int` cast — `numberFormat(2**32 + 1)` and
+  on the implicit `int` cast: `numberFormat(2**32 + 1)` and
   `Font::color(2**32 + 1)` previously both became `1`.
 - Stub argument types and runtime ZPP signatures for `Sheet::groupRows()`,
   `Sheet::groupCols()`, `Sheet::setPrintHeaders()`, and
@@ -345,7 +345,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   / ZPP checker on calls like `setPrintHeaders(true)`. The IDE
   reference files in `docs/` (`ExcelSheet.php`, `ExcelFormat.php`,
   `ExcelAutoFilter.php`) were also updated so their published
-  signatures match runtime reflection — `groupRows`/`groupCols` now
+  signatures match runtime reflection: `groupRows`/`groupCols` now
   publish `bool $collapse = false`, `setPrintHeaders` publishes
   `bool $value`, `wrap`/`shrinkToFit`/`locked`/`hidden` publish
   `bool ... = false`, and `ExcelAutoFilter::setRef` publishes the
@@ -446,12 +446,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - NUL-byte protection extended to
   `ExcelConditionalFormatting::add2ColorScaleFormulaRule()` and
   `add3ColorScaleFormulaRule()` (formula strings) and to
-  `ExcelSheet::addDataValidationDouble()` (prompt/error strings) — all
+  `ExcelSheet::addDataValidationDouble()` (prompt/error strings). All
   previously passed `ZSTR_VAL()` directly to libxl, where embedded NULs
   would silently truncate the value while peer methods rejected it.
 - `ExcelBook::__construct()` with a NUL-bearing license name or key now
   throws an exception. Previously it emitted a warning and returned an
-  initialized workbook, since PHP ignores constructor return values —
+  initialized workbook, since PHP ignores constructor return values, so
   callers received a usable object built from rejected input.
 - NUL-byte gaps closed on the libxl boundary. Embedded NUL bytes are now
   rejected (rather than silently truncating the value) in `Sheet::write()`,
@@ -470,9 +470,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Coordinate validation: `Sheet::read()`, `Sheet::write()`, `Sheet::cellType()`,
   `Sheet::cellFormat()`, `Sheet::setCellFormat()`, `Sheet::isDate()`,
   `Sheet::isFormula()`, `Sheet::writeRow()`, and `Sheet::writeCol()` now
-  reject cell coordinates outside the workbook's format-specific limits —
+  reject cell coordinates outside the workbook's format-specific limits:
   XLSX (1048576 rows x 16384 cols) for books created with
-  `new ExcelBook(null, null, true)`, XLS (65536 rows x 256 cols) otherwise —
+  `new ExcelBook(null, null, true)`, XLS (65536 rows x 256 cols) otherwise,
   instead of silently truncating to libxl's `int` and returning empty cells.
   Read paths previously accepted any in-range integer because libxl doesn't
   range-check reads. `Sheet::insertRow()`, `Sheet::removeRow()`,
@@ -559,7 +559,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Stub signatures corrected to match the C implementation:
   `Book::addPictureFromFile(string)`, `Book::addPictureFromString(string)`
   (were `mixed`/`bool`); `Sheet::insertRow/insertCol/removeRow/removeCol(int, int)`
-  (the spurious third `update_named_ranges` parameter is removed —
+  (the spurious third `update_named_ranges` parameter is removed;
   the underlying C ZPP only ever parsed `"ll"`); `Sheet::horPageBreak(int, bool)`,
   `Sheet::verPageBreak(int, bool)` (were `int, int`); `Sheet::setPaper(int)`
   (was `string`); `Sheet::setPrintRepeatRows/Cols(int, int)` (had drifted

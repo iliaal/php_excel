@@ -7,8 +7,8 @@ excel
 $b = new ExcelBook(null, null, true);
 $s = $b->addSheet("S");
 
-// CR-001: stdClass cannot impersonate Excel objects. The third argument
-// to insertSheet is ?ExcelSheet — passing stdClass must hit the typed
+// stdClass cannot impersonate Excel objects. The third argument
+// to insertSheet is ?ExcelSheet, so passing stdClass must hit the typed
 // ZPP boundary, not silently reach FROM_OBJECT.
 foreach ([
     "setCellFormat" => fn() => $s->setCellFormat(1, 0, new stdClass),
@@ -19,13 +19,13 @@ foreach ([
     catch (TypeError $e) { echo "$name: TypeError\n"; }
 }
 
-// CR-002: open_basedir is enforced on loadInfo / addPictureAsLink
+// open_basedir is enforced on loadInfo / addPictureAsLink
 ini_set("open_basedir", __DIR__);
 var_dump(@$b->loadInfo("/etc/hostname"));
 var_dump(@$b->addPictureAsLink("/etc/hostname", true));
 ini_restore("open_basedir");
 
-// CR-003: date writes without explicit format share one cached format
+// Date writes without explicit format share one cached format
 $bd = new ExcelBook(null, null, true);
 $sd = $bd->addSheet("D");
 $before = count($bd->getAllFormats() ?: []);
@@ -59,7 +59,7 @@ $sM->write(1, 0, time(), null, ExcelFormat::AS_DATE);
 $sM->write(2, 0, time(), null, ExcelFormat::AS_DATE);
 echo "format delta across 2 moveSheet + 2 date writes: " . (count($bm->getAllFormats() ?: []) - $baseM) . "\n";
 
-// CR-004: reflection defaults match C
+// Reflection defaults match C
 $r = new ReflectionMethod(ExcelSheet::class, "readRow");
 foreach ($r->getParameters() as $p) {
     if ($p->isDefaultValueAvailable()) {
@@ -67,7 +67,7 @@ foreach ($r->getParameters() as $p) {
     }
 }
 
-// CR-005: book-backed constructors throw on uninitialized book instead of
+// Book-backed constructors throw on uninitialized book instead of
 // returning an unusable child wrapper
 $rc = new ReflectionClass(ExcelBook::class);
 $uninit = $rc->newInstanceWithoutConstructor();
@@ -81,7 +81,7 @@ foreach ([
 }
 
 // Re-scan: addDataValidationDouble must initialize the optional val_2
-// before passing it to libxl on the non-(NOT)BETWEEN branch — otherwise
+// before passing it to libxl on the non-(NOT)BETWEEN branch; otherwise
 // we feed garbage into the unused slot.
 $bv = new ExcelBook(null, null, true);
 $sv = $bv->addSheet("V");

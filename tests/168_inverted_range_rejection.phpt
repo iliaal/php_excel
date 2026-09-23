@@ -3,7 +3,7 @@ Inverted (first > last) ranges are rejected on hyperlink / setRef / conditional 
 --EXTENSIONS--
 excel
 --DESCRIPTION--
-CR-017: EXCEL_VALIDATE_ROW_RANGE / COL_RANGE only checked sheet bounds, not
+EXCEL_VALIDATE_ROW_RANGE / COL_RANGE only checked sheet bounds, not
 order. Methods funneling through them (addHyperlink, AutoFilter::setRef,
 addConditionalFormatting, addDataValidation, clear) accepted inverted ranges
 and stored garbage coordinates. setMerge/insertRow were already rejected by

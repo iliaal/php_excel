@@ -1,5 +1,5 @@
 --TEST--
-CR-003 cellFormat rejects null handle; CR-004 unpackDate accepts [0,1) time-only serials
+cellFormat rejects null handle; unpackDate accepts [0,1) time-only serials
 --EXTENSIONS--
 excel
 --FILE--
@@ -7,7 +7,7 @@ excel
 $b = new ExcelBook(null, null, true);
 $s = $b->addSheet("S");
 
-// CR-003: empty/unformatted cell must not return a zombie ExcelFormat
+// Empty/unformatted cell must not return a zombie ExcelFormat
 $fmt = $s->cellFormat(5, 5);
 if ($fmt === false) {
 	echo "cellFormat empty/null: false\n";
@@ -26,7 +26,7 @@ if ($fmt === false) {
 	echo "cellFormat unexpected\n";
 }
 
-// CR-004: time-only pack/unpack roundtrip (fractional day < 1)
+// Time-only pack/unpack roundtrip (fractional day < 1)
 $packed = $b->packDateValues(0, 0, 0, 12, 30, 0);
 echo "packed_time_only_type: " . gettype($packed) . "\n";
 echo "packed_lt_1: ";

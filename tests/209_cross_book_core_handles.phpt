@@ -3,7 +3,7 @@ Core cross-book handle rejection (Format/Font/RichString) without CF version gat
 --EXTENSIONS--
 excel
 --DESCRIPTION--
-CR-016: tests/153 skips entirely on libxl < 5.1 because of ConditionalFormat.
+tests/153 skips entirely on libxl < 5.1 because of ConditionalFormat.
 Core EXCEL_REQUIRE_SAME_BOOK paths must still be exercised on 4.6.
 --FILE--
 <?php

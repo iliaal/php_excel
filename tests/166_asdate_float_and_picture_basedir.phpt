@@ -4,7 +4,7 @@ AS_DATE packs float timestamps as dates; addPictureFromFile fails closed on open
 excel
 --FILE--
 <?php
-// CR-018: ExcelFormat::AS_DATE was only honored for integer values. A float
+// ExcelFormat::AS_DATE was only honored for integer values. A float
 // unix timestamp was written as a bare number (isDate() == false).
 $b = new ExcelBook(null, null, true);
 $s = $b->addSheet("D");
@@ -15,7 +15,7 @@ echo "int   isDate: "; var_dump($s->isDate(3, 0));
 echo "float isDate: "; var_dump($s->isDate(3, 1));
 echo "plain isDate: "; var_dump($s->isDate(3, 2));
 
-// CR-006: a plain-path open_basedir denial in addPictureFromFile must fail
+// A plain-path open_basedir denial in addPictureFromFile must fail
 // closed (RETURN_FALSE) after a single warning, not fall through to the
 // stream wrapper and warn a second time.
 $warnings = [];

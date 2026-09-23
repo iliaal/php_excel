@@ -1,5 +1,5 @@
 --TEST--
-CR-010 empty used-range defaults; CR-020 setColWidth inverted range still rejected by validator
+Empty used-range defaults; setColWidth inverted range still rejected by validator
 --EXTENSIONS--
 excel
 --FILE--

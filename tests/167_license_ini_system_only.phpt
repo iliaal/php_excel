@@ -9,7 +9,7 @@ if (!extension_loaded("excel") || ini_get("excel.license_key") === false) {
 }
 ?>
 --DESCRIPTION--
-CR-014: the commercial license credentials were registered PHP_INI_ALL, so a
+The commercial license credentials were registered PHP_INI_ALL, so a
 per-request ini_set() (or a per-directory .user.ini) could overwrite the key
 in a shared pool. As PHP_INI_SYSTEM a runtime ini_set() must fail and leave
 the value unchanged; a runtime key can still be supplied per book via the

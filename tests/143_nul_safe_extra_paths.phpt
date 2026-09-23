@@ -31,7 +31,7 @@ var_dump(@$b->addPictureFromFile(__DIR__ . "/phplogo.jpg\0suffix"));
 
 unlink($tmp);
 
-// Constructor license args must reject NUL by throwing — PHP ignores
+// Constructor license args must reject NUL by throwing; PHP ignores
 // constructor return values, so RETURN_FALSE would leave the caller
 // with a usable object built from rejected input.
 try {

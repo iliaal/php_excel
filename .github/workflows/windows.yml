@@ -7,10 +7,9 @@ on:
     branches: [master]
   release:
     types: [published]
-  # Manual build-only trigger for the pre-tag Layer B gate: the release job
-  # below is guarded by `github.event_name == 'release'`, so a dispatch run
-  # builds every toolset without uploading, validating the exact commit on
-  # the real Windows runners before a tag goes out.
+  # Manual pre-tag build check: the release job only runs on
+  # `github.event_name == 'release'`, so a dispatch run builds every toolset
+  # on the Windows runners without uploading.
   workflow_dispatch:
 
 env:
@@ -87,11 +86,9 @@ jobs:
     if: github.event_name == 'release'
     needs: windows-build
     runs-on: ubuntu-latest
-    # Explicit write scope for releases; default GITHUB_TOKEN is read-only
-    # for the contents permission on newly-created repos and the
-    # php-windows-builder/release@v1 action calls POST /releases. Older
-    # repos like this one predate that default tightening, but newer
-    # ones (lchash) need this block or the upload 403s.
+    # php-windows-builder/release@v1 calls POST /releases, and newer repos
+    # default GITHUB_TOKEN to read-only contents, so the upload 403s
+    # without an explicit write scope.
     permissions:
       contents: write # Uploads Windows binaries to the published release.
     steps:

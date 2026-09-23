@@ -1,7 +1,7 @@
 # Security policy
 
 php_excel is a PHP extension wrapping the commercial LibXL C library.
-Most realistic threat surface is parsing untrusted XLS/XLSX files.
+The most realistic threat surface is parsing untrusted XLS/XLSX files.
 
 ## Supported versions
 

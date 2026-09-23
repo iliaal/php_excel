@@ -58,9 +58,8 @@ foreach ($data as $item) {
 // formula
 $sheet->write($row, 1, '=SUM(B1:B3)');
 
-// untrusted input: AS_TEXT stores the value verbatim (no '=' -> formula
-// promotion), preventing spreadsheet formula injection. AS_TEXT takes a
-// string, so cast first. See SECURITY.md.
+// untrusted input: AS_TEXT stores the string verbatim, with no '=' formula
+// promotion. It takes a string, so cast first. See SECURITY.md.
 $sheet->write($row, 2, (string) $userSuppliedValue, null, ExcelFormat::AS_TEXT);
 
 // date with format
@@ -72,7 +71,7 @@ $sheet2->write(1, 0, (new DateTime('2024-08-02'))->getTimestamp(), $dateFormat, 
 $book->save('output.xlsx');
 ```
 
-`save()` stages the workbook to a temporary sibling file and renames it into place, so a failed save leaves the destination untouched. If the rename fails, local-path saves fail closed (return `false`); stream wrappers that omit `rename()` fall back to a direct write with a warning. Failed handle creation and rejected header, footer, font-size, and staging inputs emit warnings naming the cause — suppress with `@` only where you handle `false` explicitly.
+`save()` stages the workbook to a temporary sibling file and renames it into place, so a failed save leaves the destination untouched. If the rename fails, local-path saves fail closed (return `false`); stream wrappers that omit `rename()` fall back to a direct write with a warning. Failed handle creation and rejected header, footer, font-size, and staging inputs emit warnings naming the cause. Suppress them with `@` only where you handle `false` explicitly.
 
 ## 📊 Performance
 
@@ -85,15 +84,13 @@ Write 100,000 rows × 20 columns vs PhpSpreadsheet 5.5.0 on PHP 8.4.19 NTS, Appl
 | 50,000 | 1M | 2.72s / 508 MB | 24.7s / 790 MB | 9× |
 | 100,000 | 2M | 5.37s / 908 MB | 51.1s / 1,415 MB | 10× |
 
-Read performance is similar: 8-9× faster than PhpSpreadsheet, 3× faster than OpenSpout (with proportional memory tradeoff vs OpenSpout's flat 130 MB streaming model).
+Reads are 8-9× faster than PhpSpreadsheet and 3× faster than OpenSpout, at the cost of memory that grows with the file, where OpenSpout streams in a flat 130 MB.
 
-For read-heavy import paths, prefer `readRow()`, `readCol()`, or `readRange()` over per-cell `read()` loops. Pass `false` for the `$read_formula` argument when cached values are enough; this avoids the per-cell formula-text probe. For sparse sheets, `readSparseRow()` and `readSparseCol()` return only occupied cells keyed by their original column or row indexes.
+For read-heavy import paths, prefer `readRow()`, `readCol()`, or `readRange()` over per-cell `read()` loops. Pass `false` for `$read_formula` when cached values are enough, to skip the per-cell formula-text probe. For sparse sheets, `readSparseRow()` and `readSparseCol()` return only occupied cells keyed by their original column or row indexes.
 
 ### Why PhpSpreadsheet OOMs and php_excel doesn't
 
 PHP's `memory_get_peak_usage()` reports about 2 MB for php_excel because LibXL allocates on the C heap, invisible to PHP's `memory_limit`. PhpSpreadsheet allocates in PHP's memory: it OOMs on 10,000 rows in a default 128 MB PHP-FPM pool. php_excel writes 100,000 rows in the same pool without raising the limit.
-
-That's the practical difference. Bench numbers tell you it's faster; this tells you it's the difference between "report generates" and "report 500s in production."
 
 ## 📦 Classes
 
@@ -141,7 +138,7 @@ Companion native PHP extensions:
 
 ## 📚 Read more
 
-Full background, design rationale, and benchmark methodology in the launch post: [php_excel 2.0: The C Extension for Excel That PHP Should Have Had All Along](https://ilia.ws/blog/php-excel-2-0-the-c-extension-for-excel-that-php-should-have-had-all-along).
+The launch post covers background, design rationale, and benchmark methodology: [php_excel 2.0: The C Extension for Excel That PHP Should Have Had All Along](https://ilia.ws/blog/php-excel-2-0-the-c-extension-for-excel-that-php-should-have-had-all-along).
 
 API reference lives in `docs/`; usage examples live in `tests/`.
 
