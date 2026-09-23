@@ -170,6 +170,107 @@ jobs:
             exit 1
           fi
 
+  linux-branch:
+    name: PHP ${{ matrix.php }} - Linux (PHP-${{ matrix.php }} branch)
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        php: ['8.6']
+    env:
+      PHP_VERSION: ${{ matrix.php }}
+      LIBXL_VERSION: '5.2.0.1'
+      WORKSPACE: ${{ github.workspace }}
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Install dependencies
+        run: sudo apt-get update && sudo apt-get install -y re2c bison autoconf
+
+      - name: Build PHP from branch
+        run: |
+          git clone --depth=1 --branch="PHP-${PHP_VERSION}" https://github.com/php/php-src.git /tmp/php-src
+          cd /tmp/php-src
+          ./buildconf --force
+          ./configure \
+            --disable-all \
+            --enable-cli \
+            --prefix=/tmp/php-branch
+          make -j$(nproc)
+          make install
+          /tmp/php-branch/bin/php -v
+
+      - name: Cache LibXL
+        id: cache-libxl
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: libxl-5.2.0.1
+          key: libxl-lin-5.2.0.1-v1
+
+      - name: Download LibXL
+        if: steps.cache-libxl.outputs.cache-hit != 'true'
+        run: |
+          curl -fsSL "https://www.libxl.com/download/libxl-lin-${LIBXL_VERSION}.tar.gz" -o libxl.tar.gz
+          tar xzf libxl.tar.gz
+          extracted=$(ls -d libxl-* | grep -v tar | head -1)
+          if [ "$extracted" != "libxl-${LIBXL_VERSION}" ]; then
+            mv "$extracted" "libxl-${LIBXL_VERSION}"
+          fi
+          ls "libxl-${LIBXL_VERSION}/include_c/libxl.h"
+
+      - name: Build extension
+        run: |
+          export PATH="/tmp/php-branch/bin:$PATH"
+          phpize
+          ./configure \
+            --with-excel \
+            --with-libxl-incdir="${WORKSPACE}/libxl-${LIBXL_VERSION}/include_c" \
+            --with-libxl-libdir="${WORKSPACE}/libxl-${LIBXL_VERSION}/lib64" \
+            --with-php-config=/tmp/php-branch/bin/php-config
+          set -o pipefail
+          make -j$(nproc) 2>&1 | tee build.log
+          BUILD_STATUS=${PIPESTATUS[0]}
+          if [ "$BUILD_STATUS" -ne 0 ]; then
+            echo "::error::Build failed (make exited $BUILD_STATUS)"
+            exit 1
+          fi
+          WARNINGS=$(grep -c 'warning:' build.log || true)
+          if [ "$WARNINGS" -gt 0 ]; then
+            echo "::error::Build produced $WARNINGS warning(s)"
+            exit 1
+          fi
+
+      - name: Run tests
+        run: |
+          export LD_LIBRARY_PATH="${WORKSPACE}/libxl-${LIBXL_VERSION}/lib64"
+          export TEST_PHP_EXECUTABLE=/tmp/php-branch/bin/php
+          export TEST_PHP_ARGS="-d extension=$(pwd)/modules/excel.so"
+          export NO_INTERACTION=1
+          /tmp/php-branch/bin/php -d extension=$(pwd)/modules/excel.so -r '
+            if (!extension_loaded("excel")) {
+              fwrite(STDERR, "excel extension did not load\n");
+              exit(1);
+            }
+          '
+          set -o pipefail
+          /tmp/php-branch/bin/php run-tests.php --show-diff -g FAIL,BORK,LEAK,XLEAK tests/ 2>&1 | tee test-output.txt
+          RUN_STATUS=${PIPESTATUS[0]}
+          if [ "$RUN_STATUS" -ne 0 ]; then
+            echo "::error::run-tests.php exited non-zero ($RUN_STATUS)"
+            exit 1
+          fi
+          if grep -qP 'Tests (failed|leaked)\s*:\s*[1-9]' test-output.txt; then
+            echo "::error::Tests failed or leaked"
+            exit 1
+          fi
+          if ! grep -qP 'Tests passed\s*:\s*[1-9][0-9]*' test-output.txt; then
+            echo "::error::No PHPT tests passed"
+            exit 1
+          fi
+
   stub-freshness:
     name: Stub freshness (PHP ${{ matrix.php }})
     runs-on: ubuntu-latest
@@ -288,7 +389,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        php: ['8.4']
+        php: ['8.4', '8.6']
 
     env:
       # detect_leaks=1 is LSan's Linux default; pinning it keeps a future
