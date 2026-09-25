@@ -21,9 +21,21 @@ foreach ($valid as $row => $code) {
     var_dump($sheet->read($row + 1, 0) === $code);
 }
 
+// The registered ERRORTYPE_NOERROR sentinel is not writable data and is
+// rejected with the documented diagnostic.
+$sheet->write(20, 0, 'keep');
+$warning = null;
+set_error_handler(function (int $severity, string $message) use (&$warning): bool {
+    $warning = $message;
+    return true;
+});
+var_dump($sheet->writeError(20, 0, ExcelSheet::ERRORTYPE_NOERROR));
+restore_error_handler();
+var_dump($warning);
+var_dump($sheet->read(20, 0));
+
 $invalid = [
-    ExcelSheet::ERRORTYPE_NOERROR,
-    1,
+	1,
     43,
     100,
     1000,
@@ -42,7 +54,7 @@ foreach ($invalid as $index => $code) {
 }
 echo "OK\n";
 ?>
---EXPECT--
+--EXPECTF--
 NULL
 bool(true)
 bool(true)
@@ -65,8 +77,8 @@ NULL
 bool(true)
 bool(true)
 bool(false)
+string(%d) "ExcelSheet::writeError(): Invalid error type"
 string(4) "keep"
-int(2)
 bool(false)
 string(4) "keep"
 int(2)

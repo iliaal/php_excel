@@ -150,9 +150,11 @@ echo "OK\n";
 --EXPECTF--
 bool(true)
 NULL
-int(1)
-array(1) {
+int(2)
+array(2) {
   [0]=>
+  string(%d) "rename-capability://destination.xlsx.%s.tmp"
+  [1]=>
   string(36) "rename-capability://destination.xlsx"
 }
 int(1)
@@ -170,7 +172,7 @@ bool(false)
 NULL
 string(16) "RuntimeException"
 string(20) "staging close failed"
-int(0)
+int(1)
 int(1)
 int(1)
 bool(false)

@@ -2280,96 +2280,68 @@ static void php_excel_save_to_stream(INTERNAL_FUNCTION_PARAMETERS, zend_string *
 			zend_string_release(owned_contents);
 			RETURN_FALSE;
 		}
-		/* PHP installs rename/unlink dispatchers in wops for every user
-		 * wrapper, so the capability probe above cannot tell an omitted
-		 * method from a method that failed. An open user stream carries a
-		 * copy of the wrapper object in wrapperdata: inspect the class before
-		 * deciding which recovery path is safe, and never invoke a missing
-		 * rename dispatcher. */
+		/* PHP installs a rename dispatcher in wops for every user wrapper, so
+		 * the capability probe above cannot tell an omitted method from a
+		 * method that failed. An open user stream carries a copy of the
+		 * wrapper object in wrapperdata: inspect the class once, and never
+		 * invoke a rename dispatcher the class does not implement. */
 		bool wrapper_has_rename = true;
-		bool wrapper_has_unlink = true;
 		if (Z_TYPE(stream->wrapperdata) == IS_OBJECT) {
 			zend_class_entry *wrapper_ce = Z_OBJ(stream->wrapperdata)->ce;
 			wrapper_has_rename = zend_hash_str_exists(&wrapper_ce->function_table, "rename", sizeof("rename") - 1);
-			wrapper_has_unlink = zend_hash_str_exists(&wrapper_ce->function_table, "unlink", sizeof("unlink") - 1);
 		}
 
-		if (!wrapper_has_rename && wrapper_has_unlink) {
-			/* Close the empty reservation before unlinking it and before the
-			 * direct-write fallback. A failed close leaves wrapper state
-			 * unreliable, so fail closed just like the staged-write path. */
-			close_result = php_excel_stream_close_preserving_exception(stream);
-			if (close_result != 0 || EG(exception)) {
-				php_excel_unlink_staging_or_warn(tmp_name);
-				zend_string_release(tmp_name);
-				zend_string_release(owned_contents);
-				if (EG(exception)) {
-					RETURN_THROWS();
-				}
-				php_error_docref(NULL, E_WARNING, "Failed to close empty temporary file; destination left unchanged");
-				RETURN_FALSE;
-			}
-
-			php_excel_wrapper_unlink_preserving_exception(tmp_name);
-			zend_string_release(tmp_name);
-			if (EG(exception)) {
-				zend_string_release(owned_contents);
-				RETURN_THROWS();
-			}
-			php_error_docref(NULL, E_WARNING, "Could not replace destination with the completed temporary file; falling back to a non-atomic direct write");
-		} else {
-
-			numbytes = php_stream_write(stream, ZSTR_VAL(owned_contents), ZSTR_LEN(owned_contents));
-			if (!EG(exception) && numbytes == (ssize_t) ZSTR_LEN(owned_contents)) {
-				flush_result = php_stream_flush(stream);
-			}
-			close_result = php_excel_stream_close_preserving_exception(stream);
-
-			if (numbytes != (ssize_t) ZSTR_LEN(owned_contents)
-			    || flush_result != 0 || close_result != 0 || EG(exception)) {
-				php_excel_unlink_staging_or_warn(tmp_name);
-				zend_string_release(tmp_name);
-				zend_string_release(owned_contents);
-				if (EG(exception)) {
-					RETURN_THROWS();
-				}
-				if (flush_result != 0 || close_result != 0) {
-					php_error_docref(NULL, E_WARNING, "Failed to flush or close completed temporary file; destination left unchanged");
-					RETURN_FALSE;
-				}
-				php_error_docref(NULL, E_WARNING, "Only %zd of %u bytes written, possibly out of free disk space; destination left unchanged", numbytes, len);
-				RETURN_FALSE;
-			}
-
-			/* No-op for wrapper URLs, which do not stat; this only matters for
-			 * the local paths that reach here because open_basedir is active. */
-			php_excel_copy_destination_mode(filename_zs, tmp_name);
-
-			if (wrapper_has_rename && php_excel_wrapper_rename(tmp_name, filename_zs)) {
-				zend_string_release(tmp_name);
-				zend_string_release(owned_contents);
-				RETURN_TRUE;
-			}
-
-			/* A wrapper without rename() is not atomic. A complete staged
-			 * write proves the payload can be produced, so the documented
-			 * direct-write fallback remains available; a wrapper that also
-			 * lacks unlink() keeps the staged sibling, as before. A short
-			 * staged write already returned above and never reaches the
-			 * truncating destination open below. */
-			php_excel_wrapper_unlink_preserving_exception(tmp_name);
-			zend_string_release(tmp_name);
-			if (EG(exception)) {
-				zend_string_release(owned_contents);
-				RETURN_THROWS();
-			}
-			if (wrapper_has_rename) {
-				zend_string_release(owned_contents);
-				php_error_docref(NULL, E_WARNING, "Could not replace destination with the completed temporary file; destination left unchanged");
-				RETURN_FALSE;
-			}
-			php_error_docref(NULL, E_WARNING, "Could not replace destination with the completed temporary file; falling back to a non-atomic direct write");
+		/* Every wrapper without a working rename() keeps the staged write as a
+		 * probe, whatever it implements. A short staged write fails closed
+		 * above, so the truncating destination open is reached only after the
+		 * payload was produced in full. */
+		numbytes = php_stream_write(stream, ZSTR_VAL(owned_contents), ZSTR_LEN(owned_contents));
+		if (!EG(exception) && numbytes == (ssize_t) ZSTR_LEN(owned_contents)) {
+			flush_result = php_stream_flush(stream);
 		}
+		close_result = php_excel_stream_close_preserving_exception(stream);
+
+		if (numbytes != (ssize_t) ZSTR_LEN(owned_contents)
+		    || flush_result != 0 || close_result != 0 || EG(exception)) {
+			php_excel_unlink_staging_or_warn(tmp_name);
+			zend_string_release(tmp_name);
+			zend_string_release(owned_contents);
+			if (EG(exception)) {
+				RETURN_THROWS();
+			}
+			if (flush_result != 0 || close_result != 0) {
+				php_error_docref(NULL, E_WARNING, "Failed to flush or close completed temporary file; destination left unchanged");
+				RETURN_FALSE;
+			}
+			php_error_docref(NULL, E_WARNING, "Only %zd of %u bytes written, possibly out of free disk space; destination left unchanged", numbytes, len);
+			RETURN_FALSE;
+		}
+
+		/* No-op for wrapper URLs, which do not stat; this only matters for
+		 * the local paths that reach here because open_basedir is active. */
+		php_excel_copy_destination_mode(filename_zs, tmp_name);
+
+		if (wrapper_has_rename && php_excel_wrapper_rename(tmp_name, filename_zs)) {
+			zend_string_release(tmp_name);
+			zend_string_release(owned_contents);
+			RETURN_TRUE;
+		}
+
+		/* The staged payload is complete. Remove it and take the documented
+		 * direct-write fallback when the wrapper has no rename() to use; a
+		 * present-but-failing rename still leaves the destination untouched. */
+		php_excel_wrapper_unlink_preserving_exception(tmp_name);
+		zend_string_release(tmp_name);
+		if (EG(exception)) {
+			zend_string_release(owned_contents);
+			RETURN_THROWS();
+		}
+		if (wrapper_has_rename) {
+			zend_string_release(owned_contents);
+			php_error_docref(NULL, E_WARNING, "Could not replace destination with the completed temporary file; destination left unchanged");
+			RETURN_FALSE;
+		}
+		php_error_docref(NULL, E_WARNING, "Could not replace destination with the completed temporary file; falling back to a non-atomic direct write");
 	}
 
 	/* Wrapper cannot stage/rename: write directly. A short write here is

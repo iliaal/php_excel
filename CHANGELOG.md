@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- `ExcelSheet::writeError()` now accepts only the seven writable `ERRORTYPE_*` values (`ERRORTYPE_NULL`, `ERRORTYPE_DIV_0`, `ERRORTYPE_VALUE`, `ERRORTYPE_REF`, `ERRORTYPE_NAME`, `ERRORTYPE_NUM`, `ERRORTYPE_NA`). Every other value, including the registered `ExcelSheet::ERRORTYPE_NOERROR` sentinel, now warns and returns false instead of silently writing a non-error cell.
+- `ExcelBook::save()` through a user stream wrapper without `rename()` now always stages the workbook first, whatever other methods the wrapper implements. A short or failed staged write fails closed with the destination left unchanged and the destination is never opened truncating. Only a completed staged write falls back to the documented non-atomic direct write, and a wrapper whose `rename()` is present but fails still fails closed. Wrappers that also lack `unlink()` keep the documented leftover sibling.
 - Validate write data types, filters, form controls, calculation modes, and
   table styles before mutating workbook state; save reservations fail closed
   when closing or renaming fails.
