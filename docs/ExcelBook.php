@@ -203,10 +203,13 @@ class ExcelBook
 	/**
 	* Save Excel file
 	*
-	* PHP user-defined stream wrappers must implement rename() and unlink(). PHP's
-	* stream adapter advertises both operations even when the wrapper class omits
-	* them, so save() stages the file and returns false if replacement can't run.
-	* It doesn't retry a failed staged replacement with a non-atomic direct write.
+	* save() always writes the workbook to a sibling staging URL first. A short or
+	* failed staged write fails with the destination left untouched and is never
+	* retried against the destination. A wrapper class that implements rename()
+	* but whose rename() fails also fails closed. A wrapper class that omits
+	* rename() falls back, after a complete staged write, to a warned non-atomic
+	* direct write; such a class that also omits unlink() leaves one staged
+	* sibling behind, because PHP's adapter advertises both operations anyway.
 	*
 	* @param string $filename (optional, default="") If empty or omitted, returns binary string
 	* @return string|bool If $filename is empty or omitted, returns string; otherwise returns bool
