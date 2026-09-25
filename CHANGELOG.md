@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Validate write data types, filters, form controls, calculation modes, and
+  table styles before mutating workbook state; save reservations fail closed
+  when closing or renaming fails.
+
 ## [2.8.0] - 2026-09-03
 
 ### Docs

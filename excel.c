@@ -1572,6 +1572,71 @@ static zend_always_inline bool php_excel_validate_int_range(zend_long arg)
 	return true;
 }
 
+/* These public parameters map to small LibXL enums whose native setters are
+ * void. Validate the complete domain before calling LibXL so unsupported
+ * values cannot report success or be silently normalized. */
+static zend_always_inline bool php_excel_table_style_supported(zend_long style)
+{
+	switch (style) {
+		case TABLESTYLE_NONE:
+		case TABLESTYLE_LIGHT1:
+		case TABLESTYLE_LIGHT2:
+		case TABLESTYLE_LIGHT3:
+		case TABLESTYLE_LIGHT4:
+		case TABLESTYLE_LIGHT5:
+		case TABLESTYLE_LIGHT6:
+		case TABLESTYLE_LIGHT7:
+		case TABLESTYLE_LIGHT8:
+		case TABLESTYLE_LIGHT9:
+		case TABLESTYLE_LIGHT10:
+		case TABLESTYLE_MEDIUM1:
+		case TABLESTYLE_MEDIUM2:
+		case TABLESTYLE_MEDIUM3:
+		case TABLESTYLE_DARK1:
+		case TABLESTYLE_DARK2:
+		case TABLESTYLE_DARK3:
+			return true;
+		default:
+			return false;
+	}
+}
+
+static zend_always_inline bool php_excel_validate_table_style(zend_long style)
+{
+	if (!php_excel_table_style_supported(style)) {
+		php_error_docref(NULL, E_WARNING, "Invalid table style");
+		return false;
+	}
+	return true;
+}
+
+static zend_always_inline bool php_excel_valid_error_type(zend_long error_type)
+{
+	switch (error_type) {
+		case ERRORTYPE_NULL:
+		case ERRORTYPE_DIV_0:
+		case ERRORTYPE_VALUE:
+		case ERRORTYPE_REF:
+		case ERRORTYPE_NAME:
+		case ERRORTYPE_NUM:
+		case ERRORTYPE_NA:
+			return true;
+		default:
+			php_error_docref(NULL, E_WARNING, "Invalid error type");
+			return false;
+	}
+}
+
+static zend_always_inline bool php_excel_valid_data_type(zend_long dtype)
+{
+	if (dtype == -1 || dtype == PHP_EXCEL_DATE || dtype == PHP_EXCEL_FORMULA
+	    || dtype == PHP_EXCEL_NUMERIC_STRING || dtype == PHP_EXCEL_TEXT) {
+		return true;
+	}
+	php_error_docref(NULL, E_WARNING, "Invalid data type");
+	return false;
+}
+
 /* RGB component setters take an int per channel; only 0-255 is meaningful.
  * Out-of-range values silently corrupt the colour, so reject them. */
 static zend_always_inline bool php_excel_validate_rgb(zend_long arg)
@@ -2218,62 +2283,77 @@ static void php_excel_save_to_stream(INTERNAL_FUNCTION_PARAMETERS, zend_string *
 		/* PHP installs rename/unlink dispatchers in wops for every user
 		 * wrapper, so the capability probe above cannot tell "class omits
 		 * rename()" from "rename() failed". An open user stream carries a
-		 * copy of the wrapper object in wrapperdata: inspect it for a
-		 * rename method now, while the staging stream is still open. */
+		 * copy of the wrapper object in wrapperdata: inspect it before any
+		 * payload write and never invoke the missing-method dispatcher. */
 		bool wrapper_has_rename = true;
 		if (Z_TYPE(stream->wrapperdata) == IS_OBJECT) {
 			zend_class_entry *wrapper_ce = Z_OBJ(stream->wrapperdata)->ce;
 			wrapper_has_rename = zend_hash_str_exists(&wrapper_ce->function_table, "rename", sizeof("rename") - 1);
 		}
 
-		numbytes = php_stream_write(stream, ZSTR_VAL(owned_contents), ZSTR_LEN(owned_contents));
-		if (!EG(exception) && numbytes == (ssize_t) ZSTR_LEN(owned_contents)) {
-			flush_result = php_stream_flush(stream);
-		}
-		close_result = php_excel_stream_close_preserving_exception(stream);
-
-		if (numbytes != (ssize_t) ZSTR_LEN(owned_contents)
-		    || flush_result != 0 || close_result != 0 || EG(exception)) {
-			php_excel_unlink_staging_or_warn(tmp_name);
-			zend_string_release(tmp_name);
-			zend_string_release(owned_contents);
-			if (EG(exception)) {
-				RETURN_THROWS();
-			}
-			if (flush_result != 0 || close_result != 0) {
-				php_error_docref(NULL, E_WARNING, "Failed to flush or close completed temporary file; destination left unchanged");
+		if (!wrapper_has_rename) {
+			/* Close the empty reservation before unlinking it and before the
+			 * direct-write fallback. A failed close leaves wrapper state
+			 * unreliable, so fail closed just like the staged-write path. */
+			close_result = php_excel_stream_close_preserving_exception(stream);
+			if (close_result != 0 || EG(exception)) {
+				php_excel_unlink_staging_or_warn(tmp_name);
+				zend_string_release(tmp_name);
+				zend_string_release(owned_contents);
+				if (EG(exception)) {
+					RETURN_THROWS();
+				}
+				php_error_docref(NULL, E_WARNING, "Failed to close empty temporary file; destination left unchanged");
 				RETURN_FALSE;
 			}
-			php_error_docref(NULL, E_WARNING, "Only %zd of %u bytes written, possibly out of free disk space; destination left unchanged", numbytes, len);
-			RETURN_FALSE;
-		}
 
-		/* No-op for wrapper URLs, which do not stat; this only matters for
-		 * the local paths that reach here because open_basedir is active. */
-		php_excel_copy_destination_mode(filename_zs, tmp_name);
-
-		if (php_excel_wrapper_rename(tmp_name, filename_zs)) {
+			php_excel_wrapper_unlink_preserving_exception(tmp_name);
 			zend_string_release(tmp_name);
-			zend_string_release(owned_contents);
-			RETURN_TRUE;
-		}
-
-		php_excel_wrapper_unlink_preserving_exception(tmp_name);
-		zend_string_release(tmp_name);
-		if (EG(exception)) {
-			zend_string_release(owned_contents);
-			RETURN_THROWS();
-		}
-		if (!wrapper_has_rename) {
-			/* The wrapper class implements no rename() method: the staged
-			 * file is already gone and owned_contents still holds the whole
-			 * workbook, so fall through to the direct write below instead
-			 * of failing a save such a wrapper used to complete. */
+			if (EG(exception)) {
+				zend_string_release(owned_contents);
+				RETURN_THROWS();
+			}
 			php_error_docref(NULL, E_WARNING, "Could not replace destination with the completed temporary file; falling back to a non-atomic direct write");
 		} else {
-			/* A present-but-failing rename leaves the destination
-			 * untouched: falling through here would truncate the file the
-			 * atomic path just preserved, so fail instead. */
+
+			numbytes = php_stream_write(stream, ZSTR_VAL(owned_contents), ZSTR_LEN(owned_contents));
+			if (!EG(exception) && numbytes == (ssize_t) ZSTR_LEN(owned_contents)) {
+				flush_result = php_stream_flush(stream);
+			}
+			close_result = php_excel_stream_close_preserving_exception(stream);
+
+			if (numbytes != (ssize_t) ZSTR_LEN(owned_contents)
+			    || flush_result != 0 || close_result != 0 || EG(exception)) {
+				php_excel_unlink_staging_or_warn(tmp_name);
+				zend_string_release(tmp_name);
+				zend_string_release(owned_contents);
+				if (EG(exception)) {
+					RETURN_THROWS();
+				}
+				if (flush_result != 0 || close_result != 0) {
+					php_error_docref(NULL, E_WARNING, "Failed to flush or close completed temporary file; destination left unchanged");
+					RETURN_FALSE;
+				}
+				php_error_docref(NULL, E_WARNING, "Only %zd of %u bytes written, possibly out of free disk space; destination left unchanged", numbytes, len);
+				RETURN_FALSE;
+			}
+
+			/* No-op for wrapper URLs, which do not stat; this only matters for
+			 * the local paths that reach here because open_basedir is active. */
+			php_excel_copy_destination_mode(filename_zs, tmp_name);
+
+			if (php_excel_wrapper_rename(tmp_name, filename_zs)) {
+				zend_string_release(tmp_name);
+				zend_string_release(owned_contents);
+				RETURN_TRUE;
+			}
+
+			php_excel_wrapper_unlink_preserving_exception(tmp_name);
+			zend_string_release(tmp_name);
+			if (EG(exception)) {
+				zend_string_release(owned_contents);
+				RETURN_THROWS();
+			}
 			zend_string_release(owned_contents);
 			php_error_docref(NULL, E_WARNING, "Could not replace destination with the completed temporary file; destination left unchanged");
 			RETURN_FALSE;
@@ -3466,8 +3546,11 @@ EXCEL_METHOD(Book, setCalcMode)
 	if (zend_parse_parameters(ZEND_NUM_ARGS(), "l", &mode) == FAILURE) {
 		RETURN_FALSE;
 	}
-
 	EXCEL_VALIDATE_INT_RANGE(mode)
+	if (mode < CALCMODE_MANUAL || mode > CALCMODE_AUTONOTABLE) {
+		php_error_docref(NULL, E_WARNING, "Invalid calculation mode");
+		RETURN_FALSE;
+	}
 
 	BOOK_FROM_OBJECT(book, object);
 
@@ -4936,7 +5019,7 @@ static zend_always_inline int php_excel_dtype_matches_zval(zend_long dtype, zval
 		case PHP_EXCEL_TEXT:
 			return Z_TYPE_P(data) == IS_STRING;
 		default:
-			return 1;
+			return 0;
 	}
 }
 
@@ -5146,6 +5229,10 @@ EXCEL_METHOD(Sheet, write)
 		RETURN_FALSE;
 	}
 
+	if (!php_excel_valid_data_type(dtype)) {
+		RETURN_FALSE;
+	}
+
 	/* Resolve the owning book once for the coordinate limits, the
 	 * stale-generation check, and the write. */
 	book_obj = php_excel_resolve_book_obj(object);
@@ -5195,6 +5282,10 @@ EXCEL_METHOD(Sheet, writeRow)
 	zend_long dtype = -1;
 
 	if (zend_parse_parameters(ZEND_NUM_ARGS(), "la|lO!l", &row, &data, &col, &oformat, excel_ce_format, &dtype) == FAILURE) {
+		RETURN_FALSE;
+	}
+
+	if (!php_excel_valid_data_type(dtype)) {
 		RETURN_FALSE;
 	}
 
@@ -5280,6 +5371,10 @@ EXCEL_METHOD(Sheet, writeCol)
 	zend_long dtype = -1;
 
 	if (zend_parse_parameters(ZEND_NUM_ARGS(), "la|lO!l", &col, &data, &row, &oformat, excel_ce_format, &dtype) == FAILURE) {
+		RETURN_FALSE;
+	}
+
+	if (!php_excel_valid_data_type(dtype)) {
 		RETURN_FALSE;
 	}
 
@@ -7519,6 +7614,10 @@ EXCEL_METHOD(Sheet, writeError)
 
 	EXCEL_VALIDATE_ROW_COL(row, col, object);
 	EXCEL_VALIDATE_INT_RANGE(iError)
+	if (!php_excel_valid_error_type(iError)) {
+		RETURN_FALSE;
+	}
+
 
 	SHEET_FROM_OBJECT(sheet, object);
 
@@ -7968,7 +8067,6 @@ EXCEL_METHOD(FilterColumn, setCustomFilter)
 
 	FILTERCOLUMN_FROM_OBJECT(filtercolumn, object);
 
-	EXCEL_NON_EMPTY_STRING(v1)
 	EXCEL_NUL_SAFE_STRING(v1)
 
 	if (op2 == -1 || !v2) {
@@ -7976,7 +8074,6 @@ EXCEL_METHOD(FilterColumn, setCustomFilter)
 		RETURN_TRUE;
 	}
 
-	EXCEL_NON_EMPTY_STRING(v2)
 	EXCEL_NUL_SAFE_STRING(v2)
 
 	xlFilterColumnSetCustomFilterEx(filtercolumn, op1, ZSTR_VAL(v1), op2, ZSTR_VAL(v2), andOp);
@@ -8695,6 +8792,9 @@ EXCEL_METHOD(Sheet, addTable)
 	EXCEL_VALIDATE_ROW_RANGE(rowFirst, rowLast, object);
 	EXCEL_VALIDATE_COL_RANGE(colFirst, colLast, object);
 	EXCEL_VALIDATE_INT_RANGE(style)
+	if (!php_excel_validate_table_style(style)) {
+		RETURN_FALSE;
+	}
 
 	SHEET_FROM_OBJECT(sheet, object);
 
@@ -9146,7 +9246,23 @@ EXCEL_METHOD(FormControl, method_name) \
 
 FORMCONTROL_LONG_GETTER(objectType, xlFormControlObjectType)
 FORMCONTROL_LONG_GETTER(checked, xlFormControlChecked)
-FORMCONTROL_LONG_SETTER(setChecked, xlFormControlSetChecked)
+EXCEL_METHOD(FormControl, setChecked)
+{
+	zval *object = ZEND_THIS;
+	FormControlHandle fc;
+	zend_long val;
+	if (zend_parse_parameters(ZEND_NUM_ARGS(), "l", &val) == FAILURE) {
+		RETURN_FALSE;
+	}
+	EXCEL_VALIDATE_INT_RANGE(val)
+	if (val < CHECKEDTYPE_UNCHECKED || val > CHECKEDTYPE_MIXED) {
+		php_error_docref(NULL, E_WARNING, "Invalid checked state");
+		RETURN_FALSE;
+	}
+	FORMCONTROL_FROM_OBJECT(fc, object);
+	xlFormControlSetChecked(fc, val);
+	RETURN_TRUE;
+}
 FORMCONTROL_STRING_GETTER(fmlaGroup, xlFormControlFmlaGroup)
 FORMCONTROL_STRING_SETTER(setFmlaGroup, xlFormControlSetFmlaGroup)
 FORMCONTROL_STRING_GETTER(fmlaLink, xlFormControlFmlaLink)
@@ -9957,6 +10073,11 @@ EXCEL_METHOD(Table, __construct)
 		RETURN_THROWS();
 	}
 
+	if (!php_excel_table_style_supported(style)) {
+		zend_throw_exception(NULL, "Invalid table style", 0);
+		RETURN_THROWS();
+	}
+
 	SHEET_FROM_OBJECT_THROW(sheet, zsheet);
 
 	obj = Z_EXCEL_TABLE_OBJ_P(object);
@@ -10005,6 +10126,9 @@ EXCEL_METHOD(Table, __construct)
 		RETURN_FALSE; \
 	} \
 	EXCEL_VALIDATE_INT_RANGE(val) \
+	if (!php_excel_validate_table_style(val)) { \
+		RETURN_FALSE; \
+	} \
 	TABLE_FROM_OBJECT(table, object); \
 	xlTable ## func_name (table, val); \
 	RETURN_TRUE; \
