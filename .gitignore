@@ -75,3 +75,4 @@ CLAUDE.md
 configure.ac
 *.dep
 .plan/
+.worktrees
