@@ -188,7 +188,7 @@ echo "Sheet::hyperlink(2**32): "; var_dump(intOverflowResult(fn() => @$sn->hyper
 echo "Sheet::table(2**32): "; var_dump(intOverflowResult(fn() => @$sn->table(2 ** 32)));
 echo "Sheet::removePictureByIndex(2**32): "; var_dump(intOverflowResult(fn() => @$sn->removePictureByIndex(2 ** 32)));
 echo "Sheet::formControl(2**32): "; var_dump(intOverflowResult(fn() => @$sn->formControl(2 ** 32)));
-echo "Sheet::getNamedRange(2**32): "; var_dump(intOverflowResult(fn() => @$sn->getNamedRange(2 ** 32)));
+echo "Sheet::getNamedRange(2**32): "; var_dump(@$sn->getNamedRange(2 ** 32));
 echo "Sheet::getVerPageBreak(2**32): "; var_dump(intOverflowResult(fn() => @$sn->getVerPageBreak(2 ** 32)));
 echo "Sheet::getHorPageBreak(2**32): "; var_dump(intOverflowResult(fn() => @$sn->getHorPageBreak(2 ** 32)));
 if (method_exists("ExcelSheet", "conditionalFormatting")) {
