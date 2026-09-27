@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Timestamp packing, date-cell writes and reads, and `ExcelBook::unpackDate()`
+  now use PHP's configured timezone instead of the operating system timezone.
+  Time-only Excel serials return seconds since midnight, rather than a
+  timestamp derived from an all-zero calendar date.
+
+### Fixed
+
+- Date conversion now accepts pre-epoch timestamps on Windows and rejects
+  calendar dates outside PHP's integer range instead of truncating them.
+- Failed saves to a read-only directory no longer leave a read-only staging
+  file behind on Windows.
+- `ExcelSheet::writeError()` now accepts only the seven writable `ERRORTYPE_*` values (`ERRORTYPE_NULL`, `ERRORTYPE_DIV_0`, `ERRORTYPE_VALUE`, `ERRORTYPE_REF`, `ERRORTYPE_NAME`, `ERRORTYPE_NUM`, `ERRORTYPE_NA`). Every other value, including the registered `ExcelSheet::ERRORTYPE_NOERROR` sentinel, now warns and returns false instead of silently writing a non-error cell.
+- `ExcelBook::save()` through a user stream wrapper without `rename()` or `__call()` now always stages the workbook first, whatever other methods the wrapper implements. A short or failed staged write leaves the destination unchanged. Only a completed staged write falls back to the warned non-atomic direct write. Explicit and magic `rename()` handlers that fail or throw leave the destination unchanged. Wrappers that also lack `unlink()` keep the documented leftover sibling.
+- Validate write data types, filters, form controls, calculation modes, and
+  table styles before mutating workbook state. Table styles accept the full
+  LibXL range, including styles without a registered PHP constant. Save
+  reservations fail closed when closing or renaming fails.
+
 ## [2.8.0] - 2026-09-03
 
 ### Docs

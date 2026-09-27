@@ -1,5 +1,5 @@
-/* This is a generated file, edit excel.stub.php instead.
- * Stub hash: 6e8b5958e75f69cb8ed20cd6bb0e8f361cb1b319 */
+/* This is a generated file, edit the .stub.php file instead.
+ * Stub hash: f1370e180dcb2a647009abca7a37def2ab8a9e83 */
 
 ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_ExcelBook_requiresKey, 0, 0, _IS_BOOL, 0)
 ZEND_END_ARG_INFO()

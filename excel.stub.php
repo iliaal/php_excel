@@ -238,6 +238,7 @@ class ExcelSheet
     public function applyFilter(): bool {}  // ZPP ""
     public function removeFilter(): bool {}  // ZPP ""
     public function addIgnoredError(int $iError, int $rowFirst = 0, int $colFirst = 0, int $rowLast = 0, int $colLast = 0): bool {}  // ZPP "l|llll"
+    /** @note $iError accepts only the writable ERRORTYPE_* values (ERRORTYPE_NULL, ERRORTYPE_DIV_0, ERRORTYPE_VALUE, ERRORTYPE_REF, ERRORTYPE_NAME, ERRORTYPE_NUM, ERRORTYPE_NA); ERRORTYPE_NOERROR is not writable. Any other value is rejected with an E_WARNING and false. Returns NULL on success. */
     public function writeError(int $row, int $col, int $iError, ?ExcelFormat $format = null): mixed {}  // ZPP "lll|O!"
     public function removeComment(int $row, int $col): mixed {}  // ZPP "ll"
     public function addDataValidation(int $type, int $op, int $row_first, int $row_last, int $col_first, int $col_last, string $val_1, ?string $val_2 = null, bool $allow_blank = true, bool $hide_dropdown = false, bool $show_inputmessage = true, bool $show_errormessage = true, string $prompt_title = "", string $prompt = "", string $error_title = "", string $error = "", int $error_style = 1): bool {}  // ZPP "llllllS|S!bbbbSSSSl"

@@ -203,10 +203,15 @@ class ExcelBook
 	/**
 	* Save Excel file
 	*
-	* PHP user-defined stream wrappers must implement rename() and unlink(). PHP's
-	* stream adapter advertises both operations even when the wrapper class omits
-	* them, so save() stages the file and returns false if replacement can't run.
-	* It doesn't retry a failed staged replacement with a non-atomic direct write.
+	* Saves through PHP user-defined stream wrappers write the workbook to a
+	* sibling staging URL first. A short or failed staged write leaves the
+	* destination untouched and is never retried against it. A rename() method,
+	* including one handled by __call(), that fails or throws also fails closed.
+	* Without rename() or __call(), a complete staged write falls back to a warned
+	* non-atomic direct write. If unlink() is also unavailable, the staging file
+	* remains because PHP's adapter advertises both operations anyway.
+	* Native stream wrappers without rename/unlink support write directly.
+	* With an empty filename, save() returns the workbook as a binary string.
 	*
 	* @param string $filename (optional, default="") If empty or omitted, returns binary string
 	* @return string|bool If $filename is empty or omitted, returns string; otherwise returns bool
@@ -311,7 +316,7 @@ class ExcelBook
 	}
 
 	/**
-	* Pack a unix timestamp into an Excel double
+	* Pack a unix timestamp into an Excel double using PHP's configured timezone
 	*
 	* @see ExcelBook::unpackDate()
 	* @param int $timestamp
@@ -337,7 +342,10 @@ class ExcelBook
 	}
 
 	/**
-	* Unpack an Excel double into a unix timestamp
+	* Unpack an Excel double into a unix timestamp using PHP's configured timezone
+	*
+	* Time-only serials in [0, 1) return seconds since midnight. Calendar dates
+	* outside the platform's PHP integer range return false.
 	*
 	* @see ExcelBook::packDate()
 	* @param float $date

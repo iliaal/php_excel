@@ -1518,9 +1518,9 @@ class ExcelSheet
 	*
 	* @param int $row Row index
 	* @param int $col Column index
-	* @param int $iError One of ExcelSheet::ERRORTYPE_* constants
+	* @param int $iError One of ExcelSheet::ERRORTYPE_NULL, ERRORTYPE_DIV_0, ERRORTYPE_VALUE, ERRORTYPE_REF, ERRORTYPE_NAME, ERRORTYPE_NUM, or ERRORTYPE_NA. Any other value (including ERRORTYPE_NOERROR) is rejected with an E_WARNING and false.
 	* @param ExcelFormat|null $format (optional, default=null)
-	* @return void
+	* @return mixed NULL on success; false with an E_WARNING when $iError is not a writable error type
 	*/
 	public function writeError(int $row, int $col, int $iError, ?ExcelFormat $format = null): mixed
 	{

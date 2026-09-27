@@ -123,10 +123,20 @@ echo "gb name: " . $gb->name() . "\n";
 var_dump($sheet->formControl($count));
 var_dump(@$sheet->formControl(-1));
 
-// Out-of-int-range setter args are rejected before reaching libxl.
-echo "sb setMin(PHP_INT_MAX): " . var_export(@$sb->setMin(PHP_INT_MAX), true) . "\n";
+// PHP_INT_MAX fits the LibXL int parameter only on 32-bit PHP.
+$min = $sb->getMin();
+$accepted = @$sb->setMin(PHP_INT_MAX);
+echo "sb setMin(PHP_INT_MAX) boundary: " . var_export(
+    $accepted === (PHP_INT_SIZE === 4)
+    && $sb->getMin() === (PHP_INT_SIZE === 4 ? PHP_INT_MAX : $min), true
+) . "\n";
 echo "sb setMax(-1): " . var_export(@$sb->setMax(-1), true) . "\n";
-echo "sb setInc(PHP_INT_MAX): " . var_export(@$sb->setInc(PHP_INT_MAX), true) . "\n";
+$inc = $sb->inc();
+$accepted = @$sb->setInc(PHP_INT_MAX);
+echo "sb setInc(PHP_INT_MAX) boundary: " . var_export(
+    $accepted === (PHP_INT_SIZE === 4)
+    && $sb->inc() === (PHP_INT_SIZE === 4 ? PHP_INT_MAX : $inc), true
+) . "\n";
 echo "sb setMin(0) valid: " . var_export($sb->setMin(0), true) . "\n";
 
 echo "OK\n";
@@ -197,8 +207,8 @@ gb type: 4
 gb name: Group Box 7
 bool(false)
 bool(false)
-sb setMin(PHP_INT_MAX): false
+sb setMin(PHP_INT_MAX) boundary: true
 sb setMax(-1): false
-sb setInc(PHP_INT_MAX): false
+sb setInc(PHP_INT_MAX) boundary: true
 sb setMin(0) valid: true
 OK

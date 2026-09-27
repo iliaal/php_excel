@@ -49,9 +49,9 @@ var_dump(@$sheet->addHyperlink("https://example.com", PHP_INT_MAX, 0, 1, 1));
 $rows = @$sheet->readRow(0, 0, PHP_INT_MAX);
 var_dump($rows);
 
-// Happy path: writeError with valid args
+// Happy path: writeError with valid args and a documented error type
 $fmt = $book->addFormat();
-$sheet->writeError(0, 0, 1, $fmt);
+$sheet->writeError(0, 0, ExcelSheet::ERRORTYPE_DIV_0, $fmt);
 echo "writeError ok\n";
 
 echo "OK\n";

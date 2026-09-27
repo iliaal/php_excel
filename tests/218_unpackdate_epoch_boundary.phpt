@@ -4,11 +4,13 @@ unpackDate() accepts the valid timestamp -1 at the pre-epoch boundary
 excel
 --ENV--
 TZ=UTC
+--INI--
+date.timezone=UTC
 --DESCRIPTION--
 _php_excel_date_unpack() used mktime()'s -1 return as its failure sentinel, so
 unpackDate() rejected the real instant 1969-12-31T23:59:59 UTC, whose unix
-timestamp is exactly -1. Failure is now signalled separately (errno check) and
-the value is returned via an out-parameter.
+timestamp is exactly -1. PHP's date conversion supports this instant on all
+platforms, including Windows, where the C runtime rejects pre-epoch dates.
 --FILE--
 <?php
 $b = new ExcelBook();
