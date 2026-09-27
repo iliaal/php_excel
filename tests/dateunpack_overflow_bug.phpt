@@ -2,22 +2,20 @@
 Excel date pack/unpack overflow tests
 --EXTENSIONS--
 excel
+--INI--
+date.timezone=UTC
 --FILE--
-<?php 
-	$x = new ExcelBook();
-
-        $t = mktime(0, 0, 0, 2100, 1, 1);
-        $packed = $x->packDate($t);
-        $unpacked = $x->unpackDate($packed);
-
-        if ($unpacked != $t)
-        {
-          echo "source: {$t} <> res: " . $unpacked . " >> diff: ".($unpacked - $t)." packed: '".$packed."'\n";
-        }
-        else
-        {
-          echo "OK\n";
-        }
+<?php
+$book = new ExcelBook();
+$serial = $book->packDateValues(2100, 1, 1, 0, 0, 0);
+$timestamp = $book->unpackDate($serial);
+if (PHP_INT_SIZE === 4) {
+    var_dump($timestamp === false);
+} else {
+    var_dump($timestamp === 4102444800 && $book->packDate($timestamp) === $serial);
+}
+var_dump($book->unpackDate($book->packDate(2147483647)) === 2147483647);
 ?>
 --EXPECT--
-OK
+bool(true)
+bool(true)

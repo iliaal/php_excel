@@ -33,11 +33,11 @@ echo "packed_lt_1: ";
 var_dump(is_float($packed) && $packed > 0 && $packed < 1);
 $unpacked = $b->unpackDate($packed);
 echo "unpack_time_only: ";
-var_dump(is_int($unpacked) || is_long($unpacked));
+var_dump($unpacked === 45000);
 // Explicit 0.5 serial
 $u05 = $b->unpackDate(0.5);
 echo "unpack_0.5: ";
-var_dump(is_int($u05) || is_long($u05));
+var_dump($u05 === 43200);
 // Negative still rejected
 set_error_handler(function () { return true; });
 $uneg = $b->unpackDate(-0.1);

@@ -1,11 +1,10 @@
 --TEST--
-Plain local save stages via SaveRaw and preserves destination on failure
+Plain local save stages to a sibling and preserves destination on failure
 --EXTENSIONS--
 excel
 --FILE--
 <?php
-// Local path save no longer calls xlBookSave in place; it uses SaveRaw +
-// stream staging. Verify a normal local save round-trips.
+// Local path save writes to a sibling before replacing the destination.
 $dir = sys_get_temp_dir();
 $dest = $dir . "/211_local_save_" . getmypid() . ".xlsx";
 @unlink($dest);

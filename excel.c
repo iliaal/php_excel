@@ -1521,7 +1521,7 @@ static void php_excel_copy_destination_mode(zend_string *destination, zend_strin
 {
 	zend_stat_t sb;
 
-	if (VCWD_STAT(ZSTR_VAL(destination), &sb) != 0) {
+	if (VCWD_STAT(ZSTR_VAL(destination), &sb) != 0 || !S_ISREG(sb.st_mode)) {
 		return;
 	}
 	if (VCWD_CHMOD(ZSTR_VAL(staged), sb.st_mode & 07777) != 0) {
@@ -2793,16 +2793,20 @@ EXCEL_METHOD(Book, getCustomFormat)
 
 static double _php_excel_date_pack(BookHandle book, zend_long ts)
 {
-	struct tm tm;
+	zend_string *formatted;
+	zend_long year;
+	int month, day, hour, minute, second;
+	int fields;
 
-	if (!php_localtime_r(&ts, &tm)) {
+	formatted = php_format_date("Y n j G i s", sizeof("Y n j G i s") - 1, (time_t) ts, true);
+	fields = sscanf(ZSTR_VAL(formatted), ZEND_LONG_FMT " %d %d %d %d %d",
+		&year, &month, &day, &hour, &minute, &second);
+	zend_string_release(formatted);
+	if (fields != 6 || year < 1 || year > INT_MAX) {
 		return -1;
 	}
 
-	tm.tm_year += 1900;
-	tm.tm_mon += 1;
-
-	return xlBookDatePack(book, tm.tm_year, tm.tm_mon, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec, 0);
+	return xlBookDatePack(book, (int) year, month, day, hour, minute, second, 0);
 }
 
 EXCEL_METHOD(Book, packDate)
@@ -2879,31 +2883,35 @@ EXCEL_METHOD(Book, packDateValues)
 }
 /* }}} */
 
-/* Unpack an Excel serial into a unix timestamp. Returns true and sets *out on
- * success. mktime() legitimately returns -1 for the valid instant
- * 1969-12-31T23:59:59 local time, so a plain -1 sentinel would reject a real
- * date; errno disambiguates an actual range error from that valid value. */
 static bool _php_excel_date_unpack(BookHandle book, double dt, zend_long *out)
 {
-	struct tm tm = {0};
-	int msec;
-	time_t t;
+	int year, month, day, hour, minute, second, msec;
+	char datetime[80];
+	int length;
+	zval date;
+	php_date_obj *date_obj;
+	bool success = false;
 
-	if (!xlBookDateUnpack(book, dt, (int *) &(tm.tm_year), (int *) &(tm.tm_mon), (int *) &(tm.tm_mday), (int *) &(tm.tm_hour), (int *) &(tm.tm_min), (int *) &(tm.tm_sec), &msec)) {
+	if (!xlBookDateUnpack(book, dt, &year, &month, &day, &hour, &minute, &second, &msec)) {
 		return false;
 	}
 
-	tm.tm_year -= 1900;
-	tm.tm_mon -= 1;
-	tm.tm_isdst = -1;
-
-	errno = 0;
-	t = mktime(&tm);
-	if (t == (time_t) -1 && errno != 0) {
-		return false;
+	if (year == 0 && month == 0 && day == 0) {
+		*out = hour * 3600 + minute * 60 + second;
+		return true;
 	}
-	*out = (zend_long) t;
-	return true;
+
+	length = snprintf(datetime, sizeof(datetime), "%04d-%02d-%02d %02d:%02d:%02d",
+		year, month, day, hour, minute, second);
+	php_date_instantiate(php_date_get_date_ce(), &date);
+	date_obj = Z_PHPDATE_P(&date);
+	if (php_date_initialize(date_obj, datetime, length, "!Y-m-d H:i:s", NULL, PHP_DATE_INIT_FORMAT)
+		&& date_obj->time->sse >= ZEND_LONG_MIN && date_obj->time->sse <= ZEND_LONG_MAX) {
+		*out = (zend_long) date_obj->time->sse;
+		success = true;
+	}
+	zval_ptr_dtor(&date);
+	return success;
 }
 
 EXCEL_METHOD(Book, unpackDate)

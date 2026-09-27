@@ -316,7 +316,7 @@ class ExcelBook
 	}
 
 	/**
-	* Pack a unix timestamp into an Excel double
+	* Pack a unix timestamp into an Excel double using PHP's configured timezone
 	*
 	* @see ExcelBook::unpackDate()
 	* @param int $timestamp
@@ -342,7 +342,10 @@ class ExcelBook
 	}
 
 	/**
-	* Unpack an Excel double into a unix timestamp
+	* Unpack an Excel double into a unix timestamp using PHP's configured timezone
+	*
+	* Time-only serials in [0, 1) return seconds since midnight. Calendar dates
+	* outside the platform's PHP integer range return false.
 	*
 	* @see ExcelBook::packDate()
 	* @param float $date

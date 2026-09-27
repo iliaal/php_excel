@@ -4,6 +4,23 @@ Strict object types, open_basedir on loadInfo/addPictureAsLink, cached date form
 excel
 --FILE--
 <?php
+
+// Values above INT_MAX are floats on 32-bit PHP and fail ZPP before libxl.
+function intOverflowResult(callable $call): bool {
+    try {
+        $result = $call();
+    } catch (TypeError $e) {
+        if (PHP_INT_SIZE !== 4) {
+            throw $e;
+        }
+        return false;
+    }
+    if (PHP_INT_SIZE === 4 || $result !== false) {
+        throw new UnexpectedValueException('Expected integer overflow rejection');
+    }
+    return $result;
+}
+
 $b = new ExcelBook(null, null, true);
 $s = $b->addSheet("S");
 
@@ -132,9 +149,9 @@ echo "activeSheet \$sheet=" . var_export($ra->getParameters()[0]->getDefaultValu
 $bb = new ExcelBook(null, null, true);
 $bb->addSheet("S0");
 $bb->addSheet("S1");
-var_dump(@$bb->getSheet(2 ** 32));
-var_dump(@$bb->getSheetName(2 ** 32));
-var_dump(@$bb->deleteSheet(2 ** 32));
+var_dump(intOverflowResult(fn() => @$bb->getSheet(2 ** 32)));
+var_dump(intOverflowResult(fn() => @$bb->getSheetName(2 ** 32)));
+var_dump(intOverflowResult(fn() => @$bb->deleteSheet(2 ** 32)));
 echo "after: " . $bb->getSheetName(0) . "\n";
 
 // Re-scan: stubs publishing int/string/mixed for params the C parses
@@ -159,30 +176,30 @@ $sn = $bn->addSheet("N");
 $sn->write(1, 0, 1);
 $bn->addCustomFormat("0");
 if (method_exists("ExcelBook", "conditionalFormat")) {
-    echo "Book::conditionalFormat(2**32): "; var_dump(@$bn->conditionalFormat(2 ** 32));
+    echo "Book::conditionalFormat(2**32): "; var_dump(intOverflowResult(fn() => @$bn->conditionalFormat(2 ** 32)));
 } else {
     echo "Book::conditionalFormat(2**32): bool(false)\n";
 }
-echo "Book::getPicture(2**32): "; var_dump(@$bn->getPicture(2 ** 32));
-echo "Book::moveSheet(2**32, 0): "; var_dump(@$bn->moveSheet(2 ** 32, 0));
-echo "Book::moveSheet(0, 2**32): "; var_dump(@$bn->moveSheet(0, 2 ** 32));
-echo "Sheet::getPictureInfo(2**32): "; var_dump(@$sn->getPictureInfo(2 ** 32));
-echo "Sheet::hyperlink(2**32): "; var_dump(@$sn->hyperlink(2 ** 32));
-echo "Sheet::table(2**32): "; var_dump(@$sn->table(2 ** 32));
-echo "Sheet::removePictureByIndex(2**32): "; var_dump(@$sn->removePictureByIndex(2 ** 32));
-echo "Sheet::formControl(2**32): "; var_dump(@$sn->formControl(2 ** 32));
-echo "Sheet::getNamedRange(2**32): "; var_dump(@$sn->getNamedRange(2 ** 32));
-echo "Sheet::getVerPageBreak(2**32): "; var_dump(@$sn->getVerPageBreak(2 ** 32));
-echo "Sheet::getHorPageBreak(2**32): "; var_dump(@$sn->getHorPageBreak(2 ** 32));
+echo "Book::getPicture(2**32): "; var_dump(intOverflowResult(fn() => @$bn->getPicture(2 ** 32)));
+echo "Book::moveSheet(2**32, 0): "; var_dump(intOverflowResult(fn() => @$bn->moveSheet(2 ** 32, 0)));
+echo "Book::moveSheet(0, 2**32): "; var_dump(intOverflowResult(fn() => @$bn->moveSheet(0, 2 ** 32)));
+echo "Sheet::getPictureInfo(2**32): "; var_dump(intOverflowResult(fn() => @$sn->getPictureInfo(2 ** 32)));
+echo "Sheet::hyperlink(2**32): "; var_dump(intOverflowResult(fn() => @$sn->hyperlink(2 ** 32)));
+echo "Sheet::table(2**32): "; var_dump(intOverflowResult(fn() => @$sn->table(2 ** 32)));
+echo "Sheet::removePictureByIndex(2**32): "; var_dump(intOverflowResult(fn() => @$sn->removePictureByIndex(2 ** 32)));
+echo "Sheet::formControl(2**32): "; var_dump(intOverflowResult(fn() => @$sn->formControl(2 ** 32)));
+echo "Sheet::getNamedRange(2**32): "; var_dump(intOverflowResult(fn() => @$sn->getNamedRange(2 ** 32)));
+echo "Sheet::getVerPageBreak(2**32): "; var_dump(intOverflowResult(fn() => @$sn->getVerPageBreak(2 ** 32)));
+echo "Sheet::getHorPageBreak(2**32): "; var_dump(intOverflowResult(fn() => @$sn->getHorPageBreak(2 ** 32)));
 if (method_exists("ExcelSheet", "conditionalFormatting")) {
-    echo "Sheet::conditionalFormatting(2**32): "; var_dump(@$sn->conditionalFormatting(2 ** 32));
-    echo "Sheet::removeConditionalFormatting(2**32): "; var_dump(@$sn->removeConditionalFormatting(2 ** 32));
+    echo "Sheet::conditionalFormatting(2**32): "; var_dump(intOverflowResult(fn() => @$sn->conditionalFormatting(2 ** 32)));
+    echo "Sheet::removeConditionalFormatting(2**32): "; var_dump(intOverflowResult(fn() => @$sn->removeConditionalFormatting(2 ** 32)));
 } else {
     echo "Sheet::conditionalFormatting(2**32): bool(false)\n";
     echo "Sheet::removeConditionalFormatting(2**32): bool(false)\n";
 }
 if (method_exists("ExcelSheet", "getTableByIndex")) {
-    echo "Sheet::getTableByIndex(2**32): "; var_dump(@$sn->getTableByIndex(2 ** 32));
+    echo "Sheet::getTableByIndex(2**32): "; var_dump(intOverflowResult(fn() => @$sn->getTableByIndex(2 ** 32)));
 } else {
     echo "Sheet::getTableByIndex(2**32): bool(false)\n";
 }
@@ -191,12 +208,12 @@ if (method_exists("ExcelSheet", "getTableByIndex")) {
 $sn->setMerge(1, 1, 0, 1);
 $af = $sn->autoFilter();
 $af->setRef(0, 1, 0, 1);
-echo "AutoFilter::column(2**32): "; var_dump(@$af->column(2 ** 32));
-echo "AutoFilter::columnByIndex(2**32): "; var_dump(@$af->columnByIndex(2 ** 32));
-echo "AutoFilter::setSort(2**32, false): "; var_dump(@$af->setSort(2 ** 32, false));
-echo "AutoFilter::addSort(2**32, false): "; var_dump(@$af->addSort(2 ** 32, false));
+echo "AutoFilter::column(2**32): "; var_dump(intOverflowResult(fn() => @$af->column(2 ** 32)));
+echo "AutoFilter::columnByIndex(2**32): "; var_dump(intOverflowResult(fn() => @$af->columnByIndex(2 ** 32)));
+echo "AutoFilter::setSort(2**32, false): "; var_dump(intOverflowResult(fn() => @$af->setSort(2 ** 32, false)));
+echo "AutoFilter::addSort(2**32, false): "; var_dump(intOverflowResult(fn() => @$af->addSort(2 ** 32, false)));
 $fc = $af->column(0);
-echo "FilterColumn::filter(2**32): "; var_dump(@$fc->filter(2 ** 32));
+echo "FilterColumn::filter(2**32): "; var_dump(intOverflowResult(fn() => @$fc->filter(2 ** 32)));
 
 try {
     new ExcelFilterColumn($af, 2 ** 32);
@@ -206,7 +223,7 @@ try {
 }
 
 $rs = $bn->addRichString();
-echo "RichString::getText(2**32): "; var_dump(@$rs->getText(2 ** 32));
+echo "RichString::getText(2**32): "; var_dump(intOverflowResult(fn() => @$rs->getText(2 ** 32)));
 
 // Negative input must also be rejected uniformly.
 if (method_exists("ExcelBook", "conditionalFormat")) {
@@ -230,12 +247,12 @@ $png_data = "\x89PNG\r\n\x1a\n" .
     "\x00\x00\x00\x0cIDATx\x9cc\xf8\xff\xff?\x00\x05\xfe\x02\xfe\xa3\x9bP\x07" .
     "\x00\x00\x00\x00IEND\xaeB`\x82";
 $pic_id = $bp->addPictureFromString($png_data);
-echo "addPictureScaled pic 2**32: "; var_dump(@$sp->addPictureScaled(1, 0, 2 ** 32, 1.0));
-echo "addPictureScaled x_offset 2**32: "; var_dump(@$sp->addPictureScaled(1, 0, $pic_id, 1.0, 2 ** 32));
-echo "addPictureDim pic 2**32: "; var_dump(@$sp->addPictureDim(1, 0, 2 ** 32, 100, 100));
-echo "addPictureDim w 2**32: "; var_dump(@$sp->addPictureDim(1, 0, $pic_id, 2 ** 32, 100));
-echo "addPictureDim h 2**32: "; var_dump(@$sp->addPictureDim(1, 0, $pic_id, 100, 2 ** 32));
-echo "addPictureDim x_offset 2**32: "; var_dump(@$sp->addPictureDim(1, 0, $pic_id, 100, 100, 2 ** 32));
+echo "addPictureScaled pic 2**32: "; var_dump(intOverflowResult(fn() => @$sp->addPictureScaled(1, 0, 2 ** 32, 1.0)));
+echo "addPictureScaled x_offset 2**32: "; var_dump(intOverflowResult(fn() => @$sp->addPictureScaled(1, 0, $pic_id, 1.0, 2 ** 32)));
+echo "addPictureDim pic 2**32: "; var_dump(intOverflowResult(fn() => @$sp->addPictureDim(1, 0, 2 ** 32, 100, 100)));
+echo "addPictureDim w 2**32: "; var_dump(intOverflowResult(fn() => @$sp->addPictureDim(1, 0, $pic_id, 2 ** 32, 100)));
+echo "addPictureDim h 2**32: "; var_dump(intOverflowResult(fn() => @$sp->addPictureDim(1, 0, $pic_id, 100, 2 ** 32)));
+echo "addPictureDim x_offset 2**32: "; var_dump(intOverflowResult(fn() => @$sp->addPictureDim(1, 0, $pic_id, 100, 100, 2 ** 32)));
 echo "pictures after rejected calls: "; var_dump($sp->getNumPictures());
 
 // Re-scan: optional getter/setters on Format/Font must treat explicit
@@ -269,14 +286,14 @@ echo "Font::color after null: " . $fo->color() . "\n";
 // Re-scan: non-index integer setters on Format/Font must reject values
 // that wrap on narrowing to libxl int. Previously numberFormat(2**32+1)
 // silently became format 1 and Font::color(2**32+1) became color 1.
-echo "Format::numberFormat(2**32+1): "; var_dump(@$Fo->numberFormat(2 ** 32 + 1));
+echo "Format::numberFormat(2**32+1): "; var_dump(intOverflowResult(fn() => @$Fo->numberFormat(2 ** 32 + 1)));
 echo "numberFormat unchanged: " . $Fo->numberFormat() . "\n";
-echo "Font::color(2**32+1): "; var_dump(@$fo->color(2 ** 32 + 1));
+echo "Font::color(2**32+1): "; var_dump(intOverflowResult(fn() => @$fo->color(2 ** 32 + 1)));
 echo "color unchanged: " . $fo->color() . "\n";
-echo "Font::size(2**32+1): "; var_dump(@$fo->size(2 ** 32 + 1));
-echo "Format::rotate(2**32+1): "; var_dump(@$Fo->rotate(2 ** 32 + 1));
-echo "Format::borderLeftStyle(2**32+1): "; var_dump(@$Fo->borderLeftStyle(2 ** 32 + 1));
-echo "Format::patternForegroundColor(2**32+1): "; var_dump(@$Fo->patternForegroundColor(2 ** 32 + 1));
+echo "Font::size(2**32+1): "; var_dump(intOverflowResult(fn() => @$fo->size(2 ** 32 + 1)));
+echo "Format::rotate(2**32+1): "; var_dump(intOverflowResult(fn() => @$Fo->rotate(2 ** 32 + 1)));
+echo "Format::borderLeftStyle(2**32+1): "; var_dump(intOverflowResult(fn() => @$Fo->borderLeftStyle(2 ** 32 + 1)));
+echo "Format::patternForegroundColor(2**32+1): "; var_dump(intOverflowResult(fn() => @$Fo->patternForegroundColor(2 ** 32 + 1)));
 
 // Doc files must match the C ZPP signatures so IDE-driven calls stop
 // type-confusing on the deprecated mixed/string/int forms.
