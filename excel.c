@@ -1577,28 +1577,7 @@ static zend_always_inline bool php_excel_validate_int_range(zend_long arg)
  * values cannot report success or be silently normalized. */
 static zend_always_inline bool php_excel_table_style_supported(zend_long style)
 {
-	switch (style) {
-		case TABLESTYLE_NONE:
-		case TABLESTYLE_LIGHT1:
-		case TABLESTYLE_LIGHT2:
-		case TABLESTYLE_LIGHT3:
-		case TABLESTYLE_LIGHT4:
-		case TABLESTYLE_LIGHT5:
-		case TABLESTYLE_LIGHT6:
-		case TABLESTYLE_LIGHT7:
-		case TABLESTYLE_LIGHT8:
-		case TABLESTYLE_LIGHT9:
-		case TABLESTYLE_LIGHT10:
-		case TABLESTYLE_MEDIUM1:
-		case TABLESTYLE_MEDIUM2:
-		case TABLESTYLE_MEDIUM3:
-		case TABLESTYLE_DARK1:
-		case TABLESTYLE_DARK2:
-		case TABLESTYLE_DARK3:
-			return true;
-		default:
-			return false;
-	}
+	return style >= TABLESTYLE_NONE && style <= TABLESTYLE_DARK11;
 }
 
 static zend_always_inline bool php_excel_validate_table_style(zend_long style)
@@ -2283,17 +2262,18 @@ static void php_excel_save_to_stream(INTERNAL_FUNCTION_PARAMETERS, zend_string *
 		/* PHP installs a rename dispatcher in wops for every user wrapper, so
 		 * the capability probe above cannot tell an omitted method from a
 		 * method that failed. An open user stream carries a copy of the
-		 * wrapper object in wrapperdata: inspect the class once, and never
-		 * invoke a rename dispatcher the class does not implement. */
+		 * wrapper object in wrapperdata. The dispatcher also calls __call()
+		 * when a literal rename() method is absent. */
 		bool wrapper_has_rename = true;
 		if (Z_TYPE(stream->wrapperdata) == IS_OBJECT) {
 			zend_class_entry *wrapper_ce = Z_OBJ(stream->wrapperdata)->ce;
-			wrapper_has_rename = zend_hash_str_exists(&wrapper_ce->function_table, "rename", sizeof("rename") - 1);
+			wrapper_has_rename = wrapper_ce->__call != NULL
+				|| zend_hash_str_exists(&wrapper_ce->function_table, "rename", sizeof("rename") - 1);
 		}
 
-		/* Every wrapper without a working rename() keeps the staged write as a
+		/* Every wrapper without a rename() keeps the staged write as a
 		 * probe, whatever it implements. A short staged write fails closed
-		 * above, so the truncating destination open is reached only after the
+		 * below, so the truncating destination open is reached only after the
 		 * payload was produced in full. */
 		numbytes = php_stream_write(stream, ZSTR_VAL(owned_contents), ZSTR_LEN(owned_contents));
 		if (!EG(exception) && numbytes == (ssize_t) ZSTR_LEN(owned_contents)) {

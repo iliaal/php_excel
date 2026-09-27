@@ -7,6 +7,10 @@ excel
 $book = new ExcelBook(null, null, true);
 $sheet = $book->addSheet('Data');
 $sheet->write(1, 0, 'keep');
+foreach ([13, 14, 15, 16] as $row) {
+    $sheet->write($row, 0, 'left' . $row);
+    $sheet->write($row, 1, 'right' . $row);
+}
 
 set_error_handler(static fn(): bool => true);
 foreach ([0, 5, 99, -2] as $i => $dtype) {
@@ -21,6 +25,10 @@ var_dump($sheet->read(1, 0));
 foreach ([3, 4, 5, 6] as $row) {
     var_dump($sheet->cellType($row, 0));
     var_dump($sheet->cellType($row, 1));
+}
+foreach ([13, 14, 15, 16] as $row) {
+    var_dump($sheet->read($row, 0) === 'left' . $row);
+    var_dump($sheet->read($row, 1) === 'right' . $row);
 }
 foreach ([23, 24, 25, 26] as $row) {
     var_dump($sheet->cellType($row, 0));
@@ -61,6 +69,14 @@ int(0)
 int(0)
 int(0)
 int(0)
+bool(true)
+bool(true)
+bool(true)
+bool(true)
+bool(true)
+bool(true)
+bool(true)
+bool(true)
 int(0)
 int(0)
 int(0)

@@ -203,13 +203,15 @@ class ExcelBook
 	/**
 	* Save Excel file
 	*
-	* save() always writes the workbook to a sibling staging URL first. A short or
-	* failed staged write fails with the destination left untouched and is never
-	* retried against the destination. A wrapper class that implements rename()
-	* but whose rename() fails also fails closed. A wrapper class that omits
-	* rename() falls back, after a complete staged write, to a warned non-atomic
-	* direct write; such a class that also omits unlink() leaves one staged
-	* sibling behind, because PHP's adapter advertises both operations anyway.
+	* Saves through PHP user-defined stream wrappers write the workbook to a
+	* sibling staging URL first. A short or failed staged write leaves the
+	* destination untouched and is never retried against it. A rename() method,
+	* including one handled by __call(), that fails or throws also fails closed.
+	* Without rename() or __call(), a complete staged write falls back to a warned
+	* non-atomic direct write. If unlink() is also unavailable, the staging file
+	* remains because PHP's adapter advertises both operations anyway.
+	* Native stream wrappers without rename/unlink support write directly.
+	* With an empty filename, save() returns the workbook as a binary string.
 	*
 	* @param string $filename (optional, default="") If empty or omitted, returns binary string
 	* @return string|bool If $filename is empty or omitted, returns string; otherwise returns bool

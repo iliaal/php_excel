@@ -35,13 +35,12 @@ var_dump($warning);
 var_dump($sheet->read(20, 0));
 
 $invalid = [
-	1,
+    1,
     43,
     100,
     1000,
     2147483647,
     -1,
-    2147483648,
 ];
 foreach ($invalid as $index => $code) {
     $row = 20 + $index;
@@ -52,6 +51,17 @@ foreach ($invalid as $index => $code) {
     var_dump($sheet->read($row, 0));
     var_dump($sheet->cellType($row, 0));
 }
+$sheet->write(30, 0, 'keep');
+set_error_handler(static fn(): bool => true);
+try {
+    $result = $sheet->writeError(30, 0, 2147483648);
+    var_dump(PHP_INT_SIZE > 4 && $result === false);
+} catch (TypeError $e) {
+    var_dump(PHP_INT_SIZE === 4);
+}
+restore_error_handler();
+var_dump($sheet->read(30, 0));
+var_dump($sheet->cellType(30, 0));
 echo "OK\n";
 ?>
 --EXPECTF--
@@ -97,7 +107,7 @@ int(2)
 bool(false)
 string(4) "keep"
 int(2)
-bool(false)
+bool(true)
 string(4) "keep"
 int(2)
 OK

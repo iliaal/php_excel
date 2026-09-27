@@ -1,5 +1,5 @@
 --TEST--
-Excel table style inputs are restricted to documented TABLESTYLE values
+Excel table style inputs accept the full LibXL TABLESTYLE range
 --EXTENSIONS--
 excel
 --FILE--
@@ -28,7 +28,7 @@ $styles = [
 
 $table = $sheet->addTable('Setter', 1, 2, 0, 0);
 $valid = true;
-foreach ($styles as $style) {
+foreach (range(0, 60) as $style) {
     $valid = $table->setStyle($style) && $table->style() === $style && $valid;
 }
 var_dump($valid);
@@ -41,9 +41,31 @@ foreach ($styles as $index => $style) {
     var_dump($constructed->style() === $style);
 }
 
+$validAdded = true;
+$validConstructed = true;
+echo "Extended styles\n";
+foreach ([11, 21, 25, 30, 49, 53, 60] as $index => $style) {
+    $row = 70 + $index * 3;
+    $added = $sheet->addTable('ExtraAdded' . $index, $row, $row + 1, 0, 0, true, $style);
+    $constructed = new ExcelTable($sheet, 'ExtraBuilt' . $index, $row, $row + 1, 1, 1, true, $style);
+    $validAdded = $added instanceof ExcelTable && $added->style() === $style && $validAdded;
+    $validConstructed = $constructed->style() === $style && $validConstructed;
+}
+var_dump($validAdded);
+var_dump($validConstructed);
+
+$table->setStyle(30);
+$loadedBook = new ExcelBook(null, null, true);
+var_dump($loadedBook->load($book->save()));
+$loadedTable = $loadedBook->getSheet(0)->getTableByName('Setter');
+var_dump($loadedTable->style() === 30);
+var_dump($loadedTable->setStyle($loadedTable->style()));
+var_dump($loadedTable->style() === 30);
+
 $table->setStyle(ExcelTable::TABLESTYLE_DARK3);
+echo "Invalid styles\n";
 set_error_handler(static fn(): bool => true);
-foreach ([999, -1, PHP_INT_MAX] as $style) {
+foreach ([999, -1, PHP_INT_MAX, 61] as $style) {
     var_dump($table->setStyle($style));
     var_dump($table->style());
     var_dump($sheet->addTable('Invalid' . $style, 100, 101, 0, 0, true, $style));
@@ -106,6 +128,18 @@ bool(true)
 bool(true)
 bool(true)
 bool(true)
+bool(true)
+Extended styles
+bool(true)
+bool(true)
+bool(true)
+bool(true)
+bool(true)
+bool(true)
+Invalid styles
+bool(false)
+int(52)
+bool(false)
 bool(true)
 bool(false)
 int(52)

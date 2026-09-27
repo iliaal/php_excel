@@ -69,17 +69,39 @@ jobs:
             Copy-Item -Path "$($dir.FullName)\bin\libxl.dll" -Destination "$depsDir\libxl.dll" -Force
           }
 
+          # The builder adds this directory to its test process DLL search path.
+          $runtimeDeps = Join-Path $env:GITHUB_WORKSPACE 'build\deps\bin'
+          New-Item -ItemType Directory -Path $runtimeDeps -Force | Out-Null
+          Copy-Item -LiteralPath (Join-Path $depsDir 'libxl.dll') -Destination $runtimeDeps -Force
+
           Get-ChildItem $depsDir -Recurse | Select-Object FullName
         env:
           MATRIX_ARCH: ${{ matrix.arch }}
 
       - name: Build extension
         uses: php/php-windows-builder/extension@29352c0ef9e8ce65264ea9e287881a6f7758a953 # 1.9.0
+        env:
+          TEST_PHP_JUNIT: ${{ github.workspace }}\windows-tests.xml
         with:
+          build-directory: build
           php-version: ${{ matrix.php-version }}
           ts: ${{ matrix.ts }}
           arch: ${{ matrix.arch }}
           args: --with-excel --with-libxl=${{ github.workspace }}\libxl-deps
+
+      - name: Verify extension tests executed
+        shell: pwsh
+        run: |
+          [xml]$report = Get-Content -LiteralPath (Join-Path $env:GITHUB_WORKSPACE 'windows-tests.xml') -Raw
+          $passed = @($report.SelectNodes('//testcase[not(skipped or failure or error or warning)]'))
+          if ($passed.Count -eq 0) {
+            throw 'No extension tests passed; check whether php_excel.dll loaded.'
+          }
+          $smoke = @($passed | Where-Object { $_.name -match '(^|[\\/])001\.phpt \(' })
+          if ($smoke.Count -ne 1) {
+            throw 'The required ExcelBook/font smoke test (001.phpt) did not pass.'
+          }
+          Write-Host "$($passed.Count) extension tests passed, including the ExcelBook/font smoke test."
 
   release:
     name: Attach Windows DLLs to release
