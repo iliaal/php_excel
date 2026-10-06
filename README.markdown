@@ -88,9 +88,11 @@ Reads are 8-9× faster than PhpSpreadsheet and 3× faster than OpenSpout, at the
 
 For read-heavy import paths, prefer `readRow()`, `readCol()`, or `readRange()` over per-cell `read()` loops. Pass `false` for `$read_formula` when cached values are enough, to skip the per-cell formula-text probe. For sparse sheets, `readSparseRow()` and `readSparseCol()` return only occupied cells keyed by their original column or row indexes.
 
-### Why PhpSpreadsheet OOMs and php_excel doesn't
+### Native memory and PHP's `memory_limit`
 
-PHP's `memory_get_peak_usage()` reports about 2 MB for php_excel because LibXL allocates on the C heap, invisible to PHP's `memory_limit`. PhpSpreadsheet allocates in PHP's memory: it OOMs on 10,000 rows in a default 128 MB PHP-FPM pool. php_excel writes 100,000 rows in the same pool without raising the limit.
+PHP's `memory_get_peak_usage()` reports about 2 MB for php_excel in the benchmark above because LibXL allocates on the C heap, outside PHP's memory manager and `memory_limit`. [PHP's memory counters](https://www.php.net/manual/en/function.memory-get-usage.php) do not include these native allocations, even with `real_usage` set to `true`. This allows php_excel to write 100,000 rows without raising PHP's 128 MB limit, but the benchmark still uses 908 MB overall.
+
+php_excel can still run out of memory or hit an operating-system or container memory limit. Size your workers and concurrency using process-level memory measurements (such as resident set size), not PHP's memory counters alone. PHP arrays, strings, and buffered stream input also consume PHP-managed memory and remain subject to `memory_limit`; see [stream-loading limits](SECURITY.md#memory-use-when-loading-buffering).
 
 ## 📦 Classes
 
