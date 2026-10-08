@@ -4445,6 +4445,10 @@ static int php_excel_read_cell(int row, int col, zval *val, SheetHandle sheet, B
 	return php_excel_read_cell_with_type(xlSheetCellType(sheet, row, col), row, col, val, sheet, book, format, read_formula);
 }
 
+/* Used-range ends are exclusive in LibXL, but explicit reads historically
+ * accept lastRow()/lastCol() itself as an empty cell. Only the default -1
+ * end is reduced to the last used index. An empty default range has end <
+ * start so both dense and sparse readers return an empty array. */
 static inline int php_excel_validate_read_row_bounds(SheetHandle sheet, zend_long row_start, zend_long *row_end, bool allow_default_end)
 {
 	int lr = xlSheetLastRow(sheet);
@@ -4513,27 +4517,7 @@ EXCEL_METHOD(Sheet, readRow)
 		RETURN_FALSE;
 	}
 
-	lc = xlSheetLastCol(sheet);
-	if (col_start < 0 || col_start > lc) {
-		php_error_docref(NULL, E_WARNING, "Invalid starting column number '" ZEND_LONG_FMT "'", col_start);
-		RETURN_FALSE;
-	}
-
-	/* xlSheetLastCol() returns the last used column index plus one
-	 * (exclusive), so the unspecified-end default (-1) maps to the last
-	 * used column. The bounds checks deliberately allow col_start/col_end
-	 * up to lastCol() inclusive (one past the last used column); such reads
-	 * just return empty cells, so the leniency is harmless. */
-	if (col_end == -1) {
-		if (lc == 0) {
-			array_init(return_value);
-			return;
-		}
-		col_end = lc - 1;
-	}
-
-	if (col_end < col_start || col_end > lc) {
-		php_error_docref(NULL, E_WARNING, "Invalid ending column number '" ZEND_LONG_FMT "'", col_end);
+	if (!php_excel_validate_read_col_bounds(sheet, col_start, &col_end, 1)) {
 		RETURN_FALSE;
 	}
 
@@ -4599,27 +4583,7 @@ EXCEL_METHOD(Sheet, readCol)
 		RETURN_FALSE;
 	}
 
-	lc = xlSheetLastRow(sheet);
-	if (row_start < 0 || row_start > lc) {
-		php_error_docref(NULL, E_WARNING, "Invalid starting row number '" ZEND_LONG_FMT "'", row_start);
-		RETURN_FALSE;
-	}
-
-	/* xlSheetLastRow() returns the last used row index plus one (exclusive),
-	 * so the unspecified-end default (-1) maps to the last used row. The
-	 * bounds checks deliberately allow row_start/row_end up to lastRow()
-	 * inclusive (one past the last used row); such reads just return empty
-	 * cells, so the leniency is harmless. */
-	if (row_end == -1) {
-		if (lc == 0) {
-			array_init(return_value);
-			return;
-		}
-		row_end = lc - 1;
-	}
-
-	if (row_end < row_start || row_end > lc) {
-		php_error_docref(NULL, E_WARNING, "Invalid ending row number '" ZEND_LONG_FMT "'", row_end);
+	if (!php_excel_validate_read_row_bounds(sheet, row_start, &row_end, 1)) {
 		RETURN_FALSE;
 	}
 
