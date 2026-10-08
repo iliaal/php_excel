@@ -189,12 +189,12 @@ class ExcelSheet
 	}
 
 	/**
-	* Read an entire row worth of data
+	* Read a row as a zero-based packed array (keys do not preserve column indexes)
 	*
 	* @note For rectangular bulk reads prefer readRange() over repeated read()/readRow() calls; one call avoids per-cell PHP dispatch.
 	* @param int $row 0-based row number
-	* @param int $start_col (optional, default=0)
-	* @param int $end_column (optional, default=-1)
+	* @param int $start_col 0-based first column (inclusive, default=0)
+	* @param int $end_column Inclusive last column; -1 uses lastCol() - 1
 	* @param bool $read_formula (optional, default=true)
 	* @return array|false
 	*/
@@ -203,12 +203,12 @@ class ExcelSheet
 	}
 
 	/**
-	* Read an entire column worth of data
+	* Read a column as a zero-based packed array (keys do not preserve row indexes)
 	*
 	* @note For rectangular bulk reads prefer readRange() over repeated read()/readCol() calls; one call avoids per-cell PHP dispatch.
 	* @param int $column 0-based column number
-	* @param int $start_row (optional, default=0)
-	* @param int $end_row (optional, default=-1)
+	* @param int $start_row 0-based first row (inclusive, default=0)
+	* @param int $end_row Inclusive last row; -1 uses lastRow() - 1
 	* @param bool $read_formula (optional, default=true)
 	* @return array|false
 	*/
@@ -217,12 +217,12 @@ class ExcelSheet
 	}
 
 	/**
-	* Read a rectangular range of cells
+	* Read a rectangular range as packed rows of packed cells, both keyed from zero
 	*
 	* @param int $row_start 0-based first row
-	* @param int $row_end 0-based last row
+	* @param int $row_end 0-based last row (inclusive; no -1 default)
 	* @param int $col_start 0-based first column
-	* @param int $col_end 0-based last column
+	* @param int $col_end 0-based last column (inclusive; no -1 default)
 	* @param bool $read_formula (optional, default=true)
 	* @return array|false
 	*/
@@ -234,8 +234,8 @@ class ExcelSheet
 	* Read non-empty cells from a row, keyed by original column index
 	*
 	* @param int $row 0-based row number
-	* @param int $start_col (optional, default=0)
-	* @param int $end_column (optional, default=-1)
+	* @param int $start_col 0-based first column (inclusive, default=0)
+	* @param int $end_column Inclusive last column; -1 uses lastCol() - 1
 	* @param bool $read_formula (optional, default=true)
 	* @return array|false
 	*/
@@ -247,8 +247,8 @@ class ExcelSheet
 	* Read non-empty cells from a column, keyed by original row index
 	*
 	* @param int $column 0-based column number
-	* @param int $start_row (optional, default=0)
-	* @param int $end_row (optional, default=-1)
+	* @param int $start_row 0-based first row (inclusive, default=0)
+	* @param int $end_row Inclusive last row; -1 uses lastRow() - 1
 	* @param bool $read_formula (optional, default=true)
 	* @return array|false
 	*/
@@ -617,7 +617,7 @@ class ExcelSheet
 	}
 
 	/**
-	* Returns the 0-based last row in a sheet that contains a used cell
+	* Returns the exclusive end of the used row range (one past the last used row)
 	*
 	* @return int|false
 	*/
@@ -635,7 +635,7 @@ class ExcelSheet
 	}
 
 	/**
-	* Returns the 0-based last column in a sheet that contains a used cell
+	* Returns the exclusive end of the used column range (one past the last used column)
 	*
 	* @return int|false
 	*/

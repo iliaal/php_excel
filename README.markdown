@@ -88,6 +88,37 @@ Reads are 8-9× faster than PhpSpreadsheet and 3× faster than OpenSpout, at the
 
 For read-heavy import paths, prefer `readRow()`, `readCol()`, or `readRange()` over per-cell `read()` loops. Pass `false` for `$read_formula` when cached values are enough, to skip the per-cell formula-text probe. For sparse sheets, `readSparseRow()` and `readSparseCol()` return only occupied cells keyed by their original column or row indexes.
 
+### Bulk-read bounds and indexes
+
+Cell coordinates are zero-based. `lastRow()` and `lastCol()` return the
+**exclusive** end of the used range, while bulk readers take **inclusive** end
+coordinates. Subtract one when passing a used-range end to `readRange()`;
+`readRow()` and `readCol()` do this automatically for their default end of `-1`.
+Check that a range is nonempty before subtracting and reading it. The used
+range can extend beyond nonempty values, for example because of formatting.
+
+Dense readers return packed arrays keyed from zero, even when the requested
+range starts elsewhere. Sparse readers keep the original sheet indexes and
+omit empty cells, but retain values such as numeric zero and boolean false.
+
+```php
+$sheet = $book->addSheet('Read example');
+$sheet->write(1, 1, 'A');
+$sheet->write(1, 3, false);
+$sheet->write(3, 1, 0);
+
+$sheet->readRow(1, 1, 3);       // [0 => 'A', 1 => '', 2 => false]
+$sheet->readSparseRow(1, 1, 3); // [1 => 'A', 3 => false]
+
+// Read the data from row/column 1 through the last used cell.
+$rowEnd = $sheet->lastRow();
+$colEnd = $sheet->lastCol();
+$rows = ($rowEnd > 1 && $colEnd > 1)
+    ? $sheet->readRange(1, $rowEnd - 1, 1, $colEnd - 1)
+    : [];
+// $rows[0][0] corresponds to sheet cell (1, 1).
+```
+
 ### Native memory and PHP's `memory_limit`
 
 PHP's `memory_get_peak_usage()` reports about 2 MB for php_excel in the benchmark above because LibXL allocates on the C heap, outside PHP's memory manager and `memory_limit`. [PHP's memory counters](https://www.php.net/manual/en/function.memory-get-usage.php) do not include these native allocations, even with `real_usage` set to `true`. This allows php_excel to write 100,000 rows without raising PHP's 128 MB limit, but the same run still peaked at 908 MB of process virtual memory (VmPeak). `save()` without a path, to a stream-wrapper URL, or while `open_basedir` is set copies the entire workbook into a PHP string, so that copy also counts against `memory_limit`.
