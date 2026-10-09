@@ -6787,7 +6787,8 @@ EXCEL_METHOD(Sheet, getPictureInfo)
 		RETURN_FALSE;
 	}
 
-	array_init(return_value);
+	/* Nine fields exceed the default eight buckets; reserve once. */
+	array_init_size(return_value, 9);
 	add_assoc_long(return_value, "picture_index", pic_index);
 	add_assoc_long(return_value, "row_top", rowTop);
 	add_assoc_long(return_value, "col_left", colLeft);
