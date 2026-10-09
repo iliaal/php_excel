@@ -119,6 +119,30 @@ $rows = ($rowEnd > 1 && $colEnd > 1)
 // $rows[0][0] corresponds to sheet cell (1, 1).
 ```
 
+### Formula text versus cached results
+
+`read()`, `readRow()`, `readCol()`, `readRange()`, `readSparseRow()`, and
+`readSparseCol()` return formula text for formula cells by default, without its
+leading `=`.
+Pass `false` for `$read_formula` to read the stored cached result instead.
+This does **not** evaluate the formula: [LibXL has no calculation engine](https://www.libxl.com/faq.html).
+
+Cached results may be stale or absent, especially after writing a formula or
+changing its inputs. Saving and reloading through php_excel does not refresh
+them. If you need current calculated results, recalculate and save the workbook
+in Excel or another compatible calculation engine before importing it.
+
+```php
+$sheet->write(1, 1, 7);          // B2
+$sheet->write(1, 2, '=B2*2');    // C2
+$sheet->readRow(1, 2, 2);        // ['B2*2']
+$sheet->readRow(1, 2, 2, false); // [0.0], not the calculated value 14
+```
+
+The zero above is the initial cached value for this newly written numeric
+formula, not a general signal that a formula is missing or invalid. Existing
+files can contain other cached values; php_excel does not check their freshness.
+
 ### Native memory and PHP's `memory_limit`
 
 PHP's `memory_get_peak_usage()` reports about 2 MB for php_excel in the benchmark above because LibXL allocates on the C heap, outside PHP's memory manager and `memory_limit`. [PHP's memory counters](https://www.php.net/manual/en/function.memory-get-usage.php) do not include these native allocations, even with `real_usage` set to `true`. This allows php_excel to write 100,000 rows without raising PHP's 128 MB limit, but the same run still peaked at 908 MB of process virtual memory (VmPeak). `save()` without a path, to a stream-wrapper URL, or while `open_basedir` is set copies the entire workbook into a PHP string, so that copy also counts against `memory_limit`.
