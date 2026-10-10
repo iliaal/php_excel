@@ -62,6 +62,14 @@ foreach ([false, true] as $xlsx) {
             }
             check($sheet->read(9, 2) === '');
             check($sheet->read($nextRow, $nextCol) === ($mode > 0 ? 'keep' : null));
+            // Explicit numeric strings follow the default empty-string rule.
+            check($sheet->write(11, 2, 'keep', $original));
+            check($sheet->write(11, 2, '', $replacement, ExcelFormat::AS_NUMERIC_STRING));
+            check($sheet->read(11, 2) === ($mode === 2 ? 'keep' : ''));
+            // A lone apostrophe is unescaped to an empty string after the skip decision.
+            check($sheet->write(12, 2, 'keep', $original));
+            check($sheet->write(12, 2, "'", $replacement));
+            check($sheet->read(12, 2) === '');
         }
         echo "mode $mode: values, formats, positions and explicit text OK\n";
     }
