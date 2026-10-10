@@ -16,6 +16,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Blank formula writes, such as `''` with `ExcelFormat::AS_FORMULA` or a
+  bare `'='`, store an empty string instead of a formula that LibXL cannot read
+  back from XLS files, and `excel.skip_empty=2` skips them.
 - Date conversion now accepts pre-epoch timestamps on Windows and rejects
   calendar dates outside PHP's integer range instead of truncating them.
 - Failed saves to a read-only directory no longer leave a read-only staging

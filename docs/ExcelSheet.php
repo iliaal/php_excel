@@ -260,7 +260,7 @@ class ExcelSheet
 	* Write data into a cell
 	*
 	* @note Spelling split: this method names the type parameter $datatype, while writeRow()/writeCol() name it $data_type. Use positional args or the matching name per method; cross-method named-arg reuse fatals.
-	* @note excel.skip_empty: 1 skips null, 2 also skips empty strings unless AS_TEXT or AS_FORMULA is passed; skipped writes preserve the cell and bulk positions still advance. AS_TEXT writes empty strings in every mode.
+	* @note excel.skip_empty: 1 skips null, 2 also skips empty strings unless AS_TEXT is passed, including blank formulas such as '='; skipped writes preserve the cell and bulk positions still advance. AS_TEXT writes empty strings in every mode.
 	* @note Formula injection: a string starting with `=` becomes a live formula unless an explicit dtype (e.g. ExcelFormat::AS_TEXT) is passed; never pass untrusted input without a dtype. See SECURITY.md.
 	* @param int $row 0-based row number
 	* @param int $column 0-based column number
@@ -278,7 +278,7 @@ class ExcelSheet
 	*
 	* @note Spelling split: writeRow()/writeCol() name the type parameter $data_type, while write() names it $datatype. Use positional args or the matching name per method; cross-method named-arg reuse fatals.
 	* @note Non-atomic on libxl-side failure: values rejected by PHP-side validation (bad type, embedded NUL, unpackable AS_DATE) reject the whole row before any cell is written, but a failure inside libxl (e.g. exhausted style table) can leave earlier cells committed.
-	* @note excel.skip_empty: 1 skips null, 2 also skips empty strings unless AS_TEXT or AS_FORMULA is passed; skipped writes preserve the cell and bulk positions still advance. AS_TEXT writes empty strings in every mode.
+	* @note excel.skip_empty: 1 skips null, 2 also skips empty strings unless AS_TEXT is passed, including blank formulas such as '='; skipped writes preserve the cell and bulk positions still advance. AS_TEXT writes empty strings in every mode.
 	* @note Formula injection: a string starting with `=` becomes a live formula unless an explicit dtype (e.g. ExcelFormat::AS_TEXT) is passed; never pass untrusted input without a dtype. See SECURITY.md.
 	* @param int $row 0-based row number
 	* @param array $data
@@ -296,7 +296,7 @@ class ExcelSheet
 	*
 	* @note Spelling split: writeRow()/writeCol() name the type parameter $data_type, while write() names it $datatype. Use positional args or the matching name per method; cross-method named-arg reuse fatals.
 	* @note Non-atomic on libxl-side failure: values rejected by PHP-side validation (bad type, embedded NUL, unpackable AS_DATE) reject the whole column before any cell is written, but a failure inside libxl (e.g. exhausted style table) can leave earlier cells committed.
-	* @note excel.skip_empty: 1 skips null, 2 also skips empty strings unless AS_TEXT or AS_FORMULA is passed; skipped writes preserve the cell and bulk positions still advance. AS_TEXT writes empty strings in every mode.
+	* @note excel.skip_empty: 1 skips null, 2 also skips empty strings unless AS_TEXT is passed, including blank formulas such as '='; skipped writes preserve the cell and bulk positions still advance. AS_TEXT writes empty strings in every mode.
 	* @note Formula injection: a string starting with `=` becomes a live formula unless an explicit dtype (e.g. ExcelFormat::AS_TEXT) is passed; never pass untrusted input without a dtype. See SECURITY.md.
 	* @param int $column 0-based column number
 	* @param array $data

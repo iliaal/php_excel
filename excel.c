@@ -5017,6 +5017,18 @@ try_again:
 	}
 }
 
+static bool php_excel_formula_is_blank(const char *s, size_t len)
+{
+	size_t i = (len > 0 && s[0] == '=') ? 1 : 0;
+
+	for (; i < len; i++) {
+		if (s[i] != ' ' && s[i] != '\t' && s[i] != '\r' && s[i] != '\n') {
+			return false;
+		}
+	}
+	return true;
+}
+
 /* Commit-loop entry point shares this implementation with prevalidated = true:
  * the writeRow/writeCol pre-scan already proved
  * php_excel_cell_value_rejection() returns NULL for the same (value, dtype)
@@ -5104,7 +5116,15 @@ static bool php_excel_write_cell_impl(SheetHandle sheet, excel_book_object *book
 				dtype = PHP_EXCEL_FORMULA;
 			}
 			if (dtype == PHP_EXCEL_FORMULA) {
-				return xlSheetWriteFormula(sheet, row, col, Z_STRVAL_P(data), format);
+				if (!php_excel_formula_is_blank(Z_STRVAL_P(data), Z_STRLEN_P(data))) {
+					return xlSheetWriteFormula(sheet, row, col, Z_STRVAL_P(data), format);
+				}
+				/* LibXL stores a blank formula that it cannot read back from
+				 * XLS, so write it as an empty string instead. */
+				if (EXCEL_G(ini_skip_empty) == 2) {
+					return 1;
+				}
+				return xlSheetWriteStr(sheet, row, col, "", format);
 			} else {
 				if (dtype == PHP_EXCEL_NUMERIC_STRING) {
 					zend_long lval;

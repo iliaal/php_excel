@@ -186,7 +186,7 @@ excel.skip_empty=0
 - `0` (default): write `null` as a blank cell and write empty strings.
 - `1`: skip `null`; still write empty strings.
 - `2`: skip both `null` and empty strings, unless the write passes
-  `ExcelFormat::AS_TEXT` or `ExcelFormat::AS_FORMULA`.
+  `ExcelFormat::AS_TEXT`.
 
 A skipped write returns success but leaves the existing cell value and format
 unchanged. It does **not** clear the cell. Bulk writes still advance to the next
@@ -204,9 +204,10 @@ ini_set('excel.skip_empty', $previous);
 The setting is request-wide, not per workbook, and can be changed with
 `ini_set()`. Restore the previous value after a temporary override. To clear an
 existing cell with `null`, use mode `0`. An explicit `ExcelFormat::AS_TEXT`
-writes an empty string even in mode `2`, and an explicit `ExcelFormat::AS_FORMULA`
-writes the empty string as a formula, which LibXL cannot read back from XLS
-files. `ExcelFormat::AS_NUMERIC_STRING` empty strings are skipped like the
+writes an empty string even in mode `2`. A blank formula, meaning an empty or
+whitespace-only body after an optional leading `=` (such as `''` with
+`ExcelFormat::AS_FORMULA`, or `'='`), is written as an empty string, so mode `2`
+skips it. `ExcelFormat::AS_NUMERIC_STRING` empty strings are skipped like the
 default type. A lone `'` is unescaped to an empty string and always written.
 `null` follows `excel.skip_empty` regardless of the data type.
 
