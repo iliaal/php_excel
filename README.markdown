@@ -155,6 +155,33 @@ excel.license_key="YOUR_LICENSE_KEY"
 excel.skip_empty=0
 ```
 
+### Skipping empty writes
+
+`excel.skip_empty` controls `write()`, `writeRow()`, and `writeCol()`:
+
+- `0` (default): write `null` as a blank cell and write empty strings.
+- `1`: skip `null`; still write empty strings.
+- `2`: skip both `null` and empty strings with the default data type.
+
+A skipped write returns success but leaves the existing cell value and format
+unchanged. It does **not** clear the cell. Bulk writes still advance to the next
+coordinate, so skipped values leave gaps rather than shifting later values.
+Numeric zero, boolean `false`, and the string `'0'` are never skipped.
+
+```php
+$sheet->writeRow(1, ['keep', 'replace', 'old'], 1);
+$previous = ini_set('excel.skip_empty', '2');
+$sheet->writeRow(1, [null, '', 0], 1);
+$sheet->readRow(1, 1, 3); // ['keep', 'replace', 0.0]
+ini_set('excel.skip_empty', $previous);
+```
+
+The setting is request-wide, not per workbook, and can be changed with
+`ini_set()`. Restore the previous value after a temporary override. To clear an
+existing cell with `null`, use mode `0`. An explicit `ExcelFormat::AS_TEXT`
+writes an empty string even in mode `2`; `null` still follows `excel.skip_empty`
+regardless of the data type.
+
 ## 🔗 Native PHP extensions
 
 Companion native PHP extensions:
