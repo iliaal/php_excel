@@ -119,6 +119,36 @@ $rows = ($rowEnd > 1 && $colEnd > 1)
 // $rows[0][0] corresponds to sheet cell (1, 1).
 ```
 
+### Bulk-write array keys
+
+`writeRow()` and `writeCol()` consume values in PHP array iteration order and
+write consecutive cells starting at `$start_column` or `$start_row`. Array keys
+are ignored: neither numeric gaps nor associative keys select cell coordinates,
+and values are not sorted by key.
+
+In particular, passing a `readSparseRow()` or `readSparseCol()` result directly
+to a bulk writer compacts its positions. To preserve sparse coordinates, write
+each returned value using its key (and an explicit offset if needed):
+
+```php
+$source = $book->addSheet('Source');
+$target = $book->addSheet('Copy');
+$source->write(1, 1, 'A');
+$source->write(1, 3, false);
+
+$values = $source->readSparseRow(1, 1, 3); // [1 => 'A', 3 => false]
+$target->writeRow(1, $values, 1);          // writes to columns 1 and 2
+foreach ($values as $column => $value) {
+    $target->write(2, $column, $value);    // preserves columns 1 and 3
+}
+```
+
+For a sparse column, iterate `readSparseCol()` as `$row => $value` and call
+`write($row, $targetColumn, $value)`. This copies returned values only; it does
+not copy formatting or clear cells omitted by the sparse reader. If empty
+positions should also be written, use a dense reader and pass the matching
+start coordinate to the bulk writer instead, subject to `excel.skip_empty`.
+
 ### Formula text versus cached results
 
 `read()`, `readRow()`, `readCol()`, `readRange()`, `readSparseRow()`, and
