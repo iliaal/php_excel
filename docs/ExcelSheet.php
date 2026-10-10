@@ -181,7 +181,7 @@ class ExcelSheet
 	* @param int $row 0-based row number
 	* @param int $column 0-based column number
 	* @param mixed &$format (optional, default=null) ExcelFormat object will be assigned here
-	* @param bool $read_formula (optional, default=true)
+	* @param bool $read_formula For formula cells: true returns text without a leading =; false returns the cached value without recalculating it
 	* @return mixed
 	*/
 	public function read(int $row, int $column, mixed &$format = null, bool $read_formula = true): mixed
@@ -195,7 +195,7 @@ class ExcelSheet
 	* @param int $row 0-based row number
 	* @param int $start_col 0-based first column (inclusive, default=0)
 	* @param int $end_column Inclusive last column; -1 uses lastCol() - 1
-	* @param bool $read_formula (optional, default=true)
+	* @param bool $read_formula For formula cells: true returns text without a leading =; false returns the cached value without recalculating it
 	* @return array|false
 	*/
 	public function readRow(int $row, int $start_col = 0, int $end_column = -1, bool $read_formula = true): array|false
@@ -209,7 +209,7 @@ class ExcelSheet
 	* @param int $column 0-based column number
 	* @param int $start_row 0-based first row (inclusive, default=0)
 	* @param int $end_row Inclusive last row; -1 uses lastRow() - 1
-	* @param bool $read_formula (optional, default=true)
+	* @param bool $read_formula For formula cells: true returns text without a leading =; false returns the cached value without recalculating it
 	* @return array|false
 	*/
 	public function readCol(int $column, int $start_row = 0, int $end_row = -1, bool $read_formula = true): array|false
@@ -223,7 +223,7 @@ class ExcelSheet
 	* @param int $row_end 0-based last row (inclusive; no -1 default)
 	* @param int $col_start 0-based first column
 	* @param int $col_end 0-based last column (inclusive; no -1 default)
-	* @param bool $read_formula (optional, default=true)
+	* @param bool $read_formula For formula cells: true returns text without a leading =; false returns the cached value without recalculating it
 	* @return array|false
 	*/
 	public function readRange(int $row_start, int $row_end, int $col_start, int $col_end, bool $read_formula = true): array|false
@@ -236,7 +236,7 @@ class ExcelSheet
 	* @param int $row 0-based row number
 	* @param int $start_col 0-based first column (inclusive, default=0)
 	* @param int $end_column Inclusive last column; -1 uses lastCol() - 1
-	* @param bool $read_formula (optional, default=true)
+	* @param bool $read_formula For formula cells: true returns text without a leading =; false returns the cached value without recalculating it
 	* @return array|false
 	*/
 	public function readSparseRow(int $row, int $start_col = 0, int $end_column = -1, bool $read_formula = true): array|false
@@ -249,7 +249,7 @@ class ExcelSheet
 	* @param int $column 0-based column number
 	* @param int $start_row 0-based first row (inclusive, default=0)
 	* @param int $end_row Inclusive last row; -1 uses lastRow() - 1
-	* @param bool $read_formula (optional, default=true)
+	* @param bool $read_formula For formula cells: true returns text without a leading =; false returns the cached value without recalculating it
 	* @return array|false
 	*/
 	public function readSparseCol(int $column, int $start_row = 0, int $end_row = -1, bool $read_formula = true): array|false
