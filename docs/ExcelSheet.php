@@ -276,6 +276,8 @@ class ExcelSheet
 	/**
 	* Write an array of values into a row
 	*
+	* @note Values are written in array iteration order to consecutive cells from $start_column; numeric and string keys are ignored. Sparse-reader results must be written individually by key to preserve coordinates.
+	*
 	* @note Spelling split: writeRow()/writeCol() name the type parameter $data_type, while write() names it $datatype. Use positional args or the matching name per method; cross-method named-arg reuse fatals.
 	* @note Non-atomic on libxl-side failure: values rejected by PHP-side validation (bad type, embedded NUL, unpackable AS_DATE) reject the whole row before any cell is written, but a failure inside libxl (e.g. exhausted style table) can leave earlier cells committed.
 	* @note excel.skip_empty: 1 skips null, 2 also skips empty strings unless AS_TEXT is passed, including blank formulas such as '='; skipped writes preserve the cell and bulk positions still advance. AS_TEXT writes empty strings in every mode.
@@ -293,6 +295,8 @@ class ExcelSheet
 
 	/**
 	* Write an array of values into a column
+	*
+	* @note Values are written in array iteration order to consecutive cells from $start_row; numeric and string keys are ignored. Sparse-reader results must be written individually by key to preserve coordinates.
 	*
 	* @note Spelling split: writeRow()/writeCol() name the type parameter $data_type, while write() names it $datatype. Use positional args or the matching name per method; cross-method named-arg reuse fatals.
 	* @note Non-atomic on libxl-side failure: values rejected by PHP-side validation (bad type, embedded NUL, unpackable AS_DATE) reject the whole column before any cell is written, but a failure inside libxl (e.g. exhausted style table) can leave earlier cells committed.
