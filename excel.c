@@ -9723,6 +9723,10 @@ EXCEL_METHOD(ConditionalFormatting, addTimePeriodRule)
 	}
 
 	EXCEL_VALIDATE_INT_RANGE(timePeriod)
+	if (timePeriod < CFTP_LAST7DAYS || timePeriod > CFTP_YESTERDAY) {
+		php_error_docref(NULL, E_WARNING, "Invalid conditional formatting time period");
+		RETURN_FALSE;
+	}
 
 	CONDITIONALFORMATTING_FROM_OBJECT(cfing, object);
 	CONDITIONALFORMAT_FROM_OBJECT(cf, zcf);
