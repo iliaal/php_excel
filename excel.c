@@ -4903,13 +4903,12 @@ EXCEL_METHOD(Sheet, read)
 }
 /* }}} */
 
-/* A finite double casts to zend_long without float-cast-overflow UB only
- * within [-2^63, 2^63). 2^63 (9223372036854775808.0) is exactly representable;
- * zend_long max is 2^63-1, so a value >= 2^63 (or < -2^63) is out of range.
- * The AS_DATE path casts the timestamp to zend_long, so guard it there. */
+/* Bound AS_DATE float timestamps by the actual zend_long width before casting.
+ * ZEND_LONG_MIN and its positive opposite are exactly representable as doubles;
+ * ZEND_LONG_MAX rounds up on 64-bit builds, so use an exclusive upper bound. */
 static zend_always_inline int php_excel_double_in_long_range(double d)
 {
-	return d >= -9223372036854775808.0 && d < 9223372036854775808.0;
+	return d >= (double) ZEND_LONG_MIN && d < -(double) ZEND_LONG_MIN;
 }
 
 /* Write an already-packed Excel date serial. When no explicit format was
