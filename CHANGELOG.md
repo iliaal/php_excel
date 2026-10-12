@@ -16,9 +16,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Floating-point `AS_DATE` writes now respect PHP's integer width, rejecting
+  out-of-range timestamps on 32-bit builds before an unsafe integer conversion.
 - `ExcelConditionalFormatting::addTimePeriodRule()` now rejects unsupported
   time periods instead of saving an XLSX rule with an empty `timePeriod` value.
-
 - Blank formula writes, such as `''` with `ExcelFormat::AS_FORMULA` or a
   bare `'='`, store an empty string instead of a formula that LibXL cannot read
   back from XLS files, and `excel.skip_empty=2` skips them.
