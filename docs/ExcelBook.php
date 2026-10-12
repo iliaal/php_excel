@@ -115,7 +115,10 @@ class ExcelBook
 	}
 
 	/**
-	* Get Excel error string
+	* Get the current workbook's Excel error string
+	*
+	* LibXL load failures occur on a temporary workbook: inspect their warning
+	* instead of expecting the load error here. See ExcelBook::load().
 	*
 	* @return string|false Description of last error, or false if no error
 	*/
@@ -126,11 +129,17 @@ class ExcelBook
 	/**
 	* Load Excel from file
 	*
-	* Loading resets the book: any child wrappers (ExcelSheet, ExcelFont,
-	* ExcelFormat, ExcelAutoFilter, ...) fetched before this call are
-	* invalidated and must be re-fetched, whether the load succeeds or fails.
-	* On failure the return is false and an E_WARNING carries the libxl error
-	* (also available via getError()).
+	* A successful load replaces the workbook and invalidates existing child
+	* wrappers (ExcelSheet, ExcelFont, ExcelFormat, ExcelAutoFilter, ...).
+	* Fetch new wrappers after success. A failed load leaves the previous
+	* workbook and its live wrappers usable; it does not adopt partial data.
+	* This guarantee does not undo changes made by user stream callbacks or
+	* error handlers. Exceptions from those callbacks propagate.
+	*
+	* A LibXL load failure returns false and emits an E_WARNING containing the
+	* load error. That error belongs to a temporary workbook and is not retained
+	* by getError() or errorCode(). Input validation and stream failures can
+	* return false earlier; an empty string returns false without a warning.
 	*
 	* @note Stream sources are fully buffered (cap UINT_MAX); enforce an app-side size bound first, e.g. `if (filesize($path) > $maxBytes) throw new RuntimeException('spreadsheet too large');`. See SECURITY.md.
 	* @param string $filename
@@ -142,6 +151,8 @@ class ExcelBook
 
 	/**
 	* Load a row slice from Excel data string
+	*
+	* @see ExcelBook::load() for success-only wrapper invalidation and failure diagnostics
 	*
 	* @note Stream sources are fully buffered (cap UINT_MAX); enforce an app-side size bound first. See ExcelBook::loadFile() for an example.
 	* @since libxl 5.0.0
@@ -159,6 +170,8 @@ class ExcelBook
 	/**
 	* Load a row slice from Excel file
 	*
+	* @see ExcelBook::load() for success-only wrapper invalidation and failure diagnostics
+	*
 	* @since libxl 5.0.0
 	* @param string $filename
 	* @param int $sheet_index 0-based sheet index to load
@@ -175,6 +188,8 @@ class ExcelBook
 	* Load Excel from file without empty cells (xls format only; libxl does not
 	* support this for xlsx files and the call fails with a warning on such books)
 	*
+	* @see ExcelBook::load() for success-only wrapper invalidation and failure diagnostics
+	*
 	* @since libxl 5.0.0
 	* @param string $filename Plain filesystem path
 	* @return bool
@@ -186,11 +201,17 @@ class ExcelBook
 	/**
 	* Load Excel data string
 	*
-	* Loading resets the book: any child wrappers (ExcelSheet, ExcelFont,
-	* ExcelFormat, ExcelAutoFilter, ...) fetched before this call are
-	* invalidated and must be re-fetched, whether the load succeeds or fails.
-	* On failure the return is false and an E_WARNING carries the libxl error
-	* (also available via getError()).
+	* A successful load replaces the workbook and invalidates existing child
+	* wrappers (ExcelSheet, ExcelFont, ExcelFormat, ExcelAutoFilter, ...).
+	* Fetch new wrappers after success. A failed load leaves the previous
+	* workbook and its live wrappers usable; it does not adopt partial data.
+	* This guarantee does not undo changes made by user stream callbacks or
+	* error handlers. Exceptions from those callbacks propagate.
+	*
+	* A LibXL load failure returns false and emits an E_WARNING containing the
+	* load error. That error belongs to a temporary workbook and is not retained
+	* by getError() or errorCode(). Input validation and stream failures can
+	* return false earlier; an empty string returns false without a warning.
 	*
 	* @note Stream sources are fully buffered (cap UINT_MAX); enforce an app-side size bound first. See ExcelBook::loadFile() for an example.
 	* @param string $data
@@ -633,6 +654,8 @@ class ExcelBook
 	/**
 	* Load Excel sheet info without loading the full file
 	*
+	* @see ExcelBook::load() for success-only wrapper invalidation and failure diagnostics
+	*
 	* @note Stream sources are fully buffered (cap UINT_MAX); enforce an app-side size bound first. See ExcelBook::loadFile() for an example.
 	* @param string $filename
 	* @return bool
@@ -751,6 +774,8 @@ class ExcelBook
 	/**
 	* Load Excel sheet info from raw data without loading the full file
 	*
+	* @see ExcelBook::load() for success-only wrapper invalidation and failure diagnostics
+	*
 	* @since libxl 5.0.1
 	* @param string $data
 	* @return bool
@@ -760,7 +785,10 @@ class ExcelBook
 	}
 
 	/**
-	* Returns the error code of the last operation
+	* Returns the current workbook's error code
+	*
+	* LibXL load errors are emitted as warnings, not retained on this workbook.
+	* @see ExcelBook::load()
 	*
 	* @since libxl 5.1.0
 	* @return int|false
