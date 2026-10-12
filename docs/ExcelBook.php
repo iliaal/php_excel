@@ -286,8 +286,19 @@ class ExcelBook
 	/**
 	* Delete an Excel worksheet
 	*
-	* @param int $sheet_number 0-based worksheet number to delete
-	* @return bool
+	* On success, all existing ExcelSheet wrappers from this workbook become
+	* stale, including surviving sheets and their sheet-owned wrappers
+	* (autofilters, filter columns, tables, form controls, conditional formatting).
+	* Re-fetch surviving sheets with getSheet() or getSheetByName(), then obtain
+	* their children again. Later sheet indexes shift after deletion. Calls on
+	* stale wrappers warn and return false; constructors given stale sheet-owned
+	* wrappers throw an exception. Workbook-owned fonts and formats remain usable.
+	* A failed deletion leaves existing wrappers usable.
+	*
+	* @see ExcelBook::getSheet()
+	* @see ExcelBook::getSheetByName()
+	* @param int $sheet 0-based worksheet number to delete
+	* @return bool True on success, false on failure
 	*/
 	public function deleteSheet(int $sheet): bool
 	{

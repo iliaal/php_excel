@@ -73,6 +73,33 @@ $book->save('output.xlsx');
 
 `save()` stages the workbook to a temporary sibling file and renames it into place, so a failed save leaves the destination untouched. If the rename fails, local-path saves fail closed (return `false`); stream wrappers that omit `rename()` fall back to a direct write with a warning. Failed handle creation and rejected header, footer, font-size, and staging inputs emit warnings naming the cause. Suppress them with `@` only where you handle `false` explicitly.
 
+### Using sheets after deletion
+
+A successful `deleteSheet()` invalidates every existing `ExcelSheet` wrapper
+from that workbook, including wrappers for sheets that were not deleted.
+Their sheet-owned wrappers, such as autofilters, filter columns, tables, form
+controls, and conditional formatting, also become stale. Calls through stale
+wrappers warn and return `false`; constructors given stale sheet-owned wrappers
+throw an exception. Re-fetch a surviving sheet and its children before using
+them again. Workbook-owned fonts and formats remain usable.
+
+```php
+$book = new ExcelBook(null, null, true);
+$book->addSheet('Temporary');
+$keep = $book->addSheet('Keep');
+$keep->write(1, 0, 'retained');
+
+if ($book->deleteSheet(0)) {
+    // The old $keep wrapper is stale, even though its sheet still exists.
+    $keep = $book->getSheetByName('Keep');
+    $keep->read(1, 0); // 'retained'
+}
+```
+
+Deleting a sheet also shifts the indexes of later sheets. Re-fetch by name,
+or use the updated zero-based index with `getSheet()`. A failed deletion
+returns `false` and leaves existing wrappers usable.
+
 ## 📊 Performance
 
 Write 100,000 rows × 20 columns vs PhpSpreadsheet 5.5.0 on PHP 8.4.19 NTS, Apple M3:
