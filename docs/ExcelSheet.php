@@ -1919,13 +1919,19 @@ class ExcelSheet
 	/**
 	* Adds a table to the sheet (xlsx only)
 	*
+	* Accepts all LibXL table style IDs from 0 through 60, including IDs without
+	* a registered PHP constant. An out-of-range style emits a warning and
+	* returns false without adding a table.
+	*
+	* @see ExcelTable::setStyle() For style IDs and families
+	*
 	* @param string $name
 	* @param int $rowFirst 0-based first row
 	* @param int $rowLast 0-based last row
 	* @param int $colFirst 0-based first column
 	* @param int $colLast 0-based last column
 	* @param bool $hasHeaders (optional)
-	* @param int $style (optional) One of ExcelTable::TABLESTYLE_* constants
+	* @param int $style (optional) LibXL table style ID from 0 through 60 (default=0)
 	* @return ExcelTable|false
 	*/
 	public function addTable(string $name, int $rowFirst, int $rowLast, int $colFirst, int $colLast, bool $hasHeaders = true, int $style = 0): ExcelTable|false
