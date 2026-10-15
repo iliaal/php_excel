@@ -177,7 +177,31 @@ class ExcelSheet
 	/**
 	* Read data from a specific cell
 	*
+	* Values are converted by cell type, not returned as Excel's displayed text:
+	* - Ordinary numbers return float, even when the value is a whole number.
+	* - Numbers recognized by LibXL as dates are interpreted using PHP's
+	*   configured timezone and return integer Unix timestamps. Time-only serials
+	*   in [0, 1) return integer seconds since midnight instead. Number formatting
+	*   affects date detection.
+	* - Strings return string and booleans return bool.
+	* - CELLTYPE_EMPTY returns ''; CELLTYPE_BLANK returns null.
+	* - Error cells return an integer ExcelSheet::ERRORTYPE_* code, not '#DIV/0!'
+	*   or another displayed error string. Use cellType() to identify error cells.
+	*
+	* Formula text takes precedence when $read_formula is true. With false, the
+	* cached result uses the same conversions, including date detection.
+	* A boolean cell containing false also returns false; that value alone does
+	* not indicate a failed read. Conversion/read failures warn and return false.
+	*
+	* readRow(), readCol(), readRange(), readSparseRow() and readSparseCol() use
+	* these same value conversions. A cell conversion/read failure makes the
+	* entire bulk call return false rather than a partial array. Sparse readers
+	* omit CELLTYPE_EMPTY only; they retain blank cells (null), empty strings,
+	* numeric zero and boolean false under their original sheet indexes.
+	*
 	* @note For bulk reads prefer readRange()/readRow()/readCol() over per-cell read() loops; each read() call pays full engine dispatch per cell.
+	* @see ExcelSheet::cellType()
+	* @see ExcelBook::unpackDate()
 	* @param int $row 0-based row number
 	* @param int $column 0-based column number
 	* @param mixed &$format (optional, default=null) ExcelFormat object will be assigned here
@@ -191,6 +215,7 @@ class ExcelSheet
 	/**
 	* Read a row as a zero-based packed array (keys do not preserve column indexes)
 	*
+	* @see ExcelSheet::read() For cell-value conversions and read failures
 	* @note For rectangular bulk reads prefer readRange() over repeated read()/readRow() calls; one call avoids per-cell PHP dispatch.
 	* @param int $row 0-based row number
 	* @param int $start_col 0-based first column (inclusive, default=0)
@@ -205,6 +230,7 @@ class ExcelSheet
 	/**
 	* Read a column as a zero-based packed array (keys do not preserve row indexes)
 	*
+	* @see ExcelSheet::read() For cell-value conversions and read failures
 	* @note For rectangular bulk reads prefer readRange() over repeated read()/readCol() calls; one call avoids per-cell PHP dispatch.
 	* @param int $column 0-based column number
 	* @param int $start_row 0-based first row (inclusive, default=0)
@@ -219,6 +245,7 @@ class ExcelSheet
 	/**
 	* Read a rectangular range as packed rows of packed cells, both keyed from zero
 	*
+	* @see ExcelSheet::read() For cell-value conversions and read failures
 	* @param int $row_start 0-based first row
 	* @param int $row_end 0-based last row (inclusive; no -1 default)
 	* @param int $col_start 0-based first column
@@ -233,6 +260,9 @@ class ExcelSheet
 	/**
 	* Read non-empty cells from a row, keyed by original column index
 	*
+	* Only CELLTYPE_EMPTY is omitted; blank cells (null) and empty strings remain.
+	*
+	* @see ExcelSheet::read() For cell-value conversions and read failures
 	* @param int $row 0-based row number
 	* @param int $start_col 0-based first column (inclusive, default=0)
 	* @param int $end_column Inclusive last column; -1 uses lastCol() - 1
@@ -246,6 +276,9 @@ class ExcelSheet
 	/**
 	* Read non-empty cells from a column, keyed by original row index
 	*
+	* Only CELLTYPE_EMPTY is omitted; blank cells (null) and empty strings remain.
+	*
+	* @see ExcelSheet::read() For cell-value conversions and read failures
 	* @param int $column 0-based column number
 	* @param int $start_row 0-based first row (inclusive, default=0)
 	* @param int $end_row Inclusive last row; -1 uses lastRow() - 1
