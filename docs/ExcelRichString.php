@@ -26,7 +26,13 @@ class ExcelRichString
 	/**
 	* Adds a font to the rich string. Returns a new font for use with addText().
 	*
-	* @param ExcelFont|null $font (optional) Font to copy from
+	* The optional font is a copy template and may belong to another workbook.
+	* The returned font belongs to this rich string's workbook; changing the
+	* copy does not change the template. Pass the returned font to addText(),
+	* rather than passing a foreign-workbook template directly.
+	*
+	* @see ExcelRichString::addText()
+	* @param ExcelFont|null $font (optional) Font to copy from, including another workbook
 	* @return ExcelFont|false
 	*/
 	public function addFont(?ExcelFont $font = null): ExcelFont|false
@@ -36,8 +42,14 @@ class ExcelRichString
 	/**
 	* Adds text to the rich string with an optional font
 	*
+	* A supplied font must belong to the same workbook as this rich string.
+	* A font from another workbook emits a warning and returns false without
+	* adding a text segment. Use addFont($font) to copy a foreign font first.
+	* Omit the font or pass null for a segment without an explicit font.
+	*
+	* @see ExcelRichString::addFont()
 	* @param string $text
-	* @param ExcelFont|null $font (optional)
+	* @param ExcelFont|null $font (optional) Same-workbook font, or null
 	* @return bool
 	*/
 	public function addText(string $text, ?ExcelFont $font = null): bool
@@ -47,8 +59,11 @@ class ExcelRichString
 	/**
 	* Returns the text and font at the specified index
 	*
-	* @param int $index
-	* @return array|false Array with keys "text"(string) and "font"(ExcelFont)
+	* If LibXL returns no font handle, the font entry is null. Check for null
+	* before calling ExcelFont methods on the returned value.
+	*
+	* @param int $index Zero-based text segment index
+	* @return array|false Array with keys "text" (string) and "font" (ExcelFont|null), or false on failure
 	*/
 	public function getText(int $index): array|false
 	{
