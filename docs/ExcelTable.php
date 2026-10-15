@@ -34,7 +34,12 @@ class ExcelTable
 	/**
 	* Create a table within an Excel sheet
 	*
+	* All LibXL table style IDs from 0 through 60 are accepted, including IDs
+	* without a registered PHP constant. See setStyle() for the style families.
+	* A style outside this range throws an exception.
+	*
 	* @see ExcelSheet::addTable()
+	* @see ExcelTable::setStyle()
 	* @param ExcelSheet $sheet
 	* @param string $name
 	* @param int $rowFirst
@@ -42,7 +47,7 @@ class ExcelTable
 	* @param int $colFirst
 	* @param int $colLast
 	* @param bool $hasHeaders (optional)
-	* @param int $style (optional) One of ExcelTable::TABLESTYLE_* constants
+	* @param int $style (optional) LibXL table style ID from 0 through 60 (default=0)
 	*/
 	public function __construct(ExcelSheet $sheet, string $name, int $rowFirst, int $rowLast, int $colFirst, int $colLast, bool $hasHeaders = true, int $style = 0)
 	{
@@ -119,7 +124,11 @@ class ExcelTable
 	/**
 	* Returns the table style
 	*
-	* @return int One of ExcelTable::TABLESTYLE_* constants
+	* The returned ID need not have a corresponding ExcelTable::TABLESTYLE_*
+	* constant. It can be passed directly to setStyle().
+	*
+	* @see ExcelTable::setStyle()
+	* @return int|false LibXL table style ID, or false on failure
 	*/
 	public function style(): mixed
 	{
@@ -128,7 +137,14 @@ class ExcelTable
 	/**
 	* Sets the table style
 	*
-	* @param int $value One of ExcelTable::TABLESTYLE_* constants
+	* Accepts the full LibXL table style range: 0 means no style, 1-21 are
+	* Light1-Light21, 22-49 are Medium1-Medium28, and 50-60 are Dark1-Dark11.
+	* Only some IDs have registered ExcelTable::TABLESTYLE_* constants; use
+	* the numeric ID for the others (for example, 30 is Medium9).
+	* An out-of-range value emits a warning and returns false without changing
+	* the current style.
+	*
+	* @param int $value LibXL table style ID from 0 through 60
 	* @return bool
 	*/
 	public function setStyle(int $value): bool
