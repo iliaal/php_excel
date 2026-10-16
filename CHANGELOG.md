@@ -7,12 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.9.0] - 2026-10-16
+
 ### Security
 - ExcelBook::colorUnpack() now warns and returns false for colors that have no RGB value in an XLS book, such as the automatic colors `COLOR_DEFAULT_FOREGROUND`, `COLOR_DEFAULT_BACKGROUND`, and `0x7FFF`, or codes 0 to 7. Previously it returned uninitialized memory as the color components. Palette colors 8 to 63 and XLSX colors are unchanged.
 - ExcelBook::save() no longer uses a freed workbook when a user stream wrapper reachable without `://` (a `data:` name, or any path while the `file` wrapper is replaced) reloads or reinitializes the book from a callback. Such names now go through PHP streams, as fopen() resolves them, and save the workbook as it was when save() was called. loadFile(), loadFilePartially(), loadInfo(), and addPictureFromFile() follow the same resolution, and loadFileWithoutEmptyCells() rejects these names. A save whose destination stops resolving to a local file, or whose book is replaced, during the save returns false and leaves the destination unchanged.
 - ExcelRichString::addText() now warns and returns false when LibXL cannot decode the text: invalid UTF-8 after `setLocale('UTF-8')`, or otherwise bytes that the current LC_CTYPE locale cannot convert (under the C locale, any non-ASCII text). Previously it returned true while LibXL dropped the text, and the next save() of an XLS book crashed inside LibXL. If LibXL still drops text from an XLS book, save() refuses until the book is reloaded, cleared, or reconstructed.
 - ExcelBook::loadInfo() and loadInfoRaw() now put the book in info-only mode. Until a full load*(), clear(), or __construct(), every method except sheetCount(), getSheetName(), and the version getters warns and returns false, and the ExcelFont, ExcelFormat, ExcelSheet, ExcelRichString, ExcelConditionalFormat, and ExcelCoreProperties constructors throw. Previously the font, format, rich-string, and conditional-format APIs crashed the process on XLSX books loaded this way; XLS books in info-only mode are refused the same way.
 - ExcelBook::getPicture() no longer passes a NULL buffer to memcpy() for XLSX pictures added with addPictureAsLink() without embedding. It returns `"data" => ""` with the picture type.
+- ExcelFilterColumn::getCustomFilter() now reports `OPERATOR_EQUAL` for an operator outside the `OPERATOR_*` range. With LibXL 4.6.0, a one-condition filter returned an arbitrary value as `operator_2`. Other getters with output parameters now start them at zero, so a partial write from LibXL never returns stack contents.
 
 ### Changed
 
@@ -828,7 +831,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.8] - 2010-08-01
 	* Initial Release
 
-[Unreleased]: https://github.com/iliaal/php_excel/compare/2.8.0...HEAD
+[Unreleased]: https://github.com/iliaal/php_excel/compare/2.9.0...HEAD
+[2.9.0]: https://github.com/iliaal/php_excel/releases/tag/2.9.0
 [2.7.0]: https://github.com/iliaal/php_excel/releases/tag/2.7.0
 [2.8.0]: https://github.com/iliaal/php_excel/releases/tag/2.8.0
 [2.6.0]: https://github.com/iliaal/php_excel/releases/tag/2.6.0

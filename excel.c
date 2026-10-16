@@ -77,7 +77,7 @@ static zend_always_inline zend_class_entry *zend_register_internal_class_with_fl
 #define PHP_EXCEL_NUMERIC_STRING 3
 #define PHP_EXCEL_TEXT 4
 
-#define PHP_EXCEL_VERSION "2.8.0"
+#define PHP_EXCEL_VERSION "2.9.0"
 
 #ifdef COMPILE_DL_EXCEL
 #ifdef ZTS
