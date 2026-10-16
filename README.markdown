@@ -96,6 +96,8 @@ if ($book->deleteSheet(0)) {
 }
 ```
 
+Call `setLocale('UTF-8')` on every book, as above, when your text can contain anything beyond ASCII. Without it, LibXL converts text with the process locale, and Docker containers, PHP-FPM pools, and systemd services often run under the plain `C` locale. There, `ExcelRichString::addText()` rejects accented, Cyrillic, or other non-ASCII text with a warning and returns `false`.
+
 Deleting a sheet also shifts the indexes of later sheets. Re-fetch by name,
 or use the updated zero-based index with `getSheet()`. A failed deletion
 returns `false` and leaves existing wrappers usable.
