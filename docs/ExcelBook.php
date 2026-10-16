@@ -567,7 +567,7 @@ class ExcelBook
 	* Returns a picture at position index
 	*
 	* @param int $index
-	* @return array|false Array with keys "data"(string) and "type"(int)
+	* @return array|false Array with keys "data"(string) and "type"(int); "data" is an empty string for a picture added with addPictureAsLink() without embedding
 	*/
 	public function getPicture(int $index): array|false
 	{

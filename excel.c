@@ -2230,7 +2230,7 @@ static zend_string *php_excel_save_raw(BookHandle book, zval *object)
 		return NULL;
 	}
 	book_obj->native_buffer_borrowed = true;
-	owned = zend_string_init(contents, len, 0);
+	owned = (contents && len) ? zend_string_init(contents, len, 0) : ZSTR_EMPTY_ALLOC();
 	book_obj->native_buffer_borrowed = false;
 	return owned;
 }
@@ -6899,7 +6899,7 @@ EXCEL_METHOD(Book, getPicture)
 		zend_string *owned;
 
 		book_obj->native_buffer_borrowed = true;
-		owned = zend_string_init(buf, buf_len, 0);
+		owned = (buf && buf_len) ? zend_string_init(buf, buf_len, 0) : ZSTR_EMPTY_ALLOC();
 		book_obj->native_buffer_borrowed = false;
 
 		array_init(return_value);
