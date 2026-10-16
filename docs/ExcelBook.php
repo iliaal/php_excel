@@ -232,6 +232,10 @@ class ExcelBook
 	* non-atomic direct write. If unlink() is also unavailable, the staging file
 	* remains because PHP's adapter advertises both operations anyway.
 	* Native stream wrappers without rename/unlink support write directly.
+	* A name PHP resolves to a user wrapper takes this route even without
+	* "://": data: names, and every plain path while file: is replaced. Such a
+	* save writes the workbook as it was when save() was called, even if a
+	* wrapper callback reloads or reinitializes this book.
 	* With an empty filename, save() returns the workbook as a binary string.
 	*
 	* @param string $filename (optional, default="") If empty or omitted, returns binary string

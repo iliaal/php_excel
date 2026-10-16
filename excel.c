@@ -1539,6 +1539,16 @@ close_stream:
 	return contents.s;
 }
 
+/* True only for a path PHP itself would open with the plain-files wrapper, so
+ * handing it to libxl by name cannot bypass a user wrapper registered over
+ * file: or data:. Explicit file:// URLs stay on the stream route because
+ * libxl does not understand the scheme prefix. */
+static bool php_excel_is_plain_local_path(zend_string *path)
+{
+	return !strstr(ZSTR_VAL(path), "://")
+		&& php_stream_locate_url_wrapper(ZSTR_VAL(path), NULL, 0) == &php_plain_files_wrapper;
+}
+
 static bool php_excel_wrapper_supports_atomic_save(zend_string *url)
 {
 	php_stream_wrapper *wrapper = php_stream_locate_url_wrapper(ZSTR_VAL(url), NULL, 0);
@@ -1995,6 +2005,7 @@ EXCEL_METHOD(Book, loadFile)
 	php_stream *stream;
 	zend_string *contents;
 	php_excel_stream_read_status stream_status;
+	bool plain_local;
 
 	if (zend_parse_parameters(ZEND_NUM_ARGS(), "S", &filename_zs) == FAILURE) {
 		RETURN_FALSE;
@@ -2003,10 +2014,11 @@ EXCEL_METHOD(Book, loadFile)
 	EXCEL_NON_EMPTY_STRING(filename_zs)
 	EXCEL_NUL_SAFE_STRING(filename_zs)
 
+	plain_local = php_excel_is_plain_local_path(filename_zs);
+
 	/* With open_basedir active, PHP must perform the actual open. A separate
 	 * policy check followed by a libxl path open has a rename/symlink race. */
-	if (!strstr(ZSTR_VAL(filename_zs), "://")
-	    && (!PG(open_basedir) || !*PG(open_basedir))) {
+	if (plain_local && (!PG(open_basedir) || !*PG(open_basedir))) {
 		BOOK_BEGIN_SCRATCH_RELOAD(scratch, object);
 		if (!xlBookLoad(scratch, ZSTR_VAL(filename_zs))) {
 			php_error_docref(NULL, E_WARNING, "Failed to load workbook: %s", xlBookErrorMessage(scratch));
@@ -2019,8 +2031,7 @@ EXCEL_METHOD(Book, loadFile)
 		}
 		RETURN_TRUE;
 	}
-	if (!strstr(ZSTR_VAL(filename_zs), "://")
-	    && PG(open_basedir) && *PG(open_basedir)
+	if (plain_local && PG(open_basedir) && *PG(open_basedir)
 	    && php_check_open_basedir(ZSTR_VAL(filename_zs))) {
 		RETURN_FALSE;
 	}
@@ -2127,6 +2138,7 @@ EXCEL_METHOD(Book, loadFilePartially)
 	php_stream *stream;
 	zend_string *contents;
 	php_excel_stream_read_status stream_status;
+	bool plain_local;
 
 	if (zend_parse_parameters(ZEND_NUM_ARGS(), "Slll|b", &filename_zs, &sheet_index, &row_first, &row_last, &keep_all_sheets) == FAILURE) {
 		RETURN_FALSE;
@@ -2139,8 +2151,8 @@ EXCEL_METHOD(Book, loadFilePartially)
 		RETURN_FALSE;
 	}
 
-	if (!strstr(ZSTR_VAL(filename_zs), "://")
-	    && (!PG(open_basedir) || !*PG(open_basedir))) {
+	plain_local = php_excel_is_plain_local_path(filename_zs);
+	if (plain_local && (!PG(open_basedir) || !*PG(open_basedir))) {
 		BOOK_BEGIN_SCRATCH_RELOAD(scratch, object);
 		if (!xlBookLoadPartially(scratch, ZSTR_VAL(filename_zs), (int) sheet_index, (int) row_first, (int) row_last, keep_all_sheets)) {
 			php_error_docref(NULL, E_WARNING, "Failed to load workbook: %s", xlBookErrorMessage(scratch));
@@ -2153,8 +2165,7 @@ EXCEL_METHOD(Book, loadFilePartially)
 		}
 		RETURN_TRUE;
 	}
-	if (!strstr(ZSTR_VAL(filename_zs), "://")
-	    && PG(open_basedir) && *PG(open_basedir)
+	if (plain_local && PG(open_basedir) && *PG(open_basedir)
 	    && php_check_open_basedir(ZSTR_VAL(filename_zs))) {
 		RETURN_FALSE;
 	}
@@ -2221,7 +2232,7 @@ EXCEL_METHOD(Book, loadFileWithoutEmptyCells)
 	EXCEL_NON_EMPTY_STRING(filename_zs)
 	EXCEL_NUL_SAFE_STRING(filename_zs)
 
-	if (strstr(ZSTR_VAL(filename_zs), "://")) {
+	if (!php_excel_is_plain_local_path(filename_zs)) {
 		php_error_docref(NULL, E_WARNING, "Stream wrappers are not supported by loadFileWithoutEmptyCells");
 		RETURN_FALSE;
 	}
@@ -2253,8 +2264,11 @@ EXCEL_METHOD(Book, loadFileWithoutEmptyCells)
  * would first materialize all of it in memory, so this keeps the save atomic
  * without a peak-memory cost that scales with the workbook. Only reachable
  * with open_basedir inactive; otherwise PHP has to perform the open itself. */
-static void php_excel_save_to_local(INTERNAL_FUNCTION_PARAMETERS, BookHandle book, zend_string *filename_zs)
+static void php_excel_save_to_local(INTERNAL_FUNCTION_PARAMETERS, zval *object, zend_string *filename_zs)
 {
+	excel_book_object *book_obj = Z_EXCEL_BOOK_OBJ_P(object);
+	BookHandle book = book_obj->book;
+	uint64_t generation = book_obj->generation;
 	php_stream *stream;
 	zend_string *tmp_name = php_excel_reserve_staging_url(filename_zs, &stream);
 
@@ -2275,6 +2289,14 @@ static void php_excel_save_to_local(INTERNAL_FUNCTION_PARAMETERS, BookHandle boo
 			RETURN_THROWS();
 		}
 		php_error_docref(NULL, E_WARNING, "Failed to save workbook: could not close temporary file; destination left unchanged");
+		RETURN_FALSE;
+	}
+	/* The staging open and close can run userland that reinitializes or
+	 * reloads this book, freeing the handle fetched above. */
+	if (!php_excel_book_generation_matches(book_obj, generation) || book_obj->book != book) {
+		php_excel_unlink_staging_or_warn(tmp_name);
+		zend_string_release(tmp_name);
+		php_error_docref(NULL, E_WARNING, "Failed to save workbook: the book was reinitialized or reloaded during the save; destination left unchanged");
 		RETURN_FALSE;
 	}
 
@@ -2324,7 +2346,7 @@ static zend_string *php_excel_save_raw(BookHandle book, zval *object)
  * stay blocking because the streams API has no write-timeout knob, so every
  * write/flush/close step below checks EG(exception) to abort promptly on
  * executor interruption. */
-static void php_excel_save_to_stream(INTERNAL_FUNCTION_PARAMETERS, zend_string *owned_contents, zend_string *filename_zs, unsigned int len)
+static void php_excel_save_to_stream(INTERNAL_FUNCTION_PARAMETERS, zend_string *owned_contents, zend_string *filename_zs, unsigned int len, bool plain_local)
 {
 	ssize_t numbytes;
 	php_stream *stream;
@@ -2381,9 +2403,13 @@ static void php_excel_save_to_stream(INTERNAL_FUNCTION_PARAMETERS, zend_string *
 			RETURN_FALSE;
 		}
 
-		/* No-op for wrapper URLs, which do not stat; this only matters for
-		 * the local paths that reach here because open_basedir is active. */
-		php_excel_copy_destination_mode(filename_zs, tmp_name);
+		/* Only plain local paths reach here with a real file to stat: those
+		 * routed through the stream because open_basedir is active. Any other
+		 * name is not a filesystem path, even when a user wrapper over file:
+		 * makes it look like one. */
+		if (plain_local) {
+			php_excel_copy_destination_mode(filename_zs, tmp_name);
+		}
 
 		if (wrapper_has_rename && php_excel_wrapper_rename(tmp_name, filename_zs)) {
 			zend_string_release(tmp_name);
@@ -2461,7 +2487,7 @@ EXCEL_METHOD(Book, save)
 	if (has_path) {
 		EXCEL_NUL_SAFE_STRING(filename_zs)
 	}
-	is_local_path = has_path && !strstr(ZSTR_VAL(filename_zs), "://");
+	is_local_path = has_path && php_excel_is_plain_local_path(filename_zs);
 	basedir_active = PG(open_basedir) && *PG(open_basedir);
 
 	BOOK_FROM_OBJECT(book, object);
@@ -2472,7 +2498,7 @@ EXCEL_METHOD(Book, save)
 	}
 
 	if (is_local_path && !basedir_active) {
-		php_excel_save_to_local(INTERNAL_FUNCTION_PARAM_PASSTHRU, book, filename_zs);
+		php_excel_save_to_local(INTERNAL_FUNCTION_PARAM_PASSTHRU, object, filename_zs);
 		return;
 	}
 
@@ -2489,7 +2515,7 @@ EXCEL_METHOD(Book, save)
 	}
 
 	if (has_path) {
-		php_excel_save_to_stream(INTERNAL_FUNCTION_PARAM_PASSTHRU, owned_contents, filename_zs, (unsigned int) ZSTR_LEN(owned_contents));
+		php_excel_save_to_stream(INTERNAL_FUNCTION_PARAM_PASSTHRU, owned_contents, filename_zs, (unsigned int) ZSTR_LEN(owned_contents), is_local_path);
 		return;
 	}
 	RETURN_STR(owned_contents);
@@ -3311,14 +3337,17 @@ static void php_excel_add_picture(INTERNAL_FUNCTION_PARAMETERS, int mode) /* {{{
 		/* path-mode: data_zs is a filesystem path. NUL truncation here
 		 * silently opens a different file than the caller validated. */
 		EXCEL_NUL_SAFE_STRING(data_zs)
+		bool plain_local = php_excel_is_plain_local_path(data_zs);
+
 		/* With open_basedir active, PHP must perform the actual open. */
-		if (!strstr(ZSTR_VAL(data_zs), "://")
-		    && (!PG(open_basedir) || !*PG(open_basedir))) {
+		if (plain_local && (!PG(open_basedir) || !*PG(open_basedir))) {
+			/* Wrapper lookup can warn, and a user error handler can
+			 * reconstruct the book. */
+			BOOK_FROM_OBJECT(book, object);
 			ret = xlBookAddPicture(book, ZSTR_VAL(data_zs));
 			goto picture_done;
 		}
-		if (!strstr(ZSTR_VAL(data_zs), "://")
-		    && PG(open_basedir) && *PG(open_basedir)
+		if (plain_local && PG(open_basedir) && *PG(open_basedir)
 		    && php_check_open_basedir(ZSTR_VAL(data_zs))) {
 			RETURN_FALSE;
 		}
