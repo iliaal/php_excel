@@ -20,8 +20,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - On ZTS builds, save(), loadFile(), loadFilePartially(), loadFileWithoutEmptyCells(), loadInfo(), addPictureFromFile(), and addPictureAsLink() now resolve file names against the directory set by chdir(). Previously save() with a relative name returned true but left an empty file and wrote the workbook as a stray `.tmp` in the process start directory, the loaders read a same-named file from that directory, and saving through a symlinked directory followed by `..` failed and left a `.tmp` behind.
 - save(), loadFile(), loadFilePartially(), and loadInfo() accept file names LibXL cannot decode, such as a Latin-1 `café.xlsx` under the `C` locale, by reading and writing through PHP streams. loadFileWithoutEmptyCells() on XLSX, and loadInfo() on XLSX with LibXL older than 5.0.1, have no stream route and return false with a warning for such names.
 
+- On Windows, the ExcelCoreProperties title, subject, creator, and comments keep non-ASCII text: setters store it as UTF-8 instead of mojibake, getters return it unchanged, and a value the Windows ANSI code page cannot represent is refused with a warning.
+
 ### Known issues
 - LibXL cannot reload an XLS file whose comment contains non-ASCII text. With the UTF-8 default, such comments are now stored instead of dropped under the `C` locale.
+- On Windows, after setLocale() selects a non-UTF-8 locale, setTags(), setCategories(), and setLastModifiedBy() return true but LibXL drops non-ASCII input.
 
 ## [2.9.0] - 2026-10-16
 
