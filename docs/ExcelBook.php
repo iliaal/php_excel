@@ -452,13 +452,12 @@ class ExcelBook
 	* locale, and switches the process LC_CTYPE to it. Pass "UTF-8" to return
 	* to the default.
 	*
-	* If LibXL rejects the locale name, the workbook converts text with the
-	* current process LC_CTYPE until the next successful call, and a reload
-	* restores the locale accepted last. An empty string returns false and
-	* changes nothing.
+	* A reload keeps the locale accepted last. If LibXL rejects the locale
+	* name, the method emits a warning, returns false, and the workbook keeps
+	* its previous locale. An empty string returns false and changes nothing.
 	*
 	* @param string $locale
-	* @return void
+	* @return bool
 	*/
 	public function setLocale(string $locale): mixed
 	{

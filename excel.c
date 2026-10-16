@@ -180,6 +180,9 @@ typedef struct _excel_book_object {
 	 * setLocale() argument. Re-applied to scratch reload handles so encoding
 	 * behavior survives a successful reload-swap. */
 	char *locale;
+	/* Copies of text re-read by php_excel_lossy_read_end(); each stays valid
+	 * until the next lossy re-read on this book, like a LibXL buffer. */
+	zend_string *lossy_text[2];
 	/* Lazily-allocated default format used by IS_DATE writes when the
 	 * caller doesn't supply an explicit format, so bulk date exports
 	 * don't create one new format per cell and bloat the style table.
@@ -945,23 +948,29 @@ static BookHandle php_excel_book_create_scratch(zval *object)
 static int php_excel_book_commit_scratch(zval *object, BookHandle scratch)
 {
 	excel_book_object *bobj = Z_EXCEL_BOOK_OBJ_P(object);
+	bool utf8_decoder;
 
 	if (bobj->native_buffer_borrowed) {
 		php_error_docref(NULL, E_WARNING,
 			"Cannot reinitialize workbook while a native I/O buffer is in use");
 		return 0;
 	}
-	/* The scratch is a fresh libxl book, so its decoder is re-derived. This
-	 * must precede xlBookRelease(), which restores the LC_CTYPE that was in
-	 * effect before the released book was created. */
-	bobj->text_utf8_decoder = bobj->locale
-		? php_excel_locale_selects_utf8_decoder(bobj->locale)
-		: php_excel_locale_name_selects_utf8_decoder(setlocale(LC_CTYPE, NULL));
+	/* The scratch is a fresh libxl book, so its decoder is re-derived. The
+	 * LC_CTYPE read must precede xlBookRelease(), which restores the LC_CTYPE
+	 * that was in effect before the released book was created. */
+	utf8_decoder = php_excel_locale_name_selects_utf8_decoder(setlocale(LC_CTYPE, NULL));
 	bobj->rich_text_add_failed = false;
 	if (bobj->book) {
 		xlBookRelease(bobj->book);
 	}
 	bobj->book = scratch;
+	if (bobj->locale) {
+		/* The release above also undid the LC_CTYPE that replaying a
+		 * non-UTF-8 locale on the scratch had set. */
+		xlBookSetLocale(scratch, bobj->locale);
+		utf8_decoder = php_excel_locale_selects_utf8_decoder(bobj->locale);
+	}
+	bobj->text_utf8_decoder = utf8_decoder;
 	/* Scratch carries the object's own flavor, credentials, and locale, so
 	 * is_xlsx, license_*, and locale_* fields remain correct as-is. */
 	return php_excel_book_reset_state(object);
@@ -1123,6 +1132,12 @@ static void excel_book_object_free_storage(zend_object *object)
 	if (intern->locale) {
 		efree(intern->locale);
 	}
+	if (intern->lossy_text[0]) {
+		zend_string_release(intern->lossy_text[0]);
+	}
+	if (intern->lossy_text[1]) {
+		zend_string_release(intern->lossy_text[1]);
+	}
 }
 
 static zend_object *excel_object_new_book(zend_class_entry *class_type)
@@ -1146,6 +1161,8 @@ static zend_object *excel_object_new_book(zend_class_entry *class_type)
 	intern->license_name = NULL;
 	intern->license_key = NULL;
 	intern->locale = NULL;
+	intern->lossy_text[0] = NULL;
+	intern->lossy_text[1] = NULL;
 	intern->default_date_format = NULL;
 	intern->info_only = false;
 	intern->std.handlers = &excel_object_handlers_book;
@@ -1448,21 +1465,30 @@ static size_t php_excel_utf8_char_count(zend_string *value)
 	return count;
 }
 
-/* Validity check without a length limit, so the header/footer macro can warn
- * about malformed input separately from over-long input. */
 static bool php_excel_is_valid_utf8(zend_string *value)
 {
 	return php_excel_utf8_char_count(value) != (size_t)-1;
 }
 
-static bool php_excel_utf8_length_within(zend_string *value, size_t limit)
-{
-	size_t count = php_excel_utf8_char_count(value);
-	return count != (size_t)-1 && count <= limit;
-}
-
 static const char php_excel_text_invalid_utf8[] = "contains invalid UTF-8";
 static const char php_excel_text_unconvertible[] = "cannot be converted with the current LC_CTYPE locale";
+#if LIBXL_VERSION < 0x05010000
+static const char php_excel_text_beyond_bmp[] = "contains a character outside the Basic Multilingual Plane, which this LibXL version drops";
+
+/* The 4.6 UTF-8 decoder silently drops every code point above U+FFFF. */
+static bool php_excel_utf8_beyond_bmp(zend_string *value)
+{
+	const unsigned char *p = (const unsigned char *) ZSTR_VAL(value);
+	const unsigned char *end = p + ZSTR_LEN(value);
+
+	for (; p < end; p++) {
+		if (*p >= 0xf0) {
+			return true;
+		}
+	}
+	return false;
+}
+#endif
 
 /* Returns NULL when libxl will decode the text for this book, otherwise the
  * reason it would not. In mbstowcs() mode a UTF-8 codeset additionally gets
@@ -1471,7 +1497,15 @@ static const char php_excel_text_unconvertible[] = "cannot be converted with the
 static const char *php_excel_text_decode_error(const excel_book_object *book_obj, zend_string *value)
 {
 	if (!book_obj || book_obj->text_utf8_decoder) {
-		return php_excel_is_valid_utf8(value) ? NULL : php_excel_text_invalid_utf8;
+		if (!php_excel_is_valid_utf8(value)) {
+			return php_excel_text_invalid_utf8;
+		}
+#if LIBXL_VERSION < 0x05010000
+		if (php_excel_utf8_beyond_bmp(value)) {
+			return php_excel_text_beyond_bmp;
+		}
+#endif
+		return NULL;
 	}
 	if (mbstowcs(NULL, ZSTR_VAL(value), 0) == (size_t)-1) {
 		return php_excel_text_unconvertible;
@@ -1509,6 +1543,101 @@ static bool php_excel_text_decodable(zval *owner, zend_string *value, const char
 	if (!php_excel_text_decodable(owner_zv, string_zs, what)) { \
 		RETURN_FALSE; \
 	}
+
+/* LibXL's UTF-8 decoder fails a whole narrow read, and an XLS load that
+ * meets such a sheet name, when stored UTF-16 text holds a surrogate it
+ * cannot decode: XLS strings, and XLSX shared strings escaped as _xD800_
+ * (5.x rejects even an escaped valid pair). The wide getters are no way out,
+ * because on a book created through the narrow API they return the narrow
+ * buffer. Repeating the call in mbstowcs() mode under a UTF-8 C locale
+ * yields the text with '?' for each unit that does not convert. The name
+ * must not contain "UTF-8", which makes LibXL 5.2 keep its own decoder. */
+typedef struct {
+	char *lc_ctype;
+} php_excel_lossy_read;
+
+static bool php_excel_lossy_read_begin(excel_book_object *bobj, BookHandle book, php_excel_lossy_read *state)
+{
+	const char *message, *lc_ctype;
+
+	if (!bobj || !book || !bobj->text_utf8_decoder || !bobj->locale) {
+		return false;
+	}
+	message = xlBookErrorMessage(book);
+	if (!message || (strcmp(message, "Invalid code point") != 0 && strcmp(message, "Invalid UTF-16") != 0)) {
+		return false;
+	}
+	lc_ctype = setlocale(LC_CTYPE, NULL);
+	state->lc_ctype = lc_ctype ? estrdup(lc_ctype) : NULL;
+	/* A rejected name still leaves LibXL in mbstowcs() mode under the current
+	 * LC_CTYPE, which replaces more of the text but still returns it. */
+	if (!xlBookSetLocale(book, "C.utf8")) {
+		xlBookSetLocale(book, ".UTF8");
+	}
+	return true;
+}
+
+static void php_excel_lossy_read_keep(excel_book_object *bobj, int slot, const char **value)
+{
+	if (!value || !*value) {
+		return;
+	}
+	if (bobj->lossy_text[slot]) {
+		zend_string_release(bobj->lossy_text[slot]);
+	}
+	bobj->lossy_text[slot] = zend_string_init(*value, strlen(*value), 0);
+	*value = ZSTR_VAL(bobj->lossy_text[slot]);
+}
+
+/* Copies the repeated call's text before switching back can recycle the
+ * LibXL buffers it points into. */
+static void php_excel_lossy_read_end(excel_book_object *bobj, BookHandle book, php_excel_lossy_read *state, const char **first, const char **second)
+{
+	php_excel_lossy_read_keep(bobj, 0, first);
+	php_excel_lossy_read_keep(bobj, 1, second);
+	xlBookSetLocale(book, bobj->locale);
+	if (state->lc_ctype) {
+		setlocale(LC_CTYPE, state->lc_ctype);
+		efree(state->lc_ctype);
+	}
+}
+
+/* `call` is evaluated a second time on the lossy path. */
+#define PHP_EXCEL_READ_TEXT(result, bobj, call) \
+	do { \
+		excel_book_object *_lossy_bobj = (bobj); \
+		php_excel_lossy_read _lossy; \
+		(result) = (call); \
+		if (!(result) && php_excel_lossy_read_begin(_lossy_bobj, _lossy_bobj ? _lossy_bobj->book : NULL, &_lossy)) { \
+			(result) = (call); \
+			php_excel_lossy_read_end(_lossy_bobj, _lossy_bobj->book, &_lossy, &(result), NULL); \
+		} \
+	} while (0)
+
+/* For getters that report success separately and return text through two
+ * out-parameters. */
+#define PHP_EXCEL_READ_TEXT_PAIR(ok, bobj, call, first, second) \
+	do { \
+		excel_book_object *_lossy_bobj = (bobj); \
+		php_excel_lossy_read _lossy; \
+		(ok) = (call); \
+		if (!(ok) && php_excel_lossy_read_begin(_lossy_bobj, _lossy_bobj ? _lossy_bobj->book : NULL, &_lossy)) { \
+			(ok) = (call); \
+			php_excel_lossy_read_end(_lossy_bobj, _lossy_bobj->book, &_lossy, &(first), &(second)); \
+		} \
+	} while (0)
+
+/* Load variant: `book` is the scratch handle being loaded, which carries the
+ * same locale as bobj. */
+#define PHP_EXCEL_LOAD_TEXT(ok, bobj, book, call) \
+	do { \
+		php_excel_lossy_read _lossy; \
+		(ok) = (call); \
+		if (!(ok) && php_excel_lossy_read_begin((bobj), (book), &_lossy)) { \
+			(ok) = (call); \
+			php_excel_lossy_read_end((bobj), (book), &_lossy, NULL, NULL); \
+		} \
+	} while (0)
 
 #define EXCEL_NON_EMPTY_STRING(string_zval) \
 	if (!php_excel_non_empty_string(string_zval)) { \
@@ -2082,6 +2211,7 @@ EXCEL_METHOD(Book, requiresKey)
 
 EXCEL_METHOD(Book, load)
 {
+	int loaded;
 	BookHandle scratch;
 	zval *object = ZEND_THIS;
 	zend_string *data_zs = NULL;
@@ -2094,7 +2224,8 @@ EXCEL_METHOD(Book, load)
 	EXCEL_VALIDATE_UINT_SIZE(data_zs)
 
 	BOOK_BEGIN_SCRATCH_RELOAD(scratch, object);
-	if (!xlBookLoadRaw(scratch, ZSTR_VAL(data_zs), ZSTR_LEN(data_zs))) {
+	PHP_EXCEL_LOAD_TEXT(loaded, php_excel_book_object_fetch_object(Z_OBJ_P(object)), scratch, xlBookLoadRaw(scratch, ZSTR_VAL(data_zs), ZSTR_LEN(data_zs)));
+	if (!loaded) {
 		php_error_docref(NULL, E_WARNING, "Failed to load workbook: %s", xlBookErrorMessage(scratch));
 		xlBookRelease(scratch);
 		RETURN_FALSE;
@@ -2109,6 +2240,7 @@ EXCEL_METHOD(Book, load)
 
 EXCEL_METHOD(Book, loadFile)
 {
+	int loaded;
 	BookHandle scratch;
 	zval *object = ZEND_THIS;
 	zend_string *filename_zs = NULL;
@@ -2133,7 +2265,8 @@ EXCEL_METHOD(Book, loadFile)
 	 * policy check followed by a libxl path open has a rename/symlink race. */
 	if (plain_local && (!PG(open_basedir) || !*PG(open_basedir))) {
 		BOOK_BEGIN_SCRATCH_RELOAD(scratch, object);
-		if (!xlBookLoad(scratch, ZSTR_VAL(filename_zs))) {
+		PHP_EXCEL_LOAD_TEXT(loaded, php_excel_book_object_fetch_object(Z_OBJ_P(object)), scratch, xlBookLoad(scratch, ZSTR_VAL(filename_zs)));
+		if (!loaded) {
 			php_error_docref(NULL, E_WARNING, "Failed to load workbook: %s", xlBookErrorMessage(scratch));
 			xlBookRelease(scratch);
 			RETURN_FALSE;
@@ -2188,7 +2321,8 @@ EXCEL_METHOD(Book, loadFile)
 	/* Stream callbacks may reconstruct the receiver while the file is read.
 	 * Verify into a scratch handle only after every open/read/close callback. */
 	BOOK_BEGIN_SCRATCH_RELOAD_RELEASE_STR(scratch, object, contents);
-	if (!xlBookLoadRaw(scratch, ZSTR_VAL(contents), ZSTR_LEN(contents))) {
+	PHP_EXCEL_LOAD_TEXT(loaded, php_excel_book_object_fetch_object(Z_OBJ_P(object)), scratch, xlBookLoadRaw(scratch, ZSTR_VAL(contents), ZSTR_LEN(contents)));
+	if (!loaded) {
 		php_error_docref(NULL, E_WARNING, "Failed to load workbook: %s", xlBookErrorMessage(scratch));
 		xlBookRelease(scratch);
 		zend_string_release(contents);
@@ -2207,6 +2341,7 @@ EXCEL_METHOD(Book, loadFile)
 #if LIBXL_VERSION >= 0x05000000
 EXCEL_METHOD(Book, loadPartially)
 {
+	int loaded;
 	BookHandle scratch;
 	zval *object = ZEND_THIS;
 	zend_string *data_zs = NULL;
@@ -2228,7 +2363,8 @@ EXCEL_METHOD(Book, loadPartially)
 	}
 
 	BOOK_BEGIN_SCRATCH_RELOAD(scratch, object);
-	if (!xlBookLoadRawPartially(scratch, ZSTR_VAL(data_zs), (unsigned) ZSTR_LEN(data_zs), (int) sheet_index, (int) row_first, (int) row_last, keep_all_sheets)) {
+	PHP_EXCEL_LOAD_TEXT(loaded, php_excel_book_object_fetch_object(Z_OBJ_P(object)), scratch, xlBookLoadRawPartially(scratch, ZSTR_VAL(data_zs), (unsigned) ZSTR_LEN(data_zs), (int) sheet_index, (int) row_first, (int) row_last, keep_all_sheets));
+	if (!loaded) {
 		php_error_docref(NULL, E_WARNING, "Failed to load workbook: %s", xlBookErrorMessage(scratch));
 		xlBookRelease(scratch);
 		RETURN_FALSE;
@@ -2243,6 +2379,7 @@ EXCEL_METHOD(Book, loadPartially)
 
 EXCEL_METHOD(Book, loadFilePartially)
 {
+	int loaded;
 	BookHandle scratch;
 	zval *object = ZEND_THIS;
 	zend_string *filename_zs = NULL;
@@ -2270,7 +2407,8 @@ EXCEL_METHOD(Book, loadFilePartially)
 	}
 	if (plain_local && (!PG(open_basedir) || !*PG(open_basedir))) {
 		BOOK_BEGIN_SCRATCH_RELOAD(scratch, object);
-		if (!xlBookLoadPartially(scratch, ZSTR_VAL(filename_zs), (int) sheet_index, (int) row_first, (int) row_last, keep_all_sheets)) {
+		PHP_EXCEL_LOAD_TEXT(loaded, php_excel_book_object_fetch_object(Z_OBJ_P(object)), scratch, xlBookLoadPartially(scratch, ZSTR_VAL(filename_zs), (int) sheet_index, (int) row_first, (int) row_last, keep_all_sheets));
+		if (!loaded) {
 			php_error_docref(NULL, E_WARNING, "Failed to load workbook: %s", xlBookErrorMessage(scratch));
 			xlBookRelease(scratch);
 			RETURN_FALSE;
@@ -2319,7 +2457,8 @@ EXCEL_METHOD(Book, loadFilePartially)
 	}
 
 	BOOK_BEGIN_SCRATCH_RELOAD_RELEASE_STR(scratch, object, contents);
-	if (!xlBookLoadRawPartially(scratch, ZSTR_VAL(contents), (unsigned) ZSTR_LEN(contents), (int) sheet_index, (int) row_first, (int) row_last, keep_all_sheets)) {
+	PHP_EXCEL_LOAD_TEXT(loaded, php_excel_book_object_fetch_object(Z_OBJ_P(object)), scratch, xlBookLoadRawPartially(scratch, ZSTR_VAL(contents), (unsigned) ZSTR_LEN(contents), (int) sheet_index, (int) row_first, (int) row_last, keep_all_sheets));
+	if (!loaded) {
 		php_error_docref(NULL, E_WARNING, "Failed to load workbook: %s", xlBookErrorMessage(scratch));
 		xlBookRelease(scratch);
 		zend_string_release(contents);
@@ -2337,6 +2476,7 @@ EXCEL_METHOD(Book, loadFilePartially)
 
 EXCEL_METHOD(Book, loadFileWithoutEmptyCells)
 {
+	int loaded;
 	BookHandle scratch;
 	zval *object = ZEND_THIS;
 	zend_string *filename_zs = NULL;
@@ -2366,7 +2506,8 @@ EXCEL_METHOD(Book, loadFileWithoutEmptyCells)
 	}
 
 	BOOK_BEGIN_SCRATCH_RELOAD(scratch, object);
-	if (!xlBookLoadWithoutEmptyCells(scratch, ZSTR_VAL(filename_zs))) {
+	PHP_EXCEL_LOAD_TEXT(loaded, php_excel_book_object_fetch_object(Z_OBJ_P(object)), scratch, xlBookLoadWithoutEmptyCells(scratch, ZSTR_VAL(filename_zs)));
+	if (!loaded) {
 		php_error_docref(NULL, E_WARNING, "Failed to load workbook: %s", xlBookErrorMessage(scratch));
 		xlBookRelease(scratch);
 		RETURN_FALSE;
@@ -2728,7 +2869,7 @@ EXCEL_METHOD(Book, getSheetByName)
 		SheetHandle sh = xlBookGetSheet(book, sheet);
 		if (sh) {
 			size_t needle_len = ZSTR_LEN(sheet_name_zs);
-			s = xlSheetName(sh);
+			PHP_EXCEL_READ_TEXT(s, php_excel_resolve_book_obj(object), xlSheetName(sh));
 			if (s) {
 				size_t hay_len = strlen(s);
 				if (hay_len == needle_len &&
@@ -3045,7 +3186,7 @@ EXCEL_METHOD(Book, getCustomFormat)
 	BookHandle book;
 	zval *object = ZEND_THIS;
 	zend_long id;
-	char *data;
+	const char *data;
 
 	if (zend_parse_parameters(ZEND_NUM_ARGS(), "l", &id) == FAILURE) {
 		RETURN_FALSE;
@@ -3057,7 +3198,8 @@ EXCEL_METHOD(Book, getCustomFormat)
 
 	BOOK_FROM_OBJECT(book, object);
 
-	if (!(data = (char *)xlBookCustomNumFormat(book, id))) {
+	PHP_EXCEL_READ_TEXT(data, php_excel_resolve_book_obj(object), xlBookCustomNumFormat(book, id));
+	if (!data) {
 		php_error_docref(NULL, E_WARNING, "Failed to get custom number format: %s", xlBookErrorMessage(book));
 		RETURN_FALSE;
 	}
@@ -3256,7 +3398,8 @@ EXCEL_METHOD(Book, getDefaultFont)
 
 	BOOK_FROM_OBJECT(book, object);
 
-	if (!(font = xlBookDefaultFont(book, &font_size))) {
+	PHP_EXCEL_READ_TEXT(font, php_excel_resolve_book_obj(object), xlBookDefaultFont(book, &font_size));
+	if (!font) {
 		php_error_docref(NULL, E_WARNING, "Failed to get default font: %s", xlBookErrorMessage(book));
 		RETURN_FALSE;
 	}
@@ -3324,6 +3467,7 @@ EXCEL_METHOD(Book, setLocale)
 	BookHandle book;
 	zval *object = ZEND_THIS;
 	zend_string *locale_zs = NULL;
+	excel_book_object *book_obj;
 
 	if (zend_parse_parameters(ZEND_NUM_ARGS(), "S", &locale_zs) == FAILURE) {
 		RETURN_FALSE;
@@ -3334,20 +3478,26 @@ EXCEL_METHOD(Book, setLocale)
 
 	BOOK_FROM_OBJECT(book, object);
 
+	book_obj = Z_EXCEL_BOOK_OBJ_P(object);
 	if (!xlBookSetLocale(book, ZSTR_VAL(locale_zs))) {
-		excel_book_object *book_obj = Z_EXCEL_BOOK_OBJ_P(object);
-		book_obj->text_utf8_decoder = false;
-	} else {
-		excel_book_object *book_obj = Z_EXCEL_BOOK_OBJ_P(object);
-		book_obj->text_utf8_decoder = php_excel_locale_selects_utf8_decoder(ZSTR_VAL(locale_zs));
-		book_obj->locale_is_utf8 = php_excel_locale_is_utf8(locale_zs);
-		/* Remember the accepted string so scratch reload handles can
-		 * re-apply it; the live handle keeps working either way. */
-		if (book_obj->locale) {
-			efree(book_obj->locale);
+		/* A rejected name leaves libxl in mbstowcs() mode; put back the
+		 * locale this book had so its tracked decoder stays accurate. */
+		if (!book_obj->locale || !xlBookSetLocale(book, book_obj->locale)) {
+			book_obj->text_utf8_decoder = false;
+			book_obj->locale_is_utf8 = false;
 		}
-		book_obj->locale = estrdup(ZSTR_VAL(locale_zs));
+		php_error_docref(NULL, E_WARNING, "LibXL rejected locale \"%s\"", ZSTR_VAL(locale_zs));
+		RETURN_FALSE;
 	}
+	book_obj->text_utf8_decoder = php_excel_locale_selects_utf8_decoder(ZSTR_VAL(locale_zs));
+	book_obj->locale_is_utf8 = php_excel_locale_is_utf8(locale_zs);
+	/* Remember the accepted string so scratch reload handles can
+	 * re-apply it. */
+	if (book_obj->locale) {
+		efree(book_obj->locale);
+	}
+	book_obj->locale = estrdup(ZSTR_VAL(locale_zs));
+	RETURN_TRUE;
 }
 /* }}} */
 
@@ -3677,6 +3827,7 @@ EXCEL_METHOD(Book, getPhpExcelVersion)
 
 EXCEL_METHOD(Book, loadInfo)
 {
+	int loaded;
 	BookHandle scratch;
 	zval *object = ZEND_THIS;
 	zend_string *filename_zs = NULL;
@@ -3733,7 +3884,8 @@ EXCEL_METHOD(Book, loadInfo)
 			RETURN_FALSE;
 		}
 		BOOK_BEGIN_SCRATCH_RELOAD_RELEASE_STR(scratch, object, contents);
-		if (!xlBookLoadInfoRaw(scratch, ZSTR_VAL(contents), (unsigned) ZSTR_LEN(contents))) {
+		PHP_EXCEL_LOAD_TEXT(loaded, php_excel_book_object_fetch_object(Z_OBJ_P(object)), scratch, xlBookLoadInfoRaw(scratch, ZSTR_VAL(contents), (unsigned) ZSTR_LEN(contents)));
+		if (!loaded) {
 			php_error_docref(NULL, E_WARNING, "Failed to load workbook: %s", xlBookErrorMessage(scratch));
 			xlBookRelease(scratch);
 			zend_string_release(contents);
@@ -3761,7 +3913,8 @@ EXCEL_METHOD(Book, loadInfo)
 	}
 #endif
 	BOOK_BEGIN_SCRATCH_RELOAD(scratch, object);
-	if (!xlBookLoadInfo(scratch, ZSTR_VAL(filename_zs))) {
+	PHP_EXCEL_LOAD_TEXT(loaded, php_excel_book_object_fetch_object(Z_OBJ_P(object)), scratch, xlBookLoadInfo(scratch, ZSTR_VAL(filename_zs)));
+	if (!loaded) {
 		php_error_docref(NULL, E_WARNING, "Failed to load workbook: %s", xlBookErrorMessage(scratch));
 		xlBookRelease(scratch);
 		RETURN_FALSE;
@@ -3779,7 +3932,7 @@ EXCEL_METHOD(Book, getSheetName)
 	BookHandle book;
 	zval *object = ZEND_THIS;
 	zend_long index;
-	char *data;
+	const char *data;
 
 	if (zend_parse_parameters(ZEND_NUM_ARGS(), "l", &index) == FAILURE) {
 		RETURN_FALSE;
@@ -3789,10 +3942,11 @@ EXCEL_METHOD(Book, getSheetName)
 
 	BOOK_FROM_OBJECT_INFO_OK(book, object);
 
-	if (!(data = (char *)xlBookGetSheetName(book, index))) {
+	PHP_EXCEL_READ_TEXT(data, php_excel_resolve_book_obj(object), xlBookGetSheetName(book, index));
+	if (!data) {
 		RETURN_FALSE;
 	}
-	RETURN_STRING(data);
+	RETURN_STRING((char *)data);
 }
 /* }}} */
 
@@ -3952,6 +4106,7 @@ EXCEL_METHOD(Book, setDpiAwareness)
 #if LIBXL_VERSION >= 0x05000100
 EXCEL_METHOD(Book, loadInfoRaw)
 {
+	int loaded;
 	BookHandle scratch;
 	zval *object = ZEND_THIS;
 	zend_string *data;
@@ -3964,7 +4119,8 @@ EXCEL_METHOD(Book, loadInfoRaw)
 	EXCEL_VALIDATE_UINT_SIZE(data)
 
 	BOOK_BEGIN_SCRATCH_RELOAD(scratch, object);
-	if (!xlBookLoadInfoRaw(scratch, ZSTR_VAL(data), ZSTR_LEN(data))) {
+	PHP_EXCEL_LOAD_TEXT(loaded, php_excel_book_object_fetch_object(Z_OBJ_P(object)), scratch, xlBookLoadInfoRaw(scratch, ZSTR_VAL(data), ZSTR_LEN(data)));
+	if (!loaded) {
 		php_error_docref(NULL, E_WARNING, "Failed to load workbook: %s", xlBookErrorMessage(scratch));
 		xlBookRelease(scratch);
 		RETURN_FALSE;
@@ -4201,7 +4357,8 @@ EXCEL_METHOD(Font, name)
 	}
 
 	{
-		const char *fn = xlFontName(font);
+		const char *fn;
+		PHP_EXCEL_READ_TEXT(fn, php_excel_resolve_book_obj(object), xlFontName(font));
 		if (!fn) {
 			RETURN_FALSE;
 		}
@@ -4700,14 +4857,14 @@ EXCEL_METHOD(Sheet, setCellFormat)
  * read() exposes it to the caller. Date probing stays in both modes:
  * IsDate/unpack determines the returned value (timestamp vs double), so
  * skipping it would change results instead of just saving work. */
-static int php_excel_read_cell_with_type(int cell_type, int row, int col, zval *val, SheetHandle sheet, BookHandle book, FormatHandle *format, bool read_formula)
+static int php_excel_read_cell_with_type(int cell_type, int row, int col, zval *val, SheetHandle sheet, BookHandle book, excel_book_object *book_obj, FormatHandle *format, bool read_formula)
 {
 	const char *s;
 	/* EMPTY cells never carry a formula, so the probe is pure overhead
 	 * there; every other type may hold one (including ERROR, whose cached
 	 * value can be a failed formula result). */
 	if (read_formula && cell_type != CELLTYPE_EMPTY && xlSheetIsFormula(sheet, row, col)) {
-		s = xlSheetReadFormula(sheet, row, col, format);
+		PHP_EXCEL_READ_TEXT(s, book_obj, xlSheetReadFormula(sheet, row, col, format));
 		if (!s) {
 			return 0;
 		}
@@ -4747,7 +4904,7 @@ static int php_excel_read_cell_with_type(int cell_type, int row, int col, zval *
 		}
 
 		case CELLTYPE_STRING: {
-			s = xlSheetReadStr(sheet, row, col, format);
+			PHP_EXCEL_READ_TEXT(s, book_obj, xlSheetReadStr(sheet, row, col, format));
 			if (!s) {
 				return 0;
 			}
@@ -4768,9 +4925,9 @@ static int php_excel_read_cell_with_type(int cell_type, int row, int col, zval *
 	return 0;
 }
 
-static int php_excel_read_cell(int row, int col, zval *val, SheetHandle sheet, BookHandle book, FormatHandle *format, bool read_formula)
+static int php_excel_read_cell(int row, int col, zval *val, SheetHandle sheet, BookHandle book, excel_book_object *book_obj, FormatHandle *format, bool read_formula)
 {
-	return php_excel_read_cell_with_type(xlSheetCellType(sheet, row, col), row, col, val, sheet, book, format, read_formula);
+	return php_excel_read_cell_with_type(xlSheetCellType(sheet, row, col), row, col, val, sheet, book, book_obj, format, read_formula);
 }
 
 /* Used-range ends are exclusive in LibXL, but explicit reads historically
@@ -4825,6 +4982,7 @@ static inline int php_excel_validate_read_col_bounds(SheetHandle sheet, zend_lon
 EXCEL_METHOD(Sheet, readRow)
 {
 	zval *object = ZEND_THIS;
+	excel_book_object *text_bobj;
 	zend_long row;
 	zend_long col_start = 0;
 	zend_long col_end = -1;
@@ -4839,6 +4997,7 @@ EXCEL_METHOD(Sheet, readRow)
 	}
 
 	SHEET_AND_BOOK_FROM_OBJECT(sheet, book, object);
+	text_bobj = php_excel_resolve_book_obj(object);
 
 	if (row < 0 || row > xlSheetLastRow(sheet)) {
 		php_error_docref(NULL, E_WARNING, "Invalid row number '" ZEND_LONG_FMT "'", row);
@@ -4869,7 +5028,7 @@ EXCEL_METHOD(Sheet, readRow)
 		}
 
 		{
-			int read_rc = php_excel_read_cell(row, lc, &value, sheet, book, &format, read_formula);
+			int read_rc = php_excel_read_cell(row, lc, &value, sheet, book, text_bobj, &format, read_formula);
 			if (read_rc != 1) {
 				zval_ptr_dtor(&value);
 				zval_ptr_dtor(return_value);
@@ -4891,6 +5050,7 @@ EXCEL_METHOD(Sheet, readRow)
 EXCEL_METHOD(Sheet, readCol)
 {
 	zval *object = ZEND_THIS;
+	excel_book_object *text_bobj;
 	zend_long col;
 	zend_long row_start = 0;
 	zend_long row_end = -1;
@@ -4905,6 +5065,7 @@ EXCEL_METHOD(Sheet, readCol)
 	}
 
 	SHEET_AND_BOOK_FROM_OBJECT(sheet, book, object);
+	text_bobj = php_excel_resolve_book_obj(object);
 
 	if (col < 0 || col > xlSheetLastCol(sheet)) {
 		php_error_docref(NULL, E_WARNING, "Invalid column number '" ZEND_LONG_FMT "'", col);
@@ -4934,7 +5095,7 @@ EXCEL_METHOD(Sheet, readCol)
 		}
 
 		{
-			int read_rc = php_excel_read_cell(lc, col, &value, sheet, book, &format, read_formula);
+			int read_rc = php_excel_read_cell(lc, col, &value, sheet, book, text_bobj, &format, read_formula);
 			if (read_rc != 1) {
 				zval_ptr_dtor(&value);
 				zval_ptr_dtor(return_value);
@@ -4956,6 +5117,7 @@ EXCEL_METHOD(Sheet, readCol)
 EXCEL_METHOD(Sheet, readRange)
 {
 	zval *object = ZEND_THIS;
+	excel_book_object *text_bobj;
 	zend_long row_start, row_end, col_start, col_end;
 	zend_long r, c;
 	zend_ulong row_count, col_count;
@@ -4969,6 +5131,7 @@ EXCEL_METHOD(Sheet, readRange)
 	}
 
 	SHEET_AND_BOOK_FROM_OBJECT(sheet, book, object);
+	text_bobj = php_excel_resolve_book_obj(object);
 
 	if (!php_excel_validate_read_row_bounds(sheet, row_start, &row_end, 0) ||
 	    !php_excel_validate_read_col_bounds(sheet, col_start, &col_end, 0)) {
@@ -4996,7 +5159,7 @@ EXCEL_METHOD(Sheet, readRange)
 				RETURN_THROWS();
 			}
 			{
-				int read_rc = php_excel_read_cell((int) r, (int) c, &value, sheet, book, &format, read_formula);
+				int read_rc = php_excel_read_cell((int) r, (int) c, &value, sheet, book, text_bobj, &format, read_formula);
 				if (read_rc != 1) {
 					zval_ptr_dtor(&value);
 					zval_ptr_dtor(&row_value);
@@ -5019,6 +5182,7 @@ EXCEL_METHOD(Sheet, readRange)
 EXCEL_METHOD(Sheet, readSparseRow)
 {
 	zval *object = ZEND_THIS;
+	excel_book_object *text_bobj;
 	zend_long row;
 	zend_long col_start = 0;
 	zend_long col_end = -1;
@@ -5036,6 +5200,7 @@ EXCEL_METHOD(Sheet, readSparseRow)
 	default_end = (col_end == -1);
 
 	SHEET_AND_BOOK_FROM_OBJECT(sheet, book, object);
+	text_bobj = php_excel_resolve_book_obj(object);
 
 	lr = xlSheetLastRow(sheet);
 	if (row < 0 || row > lr) {
@@ -5072,7 +5237,7 @@ EXCEL_METHOD(Sheet, readSparseRow)
 		}
 		ZVAL_UNDEF(&value);
 		{
-			int read_rc = php_excel_read_cell_with_type(cell_type, (int) row, (int) c, &value, sheet, book, &format, read_formula);
+			int read_rc = php_excel_read_cell_with_type(cell_type, (int) row, (int) c, &value, sheet, book, text_bobj, &format, read_formula);
 			if (read_rc != 1) {
 				zval_ptr_dtor(&value);
 				zval_ptr_dtor(return_value);
@@ -5092,6 +5257,7 @@ EXCEL_METHOD(Sheet, readSparseRow)
 EXCEL_METHOD(Sheet, readSparseCol)
 {
 	zval *object = ZEND_THIS;
+	excel_book_object *text_bobj;
 	zend_long col;
 	zend_long row_start = 0;
 	zend_long row_end = -1;
@@ -5109,6 +5275,7 @@ EXCEL_METHOD(Sheet, readSparseCol)
 	default_end = (row_end == -1);
 
 	SHEET_AND_BOOK_FROM_OBJECT(sheet, book, object);
+	text_bobj = php_excel_resolve_book_obj(object);
 
 	lc = xlSheetLastCol(sheet);
 	if (col < 0 || col > lc) {
@@ -5145,7 +5312,7 @@ EXCEL_METHOD(Sheet, readSparseCol)
 		}
 		ZVAL_UNDEF(&value);
 		{
-			int read_rc = php_excel_read_cell_with_type(cell_type, (int) r, (int) col, &value, sheet, book, &format, read_formula);
+			int read_rc = php_excel_read_cell_with_type(cell_type, (int) r, (int) col, &value, sheet, book, text_bobj, &format, read_formula);
 			if (read_rc != 1) {
 				zval_ptr_dtor(&value);
 				zval_ptr_dtor(return_value);
@@ -5194,7 +5361,7 @@ EXCEL_METHOD(Sheet, read)
 	CHECK_BOOK_AND_SHEET_GENERATION_PR(sheet_obj, book_obj);
 
 	{
-		int read_rc = php_excel_read_cell(row, col, return_value, sheet, book, &format, read_formula);
+		int read_rc = php_excel_read_cell(row, col, return_value, sheet, book, book_obj, &format, read_formula);
 		if (read_rc != 1) {
 			if (read_rc < 0) {
 				php_error_docref(NULL, E_WARNING, "Failed to convert Excel date to timestamp");
@@ -5331,9 +5498,15 @@ try_again:
 			{
 				const char *decode_error = php_excel_text_decode_error(book_obj, Z_STR_P(data));
 				if (decode_error) {
-					return decode_error == php_excel_text_invalid_utf8
-						? "string contains invalid UTF-8"
-						: "string cannot be converted with the current LC_CTYPE locale";
+					if (decode_error == php_excel_text_invalid_utf8) {
+						return "string contains invalid UTF-8";
+					}
+#if LIBXL_VERSION < 0x05010000
+					if (decode_error == php_excel_text_beyond_bmp) {
+						return "string contains a character outside the Basic Multilingual Plane, which this LibXL version drops";
+					}
+#endif
+					return "string cannot be converted with the current LC_CTYPE locale";
 				}
 			}
 			if (dtype == PHP_EXCEL_NUMERIC_STRING) {
@@ -5889,7 +6062,7 @@ EXCEL_METHOD(Sheet, readComment)
 		EXCEL_VALIDATE_ROW_COL(r, c, object);
 		SHEET_FROM_OBJECT(sheet, object);
 
-		s = xlSheetReadComment(sheet, r, c);
+		PHP_EXCEL_READ_TEXT(s, php_excel_resolve_book_obj(object), xlSheetReadComment(sheet, r, c));
 		if (!s) {
 			RETURN_FALSE;
 		}
@@ -6262,6 +6435,17 @@ EXCEL_METHOD(Sheet, copy)
 	PE_RETURN_ ## type (xlSheet ## func_name (sheet)); \
 }
 
+#define PHP_EXCEL_TEXT_INFO(func_name) \
+{ \
+	SheetHandle sheet; \
+	zval *object = ZEND_THIS; \
+	const char *result; \
+	ZEND_PARSE_PARAMETERS_NONE(); \
+	SHEET_FROM_OBJECT(sheet, object); \
+	PHP_EXCEL_READ_TEXT(result, php_excel_resolve_book_obj(object), xlSheet ## func_name (sheet)); \
+	PE_RETURN_IS_STRING(result) \
+}
+
 #define PHP_EXCEL_SET_BOOL_VAL(func_name) \
 	{ \
 		SheetHandle sheet; \
@@ -6580,13 +6764,13 @@ EXCEL_METHOD(Sheet, setPaper)
 
 EXCEL_METHOD(Sheet, header)
 {
-	PHP_EXCEL_INFO(Header, IS_STRING)
+	PHP_EXCEL_TEXT_INFO(Header)
 }
 /* }}} */
 
 EXCEL_METHOD(Sheet, footer)
 {
-	PHP_EXCEL_INFO(Footer, IS_STRING)
+	PHP_EXCEL_TEXT_INFO(Footer)
 }
 /* }}} */
 
@@ -6597,6 +6781,7 @@ EXCEL_METHOD(Sheet, footer)
 		zval *object = ZEND_THIS; \
 		zend_string *val_zs = NULL; \
 		double margin; \
+		size_t chars; \
 		if (zend_parse_parameters(ZEND_NUM_ARGS(), "Sd", &val_zs, &margin) == FAILURE) { \
 			RETURN_FALSE; \
 		} \
@@ -6608,12 +6793,9 @@ EXCEL_METHOD(Sheet, footer)
 		SHEET_FROM_OBJECT(sheet, object); \
 		EXCEL_DECODABLE_TEXT(object, val_zs, "Header/footer text") \
 		book_obj = php_excel_resolve_book_obj(object); \
-		if (book_obj && book_obj->locale_is_utf8) { \
-			if (!php_excel_is_valid_utf8(val_zs)) { \
-				php_error_docref(NULL, E_WARNING, "Header/footer text contains invalid UTF-8"); \
-				RETURN_FALSE; \
-			} \
-			if (!php_excel_utf8_length_within(val_zs, 255)) { \
+		chars = book_obj && book_obj->locale_is_utf8 ? php_excel_utf8_char_count(val_zs) : (size_t)-1; \
+		if (chars != (size_t)-1) { \
+			if (chars > 255) { \
 				php_error_docref(NULL, E_WARNING, "Header/footer text too long, maximum is 255 characters"); \
 				RETURN_FALSE; \
 			} \
@@ -6734,7 +6916,7 @@ EXCEL_METHOD(Sheet, setPrintHeaders)
 
 EXCEL_METHOD(Sheet, name)
 {
-	PHP_EXCEL_INFO(Name, IS_STRING)
+	PHP_EXCEL_TEXT_INFO(Name)
 }
 /* }}} */
 
@@ -7000,7 +7182,8 @@ EXCEL_METHOD(Sheet, getIndexRange)
 	SHEET_FROM_OBJECT(sheet, object);
 	/* xlSheetNamedRange returns the range name (const char*, owned by libxl),
 	 * or NULL if no range exists at this index. */
-	const char *name = xlSheetNamedRange(sheet, (int)index, &rf, &rl, &cf, &cl, &scope_out, &hidden);
+	const char *name;
+	PHP_EXCEL_READ_TEXT(name, php_excel_resolve_book_obj(object), xlSheetNamedRange(sheet, (int)index, &rf, &rl, &cf, &cl, &scope_out, &hidden));
 	if (name) {
 		array_init(return_value);
 		add_assoc_string(return_value, "name", (char *)name);
@@ -7343,7 +7526,7 @@ EXCEL_METHOD(Sheet, hyperlink)
 
 	SHEET_FROM_OBJECT(sheet, object);
 
-	s = xlSheetHyperlink(sheet, index, &rowFirst, &rowLast, &colFirst, &colLast);
+	PHP_EXCEL_READ_TEXT(s, php_excel_resolve_book_obj(object), xlSheetHyperlink(sheet, index, &rowFirst, &rowLast, &colFirst, &colLast));
 
 	if (!s) {
 		RETURN_FALSE;
@@ -7726,7 +7909,8 @@ EXCEL_METHOD(Sheet, table)
 
 	SHEET_FROM_OBJECT(sheet, object);
 
-	if (!(name = xlSheetTable(sheet, index, &rowFirst, &rowLast, &colFirst, &colLast, &headerRowCount, &totalsRowCount))) {
+	PHP_EXCEL_READ_TEXT(name, php_excel_resolve_book_obj(object), xlSheetTable(sheet, index, &rowFirst, &rowLast, &colFirst, &colLast, &headerRowCount, &totalsRowCount));
+	if (!name) {
 		RETURN_FALSE;
 	}
 
@@ -8192,7 +8376,8 @@ EXCEL_METHOD(FilterColumn, filter)
 
 	FILTERCOLUMN_FROM_OBJECT(filtercolumn, object);
 
-	const char *val = xlFilterColumnFilter(filtercolumn, filterIndex);
+	const char *val;
+	PHP_EXCEL_READ_TEXT(val, php_excel_resolve_book_obj(object), xlFilterColumnFilter(filtercolumn, filterIndex));
 	if (!val) {
 		RETURN_FALSE;
 	}
@@ -8269,12 +8454,14 @@ EXCEL_METHOD(FilterColumn, getCustomFilter)
 	FilterColumnHandle filtercolumn;
 	int op1 = 0, op2 = 0, andOp = 0;
 	const char *v1 = NULL, *v2 = NULL;
+	int ok;
 
 	ZEND_PARSE_PARAMETERS_NONE();
 
 	FILTERCOLUMN_FROM_OBJECT(filtercolumn, object);
 
-	if (!xlFilterColumnGetCustomFilter(filtercolumn, &op1, &v1, &op2, &v2, &andOp)) {
+	PHP_EXCEL_READ_TEXT_PAIR(ok, php_excel_resolve_book_obj(object), xlFilterColumnGetCustomFilter(filtercolumn, &op1, &v1, &op2, &v2, &andOp), v1, v2);
+	if (!ok) {
 		RETURN_FALSE;
 	}
 
@@ -8566,6 +8753,7 @@ EXCEL_METHOD(Sheet, dataValidation)
 	zend_long index;
 	int type = 0, op = 0, row_first = 0, row_last = 0, col_first = 0, col_last = 0;
 	const char *value1 = NULL, *value2 = NULL;
+	int ok;
 
 	if (zend_parse_parameters(ZEND_NUM_ARGS(), "l", &index) == FAILURE) {
 		RETURN_FALSE;
@@ -8575,7 +8763,8 @@ EXCEL_METHOD(Sheet, dataValidation)
 
 	SHEET_FROM_OBJECT(sheet, object);
 
-	if (!xlSheetDataValidation(sheet, index, &type, &op, &row_first, &row_last, &col_first, &col_last, &value1, &value2)) {
+	PHP_EXCEL_READ_TEXT_PAIR(ok, php_excel_resolve_book_obj(object), xlSheetDataValidation(sheet, index, &type, &op, &row_first, &row_last, &col_first, &col_last, &value1, &value2), value1, value2);
+	if (!ok) {
 		RETURN_FALSE;
 	}
 
@@ -8783,7 +8972,7 @@ EXCEL_METHOD(Sheet, selectionRange)
 
 	SHEET_FROM_OBJECT(sheet, object);
 
-	result = xlSheetSelectionRange(sheet);
+	PHP_EXCEL_READ_TEXT(result, php_excel_resolve_book_obj(object), xlSheetSelectionRange(sheet));
 	PE_RETURN_IS_STRING(result)
 }
 
@@ -9381,7 +9570,7 @@ EXCEL_METHOD(RichString, getText)
 
 	RICHSTRING_FROM_OBJECT(rs, object);
 
-	text = xlRichStringGetText(rs, index, &font);
+	PHP_EXCEL_READ_TEXT(text, php_excel_resolve_book_obj(object), xlRichStringGetText(rs, index, &font));
 	if (!text) {
 		RETURN_FALSE;
 	}
@@ -9485,7 +9674,7 @@ EXCEL_METHOD(FormControl, method_name) \
 	const char *result; \
 	ZEND_PARSE_PARAMETERS_NONE(); \
 	FORMCONTROL_FROM_OBJECT(fc, object); \
-	result = api_func(fc); \
+	PHP_EXCEL_READ_TEXT(result, php_excel_resolve_book_obj(object), api_func(fc)); \
 	PE_RETURN_IS_STRING(result) \
 }
 
@@ -9577,7 +9766,7 @@ EXCEL_METHOD(FormControl, item)
 	}
 	EXCEL_VALIDATE_INT_RANGE(index)
 	FORMCONTROL_FROM_OBJECT(fc, object);
-	result = xlFormControlItem(fc, index);
+	PHP_EXCEL_READ_TEXT(result, php_excel_resolve_book_obj(object), xlFormControlItem(fc, index));
 	PE_RETURN_IS_STRING(result)
 }
 
@@ -9776,7 +9965,7 @@ EXCEL_METHOD(ConditionalFormat, method_name) \
 	const char *result; \
 	ZEND_PARSE_PARAMETERS_NONE(); \
 	CONDITIONALFORMAT_FROM_OBJECT(cf, object); \
-	result = api_func(cf); \
+	PHP_EXCEL_READ_TEXT(result, php_excel_resolve_book_obj(object), api_func(cf)); \
 	PE_RETURN_IS_STRING(result) \
 }
 
@@ -10219,7 +10408,7 @@ EXCEL_METHOD(CoreProperties, method_name) \
 	const char *result; \
 	ZEND_PARSE_PARAMETERS_NONE(); \
 	COREPROPERTIES_FROM_OBJECT(cp, object); \
-	result = api_func(cp); \
+	PHP_EXCEL_READ_TEXT(result, php_excel_resolve_book_obj(object), api_func(cp)); \
 	PE_RETURN_IS_STRING(result) \
 }
 
@@ -10450,7 +10639,7 @@ EXCEL_METHOD(Table, name)
 	ZEND_PARSE_PARAMETERS_NONE();
 
 	TABLE_FROM_OBJECT(table, object);
-	result = xlTableName(table);
+	PHP_EXCEL_READ_TEXT(result, php_excel_resolve_book_obj(object), xlTableName(table));
 	PE_RETURN_IS_STRING(result)
 }
 
@@ -10478,7 +10667,7 @@ EXCEL_METHOD(Table, ref)
 	ZEND_PARSE_PARAMETERS_NONE();
 
 	TABLE_FROM_OBJECT(table, object);
-	result = xlTableRef(table);
+	PHP_EXCEL_READ_TEXT(result, php_excel_resolve_book_obj(object), xlTableRef(table));
 	PE_RETURN_IS_STRING(result)
 }
 
@@ -10609,7 +10798,7 @@ EXCEL_METHOD(Table, columnName)
 	}
 	EXCEL_VALIDATE_INT_RANGE(index)
 	TABLE_FROM_OBJECT(table, object);
-	result = xlTableColumnName(table, index);
+	PHP_EXCEL_READ_TEXT(result, php_excel_resolve_book_obj(object), xlTableColumnName(table, index));
 	PE_RETURN_IS_STRING(result)
 }
 

@@ -77,13 +77,16 @@ foreach ([false, true] as $xlsx) {
     $loaded = saveAndReload($book, $xlsx);
     var_dump($loaded ? $loaded->getSheet(0)->read(2, 1) : 'save failed');
 
-    echo "-- failed setLocale() after setLocale('UTF-8')\n";
-    $book = newBook($xlsx, 'UTF-8');
-    $book->setLocale('xx_NONE.UTF-8');
+    echo "-- failed setLocale() keeps setLocale('C')\n";
+    $book = newBook($xlsx, 'C');
+    var_dump($book->setLocale('xx_NONE.UTF-8'));
     $sheet = $book->addSheet('Rich');
     $rich = $book->addRichString();
     var_dump($rich->addText($cafe));
-    $book->setLocale('UTF-8');
+
+    echo "-- failed setLocale() keeps setLocale('UTF-8')\n";
+    var_dump($book->setLocale('UTF-8'));
+    var_dump($book->setLocale('xx_NONE.UTF-8'));
     var_dump($rich->addText($cafe));
     $sheet->writeRichStr(2, 1, $rich);
     $loaded = saveAndReload($book, $xlsx);
@@ -150,9 +153,17 @@ Warning: ExcelRichString::addText(): Rich string text cannot be converted with t
 bool(false)
 bool(true)
 string(5) "ascii"
--- failed setLocale() after setLocale('UTF-8')
+-- failed setLocale() keeps setLocale('C')
+
+Warning: ExcelBook::setLocale(): LibXL rejected locale "xx_NONE.UTF-8" in %s on line %d
+bool(false)
 
 Warning: ExcelRichString::addText(): Rich string text cannot be converted with the current LC_CTYPE locale in %s on line %d
+bool(false)
+-- failed setLocale() keeps setLocale('UTF-8')
+bool(true)
+
+Warning: ExcelBook::setLocale(): LibXL rejected locale "xx_NONE.UTF-8" in %s on line %d
 bool(false)
 bool(true)
 bool(true)
@@ -215,9 +226,17 @@ Warning: ExcelRichString::addText(): Rich string text cannot be converted with t
 bool(false)
 bool(true)
 string(5) "ascii"
--- failed setLocale() after setLocale('UTF-8')
+-- failed setLocale() keeps setLocale('C')
+
+Warning: ExcelBook::setLocale(): LibXL rejected locale "xx_NONE.UTF-8" in %s on line %d
+bool(false)
 
 Warning: ExcelRichString::addText(): Rich string text cannot be converted with the current LC_CTYPE locale in %s on line %d
+bool(false)
+-- failed setLocale() keeps setLocale('UTF-8')
+bool(true)
+
+Warning: ExcelBook::setLocale(): LibXL rejected locale "xx_NONE.UTF-8" in %s on line %d
 bool(false)
 bool(true)
 bool(true)

@@ -49,6 +49,13 @@ foreach ([false, true] as $xlsx) {
     var_dump($sheet->addHyperlink($link, 7, 7, 1, 1));
     var_dump($sheet->hyperlink(0)['hyperlink'] === $link);
 
+    /* LibXL 4.6 drops characters above U+FFFF, so such builds reject them. */
+    $emoji = "x\xf0\x9f\x98\x80y";
+    $written = @$sheet->write(8, 1, $emoji);
+    var_dump(hexdec($book->getLibXlVersion()) < 0x05010000
+        ? $written === false
+        : $written && $sheet->read(8, 1) === $emoji);
+
     if ($xlsx) {
         $props = $book->coreProperties();
         var_dump($props->setTitle($cafe));
@@ -92,7 +99,9 @@ bool(true)
 bool(true)
 bool(true)
 bool(true)
+bool(true)
 == xlsx
+bool(true)
 bool(true)
 bool(true)
 bool(true)
