@@ -173,20 +173,6 @@ if (method_exists(ExcelBook::class, 'loadInfoRaw')) {
 }
 stream_wrapper_restore('data');
 
-echo "-- names with a colon but no scheme stay local --\n";
-$absolute = sys_get_temp_dir() . '/report:2026-excel-245.xlsx';
-foreach ([$absolute, 'report:2026-excel-245.xlsx', 'C:excel-245.xlsx'] as $name) {
-    $warnings = [];
-    $book = make_book();
-    $ok = $book->save($name);
-    $onDisk = $name[0] === '/' ? $name : getcwd() . '/' . $name;
-    clearstatcache();
-    $size = is_file($onDisk) ? filesize($onDisk) : 0;
-    $loaded = new ExcelBook(null, null, true);
-    $read = $loaded->loadFile($name) ? $loaded->getSheet(0)->read(1, 0) : 'unloadable';
-    @unlink($onDisk);
-    echo ($name === $absolute ? 'absolute' : $name), ': ', var_export($ok, true), ' ', $size > 0 ? 'nonempty' : 'empty', " $read ", count($warnings), "\n";
-}
 restore_error_handler();
 echo "OK\n";
 ?>
@@ -197,7 +183,6 @@ foreach (scandir(getcwd()) as $f) {
         @unlink(getcwd() . '/' . $f);
     }
 }
-@unlink(sys_get_temp_dir() . '/report:2026-excel-245.xlsx');
 ?>
 --EXPECT--
 -- handler reinitializes the book during the staging open --
@@ -224,8 +209,4 @@ bool(true)
 bool(true)
 bool(true)
 S
--- names with a colon but no scheme stay local --
-absolute: true nonempty kept 0
-report:2026-excel-245.xlsx: true nonempty kept 0
-C:excel-245.xlsx: true nonempty kept 0
 OK

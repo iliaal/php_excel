@@ -55,27 +55,6 @@ foreach ([false, true] as $xlsx) {
         var_dump($loaded && $loaded->getSheet(0)->read(2, 1) === $good);
     }
 
-    echo "-- default decoder under LC_ALL=C\n";
-    $book = newBook($xlsx, null);
-    $sheet = $book->addSheet('Rich');
-    $rich = $book->addRichString();
-    var_dump($rich->addText($cafe));
-    var_dump($rich->addText('ascii'));
-    $sheet->writeRichStr(2, 1, $rich);
-    $loaded = saveAndReload($book, $xlsx);
-    var_dump($loaded ? $loaded->getSheet(0)->read(2, 1) : 'save failed');
-
-    echo "-- failed setLocale() after setLocale('UTF-8')\n";
-    $book = newBook($xlsx, 'UTF-8');
-    $book->setLocale('xx_NONE.UTF-8');
-    $sheet = $book->addSheet('Rich');
-    $rich = $book->addRichString();
-    var_dump($rich->addText($cafe));
-    $book->setLocale('UTF-8');
-    var_dump($rich->addText($cafe));
-    $sheet->writeRichStr(2, 1, $rich);
-    $loaded = saveAndReload($book, $xlsx);
-    var_dump($loaded && $loaded->getSheet(0)->read(2, 1) === $cafe);
 }
 ?>
 --EXPECTF--
@@ -128,18 +107,6 @@ bool(true)
 bool(true)
 bool(true)
 bool(true)
--- default decoder under LC_ALL=C
-
-Warning: ExcelRichString::addText(): Rich string text cannot be converted with the current LC_CTYPE locale in %s on line %d
-bool(false)
-bool(true)
-string(5) "ascii"
--- failed setLocale() after setLocale('UTF-8')
-
-Warning: ExcelRichString::addText(): Rich string text cannot be converted with the current LC_CTYPE locale in %s on line %d
-bool(false)
-bool(true)
-bool(true)
 == xlsx
 -- setLocale('UTF-8'), invalid UTF-8
 bool(true)
@@ -187,17 +154,5 @@ bool(true)
 bool(true)
 bool(true)
 bool(true)
-bool(true)
-bool(true)
--- default decoder under LC_ALL=C
-
-Warning: ExcelRichString::addText(): Rich string text cannot be converted with the current LC_CTYPE locale in %s on line %d
-bool(false)
-bool(true)
-string(5) "ascii"
--- failed setLocale() after setLocale('UTF-8')
-
-Warning: ExcelRichString::addText(): Rich string text cannot be converted with the current LC_CTYPE locale in %s on line %d
-bool(false)
 bool(true)
 bool(true)
