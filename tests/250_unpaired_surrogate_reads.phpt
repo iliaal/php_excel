@@ -69,8 +69,10 @@ var_dump($sheet->readRow(1, 0, 1));
 var_dump($sheet->readCol(0, 1, 1));
 var_dump($sheet->readRange(1, 1, 0, 1));
 var_dump($sheet->readSparseRow(1, 0, 1));
-/* LibXL 4.6 decodes an escaped valid pair; 5.1 and 5.2 reject it. */
-var_dump($sheet->read(1, 2) === (hexdec($book->getLibXlVersion()) < 0x05010000 ? "lead\xf0\x9f\x98\x80" : 'lead??'));
+/* LibXL 4.6 decodes an escaped valid pair; 5.1 and 5.2 reject it where
+ * wchar_t is UTF-32, but Windows keeps the two units as a UTF-16 pair. */
+$pairDecodes = PHP_OS_FAMILY === 'Windows' || hexdec($book->getLibXlVersion()) < 0x05010000;
+var_dump($sheet->read(1, 2) === ($pairDecodes ? "lead\xf0\x9f\x98\x80" : 'lead??'));
 var_dump($sheet->write(3, 0, "caf\xc3\xa9"), $sheet->read(3, 0) === "caf\xc3\xa9");
 $copy = new ExcelBook(null, null, true);
 var_dump($copy->load($book->save()), $copy->getSheet(0)->read(1, 1));

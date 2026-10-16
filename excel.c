@@ -10749,12 +10749,214 @@ EXCEL_METHOD(CoreProperties, method_name) \
 	RETURN_TRUE; \
 }
 
-COREPROPERTIES_STRING_GETTER(title, xlCorePropertiesTitle)
-COREPROPERTIES_STRING_SETTER(setTitle, xlCorePropertiesSetTitle)
-COREPROPERTIES_STRING_GETTER(subject, xlCorePropertiesSubject)
-COREPROPERTIES_STRING_SETTER(setSubject, xlCorePropertiesSetSubject)
-COREPROPERTIES_STRING_GETTER(creator, xlCorePropertiesCreator)
-COREPROPERTIES_STRING_SETTER(setCreator, xlCorePropertiesSetCreator)
+#ifdef PHP_WIN32
+/* On Windows LibXL 5.2 ignores setLocale() for the Dublin Core properties
+ * (title, subject, creator, comments): the narrow setter decodes its argument
+ * with the ANSI code page, and the narrow getter returns the stored UTF-8
+ * decoded with that code page and encoded as UTF-8 again. lastModifiedBy,
+ * tags, and categories use the book's decoder like every other setter. The
+ * wide functions are no way out: on a narrow book they reinterpret the narrow
+ * buffers, and on a wide book they mangle the text the same way. So these
+ * values cross into LibXL as ANSI text, which limits what a setter can store
+ * to what the ANSI code page represents. */
+static wchar_t *php_excel_win_to_wide(UINT code_page, const char *in, size_t in_len, int *out_len)
+{
+	wchar_t *out;
+	int len;
+
+	if (in_len > INT_MAX) {
+		return NULL;
+	}
+	if (in_len == 0) {
+		out = emalloc(sizeof(wchar_t));
+		out[0] = L'\0';
+		*out_len = 0;
+		return out;
+	}
+	len = MultiByteToWideChar(code_page, MB_ERR_INVALID_CHARS, in, (int) in_len, NULL, 0);
+	if (len <= 0) {
+		return NULL;
+	}
+	out = safe_emalloc((size_t) len + 1, sizeof(wchar_t), 0);
+	if (MultiByteToWideChar(code_page, MB_ERR_INVALID_CHARS, in, (int) in_len, out, len) != len) {
+		efree(out);
+		return NULL;
+	}
+	out[len] = L'\0';
+	*out_len = len;
+	return out;
+}
+
+static zend_string *php_excel_win_from_wide(UINT code_page, const wchar_t *in, int in_len)
+{
+	DWORD flags = code_page == CP_UTF8 ? WC_ERR_INVALID_CHARS : WC_NO_BEST_FIT_CHARS;
+	BOOL lossy = FALSE;
+	zend_string *out;
+	int len;
+
+	if (in_len == 0) {
+		return ZSTR_EMPTY_ALLOC();
+	}
+	len = WideCharToMultiByte(code_page, flags, in, in_len, NULL, 0, NULL, code_page == CP_UTF8 ? NULL : &lossy);
+	if (len <= 0 || lossy) {
+		return NULL;
+	}
+	out = zend_string_alloc((size_t) len, 0);
+	if (WideCharToMultiByte(code_page, flags, in, in_len, ZSTR_VAL(out), len, NULL, NULL) != len) {
+		zend_string_efree(out);
+		return NULL;
+	}
+	ZSTR_VAL(out)[len] = '\0';
+	return out;
+}
+
+/* Text in a book without the UTF-8 decoder is in the C runtime's LC_CTYPE
+ * encoding, as for every other narrow setter and getter of that book. */
+static wchar_t *php_excel_win_locale_to_wide(const char *in, int *out_len)
+{
+	size_t len = mbstowcs(NULL, in, 0);
+	wchar_t *out;
+
+	if (len == (size_t) -1 || len > INT_MAX) {
+		return NULL;
+	}
+	out = safe_emalloc(len + 1, sizeof(wchar_t), 0);
+	mbstowcs(out, in, len + 1);
+	out[len] = L'\0';
+	*out_len = (int) len;
+	return out;
+}
+
+static zend_string *php_excel_win_locale_from_wide(const wchar_t *in)
+{
+	size_t len = wcstombs(NULL, in, 0);
+	zend_string *out;
+
+	if (len == (size_t) -1) {
+		return NULL;
+	}
+	out = zend_string_alloc(len, 0);
+	wcstombs(ZSTR_VAL(out), in, len + 1);
+	ZSTR_VAL(out)[len] = '\0';
+	return out;
+}
+
+static bool php_excel_book_uses_utf8(zval *object)
+{
+	excel_book_object *book_obj = php_excel_resolve_book_obj(object);
+
+	return !book_obj || book_obj->text_utf8_decoder;
+}
+
+static zend_string *php_excel_coreproperty_to_libxl(zval *object, zend_string *value)
+{
+	zend_string *ansi = NULL;
+	wchar_t *wide;
+	int wide_len;
+
+	if (php_excel_book_uses_utf8(object)) {
+		wide = php_excel_win_to_wide(CP_UTF8, ZSTR_VAL(value), ZSTR_LEN(value), &wide_len);
+	} else {
+		wide = php_excel_win_locale_to_wide(ZSTR_VAL(value), &wide_len);
+	}
+	if (wide) {
+		ansi = php_excel_win_from_wide(CP_ACP, wide, wide_len);
+		efree(wide);
+	}
+	if (!ansi) {
+		php_error_docref(NULL, E_WARNING, "Property value cannot be represented in the Windows ANSI code page, which LibXL stores core properties through");
+	}
+	return ansi;
+}
+
+/* Undoes the getter's extra pass: re-encoding its result in the ANSI code page
+ * yields the UTF-8 text LibXL stores. */
+static zend_string *php_excel_coreproperty_from_libxl(zval *object, const char *value)
+{
+	zend_string *stored = NULL, *result;
+	wchar_t *wide;
+	int wide_len;
+
+	wide = php_excel_win_to_wide(CP_UTF8, value, strlen(value), &wide_len);
+	if (wide) {
+		stored = php_excel_win_from_wide(CP_ACP, wide, wide_len);
+		efree(wide);
+	}
+	if (stored && !php_excel_is_valid_utf8(stored)) {
+		zend_string_release(stored);
+		stored = NULL;
+	}
+	if (!stored) {
+		php_error_docref(NULL, E_WARNING, "Property value returned by LibXL cannot be decoded through the Windows ANSI code page");
+		return NULL;
+	}
+	if (php_excel_book_uses_utf8(object)) {
+		return stored;
+	}
+	result = NULL;
+	wide = php_excel_win_to_wide(CP_UTF8, ZSTR_VAL(stored), ZSTR_LEN(stored), &wide_len);
+	zend_string_release(stored);
+	if (wide) {
+		result = php_excel_win_locale_from_wide(wide);
+		efree(wide);
+	}
+	if (!result) {
+		php_error_docref(NULL, E_WARNING, "Property value %s", php_excel_text_unconvertible);
+	}
+	return result;
+}
+
+#define COREPROPERTIES_DC_STRING_GETTER(method_name, api_func) \
+EXCEL_METHOD(CoreProperties, method_name) \
+{ \
+	zval *object = ZEND_THIS; \
+	CorePropertiesHandle cp; \
+	const char *raw; \
+	zend_string *result; \
+	ZEND_PARSE_PARAMETERS_NONE(); \
+	COREPROPERTIES_FROM_OBJECT(cp, object); \
+	raw = api_func(cp); \
+	if (!raw) { \
+		RETURN_NULL(); \
+	} \
+	result = php_excel_coreproperty_from_libxl(object, raw); \
+	if (!result) { \
+		RETURN_FALSE; \
+	} \
+	RETURN_STR(result); \
+}
+
+#define COREPROPERTIES_DC_STRING_SETTER(method_name, api_func) \
+EXCEL_METHOD(CoreProperties, method_name) \
+{ \
+	zval *object = ZEND_THIS; \
+	CorePropertiesHandle cp; \
+	zend_string *val, *ansi; \
+	if (zend_parse_parameters(ZEND_NUM_ARGS(), "S", &val) == FAILURE) { \
+		RETURN_FALSE; \
+	} \
+	EXCEL_NUL_SAFE_STRING(val) \
+	COREPROPERTIES_FROM_OBJECT(cp, object); \
+	EXCEL_DECODABLE_TEXT(object, val, "Property value") \
+	ansi = php_excel_coreproperty_to_libxl(object, val); \
+	if (!ansi) { \
+		RETURN_FALSE; \
+	} \
+	api_func(cp, ZSTR_VAL(ansi)); \
+	zend_string_release(ansi); \
+	RETURN_TRUE; \
+}
+#else
+#define COREPROPERTIES_DC_STRING_GETTER COREPROPERTIES_STRING_GETTER
+#define COREPROPERTIES_DC_STRING_SETTER COREPROPERTIES_STRING_SETTER
+#endif
+
+COREPROPERTIES_DC_STRING_GETTER(title, xlCorePropertiesTitle)
+COREPROPERTIES_DC_STRING_SETTER(setTitle, xlCorePropertiesSetTitle)
+COREPROPERTIES_DC_STRING_GETTER(subject, xlCorePropertiesSubject)
+COREPROPERTIES_DC_STRING_SETTER(setSubject, xlCorePropertiesSetSubject)
+COREPROPERTIES_DC_STRING_GETTER(creator, xlCorePropertiesCreator)
+COREPROPERTIES_DC_STRING_SETTER(setCreator, xlCorePropertiesSetCreator)
 COREPROPERTIES_STRING_GETTER(lastModifiedBy, xlCorePropertiesLastModifiedBy)
 COREPROPERTIES_STRING_SETTER(setLastModifiedBy, xlCorePropertiesSetLastModifiedBy)
 COREPROPERTIES_STRING_GETTER(created, xlCorePropertiesCreated)
@@ -10765,8 +10967,8 @@ COREPROPERTIES_STRING_GETTER(tags, xlCorePropertiesTags)
 COREPROPERTIES_STRING_SETTER(setTags, xlCorePropertiesSetTags)
 COREPROPERTIES_STRING_GETTER(categories, xlCorePropertiesCategories)
 COREPROPERTIES_STRING_SETTER(setCategories, xlCorePropertiesSetCategories)
-COREPROPERTIES_STRING_GETTER(comments, xlCorePropertiesComments)
-COREPROPERTIES_STRING_SETTER(setComments, xlCorePropertiesSetComments)
+COREPROPERTIES_DC_STRING_GETTER(comments, xlCorePropertiesComments)
+COREPROPERTIES_DC_STRING_SETTER(setComments, xlCorePropertiesSetComments)
 
 EXCEL_METHOD(CoreProperties, createdAsDouble)
 {
