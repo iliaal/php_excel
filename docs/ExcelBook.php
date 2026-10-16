@@ -668,11 +668,12 @@ class ExcelBook
 	* Load Excel sheet info without loading the full file
 	*
 	* On success the book enters info-only mode: only sheetCount(), getSheetName(),
-	* the load*() methods, and __construct() work. Every other ExcelBook method emits
-	* a warning and returns false. The ExcelFont, ExcelFormat, ExcelSheet,
+	* the load*() methods, clear(), __construct(), getLibXlVersion(),
+	* getPhpExcelVersion(), and requiresKey() work. Every other ExcelBook method
+	* emits a warning and returns false. The ExcelFont, ExcelFormat, ExcelSheet,
 	* ExcelRichString, ExcelConditionalFormat, and ExcelCoreProperties constructors
-	* throw when given this book. A successful full load*() call or __construct()
-	* leaves info-only mode.
+	* throw when given this book. A successful full load*(), clear(), or
+	* __construct() call leaves info-only mode.
 	*
 	* @see ExcelBook::load() for success-only wrapper invalidation and failure diagnostics
 	*

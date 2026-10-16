@@ -3760,7 +3760,7 @@ EXCEL_METHOD(Book, clear)
 
 	ZEND_PARSE_PARAMETERS_NONE();
 
-	BOOK_FROM_OBJECT(book, object);
+	BOOK_FROM_OBJECT_INFO_OK(book, object);
 
 	if (!php_excel_book_reset_state(object)) {
 		RETURN_FALSE;
