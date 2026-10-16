@@ -47,6 +47,11 @@ class ExcelRichString
 	* adding a text segment. Use addFont($font) to copy a foreign font first.
 	* Omit the font or pass null for a segment without an explicit font.
 	*
+	* Text must be valid UTF-8 unless ExcelBook::setLocale() selected a
+	* non-UTF-8 locale, in which case it must be valid in that locale's
+	* encoding. Text that cannot be decoded emits a warning and returns false
+	* without adding a text segment.
+	*
 	* @see ExcelRichString::addFont()
 	* @param string $text
 	* @param ExcelFont|null $font (optional) Same-workbook font, or null

@@ -6365,6 +6365,26 @@ static bool php_excel_utf8_length_within(zend_string *value, size_t limit)
 	return count != (size_t)-1 && count <= limit;
 }
 
+/* Mirrors how libxl's narrow-string API decodes text: its built-in strict
+ * UTF-8 decoder until setLocale() succeeds, then mbstowcs() under the process
+ * LC_CTYPE that setLocale() installed. Text libxl cannot decode is dropped
+ * silently, and on XLS rich strings the dropped run leaves state that crashes
+ * the next save, so callers must reject it before handing it over. */
+static bool php_excel_text_is_encodable(excel_book_object *book_obj, zend_string *value)
+{
+	if (!book_obj || !book_obj->locale) {
+		return php_excel_is_valid_utf8(value);
+	}
+	if (book_obj->locale_is_utf8 && !php_excel_is_valid_utf8(value)) {
+		return false;
+	}
+#ifndef PHP_WIN32
+	return mbstowcs(NULL, ZSTR_VAL(value), 0) != (size_t)-1;
+#else
+	return true;
+#endif
+}
+
 #define PHP_EXCEL_SET_HF(func_name) \
 	{ \
 		SheetHandle sheet; \
@@ -9067,6 +9087,9 @@ EXCEL_METHOD(RichString, addText)
 	zend_string *text;
 	FontHandle font = NULL;
 	zval *zfont = NULL;
+	excel_book_object *book_obj;
+	excel_richstring_object *ro;
+	int size_before;
 
 	if (zend_parse_parameters(ZEND_NUM_ARGS(), "S|O!", &text, &zfont, excel_ce_font) == FAILURE) {
 		RETURN_FALSE;
@@ -9085,7 +9108,24 @@ EXCEL_METHOD(RichString, addText)
 		EXCEL_REQUIRE_SAME_BOOK(zfont, object);
 	}
 
+	book_obj = php_excel_resolve_book_obj(object);
+	if (!php_excel_text_is_encodable(book_obj, text)) {
+		if (book_obj && book_obj->locale && !book_obj->locale_is_utf8) {
+			php_error_docref(NULL, E_WARNING, "Rich string text cannot be converted with the workbook locale");
+		} else {
+			php_error_docref(NULL, E_WARNING, "Rich string text contains invalid UTF-8");
+		}
+		RETURN_FALSE;
+	}
+
+	ro = Z_EXCEL_RICHSTRING_OBJ_P(object);
+	size_before = xlRichStringTextSize(rs);
 	xlRichStringAddText(rs, ZSTR_VAL(text), font);
+	if (ZSTR_LEN(text) > 0 && xlRichStringTextSize(rs) == size_before) {
+		php_error_docref(NULL, E_WARNING, "Failed to add rich string text: %s",
+			xlBookErrorMessage(ro->book));
+		RETURN_FALSE;
+	}
 	RETURN_TRUE;
 }
 
