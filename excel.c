@@ -10758,86 +10758,42 @@ EXCEL_METHOD(CoreProperties, method_name) \
  * wide functions are no way out: on a narrow book they reinterpret the narrow
  * buffers, and on a wide book they mangle the text the same way. So these
  * values cross into LibXL as ANSI text, which limits what a setter can store
- * to what the ANSI code page represents. */
-static wchar_t *php_excel_win_to_wide(UINT code_page, const char *in, size_t in_len, int *out_len)
-{
-	wchar_t *out;
-	int len;
+ * to what the ANSI code page represents. A book without the UTF-8 decoder
+ * already passes its bytes through as ANSI text, and reads them back so. */
+static const char php_excel_coreproperty_not_ansi[] = "Property value cannot be represented in the Windows ANSI code page, which LibXL stores core properties through";
 
-	if (in_len > INT_MAX) {
-		return NULL;
-	}
-	if (in_len == 0) {
-		out = emalloc(sizeof(wchar_t));
-		out[0] = L'\0';
-		*out_len = 0;
-		return out;
-	}
-	len = MultiByteToWideChar(code_page, MB_ERR_INVALID_CHARS, in, (int) in_len, NULL, 0);
-	if (len <= 0) {
-		return NULL;
-	}
-	out = safe_emalloc((size_t) len + 1, sizeof(wchar_t), 0);
-	if (MultiByteToWideChar(code_page, MB_ERR_INVALID_CHARS, in, (int) in_len, out, len) != len) {
-		efree(out);
-		return NULL;
-	}
-	out[len] = L'\0';
-	*out_len = len;
-	return out;
-}
-
-static zend_string *php_excel_win_from_wide(UINT code_page, const wchar_t *in, int in_len)
+static zend_string *php_excel_win_utf8_to_ansi(const char *in, size_t in_len)
 {
-	DWORD flags = code_page == CP_UTF8 ? WC_ERR_INVALID_CHARS : WC_NO_BEST_FIT_CHARS;
 	BOOL lossy = FALSE;
 	zend_string *out;
-	int len;
+	wchar_t *wide;
+	int wide_len, len;
 
 	if (in_len == 0) {
 		return ZSTR_EMPTY_ALLOC();
 	}
-	len = WideCharToMultiByte(code_page, flags, in, in_len, NULL, 0, NULL, code_page == CP_UTF8 ? NULL : &lossy);
-	if (len <= 0 || lossy) {
+	if (in_len > INT_MAX) {
 		return NULL;
 	}
-	out = zend_string_alloc((size_t) len, 0);
-	if (WideCharToMultiByte(code_page, flags, in, in_len, ZSTR_VAL(out), len, NULL, NULL) != len) {
-		zend_string_efree(out);
+	wide_len = MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS, in, (int) in_len, NULL, 0);
+	if (wide_len <= 0) {
 		return NULL;
 	}
-	ZSTR_VAL(out)[len] = '\0';
-	return out;
-}
-
-/* Text in a book without the UTF-8 decoder is in the C runtime's LC_CTYPE
- * encoding, as for every other narrow setter and getter of that book. */
-static wchar_t *php_excel_win_locale_to_wide(const char *in, int *out_len)
-{
-	size_t len = mbstowcs(NULL, in, 0);
-	wchar_t *out;
-
-	if (len == (size_t) -1 || len > INT_MAX) {
-		return NULL;
+	wide = safe_emalloc((size_t) wide_len, sizeof(wchar_t), 0);
+	out = NULL;
+	if (MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS, in, (int) in_len, wide, wide_len) == wide_len) {
+		len = WideCharToMultiByte(CP_ACP, WC_NO_BEST_FIT_CHARS, wide, wide_len, NULL, 0, NULL, &lossy);
+		if (len > 0 && !lossy) {
+			out = zend_string_alloc((size_t) len, 0);
+			if (WideCharToMultiByte(CP_ACP, WC_NO_BEST_FIT_CHARS, wide, wide_len, ZSTR_VAL(out), len, NULL, NULL) == len) {
+				ZSTR_VAL(out)[len] = '\0';
+			} else {
+				zend_string_efree(out);
+				out = NULL;
+			}
+		}
 	}
-	out = safe_emalloc(len + 1, sizeof(wchar_t), 0);
-	mbstowcs(out, in, len + 1);
-	out[len] = L'\0';
-	*out_len = (int) len;
-	return out;
-}
-
-static zend_string *php_excel_win_locale_from_wide(const wchar_t *in)
-{
-	size_t len = wcstombs(NULL, in, 0);
-	zend_string *out;
-
-	if (len == (size_t) -1) {
-		return NULL;
-	}
-	out = zend_string_alloc(len, 0);
-	wcstombs(ZSTR_VAL(out), in, len + 1);
-	ZSTR_VAL(out)[len] = '\0';
+	efree(wide);
 	return out;
 }
 
@@ -10850,21 +10806,14 @@ static bool php_excel_book_uses_utf8(zval *object)
 
 static zend_string *php_excel_coreproperty_to_libxl(zval *object, zend_string *value)
 {
-	zend_string *ansi = NULL;
-	wchar_t *wide;
-	int wide_len;
+	zend_string *ansi;
 
-	if (php_excel_book_uses_utf8(object)) {
-		wide = php_excel_win_to_wide(CP_UTF8, ZSTR_VAL(value), ZSTR_LEN(value), &wide_len);
-	} else {
-		wide = php_excel_win_locale_to_wide(ZSTR_VAL(value), &wide_len);
+	if (!php_excel_book_uses_utf8(object)) {
+		return zend_string_copy(value);
 	}
-	if (wide) {
-		ansi = php_excel_win_from_wide(CP_ACP, wide, wide_len);
-		efree(wide);
-	}
+	ansi = php_excel_win_utf8_to_ansi(ZSTR_VAL(value), ZSTR_LEN(value));
 	if (!ansi) {
-		php_error_docref(NULL, E_WARNING, "Property value cannot be represented in the Windows ANSI code page, which LibXL stores core properties through");
+		php_error_docref(NULL, E_WARNING, "%s", php_excel_coreproperty_not_ansi);
 	}
 	return ansi;
 }
@@ -10873,15 +10822,9 @@ static zend_string *php_excel_coreproperty_to_libxl(zval *object, zend_string *v
  * yields the UTF-8 text LibXL stores. */
 static zend_string *php_excel_coreproperty_from_libxl(zval *object, const char *value)
 {
-	zend_string *stored = NULL, *result;
-	wchar_t *wide;
-	int wide_len;
+	zend_string *stored, *ansi;
 
-	wide = php_excel_win_to_wide(CP_UTF8, value, strlen(value), &wide_len);
-	if (wide) {
-		stored = php_excel_win_from_wide(CP_ACP, wide, wide_len);
-		efree(wide);
-	}
+	stored = php_excel_win_utf8_to_ansi(value, strlen(value));
 	if (stored && !php_excel_is_valid_utf8(stored)) {
 		zend_string_release(stored);
 		stored = NULL;
@@ -10893,17 +10836,12 @@ static zend_string *php_excel_coreproperty_from_libxl(zval *object, const char *
 	if (php_excel_book_uses_utf8(object)) {
 		return stored;
 	}
-	result = NULL;
-	wide = php_excel_win_to_wide(CP_UTF8, ZSTR_VAL(stored), ZSTR_LEN(stored), &wide_len);
+	ansi = php_excel_win_utf8_to_ansi(ZSTR_VAL(stored), ZSTR_LEN(stored));
 	zend_string_release(stored);
-	if (wide) {
-		result = php_excel_win_locale_from_wide(wide);
-		efree(wide);
+	if (!ansi) {
+		php_error_docref(NULL, E_WARNING, "%s", php_excel_coreproperty_not_ansi);
 	}
-	if (!result) {
-		php_error_docref(NULL, E_WARNING, "Property value %s", php_excel_text_unconvertible);
-	}
-	return result;
+	return ansi;
 }
 
 #define COREPROPERTIES_DC_STRING_GETTER(method_name, api_func) \
