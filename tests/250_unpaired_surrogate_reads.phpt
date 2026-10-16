@@ -69,8 +69,8 @@ var_dump($sheet->readRow(1, 0, 1));
 var_dump($sheet->readCol(0, 1, 1));
 var_dump($sheet->readRange(1, 1, 0, 1));
 var_dump($sheet->readSparseRow(1, 0, 1));
-/* An escaped valid pair decodes on LibXL 4.6 and reads back as "??" on 5.x. */
-var_dump(in_array($sheet->read(1, 2), ["lead\xf0\x9f\x98\x80", 'lead??'], true));
+/* LibXL 4.6 decodes an escaped valid pair; 5.1 and 5.2 reject it. */
+var_dump($sheet->read(1, 2) === (hexdec($book->getLibXlVersion()) < 0x05010000 ? "lead\xf0\x9f\x98\x80" : 'lead??'));
 var_dump($sheet->write(3, 0, "caf\xc3\xa9"), $sheet->read(3, 0) === "caf\xc3\xa9");
 $copy = new ExcelBook(null, null, true);
 var_dump($copy->load($book->save()), $copy->getSheet(0)->read(1, 1));

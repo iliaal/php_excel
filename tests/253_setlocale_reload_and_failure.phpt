@@ -27,7 +27,7 @@ foreach ([false, true] as $xlsx) {
     var_dump($sheet->write(3, 1, $latin1));
     var_dump(bin2hex($sheet->read(3, 1)));
 
-    $path = tempnam(sys_get_temp_dir(), 'pxl251');
+    $path = tempnam(sys_get_temp_dir(), 'pxl253');
     var_dump($book->save($path), $book->loadFile($path));
     unlink($path);
     var_dump(bin2hex($book->getSheet(0)->read(3, 1)));

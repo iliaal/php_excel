@@ -95,7 +95,7 @@ if ($book->deleteSheet(0)) {
 }
 ```
 
-Books read and write text as UTF-8 whatever the process locale is, so non-ASCII text works the same in Docker containers, PHP-FPM pools, and systemd services that run under the plain `C` locale. Methods that store text reject a string that is not valid UTF-8 with a warning and return `false`; the `ExcelSheet` and `ExcelTable` constructors throw an exception instead. Builds against LibXL older than 5.1 reject characters outside the Basic Multilingual Plane, such as emoji, the same way, because LibXL 4.6 drops them. Text that another application stored with an unpaired UTF-16 surrogate reads back with `?` in its place. Call `setLocale()` only when your strings use another byte encoding, for example `setLocale('de_DE.ISO-8859-1')` for Latin-1.
+Books read and write text as UTF-8 whatever the process locale is, so non-ASCII text works the same in Docker containers, PHP-FPM pools, and systemd services that run under the plain `C` locale. Methods that store text reject a string that is not valid UTF-8 with a warning and return `false`; the `ExcelSheet` and `ExcelTable` constructors throw an exception instead. LibXL 4.6 drops characters outside the Basic Multilingual Plane, such as emoji, so builds against LibXL older than 5.1 reject them the same way. Text that another application stored with an unpaired UTF-16 surrogate reads back with `?` in its place. Call `setLocale()` only when your strings use another byte encoding, for example `setLocale('de_DE.ISO-8859-1')` for Latin-1.
 
 Deleting a sheet also shifts the indexes of later sheets. Re-fetch by name,
 or use the updated zero-based index with `getSheet()`. A failed deletion

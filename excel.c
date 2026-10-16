@@ -1418,6 +1418,43 @@ static zend_always_inline bool php_excel_validate_uint_size(zend_string *s)
 	return true;
 }
 
+/* Length of the well-formed UTF-8 sequence starting at p, or 0. */
+static size_t php_excel_utf8_seq_len(const unsigned char *p, const unsigned char *end)
+{
+	size_t width;
+
+	if (*p <= 0x7f) {
+		return 1;
+	} else if (*p >= 0xc2 && *p <= 0xdf) {
+		width = 2;
+	} else if (*p >= 0xe0 && *p <= 0xef) {
+		width = 3;
+	} else if (*p >= 0xf0 && *p <= 0xf4) {
+		width = 4;
+	} else {
+		return 0;
+	}
+	if ((size_t) (end - p) < width) {
+		return 0;
+	}
+	if (p[1] < 0x80 || p[1] > 0xbf) {
+		return 0;
+	}
+	if (width >= 3 && (p[2] < 0x80 || p[2] > 0xbf)) {
+		return 0;
+	}
+	if (width == 4 && (p[3] < 0x80 || p[3] > 0xbf)) {
+		return 0;
+	}
+	if ((p[0] == 0xe0 && p[1] < 0xa0)
+	    || (p[0] == 0xed && p[1] > 0x9f)
+	    || (p[0] == 0xf0 && p[1] < 0x90)
+	    || (p[0] == 0xf4 && p[1] > 0x8f)) {
+		return 0;
+	}
+	return width;
+}
+
 /* Character count of a UTF-8 string, or (size_t)-1 when the input is malformed.
  * Shared core so callers can tell invalid encoding apart from text that is
  * merely too long. */
@@ -1428,35 +1465,9 @@ static size_t php_excel_utf8_char_count(zend_string *value)
 	size_t count = 0;
 
 	while (p < end) {
-		size_t width;
+		size_t width = php_excel_utf8_seq_len(p, end);
 
-		if (*p <= 0x7f) {
-			width = 1;
-		} else if (*p >= 0xc2 && *p <= 0xdf) {
-			width = 2;
-		} else if (*p >= 0xe0 && *p <= 0xef) {
-			width = 3;
-		} else if (*p >= 0xf0 && *p <= 0xf4) {
-			width = 4;
-		} else {
-			return (size_t)-1;
-		}
-		if ((size_t) (end - p) < width) {
-			return (size_t)-1;
-		}
-		if (width >= 2 && (p[1] < 0x80 || p[1] > 0xbf)) {
-			return (size_t)-1;
-		}
-		if (width >= 3 && (p[2] < 0x80 || p[2] > 0xbf)) {
-			return (size_t)-1;
-		}
-		if (width == 4 && (p[3] < 0x80 || p[3] > 0xbf)) {
-			return (size_t)-1;
-		}
-		if ((p[0] == 0xe0 && p[1] < 0xa0)
-		    || (p[0] == 0xed && p[1] > 0x9f)
-		    || (p[0] == 0xf0 && p[1] < 0x90)
-		    || (p[0] == 0xf4 && p[1] > 0x8f)) {
+		if (!width) {
 			return (size_t)-1;
 		}
 		count++;
@@ -1549,16 +1560,41 @@ static bool php_excel_text_decodable(zval *owner, zend_string *value, const char
  * cannot decode: XLS strings, and XLSX shared strings escaped as _xD800_
  * (5.x rejects even an escaped valid pair). The wide getters are no way out,
  * because on a book created through the narrow API they return the narrow
- * buffer. Repeating the call in mbstowcs() mode under a UTF-8 C locale
- * yields the text with '?' for each unit that does not convert. The name
- * must not contain "UTF-8", which makes LibXL 5.2 keep its own decoder. */
+ * buffer. Repeating the call in mbstowcs() mode under a UTF-8 locale yields
+ * the text with '?' for each unit that does not convert. Without such a
+ * locale the call is not repeated and the original failure stands. */
 typedef struct {
 	char *lc_ctype;
 } php_excel_lossy_read;
 
+/* From 5.2 none may contain "UTF-8", for which LibXL keeps its own decoder;
+ * older LibXL converts with mbstowcs() whatever the name. */
+static const char *const php_excel_lossy_locales[] = {
+	"C.utf8",
+	"en_US.utf8",
+	".UTF8",
+#if LIBXL_VERSION < 0x05020000
+	"C.UTF-8",
+	"en_US.UTF-8",
+#endif
+};
+
+static bool php_excel_ctype_is_utf8(void)
+{
+#ifdef HAVE_NL_LANGINFO
+	const char *codeset = nl_langinfo(CODESET);
+	return codeset && strcmp(codeset, "UTF-8") == 0;
+#else
+	return true;
+#endif
+}
+
+/* Picks a UTF-8 locale this process accepts without touching the book, so
+ * that when none exists the book keeps its state and its error message. */
 static bool php_excel_lossy_read_begin(excel_book_object *bobj, BookHandle book, php_excel_lossy_read *state)
 {
-	const char *message, *lc_ctype;
+	const char *message, *lc_ctype, *chosen = NULL;
+	size_t i;
 
 	if (!bobj || !book || !bobj->text_utf8_decoder || !bobj->locale) {
 		return false;
@@ -1568,13 +1604,44 @@ static bool php_excel_lossy_read_begin(excel_book_object *bobj, BookHandle book,
 		return false;
 	}
 	lc_ctype = setlocale(LC_CTYPE, NULL);
-	state->lc_ctype = lc_ctype ? estrdup(lc_ctype) : NULL;
-	/* A rejected name still leaves LibXL in mbstowcs() mode under the current
-	 * LC_CTYPE, which replaces more of the text but still returns it. */
-	if (!xlBookSetLocale(book, "C.utf8")) {
-		xlBookSetLocale(book, ".UTF8");
+	if (!lc_ctype) {
+		return false;
 	}
-	return true;
+	state->lc_ctype = estrdup(lc_ctype);
+	for (i = 0; i < sizeof(php_excel_lossy_locales) / sizeof(php_excel_lossy_locales[0]); i++) {
+		if (setlocale(LC_CTYPE, php_excel_lossy_locales[i]) && php_excel_ctype_is_utf8()) {
+			chosen = php_excel_lossy_locales[i];
+			break;
+		}
+	}
+	setlocale(LC_CTYPE, state->lc_ctype);
+	if (chosen && xlBookSetLocale(book, chosen)) {
+		return true;
+	}
+	if (chosen) {
+		xlBookSetLocale(book, bobj->locale);
+		setlocale(LC_CTYPE, state->lc_ctype);
+	}
+	efree(state->lc_ctype);
+	return false;
+}
+
+/* Replaces each byte that does not start a well-formed sequence with '?',
+ * so a UTF-8 book never hands out invalid UTF-8 whatever mbstowcs() made. */
+static void php_excel_utf8_scrub(zend_string *value)
+{
+	unsigned char *p = (unsigned char *) ZSTR_VAL(value);
+	const unsigned char *end = p + ZSTR_LEN(value);
+
+	while (p < end) {
+		size_t width = php_excel_utf8_seq_len(p, end);
+
+		if (width) {
+			p += width;
+		} else {
+			*p++ = '?';
+		}
+	}
 }
 
 static void php_excel_lossy_read_keep(excel_book_object *bobj, int slot, const char **value)
@@ -1586,6 +1653,7 @@ static void php_excel_lossy_read_keep(excel_book_object *bobj, int slot, const c
 		zend_string_release(bobj->lossy_text[slot]);
 	}
 	bobj->lossy_text[slot] = zend_string_init(*value, strlen(*value), 0);
+	php_excel_utf8_scrub(bobj->lossy_text[slot]);
 	*value = ZSTR_VAL(bobj->lossy_text[slot]);
 }
 
