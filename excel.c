@@ -37,6 +37,10 @@
 #include "libxl_compat.h"
 #include "zend_exceptions.h"
 #include "Zend/zend_smart_str.h"
+#include <locale.h>
+#ifdef HAVE_NL_LANGINFO
+# include <langinfo.h>
+#endif
 
 #if !defined(LIBXL_VERSION) || LIBXL_VERSION < 0x04060000
 #error "LibXL version 4.6.0+ required"
@@ -159,6 +163,13 @@ typedef struct _excel_book_object {
 	 * reject impossible coordinates per book type. */
 	bool is_xlsx;
 	bool locale_is_utf8;
+	/* True when libxl decodes narrow strings with its built-in UTF-8
+	 * decoder instead of mbstowcs() under the process LC_CTYPE. */
+	bool text_utf8_decoder;
+	/* An XLS rich-string run that libxl dropped leaves state that crashes
+	 * the next save inside libxl; saves are refused until the handle is
+	 * replaced or cleared. */
+	bool rich_text_add_failed;
 	/* Explicit per-book license credentials from __construct (NULL when the
 	 * INI fallback supplied the key). Re-applied to scratch reload handles
 	 * so a licensed book stays licensed across a successful reload-swap.
@@ -843,6 +854,28 @@ static inline void php_excel_book_bump_conditional_formatting_generation(zval *p
 	}
 }
 
+/* libxl picks its narrow-string decoder per book: the built-in UTF-8 decoder
+ * after setLocale("UTF-8"), and since 5.2 also when the LC_CTYPE name in
+ * effect at creation or setLocale() contains "UTF-8"; mbstowcs() under the
+ * LC_CTYPE current at each call otherwise, including after a failed
+ * setLocale(). */
+static bool php_excel_locale_name_selects_utf8_decoder(const char *name)
+{
+#if LIBXL_VERSION >= 0x05020000
+	return name && strstr(name, "UTF-8") != NULL;
+#else
+	(void) name;
+	return false;
+#endif
+}
+
+static bool php_excel_locale_selects_utf8_decoder(const char *locale)
+{
+	return strcmp(locale, "UTF-8") == 0
+		|| php_excel_locale_name_selects_utf8_decoder(locale)
+		|| php_excel_locale_name_selects_utf8_decoder(setlocale(LC_CTYPE, NULL));
+}
+
 /* Full state reset: bump every wrapper generation domain and drop the
  * cached default date format. Use after libxl operations that free the
  * internal format table (load, loadFile, loadInfo, loadInfoRaw, clear,
@@ -917,6 +950,13 @@ static int php_excel_book_commit_scratch(zval *object, BookHandle scratch)
 			"Cannot reinitialize workbook while a native I/O buffer is in use");
 		return 0;
 	}
+	/* The scratch is a fresh libxl book, so its decoder is re-derived. This
+	 * must precede xlBookRelease(), which restores the LC_CTYPE that was in
+	 * effect before the released book was created. */
+	bobj->text_utf8_decoder = bobj->locale
+		? php_excel_locale_selects_utf8_decoder(bobj->locale)
+		: php_excel_locale_name_selects_utf8_decoder(setlocale(LC_CTYPE, NULL));
+	bobj->rich_text_add_failed = false;
 	if (bobj->book) {
 		xlBookRelease(bobj->book);
 	}
@@ -1100,6 +1140,8 @@ static zend_object *excel_object_new_book(zend_class_entry *class_type)
 	intern->conditional_formatting_generation = 0;
 	intern->is_xlsx = false;
 	intern->locale_is_utf8 = false;
+	intern->text_utf8_decoder = false;
+	intern->rich_text_add_failed = false;
 	intern->license_name = NULL;
 	intern->license_key = NULL;
 	intern->locale = NULL;
@@ -2424,6 +2466,11 @@ EXCEL_METHOD(Book, save)
 
 	BOOK_FROM_OBJECT(book, object);
 
+	if (php_excel_book_object_fetch_object(Z_OBJ_P(object))->rich_text_add_failed) {
+		php_error_docref(NULL, E_WARNING, "Cannot save workbook after a failed ExcelRichString::addText(); reload, clear, or recreate the workbook");
+		RETURN_FALSE;
+	}
+
 	if (is_local_path && !basedir_active) {
 		php_excel_save_to_local(INTERNAL_FUNCTION_PARAM_PASSTHRU, book, filename_zs);
 		return;
@@ -3106,8 +3153,12 @@ EXCEL_METHOD(Book, setLocale)
 
 	BOOK_FROM_OBJECT(book, object);
 
-	if (xlBookSetLocale(book, ZSTR_VAL(locale_zs))) {
+	if (!xlBookSetLocale(book, ZSTR_VAL(locale_zs))) {
 		excel_book_object *book_obj = Z_EXCEL_BOOK_OBJ_P(object);
+		book_obj->text_utf8_decoder = false;
+	} else {
+		excel_book_object *book_obj = Z_EXCEL_BOOK_OBJ_P(object);
+		book_obj->text_utf8_decoder = php_excel_locale_selects_utf8_decoder(ZSTR_VAL(locale_zs));
 		book_obj->locale_is_utf8 = php_excel_locale_is_utf8(locale_zs);
 		/* Remember the accepted string so scratch reload handles can
 		 * re-apply it; the live handle keeps working either way. */
@@ -3126,6 +3177,7 @@ EXCEL_METHOD(Book, __construct)
 	char *name = NULL, *key = NULL;
 	size_t name_len = 0, key_len = 0;
 	bool new_excel = 0;
+	bool utf8_decoder;
 
 	if (zend_parse_parameters(ZEND_NUM_ARGS(), "|s!s!b", &name, &name_len, &key, &key_len, &new_excel) == FAILURE) {
 		RETURN_THROWS();
@@ -3150,6 +3202,9 @@ EXCEL_METHOD(Book, __construct)
 			zend_throw_exception(NULL, "Failed to create book", 0);
 			RETURN_THROWS();
 		}
+		/* Read before releasing a previous book, which restores the LC_CTYPE
+		 * that preceded that book's creation. */
+		utf8_decoder = php_excel_locale_name_selects_utf8_decoder(setlocale(LC_CTYPE, NULL));
 		if (obj->book) {
 			xlBookRelease(obj->book);
 			/* If the book object is being reconstructed, every existing child
@@ -3176,6 +3231,8 @@ EXCEL_METHOD(Book, __construct)
 		obj->book = book;
 		obj->is_xlsx = new_excel;
 		obj->locale_is_utf8 = false;
+		obj->text_utf8_decoder = utf8_decoder;
+		obj->rich_text_add_failed = false;
 		obj->default_date_format = NULL;
 		obj->info_only = false;
 		/* Remember explicit credentials (before the INI fallback below
@@ -3766,6 +3823,10 @@ EXCEL_METHOD(Book, clear)
 		RETURN_FALSE;
 	}
 	xlBookClear(book);
+	{
+		excel_book_object *book_obj = Z_EXCEL_BOOK_OBJ_P(object);
+		book_obj->rich_text_add_failed = false;
+	}
 	RETURN_TRUE;
 }
 #endif
@@ -6365,24 +6426,27 @@ static bool php_excel_utf8_length_within(zend_string *value, size_t limit)
 	return count != (size_t)-1 && count <= limit;
 }
 
-/* Mirrors how libxl's narrow-string API decodes text: its built-in strict
- * UTF-8 decoder until setLocale() succeeds, then mbstowcs() under the process
- * LC_CTYPE that setLocale() installed. Text libxl cannot decode is dropped
- * silently, and on XLS rich strings the dropped run leaves state that crashes
- * the next save, so callers must reject it before handing it over. */
-static bool php_excel_text_is_encodable(excel_book_object *book_obj, zend_string *value)
+/* Returns NULL when libxl will decode the text for this book, otherwise the
+ * reason it would not. In mbstowcs() mode a UTF-8 codeset additionally gets
+ * the strict check, because libxl 5.2 may still be using its own decoder
+ * there and rejecting more input is the safe direction. */
+static const char *php_excel_text_decode_error(const excel_book_object *book_obj, zend_string *value)
 {
-	if (!book_obj || !book_obj->locale) {
-		return php_excel_is_valid_utf8(value);
+	if (!book_obj || book_obj->text_utf8_decoder) {
+		return php_excel_is_valid_utf8(value) ? NULL : "contains invalid UTF-8";
 	}
-	if (book_obj->locale_is_utf8 && !php_excel_is_valid_utf8(value)) {
-		return false;
+	if (mbstowcs(NULL, ZSTR_VAL(value), 0) == (size_t)-1) {
+		return "cannot be converted with the current LC_CTYPE locale";
 	}
-#ifndef PHP_WIN32
-	return mbstowcs(NULL, ZSTR_VAL(value), 0) != (size_t)-1;
-#else
-	return true;
+#ifdef HAVE_NL_LANGINFO
+	{
+		const char *codeset = nl_langinfo(CODESET);
+		if (codeset && strcmp(codeset, "UTF-8") == 0 && !php_excel_is_valid_utf8(value)) {
+			return "contains invalid UTF-8";
+		}
+	}
 #endif
+	return NULL;
 }
 
 #define PHP_EXCEL_SET_HF(func_name) \
@@ -9089,6 +9153,7 @@ EXCEL_METHOD(RichString, addText)
 	zval *zfont = NULL;
 	excel_book_object *book_obj;
 	excel_richstring_object *ro;
+	const char *decode_error;
 	int size_before;
 
 	if (zend_parse_parameters(ZEND_NUM_ARGS(), "S|O!", &text, &zfont, excel_ce_font) == FAILURE) {
@@ -9109,12 +9174,9 @@ EXCEL_METHOD(RichString, addText)
 	}
 
 	book_obj = php_excel_resolve_book_obj(object);
-	if (!php_excel_text_is_encodable(book_obj, text)) {
-		if (book_obj && book_obj->locale && !book_obj->locale_is_utf8) {
-			php_error_docref(NULL, E_WARNING, "Rich string text cannot be converted with the workbook locale");
-		} else {
-			php_error_docref(NULL, E_WARNING, "Rich string text contains invalid UTF-8");
-		}
+	decode_error = php_excel_text_decode_error(book_obj, text);
+	if (decode_error) {
+		php_error_docref(NULL, E_WARNING, "Rich string text %s", decode_error);
 		RETURN_FALSE;
 	}
 
@@ -9122,8 +9184,13 @@ EXCEL_METHOD(RichString, addText)
 	size_before = xlRichStringTextSize(rs);
 	xlRichStringAddText(rs, ZSTR_VAL(text), font);
 	if (ZSTR_LEN(text) > 0 && xlRichStringTextSize(rs) == size_before) {
-		php_error_docref(NULL, E_WARNING, "Failed to add rich string text: %s",
-			xlBookErrorMessage(ro->book));
+		if (book_obj && !book_obj->is_xlsx) {
+			book_obj->rich_text_add_failed = true;
+			php_error_docref(NULL, E_WARNING, "Failed to add rich string text: %s; saving this workbook is now refused",
+				xlBookErrorMessage(ro->book));
+		} else {
+			php_error_docref(NULL, E_WARNING, "Failed to add rich string text: %s", xlBookErrorMessage(ro->book));
+		}
 		RETURN_FALSE;
 	}
 	RETURN_TRUE;
