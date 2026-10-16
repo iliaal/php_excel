@@ -2015,6 +2015,9 @@ EXCEL_METHOD(Book, loadFile)
 	EXCEL_NUL_SAFE_STRING(filename_zs)
 
 	plain_local = php_excel_is_plain_local_path(filename_zs);
+	if (EG(exception)) {
+		RETURN_THROWS();
+	}
 
 	/* With open_basedir active, PHP must perform the actual open. A separate
 	 * policy check followed by a libxl path open has a rename/symlink race. */
@@ -2152,6 +2155,9 @@ EXCEL_METHOD(Book, loadFilePartially)
 	}
 
 	plain_local = php_excel_is_plain_local_path(filename_zs);
+	if (EG(exception)) {
+		RETURN_THROWS();
+	}
 	if (plain_local && (!PG(open_basedir) || !*PG(open_basedir))) {
 		BOOK_BEGIN_SCRATCH_RELOAD(scratch, object);
 		if (!xlBookLoadPartially(scratch, ZSTR_VAL(filename_zs), (int) sheet_index, (int) row_first, (int) row_last, keep_all_sheets)) {
@@ -2224,6 +2230,7 @@ EXCEL_METHOD(Book, loadFileWithoutEmptyCells)
 	BookHandle scratch;
 	zval *object = ZEND_THIS;
 	zend_string *filename_zs = NULL;
+	bool plain_local;
 
 	if (zend_parse_parameters(ZEND_NUM_ARGS(), "S", &filename_zs) == FAILURE) {
 		RETURN_FALSE;
@@ -2232,7 +2239,11 @@ EXCEL_METHOD(Book, loadFileWithoutEmptyCells)
 	EXCEL_NON_EMPTY_STRING(filename_zs)
 	EXCEL_NUL_SAFE_STRING(filename_zs)
 
-	if (!php_excel_is_plain_local_path(filename_zs)) {
+	plain_local = php_excel_is_plain_local_path(filename_zs);
+	if (EG(exception)) {
+		RETURN_THROWS();
+	}
+	if (!plain_local) {
 		php_error_docref(NULL, E_WARNING, "Stream wrappers are not supported by loadFileWithoutEmptyCells");
 		RETURN_FALSE;
 	}
@@ -2271,11 +2282,16 @@ static void php_excel_save_to_local(INTERNAL_FUNCTION_PARAMETERS, zval *object, 
 	uint64_t generation = book_obj->generation;
 	php_stream *stream;
 	zend_string *tmp_name = php_excel_reserve_staging_url(filename_zs, &stream);
+	bool staged_plain;
 
 	if (!tmp_name) {
 		/* php_excel_reserve_staging_url already warned with the cause. */
 		RETURN_FALSE;
 	}
+	/* The reservation can warn, and an error handler can register a user
+	 * wrapper over file: before the open resolves; libxl would then write
+	 * a real file the wrapper never sees. */
+	staged_plain = stream->wrapper == &php_plain_files_wrapper;
 	/* libxl reopens the path by name, so the reservation must be handed
 	 * over closed. A failed close (or a pending wrapper exception) means
 	 * the staged path is unreliable; abort before libxl touches it.
@@ -2291,12 +2307,34 @@ static void php_excel_save_to_local(INTERNAL_FUNCTION_PARAMETERS, zval *object, 
 		php_error_docref(NULL, E_WARNING, "Failed to save workbook: could not close temporary file; destination left unchanged");
 		RETURN_FALSE;
 	}
+	if (!staged_plain) {
+		php_excel_unlink_staging_or_warn(tmp_name);
+		zend_string_release(tmp_name);
+		if (EG(exception)) {
+			RETURN_THROWS();
+		}
+		php_error_docref(NULL, E_WARNING, "Failed to save workbook: the destination stopped resolving to a local file during the save; destination left unchanged");
+		RETURN_FALSE;
+	}
 	/* The staging open and close can run userland that reinitializes or
-	 * reloads this book, freeing the handle fetched above. */
+	 * reloads this book, freeing the handle fetched above, or drops a rich
+	 * text run that leaves the book unsaveable. */
 	if (!php_excel_book_generation_matches(book_obj, generation) || book_obj->book != book) {
 		php_excel_unlink_staging_or_warn(tmp_name);
 		zend_string_release(tmp_name);
+		if (EG(exception)) {
+			RETURN_THROWS();
+		}
 		php_error_docref(NULL, E_WARNING, "Failed to save workbook: the book was reinitialized or reloaded during the save; destination left unchanged");
+		RETURN_FALSE;
+	}
+	if (book_obj->rich_text_add_failed) {
+		php_excel_unlink_staging_or_warn(tmp_name);
+		zend_string_release(tmp_name);
+		if (EG(exception)) {
+			RETURN_THROWS();
+		}
+		php_error_docref(NULL, E_WARNING, "Cannot save workbook after a failed ExcelRichString::addText(); reload, clear, or recreate the workbook");
 		RETURN_FALSE;
 	}
 
@@ -2488,6 +2526,9 @@ EXCEL_METHOD(Book, save)
 		EXCEL_NUL_SAFE_STRING(filename_zs)
 	}
 	is_local_path = has_path && php_excel_is_plain_local_path(filename_zs);
+	if (EG(exception)) {
+		RETURN_THROWS();
+	}
 	basedir_active = PG(open_basedir) && *PG(open_basedir);
 
 	BOOK_FROM_OBJECT(book, object);
@@ -3339,6 +3380,10 @@ static void php_excel_add_picture(INTERNAL_FUNCTION_PARAMETERS, int mode) /* {{{
 		EXCEL_NUL_SAFE_STRING(data_zs)
 		bool plain_local = php_excel_is_plain_local_path(data_zs);
 
+		if (EG(exception)) {
+			RETURN_THROWS();
+		}
+
 		/* With open_basedir active, PHP must perform the actual open. */
 		if (plain_local && (!PG(open_basedir) || !*PG(open_basedir))) {
 			/* Wrapper lookup can warn, and a user error handler can
@@ -3514,6 +3559,7 @@ EXCEL_METHOD(Book, loadInfo)
 	BookHandle scratch;
 	zval *object = ZEND_THIS;
 	zend_string *filename_zs = NULL;
+	bool plain_local;
 #if LIBXL_VERSION >= 0x05000100
 	php_stream *stream;
 	zend_string *contents;
@@ -3527,10 +3573,14 @@ EXCEL_METHOD(Book, loadInfo)
 	EXCEL_NON_EMPTY_STRING(filename_zs)
 	EXCEL_NUL_SAFE_STRING(filename_zs)
 
+	plain_local = php_excel_is_plain_local_path(filename_zs);
+	if (EG(exception)) {
+		RETURN_THROWS();
+	}
+
 #if LIBXL_VERSION >= 0x05000100
-	if (strstr(ZSTR_VAL(filename_zs), "://") || (PG(open_basedir) && *PG(open_basedir))) {
-		if (!strstr(ZSTR_VAL(filename_zs), "://")
-		    && php_check_open_basedir(ZSTR_VAL(filename_zs))) {
+	if (!plain_local || (PG(open_basedir) && *PG(open_basedir))) {
+		if (plain_local && php_check_open_basedir(ZSTR_VAL(filename_zs))) {
 			RETURN_FALSE;
 		}
 		stream = php_stream_open_wrapper(ZSTR_VAL(filename_zs), "rb", REPORT_ERRORS, NULL);
@@ -3577,6 +3627,10 @@ EXCEL_METHOD(Book, loadInfo)
 		RETURN_TRUE;
 	}
 #else
+	if (!plain_local) {
+		php_error_docref(NULL, E_WARNING, "Stream wrappers are not supported by loadInfo with LibXL older than 5.0.1");
+		RETURN_FALSE;
+	}
 	if (PG(open_basedir) && *PG(open_basedir)) {
 		if (php_check_open_basedir(ZSTR_VAL(filename_zs))) {
 			RETURN_FALSE;

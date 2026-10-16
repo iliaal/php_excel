@@ -141,6 +141,12 @@ class ExcelBook
 	* by getError() or errorCode(). Input validation and stream failures can
 	* return false earlier; an empty string returns false without a warning.
 	*
+	* The filename resolves like fopen(): a "data:" name, or any path while
+	* file: is replaced by a user wrapper, is read through that wrapper. Only
+	* names PHP opens as plain files are passed to LibXL directly. The same
+	* rule applies to loadFilePartially(), loadInfo(), and addPictureFromFile();
+	* loadFileWithoutEmptyCells() rejects wrapper names.
+	*
 	* @note Stream sources are fully buffered (cap UINT_MAX); enforce an app-side size bound first, e.g. `if (filesize($path) > $maxBytes) throw new RuntimeException('spreadsheet too large');`. See SECURITY.md.
 	* @param string $filename
 	* @return bool
@@ -448,6 +454,9 @@ class ExcelBook
 
 	/**
 	* Add a picture from file
+	*
+	* The filename resolves like fopen(), including "data:" names; see
+	* ExcelBook::loadFile().
 	*
 	* @note Stream sources are fully buffered (cap UINT_MAX); enforce an app-side size bound first. See ExcelBook::loadFile() for an example.
 	* @see ExcelBook::addPictureFromString()
