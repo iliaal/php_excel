@@ -1856,6 +1856,25 @@ static bool php_excel_is_plain_local_path(zend_string *path)
 		&& php_stream_locate_url_wrapper(ZSTR_VAL(path), NULL, 0) == &php_plain_files_wrapper;
 }
 
+#ifdef VIRTUAL_DIR
+/* True when the process and the request working directories can resolve the
+ * name differently. IS_ABSOLUTE_PATH accepts the drive-relative "C:name",
+ * which PHP opens at the drive root but Windows resolves against that drive's
+ * process working directory. */
+static bool php_excel_path_depends_on_cwd(const char *path, size_t len)
+{
+	if (!IS_ABSOLUTE_PATH(path, len)) {
+		return true;
+	}
+#ifdef ZEND_WIN32
+	if (len > 2 && path[1] == ':' && !IS_SLASH(path[2])) {
+		return true;
+	}
+#endif
+	return false;
+}
+#endif
+
 /* LibXL resolves a relative name against the process working directory. Under
  * ZTS, PHP resolves it against the request's virtual one, which chdir() moves
  * on its own, so hand LibXL the absolute name PHP's plain-files wrapper would
@@ -1865,7 +1884,7 @@ static bool php_excel_is_plain_local_path(zend_string *path)
 static const char *php_excel_libxl_path(zend_string *path, char *buf)
 {
 #ifdef VIRTUAL_DIR
-	if (!IS_ABSOLUTE_PATH(ZSTR_VAL(path), ZSTR_LEN(path))) {
+	if (php_excel_path_depends_on_cwd(ZSTR_VAL(path), ZSTR_LEN(path))) {
 		return expand_filepath(ZSTR_VAL(path), buf);
 	}
 #else
@@ -2334,6 +2353,8 @@ EXCEL_METHOD(Book, loadFile)
 	zend_string *contents;
 	php_excel_stream_read_status stream_status;
 	bool plain_local;
+	char resolved[MAXPATHLEN];
+	const char *libxl_name = NULL;
 
 	if (zend_parse_parameters(ZEND_NUM_ARGS(), "S", &filename_zs) == FAILURE) {
 		RETURN_FALSE;
@@ -2350,13 +2371,13 @@ EXCEL_METHOD(Book, loadFile)
 	/* With open_basedir active, PHP must perform the actual open. A separate
 	 * policy check followed by a libxl path open has a rename/symlink race. */
 	if (plain_local && (!PG(open_basedir) || !*PG(open_basedir))) {
-		char resolved[MAXPATHLEN];
-		const char *libxl_name = php_excel_libxl_path(filename_zs, resolved);
-
+		libxl_name = php_excel_libxl_path(filename_zs, resolved);
 		if (!libxl_name) {
 			php_error_docref(NULL, E_WARNING, "Failed to load workbook: could not resolve file path");
 			RETURN_FALSE;
 		}
+	}
+	if (libxl_name) {
 		BOOK_BEGIN_SCRATCH_RELOAD(scratch, object);
 		PHP_EXCEL_LOAD_TEXT(loaded, php_excel_book_object_fetch_object(Z_OBJ_P(object)), scratch, xlBookLoad(scratch, libxl_name));
 		if (!loaded) {
@@ -2482,6 +2503,8 @@ EXCEL_METHOD(Book, loadFilePartially)
 	zend_string *contents;
 	php_excel_stream_read_status stream_status;
 	bool plain_local;
+	char resolved[MAXPATHLEN];
+	const char *libxl_name = NULL;
 
 	if (zend_parse_parameters(ZEND_NUM_ARGS(), "Slll|b", &filename_zs, &sheet_index, &row_first, &row_last, &keep_all_sheets) == FAILURE) {
 		RETURN_FALSE;
@@ -2499,13 +2522,13 @@ EXCEL_METHOD(Book, loadFilePartially)
 		RETURN_THROWS();
 	}
 	if (plain_local && (!PG(open_basedir) || !*PG(open_basedir))) {
-		char resolved[MAXPATHLEN];
-		const char *libxl_name = php_excel_libxl_path(filename_zs, resolved);
-
+		libxl_name = php_excel_libxl_path(filename_zs, resolved);
 		if (!libxl_name) {
 			php_error_docref(NULL, E_WARNING, "Failed to load workbook: could not resolve file path");
 			RETURN_FALSE;
 		}
+	}
+	if (libxl_name) {
 		BOOK_BEGIN_SCRATCH_RELOAD(scratch, object);
 		PHP_EXCEL_LOAD_TEXT(loaded, php_excel_book_object_fetch_object(Z_OBJ_P(object)), scratch, xlBookLoadPartially(scratch, libxl_name, (int) sheet_index, (int) row_first, (int) row_last, keep_all_sheets));
 		if (!loaded) {
@@ -2628,14 +2651,14 @@ EXCEL_METHOD(Book, loadFileWithoutEmptyCells)
 /* }}} */
 #endif
 
-/* Under ZTS, swap a relative staged name for the absolute one PHP opened it
- * through, and derive the destination from it, so LibXL, the chmod, the
- * rename, and the cleanup all address the reserved file. The plain-files
- * wrapper resolves symlinks for opens but not for rename or unlink, so the
- * relative names alone would disagree after a symlinked directory and "..".
- * The staged file exists by now, so only its directories resolve and a
- * symlink at the destination is still replaced rather than followed. On
- * failure both names are left untouched. */
+/* Under ZTS, swap the staged name for the resolved one PHP opened it through,
+ * and derive the destination from it, so LibXL, the chmod, the rename, and
+ * the cleanup all address the reserved file. The plain-files wrapper resolves
+ * symlinks for opens but resolves ".." textually for rename and unlink, so
+ * the names as given, absolute ones included, would disagree after a
+ * symlinked directory and "..". The staged file exists by now, so only its
+ * directories resolve and a symlink at the destination is still replaced
+ * rather than followed. On failure both names are left untouched. */
 static bool php_excel_resolve_staged_names(zend_string **tmp_name, zend_string **destination)
 {
 #ifdef VIRTUAL_DIR
@@ -2643,9 +2666,6 @@ static bool php_excel_resolve_staged_names(zend_string **tmp_name, zend_string *
 	size_t suffix_len = ZSTR_LEN(*tmp_name) - ZSTR_LEN(*destination);
 	size_t len;
 
-	if (IS_ABSOLUTE_PATH(ZSTR_VAL(*tmp_name), ZSTR_LEN(*tmp_name))) {
-		return true;
-	}
 	if (!expand_filepath(ZSTR_VAL(*tmp_name), resolved)) {
 		return false;
 	}
@@ -2805,14 +2825,17 @@ static void php_excel_save_to_stream(INTERNAL_FUNCTION_PARAMETERS, zend_string *
 	 * file untouched, instead of truncating the destination up front. */
 	if (php_excel_wrapper_supports_atomic_save(filename_zs)) {
 		zend_string *tmp_name = php_excel_reserve_staging_url(filename_zs, &stream);
+		zend_string *destination;
 		int flush_result = 0;
 		int close_result;
+		bool staged_plain;
 
 		if (!tmp_name) {
 			/* php_excel_reserve_staging_url already warned with the cause. */
 			zend_string_release(owned_contents);
 			RETURN_FALSE;
 		}
+		staged_plain = stream->wrapper == &php_plain_files_wrapper;
 		/* PHP installs a rename dispatcher in wops for every user wrapper, so
 		 * the capability probe above cannot tell an omitted method from a
 		 * method that failed. An open user stream carries a copy of the
@@ -2851,19 +2874,34 @@ static void php_excel_save_to_stream(INTERNAL_FUNCTION_PARAMETERS, zend_string *
 			RETURN_FALSE;
 		}
 
+		destination = zend_string_copy(filename_zs);
+		if (plain_local && staged_plain && !php_excel_resolve_staged_names(&tmp_name, &destination)) {
+			php_excel_unlink_staging_or_warn(tmp_name);
+			zend_string_release(tmp_name);
+			zend_string_release(destination);
+			zend_string_release(owned_contents);
+			if (EG(exception)) {
+				RETURN_THROWS();
+			}
+			php_error_docref(NULL, E_WARNING, "Failed to save workbook: could not resolve temporary file path; destination left unchanged");
+			RETURN_FALSE;
+		}
+
 		/* Only plain local paths reach here with a real file to stat: those
 		 * routed through the stream because open_basedir is active. Any other
 		 * name is not a filesystem path, even when a user wrapper over file:
 		 * makes it look like one. */
 		if (plain_local) {
-			php_excel_copy_destination_mode(filename_zs, tmp_name);
+			php_excel_copy_destination_mode(destination, tmp_name);
 		}
 
-		if (wrapper_has_rename && php_excel_wrapper_rename(tmp_name, filename_zs)) {
+		if (wrapper_has_rename && php_excel_wrapper_rename(tmp_name, destination)) {
 			zend_string_release(tmp_name);
+			zend_string_release(destination);
 			zend_string_release(owned_contents);
 			RETURN_TRUE;
 		}
+		zend_string_release(destination);
 
 		/* The staged payload is complete. Remove it and take the documented
 		 * direct-write fallback when the wrapper has no rename() to use; a
@@ -3814,15 +3852,18 @@ static void php_excel_add_picture(INTERNAL_FUNCTION_PARAMETERS, int mode) /* {{{
 			RETURN_THROWS();
 		}
 
+		char resolved[MAXPATHLEN];
+		const char *libxl_name = NULL;
+
 		/* With open_basedir active, PHP must perform the actual open. */
 		if (plain_local && (!PG(open_basedir) || !*PG(open_basedir))) {
-			char resolved[MAXPATHLEN];
-			const char *libxl_name = php_excel_libxl_path(data_zs, resolved);
-
+			libxl_name = php_excel_libxl_path(data_zs, resolved);
 			if (!libxl_name) {
 				php_error_docref(NULL, E_WARNING, "Could not resolve picture file path");
 				RETURN_FALSE;
 			}
+		}
+		if (libxl_name) {
 			/* Wrapper lookup can warn, and a user error handler can
 			 * reconstruct the book. */
 			BOOK_FROM_OBJECT(book, object);
