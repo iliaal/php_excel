@@ -1856,6 +1856,24 @@ static bool php_excel_is_plain_local_path(zend_string *path)
 		&& php_stream_locate_url_wrapper(ZSTR_VAL(path), NULL, 0) == &php_plain_files_wrapper;
 }
 
+/* LibXL resolves a relative name against the process working directory. Under
+ * ZTS, PHP resolves it against the request's virtual one, which chdir() moves
+ * on its own, so hand LibXL the absolute name PHP's plain-files wrapper would
+ * open. Without a virtual working directory both already agree and the name
+ * passes through unchanged. `buf` must hold MAXPATHLEN bytes; returns NULL
+ * when the name cannot be resolved, for example past MAXPATHLEN. */
+static const char *php_excel_libxl_path(zend_string *path, char *buf)
+{
+#ifdef VIRTUAL_DIR
+	if (!IS_ABSOLUTE_PATH(ZSTR_VAL(path), ZSTR_LEN(path))) {
+		return expand_filepath(ZSTR_VAL(path), buf);
+	}
+#else
+	(void) buf;
+#endif
+	return ZSTR_VAL(path);
+}
+
 static bool php_excel_wrapper_supports_atomic_save(zend_string *url)
 {
 	php_stream_wrapper *wrapper = php_stream_locate_url_wrapper(ZSTR_VAL(url), NULL, 0);
@@ -2332,8 +2350,15 @@ EXCEL_METHOD(Book, loadFile)
 	/* With open_basedir active, PHP must perform the actual open. A separate
 	 * policy check followed by a libxl path open has a rename/symlink race. */
 	if (plain_local && (!PG(open_basedir) || !*PG(open_basedir))) {
+		char resolved[MAXPATHLEN];
+		const char *libxl_name = php_excel_libxl_path(filename_zs, resolved);
+
+		if (!libxl_name) {
+			php_error_docref(NULL, E_WARNING, "Failed to load workbook: could not resolve file path");
+			RETURN_FALSE;
+		}
 		BOOK_BEGIN_SCRATCH_RELOAD(scratch, object);
-		PHP_EXCEL_LOAD_TEXT(loaded, php_excel_book_object_fetch_object(Z_OBJ_P(object)), scratch, xlBookLoad(scratch, ZSTR_VAL(filename_zs)));
+		PHP_EXCEL_LOAD_TEXT(loaded, php_excel_book_object_fetch_object(Z_OBJ_P(object)), scratch, xlBookLoad(scratch, libxl_name));
 		if (!loaded) {
 			php_error_docref(NULL, E_WARNING, "Failed to load workbook: %s", xlBookErrorMessage(scratch));
 			xlBookRelease(scratch);
@@ -2474,8 +2499,15 @@ EXCEL_METHOD(Book, loadFilePartially)
 		RETURN_THROWS();
 	}
 	if (plain_local && (!PG(open_basedir) || !*PG(open_basedir))) {
+		char resolved[MAXPATHLEN];
+		const char *libxl_name = php_excel_libxl_path(filename_zs, resolved);
+
+		if (!libxl_name) {
+			php_error_docref(NULL, E_WARNING, "Failed to load workbook: could not resolve file path");
+			RETURN_FALSE;
+		}
 		BOOK_BEGIN_SCRATCH_RELOAD(scratch, object);
-		PHP_EXCEL_LOAD_TEXT(loaded, php_excel_book_object_fetch_object(Z_OBJ_P(object)), scratch, xlBookLoadPartially(scratch, ZSTR_VAL(filename_zs), (int) sheet_index, (int) row_first, (int) row_last, keep_all_sheets));
+		PHP_EXCEL_LOAD_TEXT(loaded, php_excel_book_object_fetch_object(Z_OBJ_P(object)), scratch, xlBookLoadPartially(scratch, libxl_name, (int) sheet_index, (int) row_first, (int) row_last, keep_all_sheets));
 		if (!loaded) {
 			php_error_docref(NULL, E_WARNING, "Failed to load workbook: %s", xlBookErrorMessage(scratch));
 			xlBookRelease(scratch);
@@ -2549,6 +2581,8 @@ EXCEL_METHOD(Book, loadFileWithoutEmptyCells)
 	zval *object = ZEND_THIS;
 	zend_string *filename_zs = NULL;
 	bool plain_local;
+	char resolved[MAXPATHLEN];
+	const char *libxl_name;
 
 	if (zend_parse_parameters(ZEND_NUM_ARGS(), "S", &filename_zs) == FAILURE) {
 		RETURN_FALSE;
@@ -2572,9 +2606,14 @@ EXCEL_METHOD(Book, loadFileWithoutEmptyCells)
 		php_error_docref(NULL, E_WARNING, "loadFileWithoutEmptyCells is not available while open_basedir is active");
 		RETURN_FALSE;
 	}
+	libxl_name = php_excel_libxl_path(filename_zs, resolved);
+	if (!libxl_name) {
+		php_error_docref(NULL, E_WARNING, "Failed to load workbook: could not resolve file path");
+		RETURN_FALSE;
+	}
 
 	BOOK_BEGIN_SCRATCH_RELOAD(scratch, object);
-	PHP_EXCEL_LOAD_TEXT(loaded, php_excel_book_object_fetch_object(Z_OBJ_P(object)), scratch, xlBookLoadWithoutEmptyCells(scratch, ZSTR_VAL(filename_zs)));
+	PHP_EXCEL_LOAD_TEXT(loaded, php_excel_book_object_fetch_object(Z_OBJ_P(object)), scratch, xlBookLoadWithoutEmptyCells(scratch, libxl_name));
 	if (!loaded) {
 		php_error_docref(NULL, E_WARNING, "Failed to load workbook: %s", xlBookErrorMessage(scratch));
 		xlBookRelease(scratch);
@@ -2589,6 +2628,43 @@ EXCEL_METHOD(Book, loadFileWithoutEmptyCells)
 /* }}} */
 #endif
 
+/* Under ZTS, swap a relative staged name for the absolute one PHP opened it
+ * through, and derive the destination from it, so LibXL, the chmod, the
+ * rename, and the cleanup all address the reserved file. The plain-files
+ * wrapper resolves symlinks for opens but not for rename or unlink, so the
+ * relative names alone would disagree after a symlinked directory and "..".
+ * The staged file exists by now, so only its directories resolve and a
+ * symlink at the destination is still replaced rather than followed. On
+ * failure both names are left untouched. */
+static bool php_excel_resolve_staged_names(zend_string **tmp_name, zend_string **destination)
+{
+#ifdef VIRTUAL_DIR
+	char resolved[MAXPATHLEN];
+	size_t suffix_len = ZSTR_LEN(*tmp_name) - ZSTR_LEN(*destination);
+	size_t len;
+
+	if (IS_ABSOLUTE_PATH(ZSTR_VAL(*tmp_name), ZSTR_LEN(*tmp_name))) {
+		return true;
+	}
+	if (!expand_filepath(ZSTR_VAL(*tmp_name), resolved)) {
+		return false;
+	}
+	len = strlen(resolved);
+	if (len <= suffix_len
+	    || memcmp(resolved + len - suffix_len, ZSTR_VAL(*tmp_name) + ZSTR_LEN(*destination), suffix_len) != 0) {
+		return false;
+	}
+	zend_string_release(*tmp_name);
+	zend_string_release(*destination);
+	*tmp_name = zend_string_init(resolved, len, 0);
+	*destination = zend_string_init(resolved, len - suffix_len, 0);
+#else
+	(void) tmp_name;
+	(void) destination;
+#endif
+	return true;
+}
+
 /* Stage a plain local save through libxl's own pathname writer and rename it
  * into place. xlBookSave() streams the archive to disk, where xlBookSaveRaw()
  * would first materialize all of it in memory, so this keeps the save atomic
@@ -2602,6 +2678,7 @@ static void php_excel_save_to_local(INTERNAL_FUNCTION_PARAMETERS, zval *object, 
 	php_stream *stream;
 	zend_string *tmp_name = php_excel_reserve_staging_url(filename_zs, &stream);
 	bool staged_plain;
+	zend_string *destination;
 
 	if (!tmp_name) {
 		/* php_excel_reserve_staging_url already warned with the cause. */
@@ -2656,24 +2733,38 @@ static void php_excel_save_to_local(INTERNAL_FUNCTION_PARAMETERS, zval *object, 
 		php_error_docref(NULL, E_WARNING, "Cannot save workbook after a failed ExcelRichString::addText(); reload, clear, or recreate the workbook");
 		RETURN_FALSE;
 	}
+	destination = zend_string_copy(filename_zs);
+	if (!php_excel_resolve_staged_names(&tmp_name, &destination)) {
+		php_excel_unlink_staging_or_warn(tmp_name);
+		zend_string_release(tmp_name);
+		zend_string_release(destination);
+		if (EG(exception)) {
+			RETURN_THROWS();
+		}
+		php_error_docref(NULL, E_WARNING, "Failed to save workbook: could not resolve temporary file path; destination left unchanged");
+		RETURN_FALSE;
+	}
 
 	if (!xlBookSave(book, ZSTR_VAL(tmp_name))) {
 		php_error_docref(NULL, E_WARNING, "Failed to save workbook: %s", xlBookErrorMessage(book));
 		php_excel_unlink_staging_or_warn(tmp_name);
 		zend_string_release(tmp_name);
+		zend_string_release(destination);
 		RETURN_FALSE;
 	}
 
-	php_excel_copy_destination_mode(filename_zs, tmp_name);
+	php_excel_copy_destination_mode(destination, tmp_name);
 
-	if (!php_excel_wrapper_rename(tmp_name, filename_zs)) {
+	if (!php_excel_wrapper_rename(tmp_name, destination)) {
 		php_excel_unlink_staging_or_warn(tmp_name);
 		zend_string_release(tmp_name);
+		zend_string_release(destination);
 		php_error_docref(NULL, E_WARNING, "Could not replace destination with completed temporary file; destination left unchanged");
 		RETURN_FALSE;
 	}
 
 	zend_string_release(tmp_name);
+	zend_string_release(destination);
 	RETURN_TRUE;
 }
 
@@ -3725,10 +3816,17 @@ static void php_excel_add_picture(INTERNAL_FUNCTION_PARAMETERS, int mode) /* {{{
 
 		/* With open_basedir active, PHP must perform the actual open. */
 		if (plain_local && (!PG(open_basedir) || !*PG(open_basedir))) {
+			char resolved[MAXPATHLEN];
+			const char *libxl_name = php_excel_libxl_path(data_zs, resolved);
+
+			if (!libxl_name) {
+				php_error_docref(NULL, E_WARNING, "Could not resolve picture file path");
+				RETURN_FALSE;
+			}
 			/* Wrapper lookup can warn, and a user error handler can
 			 * reconstruct the book. */
 			BOOK_FROM_OBJECT(book, object);
-			ret = xlBookAddPicture(book, ZSTR_VAL(data_zs));
+			ret = xlBookAddPicture(book, libxl_name);
 			goto picture_done;
 		}
 		if (plain_local && PG(open_basedir) && *PG(open_basedir)
@@ -3900,6 +3998,8 @@ EXCEL_METHOD(Book, loadInfo)
 	zval *object = ZEND_THIS;
 	zend_string *filename_zs = NULL;
 	bool plain_local;
+	char resolved[MAXPATHLEN];
+	const char *libxl_name;
 #if LIBXL_VERSION >= 0x05000100
 	php_stream *stream;
 	zend_string *contents;
@@ -3980,8 +4080,13 @@ EXCEL_METHOD(Book, loadInfo)
 		RETURN_FALSE;
 	}
 #endif
+	libxl_name = php_excel_libxl_path(filename_zs, resolved);
+	if (!libxl_name) {
+		php_error_docref(NULL, E_WARNING, "Failed to load workbook: could not resolve file path");
+		RETURN_FALSE;
+	}
 	BOOK_BEGIN_SCRATCH_RELOAD(scratch, object);
-	PHP_EXCEL_LOAD_TEXT(loaded, php_excel_book_object_fetch_object(Z_OBJ_P(object)), scratch, xlBookLoadInfo(scratch, ZSTR_VAL(filename_zs)));
+	PHP_EXCEL_LOAD_TEXT(loaded, php_excel_book_object_fetch_object(Z_OBJ_P(object)), scratch, xlBookLoadInfo(scratch, libxl_name));
 	if (!loaded) {
 		php_error_docref(NULL, E_WARNING, "Failed to load workbook: %s", xlBookErrorMessage(scratch));
 		xlBookRelease(scratch);
@@ -8611,6 +8716,8 @@ EXCEL_METHOD(Book, addPictureAsLink)
 	zend_string *filename;
 	bool insert = 0;
 	zend_long result;
+	const char *libxl_name;
+	char resolved[MAXPATHLEN];
 
 	if (zend_parse_parameters(ZEND_NUM_ARGS(), "S|b", &filename, &insert) == FAILURE) {
 		RETURN_FALSE;
@@ -8630,7 +8737,15 @@ EXCEL_METHOD(Book, addPictureAsLink)
 	BOOK_FROM_OBJECT(book, object);
 	EXCEL_DECODABLE_TEXT(object, filename, "Picture path")
 
-	result = xlBookAddPictureAsLink(book, ZSTR_VAL(filename), insert);
+	/* LibXL reads the picture through the same name it records as the link,
+	 * so under ZTS a relative name is stored in its resolved absolute form. */
+	libxl_name = php_excel_libxl_path(filename, resolved);
+	if (!libxl_name) {
+		php_error_docref(NULL, E_WARNING, "Could not resolve picture file path");
+		RETURN_FALSE;
+	}
+
+	result = xlBookAddPictureAsLink(book, libxl_name, insert);
 
 	if (-1 == result) {
 		php_error_docref(NULL, E_WARNING, "Could not add picture as link.");
