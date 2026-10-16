@@ -443,7 +443,19 @@ class ExcelBook
 	}
 
 	/**
-	* Set the locale
+	* Set the encoding of text passed to and returned by this workbook
+	*
+	* Every workbook starts in UTF-8 mode: LibXL decodes and encodes text as
+	* UTF-8 whatever the process locale is. Call this method only for text in
+	* another byte encoding, for example setLocale('de_DE.ISO-8859-1') for
+	* Latin-1 strings. LibXL then converts text with the C library under that
+	* locale, and switches the process LC_CTYPE to it. Pass "UTF-8" to return
+	* to the default.
+	*
+	* If LibXL rejects the locale name, the workbook converts text with the
+	* current process LC_CTYPE until the next successful call, and a reload
+	* restores the locale accepted last. An empty string returns false and
+	* changes nothing.
 	*
 	* @param string $locale
 	* @return void

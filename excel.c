@@ -176,8 +176,9 @@ typedef struct _excel_book_object {
 	 * INI credentials need no storage: PHP_INI_SYSTEM pins them process-wide. */
 	char *license_name;
 	char *license_key;
-	/* Locale string accepted by setLocale(), re-applied to scratch reload
-	 * handles so encoding behavior survives a successful reload-swap. */
+	/* Locale string libxl last accepted: "UTF-8" from __construct, or the
+	 * setLocale() argument. Re-applied to scratch reload handles so encoding
+	 * behavior survives a successful reload-swap. */
 	char *locale;
 	/* Lazily-allocated default format used by IS_DATE writes when the
 	 * caller doesn't supply an explicit format, so bulk date exports
@@ -1399,6 +1400,115 @@ static zend_always_inline bool php_excel_validate_uint_size(zend_string *s)
 	}
 	return true;
 }
+
+/* Character count of a UTF-8 string, or (size_t)-1 when the input is malformed.
+ * Shared core so callers can tell invalid encoding apart from text that is
+ * merely too long. */
+static size_t php_excel_utf8_char_count(zend_string *value)
+{
+	const unsigned char *p = (const unsigned char *) ZSTR_VAL(value);
+	const unsigned char *end = p + ZSTR_LEN(value);
+	size_t count = 0;
+
+	while (p < end) {
+		size_t width;
+
+		if (*p <= 0x7f) {
+			width = 1;
+		} else if (*p >= 0xc2 && *p <= 0xdf) {
+			width = 2;
+		} else if (*p >= 0xe0 && *p <= 0xef) {
+			width = 3;
+		} else if (*p >= 0xf0 && *p <= 0xf4) {
+			width = 4;
+		} else {
+			return (size_t)-1;
+		}
+		if ((size_t) (end - p) < width) {
+			return (size_t)-1;
+		}
+		if (width >= 2 && (p[1] < 0x80 || p[1] > 0xbf)) {
+			return (size_t)-1;
+		}
+		if (width >= 3 && (p[2] < 0x80 || p[2] > 0xbf)) {
+			return (size_t)-1;
+		}
+		if (width == 4 && (p[3] < 0x80 || p[3] > 0xbf)) {
+			return (size_t)-1;
+		}
+		if ((p[0] == 0xe0 && p[1] < 0xa0)
+		    || (p[0] == 0xed && p[1] > 0x9f)
+		    || (p[0] == 0xf0 && p[1] < 0x90)
+		    || (p[0] == 0xf4 && p[1] > 0x8f)) {
+			return (size_t)-1;
+		}
+		count++;
+		p += width;
+	}
+	return count;
+}
+
+/* Validity check without a length limit, so the header/footer macro can warn
+ * about malformed input separately from over-long input. */
+static bool php_excel_is_valid_utf8(zend_string *value)
+{
+	return php_excel_utf8_char_count(value) != (size_t)-1;
+}
+
+static bool php_excel_utf8_length_within(zend_string *value, size_t limit)
+{
+	size_t count = php_excel_utf8_char_count(value);
+	return count != (size_t)-1 && count <= limit;
+}
+
+static const char php_excel_text_invalid_utf8[] = "contains invalid UTF-8";
+static const char php_excel_text_unconvertible[] = "cannot be converted with the current LC_CTYPE locale";
+
+/* Returns NULL when libxl will decode the text for this book, otherwise the
+ * reason it would not. In mbstowcs() mode a UTF-8 codeset additionally gets
+ * the strict check, because libxl 5.2 may still be using its own decoder
+ * there and rejecting more input is the safe direction. */
+static const char *php_excel_text_decode_error(const excel_book_object *book_obj, zend_string *value)
+{
+	if (!book_obj || book_obj->text_utf8_decoder) {
+		return php_excel_is_valid_utf8(value) ? NULL : php_excel_text_invalid_utf8;
+	}
+	if (mbstowcs(NULL, ZSTR_VAL(value), 0) == (size_t)-1) {
+		return php_excel_text_unconvertible;
+	}
+#ifdef HAVE_NL_LANGINFO
+	{
+		const char *codeset = nl_langinfo(CODESET);
+		if (codeset && strcmp(codeset, "UTF-8") == 0 && !php_excel_is_valid_utf8(value)) {
+			return php_excel_text_invalid_utf8;
+		}
+	}
+#endif
+	return NULL;
+}
+
+/* libxl's narrow setters fail without reporting it when their text does not
+ * decode: the value is dropped or mangled, XLS comments leak, and XLSX core
+ * properties make save() write a file that no longer loads. */
+static bool php_excel_text_decodable(zval *owner, zend_string *value, const char *what)
+{
+	const char *decode_error;
+
+	if (!value) {
+		return true;
+	}
+	decode_error = php_excel_text_decode_error(php_excel_resolve_book_obj(owner), value);
+	if (decode_error) {
+		php_error_docref(NULL, E_WARNING, "%s %s", what, decode_error);
+		return false;
+	}
+	return true;
+}
+
+#define EXCEL_DECODABLE_TEXT(owner_zv, string_zs, what) \
+	if (!php_excel_text_decodable(owner_zv, string_zs, what)) { \
+		RETURN_FALSE; \
+	}
 
 #define EXCEL_NON_EMPTY_STRING(string_zval) \
 	if (!php_excel_non_empty_string(string_zval)) { \
@@ -2714,6 +2824,7 @@ EXCEL_METHOD(Book, addSheet)
 	EXCEL_NUL_SAFE_STRING(name_zs)
 
 	BOOK_FROM_OBJECT(book, object);
+	EXCEL_DECODABLE_TEXT(object, name_zs, "Sheet name")
 
 	sh = xlBookAddSheet(book, ZSTR_VAL(name_zs), 0);
 	if (!sh) {
@@ -2748,6 +2859,7 @@ EXCEL_METHOD(Book, copySheet)
 	EXCEL_NUL_SAFE_STRING(name_zs)
 
 	BOOK_FROM_OBJECT(book, object);
+	EXCEL_DECODABLE_TEXT(object, name_zs, "Sheet name")
 
 	if (!(osh = xlBookGetSheet(book, num))) {
 		RETURN_FALSE;
@@ -2918,6 +3030,7 @@ EXCEL_METHOD(Book, addCustomFormat)
 	EXCEL_NUL_SAFE_STRING(format_zs)
 
 	BOOK_FROM_OBJECT(book, object);
+	EXCEL_DECODABLE_TEXT(object, format_zs, "Number format")
 
 	if (!(id = xlBookAddCustomNumFormat(book, ZSTR_VAL(format_zs)))) {
 		php_error_docref(NULL, E_WARNING, "Failed to add custom number format: %s", xlBookErrorMessage(book));
@@ -3174,6 +3287,7 @@ EXCEL_METHOD(Book, setDefaultFont)
 	EXCEL_NUL_SAFE_STRING(font_zs)
 
 	BOOK_FROM_OBJECT(book, object);
+	EXCEL_DECODABLE_TEXT(object, font_zs, "Font name")
 
 	xlBookSetDefaultFont(book, ZSTR_VAL(font_zs), (int)font_size);
 }
@@ -3244,7 +3358,7 @@ EXCEL_METHOD(Book, __construct)
 	char *name = NULL, *key = NULL;
 	size_t name_len = 0, key_len = 0;
 	bool new_excel = 0;
-	bool utf8_decoder;
+	bool utf8_locale, utf8_decoder;
 
 	if (zend_parse_parameters(ZEND_NUM_ARGS(), "|s!s!b", &name, &name_len, &key, &key_len, &new_excel) == FAILURE) {
 		RETURN_THROWS();
@@ -3269,9 +3383,13 @@ EXCEL_METHOD(Book, __construct)
 			zend_throw_exception(NULL, "Failed to create book", 0);
 			RETURN_THROWS();
 		}
+		/* Without this, libxl decodes text with mbstowcs() under whatever
+		 * LC_CTYPE the process runs in (often "C"), and drops non-ASCII. */
+		utf8_locale = xlBookSetLocale(book, "UTF-8") != 0;
 		/* Read before releasing a previous book, which restores the LC_CTYPE
 		 * that preceded that book's creation. */
-		utf8_decoder = php_excel_locale_name_selects_utf8_decoder(setlocale(LC_CTYPE, NULL));
+		utf8_decoder = utf8_locale
+			|| php_excel_locale_name_selects_utf8_decoder(setlocale(LC_CTYPE, NULL));
 		if (obj->book) {
 			xlBookRelease(obj->book);
 			/* If the book object is being reconstructed, every existing child
@@ -3297,8 +3415,11 @@ EXCEL_METHOD(Book, __construct)
 		}
 		obj->book = book;
 		obj->is_xlsx = new_excel;
-		obj->locale_is_utf8 = false;
+		obj->locale_is_utf8 = utf8_locale;
 		obj->text_utf8_decoder = utf8_decoder;
+		if (utf8_locale) {
+			obj->locale = estrdup("UTF-8");
+		}
 		obj->rich_text_add_failed = false;
 		obj->default_date_format = NULL;
 		obj->info_only = false;
@@ -3799,6 +3920,7 @@ EXCEL_METHOD(Book, setPassword)
 	EXCEL_NUL_SAFE_STRING(password)
 
 	BOOK_FROM_OBJECT(book, object);
+	EXCEL_DECODABLE_TEXT(object, password, "Password")
 
 	xlBookSetPassword(book, ZSTR_VAL(password));
 	RETURN_TRUE;
@@ -4072,6 +4194,7 @@ EXCEL_METHOD(Font, name)
 	EXCEL_NUL_SAFE_STRING(name_zs)
 
 	FONT_FROM_OBJECT(font, object);
+	EXCEL_DECODABLE_TEXT(object, name_zs, "Font name")
 
 	if (name_zs) {
 		xlFontSetName(font, ZSTR_VAL(name_zs));
@@ -4477,6 +4600,13 @@ EXCEL_METHOD(Sheet, __construct)
 	}
 
 	BOOK_FROM_OBJECT_THROW(book, zbook);
+	{
+		const char *decode_error = php_excel_text_decode_error(php_excel_book_object_fetch_object(Z_OBJ_P(zbook)), name_zs);
+		if (decode_error) {
+			zend_throw_exception_ex(NULL, 0, "Sheet name %s", decode_error);
+			RETURN_THROWS();
+		}
+	}
 
 	obj = Z_EXCEL_SHEET_OBJ_P(object);
 	EXCEL_REJECT_RECONSTRUCTION(obj, sheet);
@@ -5158,11 +5288,12 @@ static zend_always_inline int php_excel_dtype_matches_zval(zend_long dtype, zval
 
 /* Pre-scan predicate for writeRow/writeCol: returns 0 when php_excel_write_cell
  * would reject this value for a PHP-side reason knowable without touching the
- * sheet (unsupported type, embedded NUL, unpackable AS_DATE timestamp). Lets
- * the bulk writers reject a bad row up front instead of committing the cells
- * before it and returning false mid-loop. libxl-side failures (style-table
- * exhaustion, disk) remain non-atomic and are out of scope. */
-static const char *php_excel_cell_value_rejection(BookHandle book, zval *data, zend_long dtype)
+ * sheet (unsupported type, embedded NUL, undecodable text, unpackable AS_DATE
+ * timestamp). Lets the bulk writers reject a bad row up front instead of
+ * committing the cells before it and returning false mid-loop. libxl-side
+ * failures (style-table exhaustion, disk) remain non-atomic and are out of
+ * scope. */
+static const char *php_excel_cell_value_rejection(const excel_book_object *book_obj, BookHandle book, zval *data, zend_long dtype)
 {
 try_again:
 	if (Z_TYPE_P(data) == IS_REFERENCE) {
@@ -5196,6 +5327,14 @@ try_again:
 		case IS_STRING:
 			if (ZSTR_LEN(Z_STR_P(data)) > 0 && memchr(ZSTR_VAL(Z_STR_P(data)), 0, ZSTR_LEN(Z_STR_P(data)))) {
 				return "string must not contain NUL bytes";
+			}
+			{
+				const char *decode_error = php_excel_text_decode_error(book_obj, Z_STR_P(data));
+				if (decode_error) {
+					return decode_error == php_excel_text_invalid_utf8
+						? "string contains invalid UTF-8"
+						: "string cannot be converted with the current LC_CTYPE locale";
+				}
 			}
 			if (dtype == PHP_EXCEL_NUMERIC_STRING) {
 				zend_long lval;
@@ -5405,7 +5544,7 @@ EXCEL_METHOD(Sheet, write)
 		EXCEL_REQUIRE_SAME_BOOK(oformat, object);
 	}
 	{
-		const char *rejection = php_excel_cell_value_rejection(book, data, dtype);
+		const char *rejection = php_excel_cell_value_rejection(book_obj, book, data, dtype);
 		if (rejection) {
 			php_error_docref(NULL, E_WARNING, "Cell value cannot be written: %s", rejection);
 			RETURN_FALSE;
@@ -5485,7 +5624,7 @@ EXCEL_METHOD(Sheet, writeRow)
 				if (EG(exception)) {
 					RETURN_THROWS();
 				}
-				rejection = php_excel_cell_value_rejection(book, element, dtype);
+				rejection = php_excel_cell_value_rejection(book_obj, book, element, dtype);
 				if (rejection) {
 					php_error_docref(NULL, E_WARNING, "writeRow: value for column " ZEND_LONG_FMT " cannot be written: %s; no cells were modified", scan_col, rejection);
 					RETURN_FALSE;
@@ -5573,7 +5712,7 @@ EXCEL_METHOD(Sheet, writeCol)
 				if (EG(exception)) {
 					RETURN_THROWS();
 				}
-				rejection = php_excel_cell_value_rejection(book, element, dtype);
+				rejection = php_excel_cell_value_rejection(book_obj, book, element, dtype);
 				if (rejection) {
 					php_error_docref(NULL, E_WARNING, "writeCol: value for row " ZEND_LONG_FMT " cannot be written: %s; no cells were modified", scan_row, rejection);
 					RETURN_FALSE;
@@ -5778,6 +5917,8 @@ EXCEL_METHOD(Sheet, writeComment)
 		EXCEL_VALIDATE_INT_RANGE(h)
 
 		SHEET_FROM_OBJECT(sheet, object);
+		EXCEL_DECODABLE_TEXT(object, val_zs, "Comment text")
+		EXCEL_DECODABLE_TEXT(object, auth_zs, "Comment author")
 
 		xlSheetWriteComment(sheet, r, c, ZSTR_VAL(val_zs), ZSTR_VAL(auth_zs), w, h);
 }
@@ -6449,89 +6590,6 @@ EXCEL_METHOD(Sheet, footer)
 }
 /* }}} */
 
-/* Character count of a UTF-8 string, or (size_t)-1 when the input is malformed.
- * Shared core so callers can tell invalid encoding apart from text that is
- * merely too long. */
-static size_t php_excel_utf8_char_count(zend_string *value)
-{
-	const unsigned char *p = (const unsigned char *) ZSTR_VAL(value);
-	const unsigned char *end = p + ZSTR_LEN(value);
-	size_t count = 0;
-
-	while (p < end) {
-		size_t width;
-
-		if (*p <= 0x7f) {
-			width = 1;
-		} else if (*p >= 0xc2 && *p <= 0xdf) {
-			width = 2;
-		} else if (*p >= 0xe0 && *p <= 0xef) {
-			width = 3;
-		} else if (*p >= 0xf0 && *p <= 0xf4) {
-			width = 4;
-		} else {
-			return (size_t)-1;
-		}
-		if ((size_t) (end - p) < width) {
-			return (size_t)-1;
-		}
-		if (width >= 2 && (p[1] < 0x80 || p[1] > 0xbf)) {
-			return (size_t)-1;
-		}
-		if (width >= 3 && (p[2] < 0x80 || p[2] > 0xbf)) {
-			return (size_t)-1;
-		}
-		if (width == 4 && (p[3] < 0x80 || p[3] > 0xbf)) {
-			return (size_t)-1;
-		}
-		if ((p[0] == 0xe0 && p[1] < 0xa0)
-		    || (p[0] == 0xed && p[1] > 0x9f)
-		    || (p[0] == 0xf0 && p[1] < 0x90)
-		    || (p[0] == 0xf4 && p[1] > 0x8f)) {
-			return (size_t)-1;
-		}
-		count++;
-		p += width;
-	}
-	return count;
-}
-
-/* Validity check without a length limit, so the header/footer macro can warn
- * about malformed input separately from over-long input. */
-static bool php_excel_is_valid_utf8(zend_string *value)
-{
-	return php_excel_utf8_char_count(value) != (size_t)-1;
-}
-
-static bool php_excel_utf8_length_within(zend_string *value, size_t limit)
-{
-	size_t count = php_excel_utf8_char_count(value);
-	return count != (size_t)-1 && count <= limit;
-}
-
-/* Returns NULL when libxl will decode the text for this book, otherwise the
- * reason it would not. In mbstowcs() mode a UTF-8 codeset additionally gets
- * the strict check, because libxl 5.2 may still be using its own decoder
- * there and rejecting more input is the safe direction. */
-static const char *php_excel_text_decode_error(const excel_book_object *book_obj, zend_string *value)
-{
-	if (!book_obj || book_obj->text_utf8_decoder) {
-		return php_excel_is_valid_utf8(value) ? NULL : "contains invalid UTF-8";
-	}
-	if (mbstowcs(NULL, ZSTR_VAL(value), 0) == (size_t)-1) {
-		return "cannot be converted with the current LC_CTYPE locale";
-	}
-#ifdef HAVE_NL_LANGINFO
-	{
-		const char *codeset = nl_langinfo(CODESET);
-		if (codeset && strcmp(codeset, "UTF-8") == 0 && !php_excel_is_valid_utf8(value)) {
-			return "contains invalid UTF-8";
-		}
-	}
-#endif
-	return NULL;
-}
-
 #define PHP_EXCEL_SET_HF(func_name) \
 	{ \
 		SheetHandle sheet; \
@@ -6548,6 +6606,7 @@ static const char *php_excel_text_decode_error(const excel_book_object *book_obj
 		} \
 		EXCEL_NUL_SAFE_STRING(val_zs); \
 		SHEET_FROM_OBJECT(sheet, object); \
+		EXCEL_DECODABLE_TEXT(object, val_zs, "Header/footer text") \
 		book_obj = php_excel_resolve_book_obj(object); \
 		if (book_obj && book_obj->locale_is_utf8) { \
 			if (!php_excel_is_valid_utf8(val_zs)) { \
@@ -6693,6 +6752,7 @@ EXCEL_METHOD(Sheet, setName)
 	EXCEL_NUL_SAFE_STRING(val_zs)
 
 	SHEET_FROM_OBJECT(sheet, object);
+	EXCEL_DECODABLE_TEXT(object, val_zs, "Sheet name")
 
 	xlSheetSetName(sheet, ZSTR_VAL(val_zs));
 }
@@ -6728,6 +6788,7 @@ EXCEL_METHOD(Sheet, setNamedRange)
 	EXCEL_VALIDATE_SCOPE(scope_id)
 
 	SHEET_FROM_OBJECT(sheet, object);
+	EXCEL_DECODABLE_TEXT(object, name_zs, "Range name")
 
 	RETURN_BOOL(xlSheetSetNamedRange(sheet, ZSTR_VAL(name_zs), row, to_row, col, to_col, scope_id));
 }
@@ -7149,6 +7210,7 @@ EXCEL_METHOD(Book, insertSheet)
 	EXCEL_VALIDATE_INT_RANGE(index)
 
 	BOOK_FROM_OBJECT(book, object);
+	EXCEL_DECODABLE_TEXT(object, name_zs, "Sheet name")
 	if (shz) {
 		SHEET_FROM_OBJECT(sheet, shz);
 		EXCEL_REQUIRE_SAME_BOOK(shz, object);
@@ -7330,6 +7392,7 @@ EXCEL_METHOD(Sheet, addHyperlink)
 	EXCEL_VALIDATE_COL_RANGE(col_first, col_last, object);
 
 	SHEET_FROM_OBJECT(sheet, object);
+	EXCEL_DECODABLE_TEXT(object, val_zs, "Hyperlink")
 
 	xlSheetAddHyperlink(sheet, ZSTR_VAL(val_zs), row_first, row_last, col_first, col_last);
 
@@ -7639,6 +7702,7 @@ EXCEL_METHOD(Sheet, setProtect)
 	}
 
 	SHEET_FROM_OBJECT(sheet, object);
+	EXCEL_DECODABLE_TEXT(object, password_zs, "Password")
 
 	xlSheetSetProtectEx(sheet, protect, password_zs ? ZSTR_VAL(password_zs) : "", enhancedProtection);
 
@@ -8149,6 +8213,7 @@ EXCEL_METHOD(FilterColumn, addFilter)
 	EXCEL_NUL_SAFE_STRING(filtervalue_zs)
 
 	FILTERCOLUMN_FROM_OBJECT(filtercolumn, object);
+	EXCEL_DECODABLE_TEXT(object, filtervalue_zs, "Filter value")
 
 	xlFilterColumnAddFilter(filtercolumn, ZSTR_VAL(filtervalue_zs));
 
@@ -8253,13 +8318,16 @@ EXCEL_METHOD(FilterColumn, setCustomFilter)
 	FILTERCOLUMN_FROM_OBJECT(filtercolumn, object);
 
 	EXCEL_NUL_SAFE_STRING(v1)
+	EXCEL_DECODABLE_TEXT(object, v1, "Filter value")
+	if (op2 != -1) {
+		EXCEL_NUL_SAFE_STRING(v2)
+		EXCEL_DECODABLE_TEXT(object, v2, "Second filter value")
+	}
 
 	if (op2 == -1 || !v2) {
 		xlFilterColumnSetCustomFilter(filtercolumn, op1, ZSTR_VAL(v1));
 		RETURN_TRUE;
 	}
-
-	EXCEL_NUL_SAFE_STRING(v2)
 
 	xlFilterColumnSetCustomFilterEx(filtercolumn, op1, ZSTR_VAL(v1), op2, ZSTR_VAL(v2), andOp);
 	RETURN_TRUE;
@@ -8305,6 +8373,7 @@ EXCEL_METHOD(Book, addPictureAsLink)
 	}
 
 	BOOK_FROM_OBJECT(book, object);
+	EXCEL_DECODABLE_TEXT(object, filename, "Picture path")
 
 	result = xlBookAddPictureAsLink(book, ZSTR_VAL(filename), insert);
 
@@ -8390,6 +8459,12 @@ EXCEL_METHOD(Sheet, addDataValidation)
 	}
 
 	SHEET_FROM_OBJECT(sheet, object);
+	EXCEL_DECODABLE_TEXT(object, val_1, "Validation value")
+	EXCEL_DECODABLE_TEXT(object, val_2, "Second validation value")
+	EXCEL_DECODABLE_TEXT(object, prompt_title, "Validation prompt title")
+	EXCEL_DECODABLE_TEXT(object, prompt, "Validation prompt")
+	EXCEL_DECODABLE_TEXT(object, error_title, "Validation error title")
+	EXCEL_DECODABLE_TEXT(object, error, "Validation error message")
 
 	xlSheetAddDataValidationEx(sheet, type, op, row_first, row_last, col_first, col_last, ZSTR_VAL(val_1), \
 			val_2 ? ZSTR_VAL(val_2) : "", allow_blank, hide_dropdown, show_inputmessage, show_errormessage, \
@@ -8457,6 +8532,10 @@ EXCEL_METHOD(Sheet, addDataValidationDouble)
 	}
 
 	SHEET_FROM_OBJECT(sheet, object);
+	EXCEL_DECODABLE_TEXT(object, prompt_title, "Validation prompt title")
+	EXCEL_DECODABLE_TEXT(object, prompt, "Validation prompt")
+	EXCEL_DECODABLE_TEXT(object, error_title, "Validation error title")
+	EXCEL_DECODABLE_TEXT(object, error, "Validation error message")
 
 	xlSheetAddDataValidationDoubleEx(sheet, type, op, row_first, row_last, col_first, col_last, val_1, \
 			val_2, allow_blank, hide_dropdown, show_inputmessage, show_errormessage, \
@@ -8722,6 +8801,7 @@ EXCEL_METHOD(Sheet, addSelectionRange)
 	EXCEL_NUL_SAFE_STRING(sqref)
 
 	SHEET_FROM_OBJECT(sheet, object);
+	EXCEL_DECODABLE_TEXT(object, sqref, "Selection range")
 
 	xlSheetAddSelectionRange(sheet, ZSTR_VAL(sqref));
 	RETURN_TRUE;
@@ -8982,6 +9062,7 @@ EXCEL_METHOD(Sheet, addTable)
 	}
 
 	SHEET_FROM_OBJECT(sheet, object);
+	EXCEL_DECODABLE_TEXT(object, name, "Table name")
 
 	th = xlSheetAddTable(sheet, ZSTR_VAL(name), rowFirst, rowLast, colFirst, colLast, hasHeaders, style);
 	if (!th) {
@@ -9244,7 +9325,6 @@ EXCEL_METHOD(RichString, addText)
 	zval *zfont = NULL;
 	excel_book_object *book_obj;
 	excel_richstring_object *ro;
-	const char *decode_error;
 	int size_before;
 
 	if (zend_parse_parameters(ZEND_NUM_ARGS(), "S|O!", &text, &zfont, excel_ce_font) == FAILURE) {
@@ -9264,12 +9344,8 @@ EXCEL_METHOD(RichString, addText)
 		EXCEL_REQUIRE_SAME_BOOK(zfont, object);
 	}
 
+	EXCEL_DECODABLE_TEXT(object, text, "Rich string text")
 	book_obj = php_excel_resolve_book_obj(object);
-	decode_error = php_excel_text_decode_error(book_obj, text);
-	if (decode_error) {
-		php_error_docref(NULL, E_WARNING, "Rich string text %s", decode_error);
-		RETURN_FALSE;
-	}
 
 	ro = Z_EXCEL_RICHSTRING_OBJ_P(object);
 	size_before = xlRichStringTextSize(rs);
@@ -9424,6 +9500,7 @@ EXCEL_METHOD(FormControl, method_name) \
 	} \
 	EXCEL_NUL_SAFE_STRING(val) \
 	FORMCONTROL_FROM_OBJECT(fc, object); \
+	EXCEL_DECODABLE_TEXT(object, val, "Form control value") \
 	api_func(fc, ZSTR_VAL(val)); \
 	RETURN_TRUE; \
 }
@@ -9516,6 +9593,7 @@ EXCEL_METHOD(FormControl, addItem)
 	}
 	EXCEL_NUL_SAFE_STRING(val)
 	FORMCONTROL_FROM_OBJECT(fc, object);
+	EXCEL_DECODABLE_TEXT(object, val, "Item text")
 	xlFormControlAddItem(fc, ZSTR_VAL(val));
 	RETURN_TRUE;
 }
@@ -9532,6 +9610,7 @@ EXCEL_METHOD(FormControl, insertItem)
 	EXCEL_NUL_SAFE_STRING(val)
 	EXCEL_VALIDATE_INT_RANGE(index)
 	FORMCONTROL_FROM_OBJECT(fc, object);
+	EXCEL_DECODABLE_TEXT(object, val, "Item text")
 	xlFormControlInsertItem(fc, index, ZSTR_VAL(val));
 	RETURN_TRUE;
 }
@@ -9712,6 +9791,7 @@ EXCEL_METHOD(ConditionalFormat, method_name) \
 	} \
 	EXCEL_NUL_SAFE_STRING(val) \
 	CONDITIONALFORMAT_FROM_OBJECT(cf, object); \
+	EXCEL_DECODABLE_TEXT(object, val, "Number format") \
 	api_func(cf, ZSTR_VAL(val)); \
 	RETURN_TRUE; \
 }
@@ -9856,6 +9936,7 @@ EXCEL_METHOD(ConditionalFormatting, addRule)
 	CONDITIONALFORMATTING_FROM_OBJECT(cfing, object);
 	CONDITIONALFORMAT_FROM_OBJECT(cf, zcf);
 	EXCEL_REQUIRE_SAME_BOOK(zcf, object);
+	EXCEL_DECODABLE_TEXT(object, value, "Rule value")
 
 	xlConditionalFormattingAddRule(cfing, type, cf, ZSTR_VAL(value), stopIfTrue);
 	RETURN_TRUE;
@@ -9931,6 +10012,8 @@ EXCEL_METHOD(ConditionalFormatting, addOpStrRule)
 	CONDITIONALFORMATTING_FROM_OBJECT(cfing, object);
 	CONDITIONALFORMAT_FROM_OBJECT(cf, zcf);
 	EXCEL_REQUIRE_SAME_BOOK(zcf, object);
+	EXCEL_DECODABLE_TEXT(object, v1, "Rule value")
+	EXCEL_DECODABLE_TEXT(object, v2, "Second rule value")
 
 	xlConditionalFormattingAddOpStrRule(cfing, op, cf, ZSTR_VAL(v1), ZSTR_VAL(v2), stopIfTrue);
 	RETURN_TRUE;
@@ -10032,6 +10115,8 @@ EXCEL_METHOD(ConditionalFormatting, add2ColorScaleFormulaRule)
 	EXCEL_NUL_SAFE_STRING(maxVal)
 
 	CONDITIONALFORMATTING_FROM_OBJECT(cfing, object);
+	EXCEL_DECODABLE_TEXT(object, minVal, "Minimum value")
+	EXCEL_DECODABLE_TEXT(object, maxVal, "Maximum value")
 
 	xlConditionalFormattingAdd2ColorScaleFormulaRule(cfing, minColor, maxColor, minType, ZSTR_VAL(minVal), maxType, ZSTR_VAL(maxVal), stopIfTrue);
 	RETURN_TRUE;
@@ -10088,6 +10173,9 @@ EXCEL_METHOD(ConditionalFormatting, add3ColorScaleFormulaRule)
 	EXCEL_NUL_SAFE_STRING(maxVal)
 
 	CONDITIONALFORMATTING_FROM_OBJECT(cfing, object);
+	EXCEL_DECODABLE_TEXT(object, minVal, "Minimum value")
+	EXCEL_DECODABLE_TEXT(object, midVal, "Midpoint value")
+	EXCEL_DECODABLE_TEXT(object, maxVal, "Maximum value")
 
 	xlConditionalFormattingAdd3ColorScaleFormulaRule(cfing, minColor, midColor, maxColor, minType, ZSTR_VAL(minVal), midType, ZSTR_VAL(midVal), maxType, ZSTR_VAL(maxVal), stopIfTrue);
 	RETURN_TRUE;
@@ -10146,6 +10234,7 @@ EXCEL_METHOD(CoreProperties, method_name) \
 	} \
 	EXCEL_NUL_SAFE_STRING(val) \
 	COREPROPERTIES_FROM_OBJECT(cp, object); \
+	EXCEL_DECODABLE_TEXT(object, val, "Property value") \
 	api_func(cp, ZSTR_VAL(val)); \
 	RETURN_TRUE; \
 }
@@ -10291,6 +10380,13 @@ EXCEL_METHOD(Table, __construct)
 	}
 
 	SHEET_FROM_OBJECT_THROW(sheet, zsheet);
+	{
+		const char *decode_error = php_excel_text_decode_error(php_excel_resolve_book_obj(zsheet), name);
+		if (decode_error) {
+			zend_throw_exception_ex(NULL, 0, "Table name %s", decode_error);
+			RETURN_THROWS();
+		}
+	}
 
 	obj = Z_EXCEL_TABLE_OBJ_P(object);
 	EXCEL_REJECT_RECONSTRUCTION(obj, table);
@@ -10369,6 +10465,7 @@ EXCEL_METHOD(Table, setName)
 	EXCEL_NON_EMPTY_STRING(val)
 	EXCEL_NUL_SAFE_STRING(val)
 	TABLE_FROM_OBJECT(table, object);
+	EXCEL_DECODABLE_TEXT(object, val, "Table name")
 	xlTableSetName(table, ZSTR_VAL(val));
 	RETURN_TRUE;
 }
@@ -10396,6 +10493,7 @@ EXCEL_METHOD(Table, setRef)
 	EXCEL_NON_EMPTY_STRING(val)
 	EXCEL_NUL_SAFE_STRING(val)
 	TABLE_FROM_OBJECT(table, object);
+	EXCEL_DECODABLE_TEXT(object, val, "Table range")
 	xlTableSetRef(table, ZSTR_VAL(val));
 	RETURN_TRUE;
 }
@@ -10528,6 +10626,7 @@ EXCEL_METHOD(Table, setColumnName)
 	EXCEL_NUL_SAFE_STRING(name)
 	EXCEL_VALIDATE_INT_RANGE(index)
 	TABLE_FROM_OBJECT(table, object);
+	EXCEL_DECODABLE_TEXT(object, name, "Column name")
 	RETURN_BOOL(xlTableSetColumnName(table, index, ZSTR_VAL(name)));
 }
 

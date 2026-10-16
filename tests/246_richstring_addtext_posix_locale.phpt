@@ -1,5 +1,5 @@
 --TEST--
-ExcelRichString::addText() follows the POSIX LC_CTYPE decoder when no UTF-8 locale is active
+ExcelRichString::addText() follows the POSIX LC_CTYPE decoder after setLocale() selects a non-UTF-8 locale
 --EXTENSIONS--
 excel
 --SKIPIF--
@@ -57,8 +57,18 @@ foreach ([false, true] as $xlsx) {
         var_dump($loaded && $loaded->getSheet(0)->read(2, 1) === $good);
     }
 
-    echo "-- default decoder under LC_ALL=C\n";
+    echo "-- no setLocale() under LC_ALL=C\n";
     $book = newBook($xlsx, null);
+    $sheet = $book->addSheet('Rich');
+    $rich = $book->addRichString();
+    var_dump($rich->addText($cafe));
+    var_dump($rich->addText('ascii'));
+    $sheet->writeRichStr(2, 1, $rich);
+    $loaded = saveAndReload($book, $xlsx);
+    var_dump($loaded ? $loaded->getSheet(0)->read(2, 1) : 'save failed');
+
+    echo "-- setLocale('C') under LC_ALL=C\n";
+    $book = newBook($xlsx, 'C');
     $sheet = $book->addSheet('Rich');
     $rich = $book->addRichString();
     var_dump($rich->addText($cafe));
@@ -130,7 +140,11 @@ bool(true)
 bool(true)
 bool(true)
 bool(true)
--- default decoder under LC_ALL=C
+-- no setLocale() under LC_ALL=C
+bool(true)
+bool(true)
+string(14) "café €ascii"
+-- setLocale('C') under LC_ALL=C
 
 Warning: ExcelRichString::addText(): Rich string text cannot be converted with the current LC_CTYPE locale in %s on line %d
 bool(false)
@@ -191,7 +205,11 @@ bool(true)
 bool(true)
 bool(true)
 bool(true)
--- default decoder under LC_ALL=C
+-- no setLocale() under LC_ALL=C
+bool(true)
+bool(true)
+string(14) "café €ascii"
+-- setLocale('C') under LC_ALL=C
 
 Warning: ExcelRichString::addText(): Rich string text cannot be converted with the current LC_CTYPE locale in %s on line %d
 bool(false)

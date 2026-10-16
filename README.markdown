@@ -41,7 +41,6 @@ LibXL is a commercial library; download it from [libxl.com](http://www.libxl.com
 ```php
 <?php
 $book = new ExcelBook(null, null, true); // xlsx mode
-$book->setLocale('UTF-8');
 
 $sheet = $book->addSheet('Sheet1');
 
@@ -96,7 +95,7 @@ if ($book->deleteSheet(0)) {
 }
 ```
 
-Call `setLocale('UTF-8')` on every book, as above, when your text can contain anything beyond ASCII. Without it, LibXL converts text with the process locale, and Docker containers, PHP-FPM pools, and systemd services often run under the plain `C` locale. There, `ExcelRichString::addText()` rejects accented, Cyrillic, or other non-ASCII text with a warning and returns `false`.
+Books read and write text as UTF-8 whatever the process locale is, so non-ASCII text works the same in Docker containers, PHP-FPM pools, and systemd services that run under the plain `C` locale. Methods that store text reject a string that is not valid UTF-8 with a warning and return `false`. Call `setLocale()` only when your strings use another byte encoding, for example `setLocale('de_DE.ISO-8859-1')` for Latin-1.
 
 Deleting a sheet also shifts the indexes of later sheets. Re-fetch by name,
 or use the updated zero-based index with `getSheet()`. A failed deletion

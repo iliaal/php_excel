@@ -47,12 +47,10 @@ class ExcelRichString
 	* adding a text segment. Use addFont($font) to copy a foreign font first.
 	* Omit the font or pass null for a segment without an explicit font.
 	*
-	* LibXL decodes the text as UTF-8 after ExcelBook::setLocale('UTF-8').
-	* Otherwise it converts the text with the process LC_CTYPE locale, which
-	* is taken from the environment when the workbook is created (under the C
-	* locale only ASCII converts). Text that cannot be decoded emits a warning
-	* and returns false without adding a text segment. Call setLocale('UTF-8')
-	* to accept UTF-8 text regardless of the environment.
+	* LibXL decodes the text as UTF-8 unless ExcelBook::setLocale() selected
+	* another locale, in which case it converts the text under that locale.
+	* Text that cannot be decoded emits a warning and returns false without
+	* adding a text segment.
 	*
 	* In the rare case LibXL still drops a segment from an XLS workbook,
 	* addText() warns and returns false, and save() is refused until the
