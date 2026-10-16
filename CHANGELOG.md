@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- Workbooks now read and write text as UTF-8 regardless of the process locale, so non-ASCII text behaves the same under the `C` locale used by Docker, PHP-FPM, and systemd, and on Windows. Applications that relied on the process locale to pass non-UTF-8 bytes must call setLocale() with that locale; getters on such books now return UTF-8.
+- ExcelBook::setLocale() returns true on success. A locale name LibXL rejects now warns, returns false, and leaves the previous locale in effect.
+- Header and footer text is limited to 255 characters rather than 255 bytes.
+- Builds against LibXL older than 5.1 reject text with characters above U+FFFF, which LibXL 4.6 drops silently.
+
+### Fixed
+- Every method that stores text in a workbook now rejects a string the workbook cannot decode with a warning and false, before LibXL sees it. Previously LibXL dropped or mangled the text, leaked memory on XLS comments, or wrote an XLSX file that would not load after an invalid core property. writeRow() and writeCol() reject the whole array before writing any cell.
+- Text that another application stored with an unpaired UTF-16 surrogate now reads back with `?` in its place instead of failing, and an XLS file with such a sheet name loads. Text read this way is always valid UTF-8.
+- A non-UTF-8 locale set with setLocale() now survives load() and loadFile().
+- On ZTS builds, save(), loadFile(), loadFilePartially(), loadFileWithoutEmptyCells(), loadInfo(), addPictureFromFile(), and addPictureAsLink() now resolve file names against the directory set by chdir(). Previously save() with a relative name returned true but left an empty file and wrote the workbook as a stray `.tmp` in the process start directory, the loaders read a same-named file from that directory, and saving through a symlinked directory followed by `..` failed and left a `.tmp` behind.
+- save(), loadFile(), loadFilePartially(), and loadInfo() accept file names LibXL cannot decode, such as a Latin-1 `café.xlsx` under the `C` locale, by reading and writing through PHP streams. loadFileWithoutEmptyCells() on XLSX, and loadInfo() on XLSX with LibXL older than 5.0.1, have no stream route and return false with a warning for such names.
+
+### Known issues
+- LibXL cannot reload an XLS file whose comment contains non-ASCII text. With the UTF-8 default, such comments are now stored instead of dropped under the `C` locale.
+
 ## [2.9.0] - 2026-10-16
 
 ### Security
