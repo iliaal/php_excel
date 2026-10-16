@@ -3046,7 +3046,7 @@ EXCEL_METHOD(Book, packDateValues)
 
 static bool _php_excel_date_unpack(BookHandle book, double dt, zend_long *out)
 {
-	int year, month, day, hour, minute, second, msec;
+	int year = 0, month = 0, day = 0, hour = 0, minute = 0, second = 0, msec = 0;
 	char datetime[80];
 	int length;
 	zval date;
@@ -3137,7 +3137,7 @@ EXCEL_METHOD(Book, getDefaultFont)
 	BookHandle book;
 	zval *object = ZEND_THIS;
 	const char *font;
-	int font_size;
+	int font_size = 0;
 
 	ZEND_PARSE_PARAMETERS_NONE();
 
@@ -5859,7 +5859,7 @@ EXCEL_METHOD(Sheet, getMerge)
 		SheetHandle sheet;
 		zval *object = ZEND_THIS;
 		zend_long row, col;
-		int rowFirst, rowLast, colFirst, colLast;
+		int rowFirst = 0, rowLast = 0, colFirst = 0, colLast = 0;
 
 		if (zend_parse_parameters(ZEND_NUM_ARGS(), "ll", &row, &col) == FAILURE) {
 			RETURN_FALSE;
@@ -6875,7 +6875,7 @@ EXCEL_METHOD(Sheet, getPrintFit)
 {
 	SheetHandle sheet;
 	zval *object = ZEND_THIS;
-	int wPages, hPages;
+	int wPages = 0, hPages = 0;
 
 	ZEND_PARSE_PARAMETERS_NONE();
 
@@ -6895,7 +6895,7 @@ EXCEL_METHOD(Sheet, getNamedRange)
 	SheetHandle sheet;
 	zval *object = ZEND_THIS;
 	zend_string *name_zs = NULL;
-	int rf, rl, cf, cl;
+	int rf = 0, rl = 0, cf = 0, cl = 0;
 	zend_long scope_id = SCOPE_WORKBOOK;
 	int hidden = 0;
 
@@ -6926,7 +6926,7 @@ EXCEL_METHOD(Sheet, getIndexRange)
 	SheetHandle sheet;
 	zval *object = ZEND_THIS;
 	zend_long index;
-	int rf, rl, cf, cl;
+	int rf = 0, rl = 0, cf = 0, cl = 0;
 	int hidden = 0;
 	int scope_out = SCOPE_WORKBOOK;
 
@@ -7012,7 +7012,7 @@ EXCEL_METHOD(Sheet, getPictureInfo)
 	SheetHandle sheet;
 	zval *object = ZEND_THIS;
 	zend_long index;
-	int rowTop, colLeft, rowBottom, colRight, width, height, offset_x, offset_y;
+	int rowTop = 0, colLeft = 0, rowBottom = 0, colRight = 0, width = 0, height = 0, offset_x = 0, offset_y = 0;
 	int pic_index;
 
 	if (zend_parse_parameters(ZEND_NUM_ARGS(), "l", &index) == FAILURE) {
@@ -7092,8 +7092,8 @@ EXCEL_METHOD(Book, getPicture)
 	zval *object = ZEND_THIS;
 	zend_long index;
 	int type;
-	const char *buf;
-	unsigned int buf_len;
+	const char *buf = NULL;
+	unsigned int buf_len = 0;
 	/* PICTURETYPE_* come from libxl's enum PictureType (enum.h); don't add a
 	 * local copy, it could drift from the constants MINIT registers. */
 
@@ -7270,7 +7270,7 @@ EXCEL_METHOD(Sheet, hyperlink)
 	SheetHandle sheet;
 	zval *object = ZEND_THIS;
 	zend_long index;
-	int rowFirst, rowLast, colFirst, colLast;
+	int rowFirst = 0, rowLast = 0, colFirst = 0, colLast = 0;
 	const char *s;
 
 	if (zend_parse_parameters(ZEND_NUM_ARGS(), "l", &index) == FAILURE) {
@@ -7348,7 +7348,7 @@ EXCEL_METHOD(Sheet, merge)
 	SheetHandle sheet;
 	zval *object = ZEND_THIS;
 	zend_long index;
-	int rowFirst, rowLast, colFirst, colLast;
+	int rowFirst = 0, rowLast = 0, colFirst = 0, colLast = 0;
 
 	if (zend_parse_parameters(ZEND_NUM_ARGS(), "l", &index) == FAILURE) {
 		RETURN_FALSE;
@@ -7391,7 +7391,7 @@ EXCEL_METHOD(Sheet, splitInfo)
 {
 	SheetHandle sheet;
 	zval *object = ZEND_THIS;
-	int row, col;
+	int row = 0, col = 0;
 
 	ZEND_PARSE_PARAMETERS_NONE();
 
@@ -7559,7 +7559,7 @@ EXCEL_METHOD(Sheet, printRepeatRows)
 {
 	zval *object = ZEND_THIS;
 	SheetHandle sheet;
-	int rowFirst, rowLast;
+	int rowFirst = 0, rowLast = 0;
 
 	ZEND_PARSE_PARAMETERS_NONE();
 
@@ -7579,7 +7579,7 @@ EXCEL_METHOD(Sheet, printRepeatCols)
 {
 	zval *object = ZEND_THIS;
 	SheetHandle sheet;
-	int colFirst, colLast;
+	int colFirst = 0, colLast = 0;
 
 	ZEND_PARSE_PARAMETERS_NONE();
 
@@ -7599,7 +7599,7 @@ EXCEL_METHOD(Sheet, printArea)
 {
 	zval *object = ZEND_THIS;
 	SheetHandle sheet;
-	int rowFirst, colFirst, rowLast, colLast;
+	int rowFirst = 0, colFirst = 0, rowLast = 0, colLast = 0;
 
 	ZEND_PARSE_PARAMETERS_NONE();
 
@@ -7651,7 +7651,7 @@ EXCEL_METHOD(Sheet, table)
 	zval *object = ZEND_THIS;
 	SheetHandle sheet;
 	zend_long index = 0;
-	int rowFirst, rowLast, colFirst, colLast, headerRowCount, totalsRowCount;
+	int rowFirst = 0, rowLast = 0, colFirst = 0, colLast = 0, headerRowCount = 0, totalsRowCount = 0;
 	const char *name;
 
 	if (zend_parse_parameters(ZEND_NUM_ARGS(), "l", &index) == FAILURE) {
@@ -7989,7 +7989,7 @@ EXCEL_METHOD(AutoFilter, getSort)
 {
 	zval *object = ZEND_THIS;
 	AutoFilterHandle autofilter;
-	int columnIndex, descending;
+	int columnIndex = 0, descending = 0;
 
 	ZEND_PARSE_PARAMETERS_NONE();
 
@@ -8202,7 +8202,7 @@ EXCEL_METHOD(FilterColumn, getCustomFilter)
 {
 	zval *object = ZEND_THIS;
 	FilterColumnHandle filtercolumn;
-	int op1, op2, andOp;
+	int op1 = 0, op2 = 0, andOp = 0;
 	const char *v1 = NULL, *v2 = NULL;
 
 	ZEND_PARSE_PARAMETERS_NONE();
@@ -8211,6 +8211,14 @@ EXCEL_METHOD(FilterColumn, getCustomFilter)
 
 	if (!xlFilterColumnGetCustomFilter(filtercolumn, &op1, &v1, &op2, &v2, &andOp)) {
 		RETURN_FALSE;
+	}
+
+	/* LibXL 4.6.0 reports an arbitrary second operator for a one-condition filter. */
+	if (op1 < OPERATOR_EQUAL || op1 > OPERATOR_NOT_EQUAL) {
+		op1 = OPERATOR_EQUAL;
+	}
+	if (op2 < OPERATOR_EQUAL || op2 > OPERATOR_NOT_EQUAL) {
+		op2 = OPERATOR_EQUAL;
 	}
 
 	array_init(return_value);
@@ -8477,7 +8485,7 @@ EXCEL_METHOD(Sheet, dataValidation)
 	zval *object = ZEND_THIS;
 	SheetHandle sheet;
 	zend_long index;
-	int type, op, row_first, row_last, col_first, col_last;
+	int type = 0, op = 0, row_first = 0, row_last = 0, col_first = 0, col_last = 0;
 	const char *value1 = NULL, *value2 = NULL;
 
 	if (zend_parse_parameters(ZEND_NUM_ARGS(), "l", &index) == FAILURE) {
