@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.9.1] - 2026-10-16
+
 ### Changed
 - Workbooks now read and write text as UTF-8 regardless of the process locale, so non-ASCII text behaves the same under the `C` locale used by Docker, PHP-FPM, and systemd, and on Windows. Applications that relied on the process locale to pass non-UTF-8 bytes must call setLocale() with that locale; getters on such books now return UTF-8.
 - ExcelBook::setLocale() returns true on success. A locale name LibXL rejects now warns, returns false, and leaves the previous locale in effect.
@@ -24,7 +26,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Known issues
 - LibXL cannot reload an XLS file whose comment contains non-ASCII text. With the UTF-8 default, such comments are now stored instead of dropped under the `C` locale.
-- On Windows, after setLocale() selects a non-UTF-8 locale, setTags(), setCategories(), and setLastModifiedBy() return true but LibXL drops non-ASCII input.
+- On Windows, after setLocale() selects a non-UTF-8 locale, setTags(), setCategories(), and setLastModifiedBy() return true but LibXL drops non-ASCII bytes in that locale's encoding. UTF-8 input is stored.
 
 ## [2.9.0] - 2026-10-16
 
@@ -850,7 +852,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.8] - 2010-08-01
 	* Initial Release
 
-[Unreleased]: https://github.com/iliaal/php_excel/compare/2.9.0...HEAD
+[Unreleased]: https://github.com/iliaal/php_excel/compare/2.9.1...HEAD
+[2.9.1]: https://github.com/iliaal/php_excel/releases/tag/2.9.1
 [2.9.0]: https://github.com/iliaal/php_excel/releases/tag/2.9.0
 [2.7.0]: https://github.com/iliaal/php_excel/releases/tag/2.7.0
 [2.8.0]: https://github.com/iliaal/php_excel/releases/tag/2.8.0
