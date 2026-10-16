@@ -667,6 +667,13 @@ class ExcelBook
 	/**
 	* Load Excel sheet info without loading the full file
 	*
+	* On success the book enters info-only mode: only sheetCount(), getSheetName(),
+	* the load*() methods, and __construct() work. Every other ExcelBook method emits
+	* a warning and returns false. The ExcelFont, ExcelFormat, ExcelSheet,
+	* ExcelRichString, ExcelConditionalFormat, and ExcelCoreProperties constructors
+	* throw when given this book. A successful full load*() call or __construct()
+	* leaves info-only mode.
+	*
 	* @see ExcelBook::load() for success-only wrapper invalidation and failure diagnostics
 	*
 	* @note Stream sources are fully buffered (cap UINT_MAX); enforce an app-side size bound first. See ExcelBook::loadFile() for an example.
@@ -787,6 +794,9 @@ class ExcelBook
 	/**
 	* Load Excel sheet info from raw data without loading the full file
 	*
+	* On success the book enters the same info-only mode as loadInfo().
+	*
+	* @see ExcelBook::loadInfo() for the methods available in info-only mode
 	* @see ExcelBook::load() for success-only wrapper invalidation and failure diagnostics
 	*
 	* @since libxl 5.0.1

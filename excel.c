@@ -176,6 +176,9 @@ typedef struct _excel_book_object {
 	/* True while a LibXL-owned buffer (SaveRaw/getPicture) is being copied
 	 * into a PHP string. Mutating APIs must not free/replace that buffer. */
 	bool native_buffer_borrowed;
+	/* Set after loadInfo()/loadInfoRaw() commit. LibXL then holds only the
+	 * sheet names, and most book APIs dereference NULL on XLSX handles. */
+	bool info_only;
 	zend_object std;
 } excel_book_object;
 
@@ -185,7 +188,25 @@ static inline excel_book_object *php_excel_book_object_fetch_object(zend_object 
 
 #define Z_EXCEL_BOOK_OBJ_P(zv) php_excel_book_object_fetch_object(Z_OBJ_P(zv));
 
+#define PHP_EXCEL_BOOK_INFO_ONLY_MSG \
+	"The book was loaded with loadInfo() or loadInfoRaw(); load it fully first"
+
 #define BOOK_FROM_OBJECT(book, object) \
+	{ \
+		excel_book_object *obj = Z_EXCEL_BOOK_OBJ_P(object); \
+		book = obj->book; \
+		if (!book) { \
+			php_error_docref(NULL, E_WARNING, "The book wasn't initialized"); \
+			RETURN_FALSE; \
+		} \
+		if (obj->info_only) { \
+			php_error_docref(NULL, E_WARNING, PHP_EXCEL_BOOK_INFO_ONLY_MSG); \
+			RETURN_FALSE; \
+		} \
+	}
+
+/* Only for the methods that are safe on an info-only book. */
+#define BOOK_FROM_OBJECT_INFO_OK(book, object) \
 	{ \
 		excel_book_object *obj = Z_EXCEL_BOOK_OBJ_P(object); \
 		book = obj->book; \
@@ -204,6 +225,11 @@ static inline excel_book_object *php_excel_book_object_fetch_object(zend_object 
 		if (!book) { \
 			zend_string_release(contents_zs); \
 			php_error_docref(NULL, E_WARNING, "The book wasn't initialized"); \
+			RETURN_FALSE; \
+		} \
+		if (obj->info_only) { \
+			zend_string_release(contents_zs); \
+			php_error_docref(NULL, E_WARNING, PHP_EXCEL_BOOK_INFO_ONLY_MSG); \
 			RETURN_FALSE; \
 		} \
 	}
@@ -835,6 +861,7 @@ static inline int php_excel_book_reset_state(zval *book_zv) {
 	bobj->autofilter_generation++;
 	bobj->conditional_formatting_generation++;
 	bobj->default_date_format = NULL;
+	bobj->info_only = false;
 	return 1;
 }
 
@@ -897,6 +924,16 @@ static int php_excel_book_commit_scratch(zval *object, BookHandle scratch)
 	/* Scratch carries the object's own flavor, credentials, and locale, so
 	 * is_xlsx, license_*, and locale_* fields remain correct as-is. */
 	return php_excel_book_reset_state(object);
+}
+
+static int php_excel_book_commit_info_scratch(zval *object, BookHandle scratch)
+{
+	if (!php_excel_book_commit_scratch(object, scratch)) {
+		return 0;
+	}
+	excel_book_object *bobj = Z_EXCEL_BOOK_OBJ_P(object);
+	bobj->info_only = true;
+	return 1;
 }
 
 /* Scratch-reload prologue: refuse an uninitialized book without exposing the
@@ -1021,6 +1058,10 @@ static inline int php_excel_check_book_sheet_and_autofilter_generation_throw(zva
 			zend_throw_exception(NULL, "The book wasn't initialized", 0); \
 			RETURN_THROWS(); \
 		} \
+		if (_bobj->info_only) { \
+			zend_throw_exception(NULL, PHP_EXCEL_BOOK_INFO_ONLY_MSG, 0); \
+			RETURN_THROWS(); \
+		} \
 	} while (0)
 
 static void excel_book_object_free_storage(zend_object *object)
@@ -1063,6 +1104,7 @@ static zend_object *excel_object_new_book(zend_class_entry *class_type)
 	intern->license_key = NULL;
 	intern->locale = NULL;
 	intern->default_date_format = NULL;
+	intern->info_only = false;
 	intern->std.handlers = &excel_object_handlers_book;
 
 	return &intern->std;
@@ -2613,7 +2655,12 @@ EXCEL_METHOD(Book, copySheet)
 
 EXCEL_METHOD(Book, sheetCount)
 {
-	PHP_EXCEL_BOOK_INFO(SheetCount, IS_LONG)
+	BookHandle book;
+	zval *object = ZEND_THIS;
+
+	ZEND_PARSE_PARAMETERS_NONE();
+	BOOK_FROM_OBJECT_INFO_OK(book, object);
+	RETURN_LONG(xlBookSheetCount(book));
 }
 /* }}} */
 
@@ -3130,6 +3177,7 @@ EXCEL_METHOD(Book, __construct)
 		obj->is_xlsx = new_excel;
 		obj->locale_is_utf8 = false;
 		obj->default_date_format = NULL;
+		obj->info_only = false;
 		/* Remember explicit credentials (before the INI fallback below
 		 * repoints name/key) so scratch reload handles stay licensed. */
 		if (name && name_len >= 1 && key && key_len >= 1) {
@@ -3434,7 +3482,7 @@ EXCEL_METHOD(Book, loadInfo)
 			zend_string_release(contents);
 			RETURN_FALSE;
 		}
-		if (!php_excel_book_commit_scratch(object, scratch)) {
+		if (!php_excel_book_commit_info_scratch(object, scratch)) {
 			xlBookRelease(scratch);
 			zend_string_release(contents);
 			RETURN_FALSE;
@@ -3457,7 +3505,7 @@ EXCEL_METHOD(Book, loadInfo)
 		xlBookRelease(scratch);
 		RETURN_FALSE;
 	}
-	if (!php_excel_book_commit_scratch(object, scratch)) {
+	if (!php_excel_book_commit_info_scratch(object, scratch)) {
 		xlBookRelease(scratch);
 		RETURN_FALSE;
 	}
@@ -3478,7 +3526,7 @@ EXCEL_METHOD(Book, getSheetName)
 
 	EXCEL_VALIDATE_INT_RANGE(index)
 
-	BOOK_FROM_OBJECT(book, object);
+	BOOK_FROM_OBJECT_INFO_OK(book, object);
 
 	if (!(data = (char *)xlBookGetSheetName(book, index))) {
 		RETURN_FALSE;
@@ -3659,7 +3707,7 @@ EXCEL_METHOD(Book, loadInfoRaw)
 		xlBookRelease(scratch);
 		RETURN_FALSE;
 	}
-	if (!php_excel_book_commit_scratch(object, scratch)) {
+	if (!php_excel_book_commit_info_scratch(object, scratch)) {
 		xlBookRelease(scratch);
 		RETURN_FALSE;
 	}
