@@ -508,7 +508,9 @@ class ExcelBook
 	*
 	* @see ExcelBook::colorPack()
 	* @param int $color One of ExcelFormat::COLOR_* constants
-	* @return array|false Array with keys "red"(int), "green"(int), and "blue"(int)
+	* @return array|false Array with keys "red"(int), "green"(int), and "blue"(int), or false with a
+	* warning when the color has no RGB value. In xls books only palette colors 8..63 have RGB values;
+	* automatic colors such as ExcelFormat::COLOR_DEFAULT_FOREGROUND (0x40), 0x41, and 0x7FFF return false.
 	*/
 	public function colorUnpack(int $color): array|false
 	{

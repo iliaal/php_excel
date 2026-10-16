@@ -3327,7 +3327,7 @@ EXCEL_METHOD(Book, colorUnpack)
 {
 	BookHandle book;
 	zval *object = ZEND_THIS;
-	int r, g, b;
+	int r = -1, g = -1, b = -1;
 	zend_long color;
 
 	if (zend_parse_parameters(ZEND_NUM_ARGS(), "l", &color) == FAILURE) {
@@ -3342,6 +3342,12 @@ EXCEL_METHOD(Book, colorUnpack)
 	BOOK_FROM_OBJECT(book, object);
 
 	xlBookColorUnpack(book, (int)color, &r, &g, &b);
+
+	/* xlBookColorUnpack is void and leaves the out-params untouched for XLS colors outside the 8..63 palette. */
+	if (r < 0 || g < 0 || b < 0) {
+		php_error_docref(NULL, E_WARNING, "Color code '" ZEND_LONG_FMT "' has no RGB value in this book", color);
+		RETURN_FALSE;
+	}
 
 	array_init(return_value);
 	add_assoc_long(return_value, "red", r);
