@@ -80,8 +80,8 @@ jobs:
       matrix:
         php: ['8.1', '8.2', '8.3', '8.4', '8.5']
         libxl: ['5.2.0.1']
-        # Non-ceiling libxl lanes are build-only: the Run tests step below
-        # runs only on the ceiling (5.2.0.1) lane.
+        # 4.6.0 is the supported libxl floor; tests gated on newer libxl
+        # skip on the older lanes.
         include:
           - php: '8.4'
             libxl: '4.6.0'
@@ -142,7 +142,6 @@ jobs:
           fi
 
       - name: Run tests
-        if: matrix.libxl == '5.2.0.1'
         run: |
           export LD_LIBRARY_PATH="${WORKSPACE}/libxl-${LIBXL_VERSION}/lib64"
           export TEST_PHP_EXECUTABLE=$(which php)
