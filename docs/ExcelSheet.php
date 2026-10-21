@@ -1057,8 +1057,8 @@ class ExcelSheet
 	/**
 	* Sets repeated rows on each page from row_start to row_end
 	*
-	* @param mixed $row_start 0-based row number
-	* @param mixed $row_end 0-based row number
+	* @param int $row_start 0-based row number
+	* @param int $row_end 0-based row number
 	* @return bool
 	*/
 	public function setPrintRepeatRows(int $row_start, int $row_end): bool
@@ -1068,8 +1068,8 @@ class ExcelSheet
 	/**
 	* Sets repeated columns on each page from col_start to col_end
 	*
-	* @param bool $col_start 0-based column number
-	* @param mixed $col_end 0-based column number
+	* @param int $col_start 0-based column number
+	* @param int $col_end 0-based column number
 	* @return bool
 	*/
 	public function setPrintRepeatCols(int $col_start, int $col_end): bool
