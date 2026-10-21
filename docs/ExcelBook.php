@@ -528,7 +528,7 @@ class ExcelBook
 	}
 
 	/**
-	* Unpacks color value into red, green, and blue components. Used for xlsx format only.
+	* Unpacks an XLS palette color or XLSX color value into red, green, and blue components.
 	*
 	* @see ExcelBook::colorPack()
 	* @param int $color One of ExcelFormat::COLOR_* constants
