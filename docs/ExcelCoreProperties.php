@@ -235,7 +235,7 @@ class ExcelCoreProperties
 	/**
 	* Removes all core properties
 	*
-	* @return void
+	* @return bool
 	*/
 	public function removeAll(): mixed
 	{

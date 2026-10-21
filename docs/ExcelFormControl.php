@@ -269,7 +269,7 @@ class ExcelFormControl
 	/**
 	* Clears all items from the list
 	*
-	* @return void
+	* @return bool
 	*/
 	public function clearItems(): mixed
 	{
