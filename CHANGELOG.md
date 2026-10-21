@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Documentation
+- Clarify that ExcelFormat::borderStyle() and borderColor() are write-only setters: omitted or null arguments leave borders unchanged, rather than reading their values.
+
 ## [2.9.1] - 2026-10-16
 
 ### Changed
@@ -328,14 +331,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `null` → getter; any non-null value → setter (range-checked against
   the libxl `int` boundary). Affects `ExcelFormat::numberFormat`,
   `horizontalAlign`, `verticalAlign`, `wrap`, `rotate`, `indent`,
-  `shrinkToFit`, `borderStyle`, `borderColor`, `borderLeftStyle`/
+  `shrinkToFit`, `borderLeftStyle`/
   `Color`, `borderRightStyle`/`Color`, `borderTopStyle`/`Color`,
   `borderBottomStyle`/`Color`, `borderDiagonalStyle`/`Color`,
   `fillPattern`, `patternForegroundColor`, `patternBackgroundColor`,
   `locked`, `hidden`, `ExcelFont::size`, `italics`, `strike`, `bold`,
   `color`, `mode`, `underline`, `name`. Stubs and IDE reference docs
   are updated accordingly (`?int $foo = null`, `?bool $foo = null`,
-  `?string $name = null`).
+  `?string $name = null`). The write-only `borderStyle` and
+  `borderColor` methods instead leave borders unchanged and return `true`
+  for a valid format when the argument is omitted or `null`.
 
 ### Added
 - Test coverage for all 7 FormControl control types
