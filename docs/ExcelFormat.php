@@ -276,7 +276,15 @@ class ExcelFormat
 	/**
 	* Set the cell border style on all sides of a cell
 	*
-	* @param mixed $style (optional) One of ExcelFormat::BORDERSTYLE_* constants
+	* Omitting the argument or passing null leaves all borders unchanged and
+	* returns true for a valid format. This method is not a getter; use the
+	* individual-side methods to read the border style.
+	*
+	* @see ExcelFormat::borderLeftStyle()
+	* @see ExcelFormat::borderRightStyle()
+	* @see ExcelFormat::borderTopStyle()
+	* @see ExcelFormat::borderBottomStyle()
+	* @param ?int $style (optional) One of ExcelFormat::BORDERSTYLE_* constants
 	* @return bool
 	*/
 	public function borderStyle(?int $style = null): bool
@@ -286,7 +294,15 @@ class ExcelFormat
 	/**
 	* Set the border color on all sides of a cell
 	*
-	* @param mixed $color (optional) One of ExcelFormat::COLOR_* constants
+	* Omitting the argument or passing null leaves all borders unchanged and
+	* returns true for a valid format. This method is not a getter; use the
+	* individual-side methods to read the border color.
+	*
+	* @see ExcelFormat::borderLeftColor()
+	* @see ExcelFormat::borderRightColor()
+	* @see ExcelFormat::borderTopColor()
+	* @see ExcelFormat::borderBottomColor()
+	* @param ?int $color (optional) One of ExcelFormat::COLOR_* constants
 	* @return bool
 	*/
 	public function borderColor(?int $color = null): bool
