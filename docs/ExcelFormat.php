@@ -312,7 +312,7 @@ class ExcelFormat
 	/**
 	* Get, or set the border style for the left side of a cell
 	*
-	* @param mixed $style (optional) One of ExcelFormat::BORDERSTYLE_* constants
+	* @param int|null $style (optional) One of ExcelFormat::BORDERSTYLE_* constants. Omit or pass null to read the current value.
 	* @return int|false
 	*/
 	public function borderLeftStyle(?int $style = null): int|false
@@ -322,7 +322,7 @@ class ExcelFormat
 	/**
 	* Get, or set the color of the left side border of a cell
 	*
-	* @param mixed $color (optional) One of ExcelFormat::COLOR_* constants
+	* @param int|null $color (optional) One of ExcelFormat::COLOR_* constants. Omit or pass null to read the current value.
 	* @return int|false
 	*/
 	public function borderLeftColor(?int $color = null): int|false
@@ -332,7 +332,7 @@ class ExcelFormat
 	/**
 	* Get, or set the border style for the right side of a cell
 	*
-	* @param mixed $style (optional) One of ExcelFormat::BORDERSTYLE_* constants
+	* @param int|null $style (optional) One of ExcelFormat::BORDERSTYLE_* constants. Omit or pass null to read the current value.
 	* @return int|false
 	*/
 	public function borderRightStyle(?int $style = null): int|false
@@ -342,7 +342,7 @@ class ExcelFormat
 	/**
 	* Get, or set the color of the right side border of a cell
 	*
-	* @param mixed $color (optional) One of ExcelFormat::COLOR_* constants
+	* @param int|null $color (optional) One of ExcelFormat::COLOR_* constants. Omit or pass null to read the current value.
 	* @return int|false
 	*/
 	public function borderRightColor(?int $color = null): int|false
@@ -352,7 +352,7 @@ class ExcelFormat
 	/**
 	* Get, or set the border style for the top of a cell
 	*
-	* @param mixed $style (optional) One of ExcelFormat::BORDERSTYLE_* constants
+	* @param int|null $style (optional) One of ExcelFormat::BORDERSTYLE_* constants. Omit or pass null to read the current value.
 	* @return int|false
 	*/
 	public function borderTopStyle(?int $style = null): int|false
@@ -362,7 +362,7 @@ class ExcelFormat
 	/**
 	* Get, or set the color of the top border of a cell
 	*
-	* @param mixed $color (optional) One of ExcelFormat::COLOR_* constants
+	* @param int|null $color (optional) One of ExcelFormat::COLOR_* constants. Omit or pass null to read the current value.
 	* @return int|false
 	*/
 	public function borderTopColor(?int $color = null): int|false
@@ -372,7 +372,7 @@ class ExcelFormat
 	/**
 	* Get, or set the border style for the bottom of a cell
 	*
-	* @param mixed $style (optional) One of ExcelFormat::BORDERSTYLE_* constants
+	* @param int|null $style (optional) One of ExcelFormat::BORDERSTYLE_* constants. Omit or pass null to read the current value.
 	* @return int|false
 	*/
 	public function borderBottomStyle(?int $style = null): int|false
@@ -382,7 +382,7 @@ class ExcelFormat
 	/**
 	* Get, or set the color of the bottom border of a cell
 	*
-	* @param mixed $color (optional) One of ExcelFormat::COLOR_* constants
+	* @param int|null $color (optional) One of ExcelFormat::COLOR_* constants. Omit or pass null to read the current value.
 	* @return int|false
 	*/
 	public function borderBottomColor(?int $color = null): int|false
@@ -392,7 +392,7 @@ class ExcelFormat
 	/**
 	* Get, or set which diagonals of a cell are drawn
 	*
-	* @param mixed $border (optional) One of ExcelFormat::BORDERDIAGONAL_* constants
+	* @param int|null $border (optional) One of ExcelFormat::BORDERDIAGONAL_* constants. Omit or pass null to read the current value.
 	* @return int|false
 	*/
 	public function borderDiagonal(?int $border = null): int|false
@@ -402,7 +402,7 @@ class ExcelFormat
 	/**
 	* Get, or set the line style used for the diagonal of a cell
 	*
-	* @param mixed $style (optional) One of ExcelFormat::BORDERSTYLE_* constants
+	* @param int|null $style (optional) One of ExcelFormat::BORDERSTYLE_* constants. Omit or pass null to read the current value.
 	* @return int|false
 	*/
 	public function borderDiagonalStyle(?int $style = null): int|false
@@ -412,7 +412,7 @@ class ExcelFormat
 	/**
 	* Get, or set the color of the diagonal of a cell
 	*
-	* @param mixed $color (optional) One of ExcelFormat::COLOR_* constants
+	* @param int|null $color (optional) One of ExcelFormat::COLOR_* constants. Omit or pass null to read the current value.
 	* @return int|false
 	*/
 	public function borderDiagonalColor(?int $color = null): int|false
@@ -422,7 +422,7 @@ class ExcelFormat
 	/**
 	* Get, or set the cell fill pattern
 	*
-	* @param mixed $pattern (optional) One of ExcelFormat::FILLPATTERN_* constants
+	* @param int|null $pattern (optional) One of ExcelFormat::FILLPATTERN_* constants. Omit or pass null to read the current value.
 	* @return int|false
 	*/
 	public function fillPattern(?int $pattern = null): int|false
@@ -432,7 +432,7 @@ class ExcelFormat
 	/**
 	* Get, or set the pattern foreground color
 	*
-	* @param mixed $color (optional) One of ExcelFormat::COLOR_* constants
+	* @param int|null $color (optional) One of ExcelFormat::COLOR_* constants. Omit or pass null to read the current value.
 	* @return int|false
 	*/
 	public function patternForegroundColor(?int $color = null): int|false
@@ -442,7 +442,7 @@ class ExcelFormat
 	/**
 	* Get, or set the pattern background color
 	*
-	* @param mixed $color (optional) One of ExcelFormat::COLOR_* constants
+	* @param int|null $color (optional) One of ExcelFormat::COLOR_* constants. Omit or pass null to read the current value.
 	* @return int|false
 	*/
 	public function patternBackgroundColor(?int $color = null): int|false
