@@ -1177,10 +1177,10 @@ class ExcelSheet
 	}
 
 	/**
-	* Gets the named range coordinates by index
+	* Gets the named range name and coordinates by index
 	*
-	* @param int $index
-	* @return array|false Array with keys "row_first"(int), "row_last"(int), "col_first"(int), "col_last"(int), "hidden"(bool), "scope"(int)
+	* @param int $index Zero-based named range index
+	* @return array|false Array with keys "name"(string), "row_first"(int), "row_last"(int), "col_first"(int), "col_last"(int), "hidden"(bool), "scope"(int), or false if no range exists at the index
 	*/
 	public function getIndexRange(int $index): array|false
 	{
