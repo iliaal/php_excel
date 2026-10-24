@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Documentation
+- Clarify nullable integer parameters and getter mode for individual ExcelFormat borders and fill properties.
 - Document the name returned by ExcelSheet::getIndexRange(), its zero-based index, and false result for missing ranges.
 - Clarify that ExcelFormat::borderStyle() and borderColor() are write-only setters: omitted or null arguments leave borders unchanged, rather than reading their values.
 
