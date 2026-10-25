@@ -714,7 +714,7 @@ class ExcelSheet
 	/**
 	* Sets gridlines for printing
 	*
-	* @param mixed $value
+	* @param bool $value
 	* @return void
 	*/
 	public function setPrintGridlines(bool $value): mixed
@@ -742,7 +742,7 @@ class ExcelSheet
 	/**
 	* Sets the zoom level of the current view
 	*
-	* @param mixed $value
+	* @param int $value
 	* @return void
 	*/
 	public function setZoom(int $value): mixed
@@ -1178,6 +1178,10 @@ class ExcelSheet
 
 	/**
 	* Gets the named range name and coordinates by index
+	*
+	* Negative indexes emit E_WARNING and return false. On 64-bit PHP, the
+	* same applies to indexes above 2147483647 (INT_MAX). An in-range index
+	* with no named range returns false without this warning.
 	*
 	* @param int $index Zero-based named range index
 	* @return array|false Array with keys "name"(string), "row_first"(int), "row_last"(int), "col_first"(int), "col_last"(int), "hidden"(bool), "scope"(int), or false if no range exists at the index

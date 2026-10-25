@@ -215,7 +215,7 @@ class ExcelFormat
 	* Get, or set the cell horizontal alignment
 	*
 	* @see ExcelFormat::verticalAlign()
-	* @param int $align_mode (optional) One of ExcelFormat::ALIGNH_* constants
+	* @param int|null $align_mode (optional) One of ExcelFormat::ALIGNH_* constants. Omit or pass null to read the current value.
 	* @return int|false
 	*/
 	public function horizontalAlign(?int $align_mode = null): int|false
@@ -226,7 +226,7 @@ class ExcelFormat
 	* Get, or set the cell vertical alignment
 	*
 	* @see ExcelFormat::horizontalAlign()
-	* @param int $align_mode (optional) One of ExcelFormat::ALIGNV_* constants
+	* @param int|null $align_mode (optional) One of ExcelFormat::ALIGNV_* constants. Omit or pass null to read the current value.
 	* @return int|false
 	*/
 	public function verticalAlign(?int $align_mode = null): int|false
@@ -236,7 +236,7 @@ class ExcelFormat
 	/**
 	* Get, or set the cell text wrapping
 	*
-	* @param bool $wrap (optional)
+	* @param bool|null $wrap (optional) Omit or pass null to read the current value; false sets the property to false.
 	* @return bool
 	*/
 	public function wrap(?bool $wrap = null): bool
@@ -266,7 +266,7 @@ class ExcelFormat
 	/**
 	* Get, or set whether the cell is shrink-to-fit
 	*
-	* @param bool $shrink (optional)
+	* @param bool|null $shrink (optional) Omit or pass null to read the current value; false sets the property to false.
 	* @return bool
 	*/
 	public function shrinkToFit(?bool $shrink = null): bool
@@ -452,7 +452,7 @@ class ExcelFormat
 	/**
 	* Get, or set whether a cell is locked
 	*
-	* @param bool $locked (optional)
+	* @param bool|null $locked (optional) Omit or pass null to read the current value; false sets the property to false.
 	* @return bool
 	*/
 	public function locked(?bool $locked = null): bool
@@ -462,7 +462,7 @@ class ExcelFormat
 	/**
 	* Get, or set whether the cell is hidden
 	*
-	* @param bool $hidden (optional)
+	* @param bool|null $hidden (optional) Omit or pass null to read the current value; false sets the property to false.
 	* @return bool
 	*/
 	public function hidden(?bool $hidden = null): bool
