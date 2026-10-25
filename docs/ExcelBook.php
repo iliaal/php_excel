@@ -680,8 +680,15 @@ class ExcelBook
 	/**
 	* Moves a sheet with specified index to a new position
 	*
-	* @param int $src_index
-	* @param int $dest_index
+	* On success, every existing ExcelSheet wrapper from this workbook and
+	* its sheet-owned children become stale, including sheets whose position
+	* did not change. Re-fetch sheets by name or their new zero-based index
+	* before using them again. Workbook-owned fonts and formats remain usable.
+	* A false result leaves existing wrappers usable.
+	*
+	* @see ExcelBook::deleteSheet() for stale-wrapper diagnostics
+	* @param int $src_index Current zero-based sheet index
+	* @param int $dest_index Zero-based destination index passed to LibXL
 	* @return bool
 	*/
 	public function moveSheet(int $src_index, int $dest_index): bool
