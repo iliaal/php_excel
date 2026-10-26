@@ -72,7 +72,7 @@ $book->save('output.xlsx');
 
 `save()` stages the workbook to a temporary sibling file and renames it into place, so a failed save leaves the destination untouched. If the rename fails, local-path saves fail closed (return `false`); stream wrappers that omit `rename()` fall back to a direct write with a warning. Failed handle creation and rejected header, footer, font-size, and staging inputs emit warnings naming the cause. Suppress them with `@` only where you handle `false` explicitly.
 
-### Using sheets after deletion
+### Using sheets after deletion or reordering
 
 A successful `deleteSheet()` invalidates every existing `ExcelSheet` wrapper
 from that workbook, including wrappers for sheets that were not deleted.
@@ -98,6 +98,18 @@ if ($book->deleteSheet(0)) {
 Deleting a sheet also shifts the indexes of later sheets. Re-fetch by name,
 or use the updated zero-based index with `getSheet()`. A failed deletion
 returns `false` and leaves existing wrappers usable.
+
+The same wrapper invalidation applies after a successful `moveSheet()`, even
+for sheets whose position did not change. Re-fetch by name or the new index;
+workbook-owned fonts and formats remain usable. If `moveSheet()` returns
+`false`, existing wrappers remain usable.
+
+```php
+$book->addSheet('First'); // after the deletion example, Keep is at index 0
+if ($book->moveSheet(1, 0)) {
+    $keep = $book->getSheetByName('Keep');
+}
+```
 
 ### Text encoding
 
