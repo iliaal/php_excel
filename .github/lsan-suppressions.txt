@@ -2,8 +2,7 @@
 #
 # Format: "leak:<substring>", where the substring must appear in some frame
 # of the leak's stack trace. Add narrow entries here rather than setting
-# ASAN_OPTIONS detect_leaks=0 in .github/workflows/tests.yml; see
-# ~/ai/wiki/debugging/asan-php-extension.md.
+# ASAN_OPTIONS detect_leaks=0 in .github/workflows/tests.yml.
 #
 # To audit a new leak locally:
 #   ASAN_OPTIONS=detect_leaks=1 LSAN_OPTIONS=fast_unwind_on_malloc=0 \
