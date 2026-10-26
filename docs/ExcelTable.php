@@ -112,7 +112,13 @@ class ExcelTable
 	}
 
 	/**
-	* Removes the table's autofilter (only for xlsx files, libxl 5.2.0+)
+	* Removes the table's autofilter (only for xlsx files, libxl 5.2.0+).
+	*
+	* On a successful call, invalidates every existing ExcelAutoFilter and
+	* ExcelFilterColumn wrapper in this workbook, including those from other
+	* sheets and tables, even if this table has no filter to remove. Re-fetch wrappers for surviving filters
+	* from their sheet or table before using them again. Sheet and table wrappers
+	* remain usable; filters in other workbooks are unaffected.
 	*
 	* @since libxl 5.2.0
 	* @return bool

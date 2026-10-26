@@ -1539,7 +1539,13 @@ class ExcelSheet
 	}
 
 	/**
-	* Removes the AutoFilter from the sheet
+	* Removes the AutoFilter from the sheet.
+	*
+	* On a successful call, invalidates every existing ExcelAutoFilter and
+	* ExcelFilterColumn wrapper in this workbook, including those from other
+	* sheets and tables, even if this sheet has no filter to remove. Re-fetch wrappers for surviving filters
+	* from their sheet or table before using them again. Sheet and table wrappers
+	* remain usable; filters in other workbooks are unaffected.
 	*
 	* @return bool
 	*/
