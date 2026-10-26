@@ -2021,6 +2021,10 @@ class ExcelSheet
 	/**
 	* Returns a conditional formatting by index
 	*
+	* Use this to re-fetch surviving conditional formatting after a successful
+	* removeConditionalFormatting() anywhere in the workbook. Removal shifts
+	* the later indexes on the affected sheet only.
+	*
 	* @since libxl 5.1.0
 	* @param int $index
 	* @return ExcelConditionalFormatting|false
@@ -2031,6 +2035,14 @@ class ExcelSheet
 
 	/**
 	* Removes a conditional formatting by index
+	*
+	* On success, every existing ExcelConditionalFormatting wrapper in this
+	* workbook becomes stale, including those on other sheets. Range/rule methods on
+	* stale wrappers emit E_WARNING and return false. Re-fetch surviving
+	* formatting with conditionalFormatting() before using it again.
+	* Sheet wrappers and workbook-owned ExcelConditionalFormat styles remain
+	* usable; formatting in other workbooks is unaffected. A failed removal
+	* returns false and leaves existing wrappers usable.
 	*
 	* @since libxl 5.1.0
 	* @param int $index
