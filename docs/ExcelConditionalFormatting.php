@@ -11,6 +11,14 @@
   |                                                                           |
   +---------------------------------------------------------------------------+
 */
+/**
+ * A sheet-owned conditional formatting range/rule collection.
+ *
+ * A successful ExcelSheet::removeConditionalFormatting() anywhere in its
+ * workbook invalidates this wrapper. Re-fetch surviving collections with
+ * ExcelSheet::conditionalFormatting(); range/rule methods on stale wrappers warn and
+ * return false. ExcelConditionalFormat style objects are not invalidated.
+ */
 class ExcelConditionalFormatting
 {
 	const CFORMAT_BEGINWITH = 0;
