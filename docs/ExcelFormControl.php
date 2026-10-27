@@ -44,7 +44,7 @@ class ExcelFormControl
 	/**
 	* Returns the object type of the form control
 	*
-	* @return int One of ExcelFormControl::OBJECT_* constants
+	* @return int|false One of ExcelFormControl::OBJECT_* constants, or false for an uninitialized or stale wrapper
 	*/
 	public function objectType(): mixed
 	{
@@ -53,7 +53,7 @@ class ExcelFormControl
 	/**
 	* Returns the checked state
 	*
-	* @return int One of ExcelFormControl::CHECKEDTYPE_* constants
+	* @return int|false One of ExcelFormControl::CHECKEDTYPE_* constants, or false for an uninitialized or stale wrapper
 	*/
 	public function checked(): mixed
 	{
@@ -72,7 +72,7 @@ class ExcelFormControl
 	/**
 	* Returns the group box formula
 	*
-	* @return string|null
+	* @return string|null|false Text or null, or false for an uninitialized or stale wrapper
 	*/
 	public function fmlaGroup(): mixed
 	{
@@ -91,7 +91,7 @@ class ExcelFormControl
 	/**
 	* Returns the cell link formula
 	*
-	* @return string|null
+	* @return string|null|false Text or null, or false for an uninitialized or stale wrapper
 	*/
 	public function fmlaLink(): mixed
 	{
@@ -110,7 +110,7 @@ class ExcelFormControl
 	/**
 	* Returns the source range formula
 	*
-	* @return string|null
+	* @return string|null|false Text or null, or false for an uninitialized or stale wrapper
 	*/
 	public function fmlaRange(): mixed
 	{
@@ -129,7 +129,7 @@ class ExcelFormControl
 	/**
 	* Returns the text box formula
 	*
-	* @return string|null
+	* @return string|null|false Text or null, or false for an uninitialized or stale wrapper
 	*/
 	public function fmlaTxbx(): mixed
 	{
@@ -148,7 +148,7 @@ class ExcelFormControl
 	/**
 	* Returns the name of the form control
 	*
-	* @return string|null
+	* @return string|null|false Text or null, or false for an uninitialized or stale wrapper
 	*/
 	public function name(): mixed
 	{
@@ -157,7 +157,7 @@ class ExcelFormControl
 	/**
 	* Returns the linked cell reference
 	*
-	* @return string|null
+	* @return string|null|false Text or null, or false for an uninitialized or stale wrapper
 	*/
 	public function linkedCell(): mixed
 	{
@@ -166,7 +166,7 @@ class ExcelFormControl
 	/**
 	* Returns the list fill range reference
 	*
-	* @return string|null
+	* @return string|null|false Text or null, or false for an uninitialized or stale wrapper
 	*/
 	public function listFillRange(): mixed
 	{
@@ -175,7 +175,7 @@ class ExcelFormControl
 	/**
 	* Returns the macro name
 	*
-	* @return string|null
+	* @return string|null|false Text or null, or false for an uninitialized or stale wrapper
 	*/
 	public function macro(): mixed
 	{
@@ -184,7 +184,7 @@ class ExcelFormControl
 	/**
 	* Returns the alternative text
 	*
-	* @return string|null
+	* @return string|null|false Text or null, or false for an uninitialized or stale wrapper
 	*/
 	public function altText(): mixed
 	{
@@ -239,7 +239,7 @@ class ExcelFormControl
 	/**
 	* Returns the number of items in the list
 	*
-	* @return int
+	* @return int|false Value, or false for an uninitialized or stale wrapper
 	*/
 	public function itemSize(): mixed
 	{
@@ -278,7 +278,7 @@ class ExcelFormControl
 	/**
 	* Returns the number of drop lines
 	*
-	* @return int
+	* @return int|false Value, or false for an uninitialized or stale wrapper
 	*/
 	public function dropLines(): mixed
 	{
@@ -297,7 +297,7 @@ class ExcelFormControl
 	/**
 	* Returns the scroll bar width
 	*
-	* @return int
+	* @return int|false Value, or false for an uninitialized or stale wrapper
 	*/
 	public function dx(): mixed
 	{
@@ -354,7 +354,7 @@ class ExcelFormControl
 	/**
 	* Returns the increment value
 	*
-	* @return int
+	* @return int|false Value, or false for an uninitialized or stale wrapper
 	*/
 	public function inc(): mixed
 	{
@@ -373,7 +373,7 @@ class ExcelFormControl
 	/**
 	* Returns the maximum value
 	*
-	* @return int
+	* @return int|false Value, or false for an uninitialized or stale wrapper
 	*/
 	public function getMax(): mixed
 	{
@@ -392,7 +392,7 @@ class ExcelFormControl
 	/**
 	* Returns the minimum value
 	*
-	* @return int
+	* @return int|false Value, or false for an uninitialized or stale wrapper
 	*/
 	public function getMin(): mixed
 	{
@@ -411,7 +411,7 @@ class ExcelFormControl
 	/**
 	* Returns the multi-selection mode string
 	*
-	* @return string|null
+	* @return string|null|false Text or null, or false for an uninitialized or stale wrapper
 	*/
 	public function multiSel(): mixed
 	{
@@ -430,7 +430,7 @@ class ExcelFormControl
 	/**
 	* Returns the selected index
 	*
-	* @return int
+	* @return int|false Value, or false for an uninitialized or stale wrapper
 	*/
 	public function sel(): mixed
 	{
@@ -449,7 +449,7 @@ class ExcelFormControl
 	/**
 	* Returns the from-anchor position
 	*
-	* @return array
+	* @return array|false Anchor position, or false for an uninitialized or stale wrapper or when LibXL cannot retrieve the anchor
 	*/
 	public function fromAnchor(): mixed
 	{
@@ -458,7 +458,7 @@ class ExcelFormControl
 	/**
 	* Returns the to-anchor position
 	*
-	* @return array
+	* @return array|false Anchor position, or false for an uninitialized or stale wrapper or when LibXL cannot retrieve the anchor
 	*/
 	public function toAnchor(): mixed
 	{
