@@ -26,7 +26,7 @@ class ExcelConditionalFormat
 	/**
 	* Returns the font for this conditional format
 	*
-	* @return ExcelFont
+	* @return ExcelFont|false Font, or false for an uninitialized or stale wrapper or when LibXL returns no font
 	*/
 	public function font(): mixed
 	{
@@ -35,7 +35,7 @@ class ExcelConditionalFormat
 	/**
 	* Returns the number format identifier
 	*
-	* @return int
+	* @return int|false Value, or false for an uninitialized or stale wrapper
 	*/
 	public function numFormat(): mixed
 	{
@@ -54,7 +54,7 @@ class ExcelConditionalFormat
 	/**
 	* Returns the custom number format string
 	*
-	* @return string
+	* @return string|null|false Text, null when LibXL returns no custom format string, or false for an uninitialized or stale wrapper
 	*/
 	public function customNumFormat(): mixed
 	{
@@ -93,7 +93,7 @@ class ExcelConditionalFormat
 	/**
 	* Returns the left border style
 	*
-	* @return int
+	* @return int|false Value, or false for an uninitialized or stale wrapper
 	*/
 	public function borderLeft(): mixed
 	{
@@ -112,7 +112,7 @@ class ExcelConditionalFormat
 	/**
 	* Returns the right border style
 	*
-	* @return int
+	* @return int|false Value, or false for an uninitialized or stale wrapper
 	*/
 	public function borderRight(): mixed
 	{
@@ -131,7 +131,7 @@ class ExcelConditionalFormat
 	/**
 	* Returns the top border style
 	*
-	* @return int
+	* @return int|false Value, or false for an uninitialized or stale wrapper
 	*/
 	public function borderTop(): mixed
 	{
@@ -150,7 +150,7 @@ class ExcelConditionalFormat
 	/**
 	* Returns the bottom border style
 	*
-	* @return int
+	* @return int|false Value, or false for an uninitialized or stale wrapper
 	*/
 	public function borderBottom(): mixed
 	{
@@ -169,7 +169,7 @@ class ExcelConditionalFormat
 	/**
 	* Returns the left border color
 	*
-	* @return int
+	* @return int|false Value, or false for an uninitialized or stale wrapper
 	*/
 	public function borderLeftColor(): mixed
 	{
@@ -188,7 +188,7 @@ class ExcelConditionalFormat
 	/**
 	* Returns the right border color
 	*
-	* @return int
+	* @return int|false Value, or false for an uninitialized or stale wrapper
 	*/
 	public function borderRightColor(): mixed
 	{
@@ -207,7 +207,7 @@ class ExcelConditionalFormat
 	/**
 	* Returns the top border color
 	*
-	* @return int
+	* @return int|false Value, or false for an uninitialized or stale wrapper
 	*/
 	public function borderTopColor(): mixed
 	{
@@ -226,7 +226,7 @@ class ExcelConditionalFormat
 	/**
 	* Returns the bottom border color
 	*
-	* @return int
+	* @return int|false Value, or false for an uninitialized or stale wrapper
 	*/
 	public function borderBottomColor(): mixed
 	{
@@ -245,7 +245,7 @@ class ExcelConditionalFormat
 	/**
 	* Returns the fill pattern
 	*
-	* @return int
+	* @return int|false Value, or false for an uninitialized or stale wrapper
 	*/
 	public function fillPattern(): mixed
 	{
@@ -264,7 +264,7 @@ class ExcelConditionalFormat
 	/**
 	* Returns the pattern foreground color
 	*
-	* @return int
+	* @return int|false Value, or false for an uninitialized or stale wrapper
 	*/
 	public function patternForegroundColor(): mixed
 	{
@@ -283,7 +283,7 @@ class ExcelConditionalFormat
 	/**
 	* Returns the pattern background color
 	*
-	* @return int
+	* @return int|false Value, or false for an uninitialized or stale wrapper
 	*/
 	public function patternBackgroundColor(): mixed
 	{
