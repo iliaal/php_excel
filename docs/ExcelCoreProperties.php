@@ -197,7 +197,7 @@ class ExcelCoreProperties
 	/**
 	* Returns the created date as a double (Excel timestamp)
 	*
-	* @return float
+	* @return float|false Excel timestamp, or false with a warning for an uninitialized or stale wrapper
 	*/
 	public function createdAsDouble(): mixed
 	{
@@ -216,7 +216,7 @@ class ExcelCoreProperties
 	/**
 	* Returns the modified date as a double (Excel timestamp)
 	*
-	* @return float
+	* @return float|false Excel timestamp, or false with a warning for an uninitialized or stale wrapper
 	*/
 	public function modifiedAsDouble(): mixed
 	{
