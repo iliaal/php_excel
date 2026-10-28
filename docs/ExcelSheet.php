@@ -489,7 +489,7 @@ class ExcelSheet
 	* @param int $row 0-based row number
 	* @param float $height
 	* @param ExcelFormat|null $format (optional, default=null)
-	* @param mixed $hidden (optional, default=false)
+	* @param bool $hidden (optional, default=false)
 	* @return bool
 	*/
 	public function setRowHeight(int $row, float $height, ?ExcelFormat $format = null, bool $hidden = false): bool
@@ -752,7 +752,7 @@ class ExcelSheet
 	/**
 	* Sets the scaling factor for printing (as a percentage)
 	*
-	* @param mixed $value
+	* @param int $value
 	* @return void
 	*/
 	public function setZoomPrint(int $value): mixed
@@ -762,7 +762,7 @@ class ExcelSheet
 	/**
 	* Sets landscape, or portrait mode for printing
 	*
-	* @param mixed $value true for landscape, false for portrait
+	* @param bool $value true for landscape, false for portrait
 	* @return void
 	*/
 	public function setLandscape(bool $value): mixed
@@ -818,8 +818,8 @@ class ExcelSheet
 	/**
 	* Set the header text of the sheet when printed
 	*
-	* @param mixed $header
-	* @param mixed $margin
+	* @param string $header
+	* @param float $margin
 	* @return bool
 	*/
 	public function setHeader(string $header, float $margin): bool
@@ -829,8 +829,8 @@ class ExcelSheet
 	/**
 	* Sets the footer text of the sheet when printed
 	*
-	* @param mixed $footer
-	* @param mixed $margin
+	* @param string $footer
+	* @param float $margin
 	* @return bool
 	*/
 	public function setFooter(string $footer, float $margin): bool
@@ -876,7 +876,7 @@ class ExcelSheet
 	/**
 	* Sets a flag that the sheet is centered horizontally when printed
 	*
-	* @param mixed $value
+	* @param bool $value
 	* @return void
 	*/
 	public function setHCenter(bool $value): mixed
@@ -886,7 +886,7 @@ class ExcelSheet
 	/**
 	* Sets a flag that the sheet is centered vertically when printed
 	*
-	* @param mixed $value
+	* @param bool $value
 	* @return void
 	*/
 	public function setVCenter(bool $value): mixed
@@ -932,7 +932,7 @@ class ExcelSheet
 	/**
 	* Set the left margin of the sheet (in inches)
 	*
-	* @param mixed $value
+	* @param float $value
 	* @return void
 	*/
 	public function setMarginLeft(float $value): mixed
@@ -942,7 +942,7 @@ class ExcelSheet
 	/**
 	* Set the right margin of the sheet (in inches)
 	*
-	* @param mixed $value
+	* @param float $value
 	* @return void
 	*/
 	public function setMarginRight(float $value): mixed
@@ -952,7 +952,7 @@ class ExcelSheet
 	/**
 	* Set the top margin of the sheet (in inches)
 	*
-	* @param mixed $value
+	* @param float $value
 	* @return void
 	*/
 	public function setMarginTop(float $value): mixed
@@ -962,7 +962,7 @@ class ExcelSheet
 	/**
 	* Set the bottom margin of the sheet (in inches)
 	*
-	* @param mixed $value
+	* @param float $value
 	* @return void
 	*/
 	public function setMarginBottom(float $value): mixed
@@ -1924,7 +1924,7 @@ class ExcelSheet
 	* @param int $colLast 0-based last column
 	* @param int $widthPx Width in pixels
 	* @param ExcelFormat|null $format (optional, default=null)
-	* @param mixed $hidden (optional)
+	* @param bool $hidden (optional)
 	* @return bool
 	*/
 	public function setColPx(int $colFirst, int $colLast, int $widthPx, ?ExcelFormat $format = null, bool $hidden = false): bool
@@ -1937,7 +1937,7 @@ class ExcelSheet
 	* @param int $row 0-based row number
 	* @param int $heightPx Height in pixels
 	* @param ExcelFormat|null $format (optional, default=null)
-	* @param mixed $hidden (optional)
+	* @param bool $hidden (optional)
 	* @return bool
 	*/
 	public function setRowPx(int $row, int $heightPx, ?ExcelFormat $format = null, bool $hidden = false): bool

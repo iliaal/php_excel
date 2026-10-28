@@ -132,6 +132,18 @@ foreach (glob(__DIR__ . "/../docs/Excel*.php") as $file) {
             && methodShape($method) !== methodShape($documentedMethods[$name])) {
             $errors[] = "$class::$name signature mismatch";
         }
+
+        // A broad mixed annotation must not hide a concrete runtime parameter type.
+        preg_match_all('/@param\s+mixed\s+&?\$(\w+)\b/',
+            $documentedMethods[$name]->getDocComment() ?: "", $mixedParameters);
+        foreach ($method->getParameters() as $parameter) {
+            if (in_array($parameter->getName(), $mixedParameters[1], true)
+                && $parameter->hasType()
+                && typeShape($parameter->getType()) !== ["mixed"]) {
+                $errors[] = "$class::$name: @param mixed contradicts runtime type for $"
+                    . $parameter->getName();
+            }
+        }
     }
 
     $runtimeConstants = $runtime->getConstants();
