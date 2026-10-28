@@ -436,7 +436,7 @@ class ExcelBook
 	* @see ExcelBook::getDefaultFont()
 	* @param string $font
 	* @param int $font_size
-	* @return void
+	* @return null|false null after calling LibXL, or false when an extension validation guard rejects the operation.
 	*/
 	public function setDefaultFont(string $font, int $font_size): mixed
 	{
