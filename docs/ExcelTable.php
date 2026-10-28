@@ -11,6 +11,9 @@
   |                                                                           |
   +---------------------------------------------------------------------------+
 */
+/**
+ * The getters below warn and return false for an uninitialized or stale table wrapper.
+ */
 class ExcelTable
 {
 	const TABLESTYLE_NONE = 0;
@@ -56,7 +59,7 @@ class ExcelTable
 	/**
 	* Returns the table name
 	*
-	* @return string|null
+	* @return string|null|false
 	*/
 	public function name(): mixed
 	{
@@ -75,7 +78,7 @@ class ExcelTable
 	/**
 	* Returns the table reference range as a string
 	*
-	* @return string|null
+	* @return string|null|false
 	*/
 	public function ref(): mixed
 	{
@@ -94,7 +97,7 @@ class ExcelTable
 	/**
 	* Returns the AutoFilter for this table
 	*
-	* @return ExcelAutoFilter|false The table autofilter, or false when libxl yields no handle.
+	* @return ExcelAutoFilter|false The table autofilter, or false when the wrapper is uninitialized or stale, or libxl yields no handle.
 	* @note Probe with isAutoFilter() before chaining: `$t->isAutoFilter() ? $t->autoFilter()->getRef() : null`.
 	*/
 	public function autoFilter(): mixed
@@ -236,7 +239,7 @@ class ExcelTable
 	/**
 	* Returns the number of columns in the table
 	*
-	* @return int
+	* @return int|false
 	*/
 	public function columnSize(): mixed
 	{
