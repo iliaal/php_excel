@@ -168,7 +168,7 @@ class ExcelSheet
 	* @param int $row 0-based row number
 	* @param int $column 0-based column number
 	* @param ExcelFormat $format
-	* @return void
+	* @return null|false null after calling LibXL, or false when an extension validation guard rejects the operation.
 	*/
 	public function setCellFormat(int $row, int $column, ExcelFormat $format): mixed
 	{
@@ -452,7 +452,7 @@ class ExcelSheet
 	* @param string $author
 	* @param int $width
 	* @param int $height
-	* @return void
+	* @return null|false null after calling LibXL, or false when an extension validation guard rejects the operation.
 	*/
 	public function writeComment(int $row, int $column, string $value, string $author, int $width, int $height): mixed
 	{
@@ -541,7 +541,7 @@ class ExcelSheet
 	* @param int $x_offset (optional, default=0)
 	* @param int $y_offset (optional, default=0)
 	* @param int $pos (optional) One of ExcelBook::POSITION_* constants
-	* @return void
+	* @return null|false null after calling LibXL, or false when an extension validation guard rejects the operation.
 	*/
 	public function addPictureScaled(int $row, int $column, int $pic_id, float $scale, int $x_offset = 0, int $y_offset = 0, int $pos = 0): mixed
 	{
@@ -558,7 +558,7 @@ class ExcelSheet
 	* @param int $x_offset (optional, default=0)
 	* @param int $y_offset (optional, default=0)
 	* @param int $pos (optional) One of ExcelBook::POSITION_* constants
-	* @return void
+	* @return null|false null after calling LibXL, or false when an extension validation guard rejects the operation.
 	*/
 	public function addPictureDim(int $row, int $column, int $pic_id, int $width, int $height, int $x_offset = 0, int $y_offset = 0, int $pos = 0): mixed
 	{
@@ -591,7 +591,7 @@ class ExcelSheet
 	*
 	* @param int $row 0-based row number
 	* @param int $column 0-based column number
-	* @return void
+	* @return null|false null after calling LibXL, or false when an extension validation guard rejects the operation.
 	*/
 	public function splitSheet(int $row, int $column): mixed
 	{
@@ -628,7 +628,7 @@ class ExcelSheet
 	* @param int $row_e 0-based row number
 	* @param int $col_s 0-based column number
 	* @param int $col_e 0-based column number
-	* @return void
+	* @return null|false null after calling LibXL, or false when an extension validation guard rejects the operation.
 	*/
 	public function clear(int $row_s, int $row_e, int $col_s, int $col_e): mixed
 	{
@@ -705,7 +705,7 @@ class ExcelSheet
 	* Sets gridlines for displaying
 	*
 	* @param bool $value
-	* @return void
+	* @return null|false null after calling LibXL, or false when an extension validation guard rejects the operation.
 	*/
 	public function setDisplayGridlines(bool $value): mixed
 	{
@@ -715,7 +715,7 @@ class ExcelSheet
 	* Sets gridlines for printing
 	*
 	* @param bool $value
-	* @return void
+	* @return null|false null after calling LibXL, or false when an extension validation guard rejects the operation.
 	*/
 	public function setPrintGridlines(bool $value): mixed
 	{
@@ -743,7 +743,7 @@ class ExcelSheet
 	* Sets the zoom level of the current view
 	*
 	* @param int $value
-	* @return void
+	* @return null|false null after calling LibXL, or false when an extension validation guard rejects the operation.
 	*/
 	public function setZoom(int $value): mixed
 	{
@@ -753,7 +753,7 @@ class ExcelSheet
 	* Sets the scaling factor for printing (as a percentage)
 	*
 	* @param int $value
-	* @return void
+	* @return null|false null after calling LibXL, or false when an extension validation guard rejects the operation.
 	*/
 	public function setZoomPrint(int $value): mixed
 	{
@@ -763,7 +763,7 @@ class ExcelSheet
 	* Sets landscape, or portrait mode for printing
 	*
 	* @param bool $value true for landscape, false for portrait
-	* @return void
+	* @return null|false null after calling LibXL, or false when an extension validation guard rejects the operation.
 	*/
 	public function setLandscape(bool $value): mixed
 	{
@@ -790,8 +790,8 @@ class ExcelSheet
 	/**
 	* Sets the paper size
 	*
-	* @param string $value One of ExcelSheet::PAPER_* constants
-	* @return void
+	* @param int $value One of ExcelSheet::PAPER_* constants
+	* @return null|false null after calling LibXL, or false when an extension validation guard rejects the operation.
 	*/
 	public function setPaper(int $value): mixed
 	{
@@ -877,7 +877,7 @@ class ExcelSheet
 	* Sets a flag that the sheet is centered horizontally when printed
 	*
 	* @param bool $value
-	* @return void
+	* @return null|false null after calling LibXL, or false when an extension validation guard rejects the operation.
 	*/
 	public function setHCenter(bool $value): mixed
 	{
@@ -887,7 +887,7 @@ class ExcelSheet
 	* Sets a flag that the sheet is centered vertically when printed
 	*
 	* @param bool $value
-	* @return void
+	* @return null|false null after calling LibXL, or false when an extension validation guard rejects the operation.
 	*/
 	public function setVCenter(bool $value): mixed
 	{
@@ -933,7 +933,7 @@ class ExcelSheet
 	* Set the left margin of the sheet (in inches)
 	*
 	* @param float $value
-	* @return void
+	* @return null|false null after calling LibXL, or false when an extension validation guard rejects the operation.
 	*/
 	public function setMarginLeft(float $value): mixed
 	{
@@ -943,7 +943,7 @@ class ExcelSheet
 	* Set the right margin of the sheet (in inches)
 	*
 	* @param float $value
-	* @return void
+	* @return null|false null after calling LibXL, or false when an extension validation guard rejects the operation.
 	*/
 	public function setMarginRight(float $value): mixed
 	{
@@ -953,7 +953,7 @@ class ExcelSheet
 	* Set the top margin of the sheet (in inches)
 	*
 	* @param float $value
-	* @return void
+	* @return null|false null after calling LibXL, or false when an extension validation guard rejects the operation.
 	*/
 	public function setMarginTop(float $value): mixed
 	{
@@ -963,7 +963,7 @@ class ExcelSheet
 	* Set the bottom margin of the sheet (in inches)
 	*
 	* @param float $value
-	* @return void
+	* @return null|false null after calling LibXL, or false when an extension validation guard rejects the operation.
 	*/
 	public function setMarginBottom(float $value): mixed
 	{
@@ -982,7 +982,7 @@ class ExcelSheet
 	* Sets a flag to indicate row and column headers should be printed
 	*
 	* @param bool $value
-	* @return void
+	* @return null|false null after calling LibXL, or false when an extension validation guard rejects the operation.
 	*/
 	public function setPrintHeaders(bool $value): mixed
 	{
@@ -1001,7 +1001,7 @@ class ExcelSheet
 	* Sets the name of the worksheet
 	*
 	* @param string $name
-	* @return void
+	* @return null|false null after calling LibXL, or false when an extension validation guard rejects the operation.
 	*/
 	public function setName(string $name): mixed
 	{
@@ -1331,7 +1331,7 @@ class ExcelSheet
 	* Sets the right-to-left mode
 	*
 	* @param int $mode
-	* @return void
+	* @return null|false null after calling LibXL, or false when an extension validation guard rejects the operation.
 	*/
 	public function setRightToLeft(int $mode): mixed
 	{
