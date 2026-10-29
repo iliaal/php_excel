@@ -790,7 +790,7 @@ class ExcelSheet
 	/**
 	* Sets the paper size
 	*
-	* @param string $value One of ExcelSheet::PAPER_* constants
+	* @param int $value One of ExcelSheet::PAPER_* constants
 	* @return null|false null after calling LibXL, or false when an extension validation guard rejects the operation.
 	*/
 	public function setPaper(int $value): mixed
