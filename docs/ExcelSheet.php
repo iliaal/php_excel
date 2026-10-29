@@ -463,7 +463,7 @@ class ExcelSheet
 	*
 	* @param int $row 0-based row number
 	* @param int $col 0-based column number
-	* @return mixed
+	* @return null|false null after calling LibXL, or false when an extension validation guard rejects the operation.
 	*/
 	public function removeComment(int $row, int $col): mixed
 	{
@@ -1570,7 +1570,7 @@ class ExcelSheet
 	* @param int $col Column index
 	* @param int $iError One of ExcelSheet::ERRORTYPE_NULL, ERRORTYPE_DIV_0, ERRORTYPE_VALUE, ERRORTYPE_REF, ERRORTYPE_NAME, ERRORTYPE_NUM, or ERRORTYPE_NA. Any other value (including ERRORTYPE_NOERROR) is rejected with an E_WARNING and false.
 	* @param ExcelFormat|null $format (optional, default=null)
-	* @return mixed NULL on success; false with an E_WARNING when $iError is not a writable error type
+	* @return null|false null after calling LibXL, or false when an extension validation guard rejects the operation (including an invalid $iError).
 	*/
 	public function writeError(int $row, int $col, int $iError, ?ExcelFormat $format = null): mixed
 	{
