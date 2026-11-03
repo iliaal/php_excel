@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- Reject unsupported operators in conditional-formatting numeric and string rules with a warning and false before LibXL can write an empty XLSX operator. All twelve documented operators remain accepted.
+
 ### Documentation
 - Clarify null getter mode for ExcelFormat alignment and boolean properties, ExcelSheet gridline/zoom parameter types, and getIndexRange() warnings for indexes outside the native integer range.
 - Clarify nullable integer parameters and getter mode for individual ExcelFormat borders and fill properties.

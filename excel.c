@@ -2060,6 +2060,15 @@ static zend_always_inline bool php_excel_validate_table_style(zend_long style)
 	return true;
 }
 
+static zend_always_inline bool php_excel_validate_conditional_operator(zend_long op)
+{
+	if (op < CFOPERATOR_LESSTHAN || op > CFOPERATOR_ENDSWITH) {
+		php_error_docref(NULL, E_WARNING, "Invalid conditional formatting operator");
+		return false;
+	}
+	return true;
+}
+
 static zend_always_inline bool php_excel_valid_error_type(zend_long error_type)
 {
 	switch (error_type) {
@@ -10476,6 +10485,9 @@ EXCEL_METHOD(ConditionalFormatting, addOpNumRule)
 	EXCEL_VALIDATE_FINITE(v1)
 	EXCEL_VALIDATE_FINITE(v2)
 	EXCEL_VALIDATE_INT_RANGE(op)
+	if (!php_excel_validate_conditional_operator(op)) {
+		RETURN_FALSE;
+	}
 
 	CONDITIONALFORMATTING_FROM_OBJECT(cfing, object);
 	CONDITIONALFORMAT_FROM_OBJECT(cf, zcf);
@@ -10500,6 +10512,9 @@ EXCEL_METHOD(ConditionalFormatting, addOpStrRule)
 	}
 
 	EXCEL_VALIDATE_INT_RANGE(op)
+	if (!php_excel_validate_conditional_operator(op)) {
+		RETURN_FALSE;
+	}
 	EXCEL_NUL_SAFE_STRING(v1)
 	EXCEL_NUL_SAFE_STRING(v2)
 
