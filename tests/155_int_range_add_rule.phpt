@@ -64,7 +64,7 @@ echo "add3ColorScaleRule(huge mid):"; var_dump(intOverflowResult(fn() => @$cfing
 echo "--- valid values accepted ---\n";
 echo "addDataValidation:           "; var_dump($s->addDataValidation(1, 0, 2, 5, 1, 1, "10", "100"));
 echo "addIgnoredError:             "; var_dump($s->addIgnoredError(1, 1, 0, 1, 0));
-echo "addRule:                     "; var_dump($cfing->addRule(0x100, $cf, "10"));
+echo "addRule:                     "; var_dump($cfing->addRule(ExcelConditionalFormatting::CFORMAT_EXPRESSION, $cf, "10"));
 echo "addTable instanceof:         "; var_dump($s->addTable("Tok", 1, 2, 0, 0, true, 0) instanceof ExcelTable);
 echo "new ExcelTable instanceof:   "; var_dump((new ExcelTable($s, "Tok2", 1, 2, 0, 0, true, 0)) instanceof ExcelTable);
 

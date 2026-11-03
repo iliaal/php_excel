@@ -55,14 +55,14 @@ echo "setFont:      "; var_dump(@$fmt2->setFont($font1));
 // ConditionalFormat from b1 against b2's conditional formatting
 $cf1 = $b1->addConditionalFormat();
 $cfing = $s2->addConditionalFormatting(1, 5, 0, 0);
-echo "addRule:      "; var_dump(@$cfing->addRule(0x100, $cf1, "10"));
+echo "addRule:      "; var_dump(@$cfing->addRule(ExcelConditionalFormatting::CFORMAT_EXPRESSION, $cf1, "10"));
 
 echo "--- same-book accepted ---\n";
 echo "write:        "; var_dump($s2->write(6, 0, "ok", $fmt2));
 $font2 = $b2->addFont();
 echo "setFont:      "; var_dump($fmt2->setFont($font2));
 $cf2 = $b2->addConditionalFormat();
-echo "addRule:      "; var_dump($cfing->addRule(0x100, $cf2, "10"));
+echo "addRule:      "; var_dump($cfing->addRule(ExcelConditionalFormatting::CFORMAT_EXPRESSION, $cf2, "10"));
 $font_b2 = $b2->addFont();
 echo "addText:      "; var_dump($rs2->addText("y", $font_b2));
 
