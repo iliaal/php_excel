@@ -7309,10 +7309,6 @@ EXCEL_METHOD(Sheet, delNamedRange)
 			RETURN_FALSE; \
 		} \
 		EXCEL_VALIDATE_ROW_RANGE(s, e, object); \
-		if (s > e) { \
-			php_error_docref(NULL, E_WARNING, "The range start is greater than the end."); \
-			RETURN_FALSE; \
-		} \
 		SHEET_FROM_OBJECT(sheet, object); \
 		xlSheet ## func_name (sheet, s, e); \
 		RETURN_TRUE; \
@@ -7327,10 +7323,6 @@ EXCEL_METHOD(Sheet, delNamedRange)
 			RETURN_FALSE; \
 		} \
 		EXCEL_VALIDATE_COL_RANGE(s, e, object); \
-		if (s > e) { \
-			php_error_docref(NULL, E_WARNING, "The range start is greater than the end."); \
-			RETURN_FALSE; \
-		} \
 		SHEET_FROM_OBJECT(sheet, object); \
 		xlSheet ## func_name (sheet, s, e); \
 		RETURN_TRUE; \
@@ -7771,14 +7763,6 @@ EXCEL_METHOD(Sheet, setPrintArea)
 
 	EXCEL_VALIDATE_ROW_RANGE(row, to_row, object);
 	EXCEL_VALIDATE_COL_RANGE(col, to_col, object);
-
-	if (row > to_row) {
-		php_error_docref(NULL, E_WARNING, "The range row start cannot be greater than row end.");
-		RETURN_FALSE;
-	} else if (col > to_col) {
-		php_error_docref(NULL, E_WARNING, "The range column start cannot be greater than column end.");
-		RETURN_FALSE;
-	}
 
 	SHEET_FROM_OBJECT(sheet, object);
 	xlSheetSetPrintArea(sheet, row, to_row, col, to_col);
