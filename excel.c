@@ -10434,6 +10434,10 @@ EXCEL_METHOD(ConditionalFormatting, addRule)
 	}
 
 	EXCEL_VALIDATE_INT_RANGE(type)
+	if (type > CFORMAT_UNIQUEVALUES) {
+		php_error_docref(NULL, E_WARNING, "Invalid conditional formatting type");
+		RETURN_FALSE;
+	}
 	EXCEL_NUL_SAFE_STRING(value)
 
 	CONDITIONALFORMATTING_FROM_OBJECT(cfing, object);
@@ -10597,6 +10601,10 @@ EXCEL_METHOD(ConditionalFormatting, add2ColorScaleRule)
 	EXCEL_VALIDATE_INT_RANGE(maxColor)
 	EXCEL_VALIDATE_INT_RANGE(minType)
 	EXCEL_VALIDATE_INT_RANGE(maxType)
+	if (minType > CFVO_PERCENTILE || maxType > CFVO_PERCENTILE) {
+		php_error_docref(NULL, E_WARNING, "Invalid conditional formatting value type");
+		RETURN_FALSE;
+	}
 
 	CONDITIONALFORMATTING_FROM_OBJECT(cfing, object);
 
@@ -10620,6 +10628,10 @@ EXCEL_METHOD(ConditionalFormatting, add2ColorScaleFormulaRule)
 	EXCEL_VALIDATE_INT_RANGE(maxColor)
 	EXCEL_VALIDATE_INT_RANGE(minType)
 	EXCEL_VALIDATE_INT_RANGE(maxType)
+	if (minType > CFVO_PERCENTILE || maxType > CFVO_PERCENTILE) {
+		php_error_docref(NULL, E_WARNING, "Invalid conditional formatting value type");
+		RETURN_FALSE;
+	}
 	EXCEL_NUL_SAFE_STRING(minVal)
 	EXCEL_NUL_SAFE_STRING(maxVal)
 
@@ -10652,6 +10664,10 @@ EXCEL_METHOD(ConditionalFormatting, add3ColorScaleRule)
 	EXCEL_VALIDATE_INT_RANGE(minType)
 	EXCEL_VALIDATE_INT_RANGE(midType)
 	EXCEL_VALIDATE_INT_RANGE(maxType)
+	if (minType > CFVO_PERCENTILE || midType > CFVO_PERCENTILE || maxType > CFVO_PERCENTILE) {
+		php_error_docref(NULL, E_WARNING, "Invalid conditional formatting value type");
+		RETURN_FALSE;
+	}
 
 	CONDITIONALFORMATTING_FROM_OBJECT(cfing, object);
 
@@ -10677,6 +10693,10 @@ EXCEL_METHOD(ConditionalFormatting, add3ColorScaleFormulaRule)
 	EXCEL_VALIDATE_INT_RANGE(minType)
 	EXCEL_VALIDATE_INT_RANGE(midType)
 	EXCEL_VALIDATE_INT_RANGE(maxType)
+	if (minType > CFVO_PERCENTILE || midType > CFVO_PERCENTILE || maxType > CFVO_PERCENTILE) {
+		php_error_docref(NULL, E_WARNING, "Invalid conditional formatting value type");
+		RETURN_FALSE;
+	}
 	EXCEL_NUL_SAFE_STRING(minVal)
 	EXCEL_NUL_SAFE_STRING(midVal)
 	EXCEL_NUL_SAFE_STRING(maxVal)
