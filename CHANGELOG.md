@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Fixed
+- Reject unsupported custom-filter operators with a warning and false before LibXL writes empty XLSX operator attributes. All six documented operators and the optional second-criterion sentinel remain accepted.
 - Reject unsupported conditional-formatting rule and color-scale value types with a warning and false before LibXL writes empty XLSX type attributes. All documented types remain accepted.
 - Reject unsupported operators in conditional-formatting numeric and string rules with a warning and false before LibXL can write an empty XLSX operator. All twelve documented operators remain accepted.
 
