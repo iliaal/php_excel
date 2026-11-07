@@ -1592,6 +1592,7 @@ class ExcelSheet
 
 	/**
 	* Adds a data validation for the specified range (only for xlsx files)
+	* Unsupported type, operator, or error-style values warn and return false without adding a validation.
 	*
 	* @param int $type One of the ExcelSheet::VALIDATION_TYPE_* constants
 	* @param int $op One of the ExcelSheet::VALIDATION_OP_* constants
@@ -1618,6 +1619,7 @@ class ExcelSheet
 
 	/**
 	* Adds a data validation with double or date values for the specified range (only for xlsx files)
+	* Unsupported type, operator, or error-style values warn and return false without adding a validation.
 	*
 	* @param int $type One of the ExcelSheet::VALIDATION_TYPE_* constants
 	* @param int $op One of the ExcelSheet::VALIDATION_OP_* constants

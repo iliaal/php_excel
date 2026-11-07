@@ -2069,6 +2069,23 @@ static zend_always_inline bool php_excel_validate_conditional_operator(zend_long
 	return true;
 }
 
+static zend_always_inline bool php_excel_valid_data_validation(zend_long type, zend_long op, zend_long error_style)
+{
+	if (type < VALIDATION_TYPE_NONE || type > VALIDATION_TYPE_CUSTOM) {
+		php_error_docref(NULL, E_WARNING, "Invalid data validation type");
+		return false;
+	}
+	if (op < VALIDATION_OP_BETWEEN || op > VALIDATION_OP_GREATERTHANOREQUAL) {
+		php_error_docref(NULL, E_WARNING, "Invalid data validation operator");
+		return false;
+	}
+	if (error_style < VALIDATION_ERRSTYLE_STOP || error_style > VALIDATION_ERRSTYLE_INFORMATION) {
+		php_error_docref(NULL, E_WARNING, "Invalid data validation error style");
+		return false;
+	}
+	return true;
+}
+
 static zend_always_inline bool php_excel_valid_error_type(zend_long error_type)
 {
 	switch (error_type) {
@@ -8939,6 +8956,9 @@ EXCEL_METHOD(Sheet, addDataValidation)
 	EXCEL_VALIDATE_INT_RANGE(type)
 	EXCEL_VALIDATE_INT_RANGE(op)
 	EXCEL_VALIDATE_INT_RANGE(error_style)
+	if (!php_excel_valid_data_validation(type, op, error_style)) {
+		RETURN_FALSE;
+	}
 
 	if (!val_1 || ZSTR_LEN(val_1) < 1) {
 		php_error_docref(NULL, E_WARNING, "The first value can not be empty.");
@@ -9030,6 +9050,9 @@ EXCEL_METHOD(Sheet, addDataValidationDouble)
 	EXCEL_VALIDATE_INT_RANGE(type)
 	EXCEL_VALIDATE_INT_RANGE(op)
 	EXCEL_VALIDATE_INT_RANGE(error_style)
+	if (!php_excel_valid_data_validation(type, op, error_style)) {
+		RETURN_FALSE;
+	}
 
 	if ((op == VALIDATION_OP_BETWEEN || op == VALIDATION_OP_NOTBETWEEN) && val_2_is_null) {
 		php_error_docref(NULL, E_WARNING, "The second value can not be null when used with (not) between operator.");
