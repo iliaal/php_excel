@@ -360,6 +360,9 @@ class ExcelBook
 	/**
 	* Pack a unix timestamp into an Excel double using PHP's configured timezone
 	*
+	* Negative timestamps are accepted when the date can be represented by the
+	* workbook's date system, just like AS_DATE writes.
+	*
 	* @see ExcelBook::unpackDate()
 	* @param int $timestamp
 	* @return float|false

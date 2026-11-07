@@ -3533,10 +3533,6 @@ EXCEL_METHOD(Book, packDate)
 		RETURN_FALSE;
 	}
 
-	if (ts < 0) {
-		RETURN_FALSE;
-	}
-
 	BOOK_FROM_OBJECT(book, object);
 
 	if ((dt = _php_excel_date_pack(book, ts)) == -1) {
