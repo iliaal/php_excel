@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Fixed
+- ExcelBook::packDate() accepts pre-epoch timestamps, matching unpackDate() and AS_DATE writes instead of rejecting every negative timestamp.
 - Reject unsupported data-validation types, operators, and error styles with a warning and false instead of silently omitting the corresponding XLSX attributes.
 - Reject unsupported custom-filter operators with a warning and false before LibXL writes empty XLSX operator attributes. All six documented operators and the optional second-criterion sentinel remain accepted.
 - Reject unsupported conditional-formatting rule and color-scale value types with a warning and false before LibXL writes empty XLSX type attributes. All documented types remain accepted.
