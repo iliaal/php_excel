@@ -8794,6 +8794,10 @@ EXCEL_METHOD(FilterColumn, setCustomFilter)
 		php_error_docref(NULL, E_WARNING, "Argument out of int range");
 		RETURN_FALSE;
 	}
+	if (op1 > OPERATOR_NOT_EQUAL || op2 > OPERATOR_NOT_EQUAL) {
+		php_error_docref(NULL, E_WARNING, "Invalid custom filter operator");
+		RETURN_FALSE;
+	}
 
 	FILTERCOLUMN_FROM_OBJECT(filtercolumn, object);
 
