@@ -744,14 +744,7 @@ static zend_always_inline bool php_excel_check_book_sheet_and_conditional_format
 		} \
 	} while (0)
 
-/* Preresolved variants: resolve_book_obj once for stale check + coord limits. */
-#define CHECK_BOOK_GENERATION_PR(child_obj, vb) \
-	do { \
-		if (!php_excel_check_book_generation_pr((vb), (child_obj)->book_generation)) { \
-			RETURN_FALSE; \
-		} \
-	} while (0)
-
+/* Preresolved variant: resolve_book_obj once for stale check + coord limits. */
 #define CHECK_BOOK_AND_SHEET_GENERATION_PR(child_obj, vb) \
 	do { \
 		if (!php_excel_check_book_and_sheet_generation_pr((vb), \
@@ -1208,9 +1201,6 @@ EXCEL_CHILD_FREE_STORAGE(font)
 
 #define REGISTER_EXCEL_CLASS_CONST_LONG(class_name, const_name, value) \
 	zend_declare_class_constant_long(excel_ce_ ## class_name, const_name, sizeof(const_name)-1, (zend_long)value);
-
-#define REGISTER_EXCEL_CLASS_CONST_STRING(class_name, const_name, value) \
-	zend_declare_class_constant_string(excel_ce_ ## class_name, const_name, sizeof(const_name)-1, (char *)value);
 
 static zend_object *excel_object_new_font_ex(zend_class_entry *class_type, excel_font_object **ptr)
 {
