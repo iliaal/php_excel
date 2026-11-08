@@ -521,7 +521,7 @@ class ExcelTable
     public function setName(string $value): bool {}  // ZPP "S"
     public function ref(): mixed {}  // ZPP ""
     public function setRef(string $value): bool {}  // ZPP "S"
-    /** @return ExcelAutoFilter|false Check the returned handle before chaining; isAutoFilter() is only available with LibXL 5.2.0+. */
+    /** @return ExcelAutoFilter|false Creates the filter if absent; check the handle before chaining. For a read-only existence probe, use isAutoFilter() (LibXL 5.2.0+ only). */
     public function autoFilter(): mixed {}  // ZPP ""
 #if LIBXL_VERSION >= 0x05020000
     public function isAutoFilter(): bool {}  // ZPP ""
