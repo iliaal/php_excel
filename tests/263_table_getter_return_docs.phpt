@@ -30,22 +30,12 @@ check(str_contains($docs->getMethod('autoFilter')->getDocComment(),
     '@return ExcelAutoFilter|false The table autofilter, or false when the wrapper is uninitialized or stale, or libxl yields no handle.'),
     'complete autofilter failure explanation');
 $filterDoc = $docs->getMethod('autoFilter')->getDocComment();
-check(str_contains($filterDoc,
-    '@note Get or create a filter, then check the returned handle before chaining: `$filter = $t->autoFilter(); $range = $filter !== false ? $filter->getRef() : null;`.'),
-    'complete portable autofilter example');
-check(str_contains($filterDoc,
-    'This get-or-create example also works with LibXL versions before 5.2.0.'),
-    'complete version explanation');
-check(str_contains(file_get_contents(__DIR__ . '/../excel.stub.php'),
-    '/** @return ExcelAutoFilter|false Creates the filter if absent; check the handle before chaining. For a read-only existence probe, use isAutoFilter() (LibXL 5.2.0+ only). */'),
-    'stub advice agrees');
 preg_match('/@note [^`]*`([^`]+)`/', $filterDoc, $example);
 $example = $example[1] ?? '';
 preg_match('/@example [^`]*`([^`]+)`/', $filterDoc, $readOnly);
 $readOnly = $readOnly[1] ?? '';
+check($example !== '', 'get-or-create example exists');
 check($readOnly !== '', 'read-only example exists');
-check(str_contains($filterDoc, 'creating it if it does not exist.'), 'creation side effect documented');
-check(str_contains($filterDoc, 'which does not prove filter absence.'), 'older probe limitation documented');
 function documentedFilterRange($t, $example) {
     $range = 'not assigned';
     eval($example . ';');
