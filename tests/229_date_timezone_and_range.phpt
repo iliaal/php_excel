@@ -9,7 +9,7 @@ date.timezone=America/New_York
 --FILE--
 <?php
 $book = new ExcelBook();
-foreach (['1969-12-31 23:59:59', '2024-01-15 12:30:45', '2024-07-15 12:30:45'] as $date) {
+foreach (['1969-12-31 12:00:00', '2024-01-15 12:30:45', '2024-07-15 12:30:45'] as $date) {
     $timestamp = strtotime($date);
     $parts = array_map('intval', explode(' ', date('Y n j G i s', $timestamp)));
     $serial = $book->packDateValues(...$parts);
