@@ -98,7 +98,8 @@ class ExcelTable
 	* Returns the AutoFilter for this table
 	*
 	* @return ExcelAutoFilter|false The table autofilter, or false when the wrapper is uninitialized or stale, or libxl yields no handle.
-	* @note Probe with isAutoFilter() before chaining: `$t->isAutoFilter() ? $t->autoFilter()->getRef() : null`.
+	* @note Check the returned handle before chaining: `$filter = $t->autoFilter(); $range = $filter !== false ? $filter->getRef() : null;`.
+	* This also works with LibXL versions before 5.2.0, which do not expose isAutoFilter().
 	*/
 	public function autoFilter(): mixed
 	{
