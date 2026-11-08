@@ -95,10 +95,15 @@ class ExcelTable
 	}
 
 	/**
-	* Returns the AutoFilter for this table
+	* Returns the AutoFilter for this table, creating it if it does not exist.
 	*
 	* @return ExcelAutoFilter|false The table autofilter, or false when the wrapper is uninitialized or stale, or libxl yields no handle.
-	* @note Probe with isAutoFilter() before chaining: `$t->isAutoFilter() ? $t->autoFilter()->getRef() : null`.
+	* @note Get or create a filter, then check the returned handle before chaining: `$filter = $t->autoFilter(); $range = $filter !== false ? $filter->getRef() : null;`.
+	* This get-or-create example also works with LibXL versions before 5.2.0.
+	* It is not a read-only existence probe; getRef() can return false for an unset range.
+	* @example Read only when the existence probe is available: `$range = null; if (method_exists($t, 'isAutoFilter') && $t->isAutoFilter()) { $filter = $t->autoFilter(); $range = $filter !== false ? $filter->getRef() : null; }`.
+	* On LibXL before 5.2.0, isAutoFilter() is unavailable: the read-only example
+	* leaves the table unchanged and $range null, which does not prove filter absence.
 	*/
 	public function autoFilter(): mixed
 	{

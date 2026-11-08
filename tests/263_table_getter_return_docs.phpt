@@ -29,6 +29,47 @@ foreach ($returns as $method => $expected) {
 check(str_contains($docs->getMethod('autoFilter')->getDocComment(),
     '@return ExcelAutoFilter|false The table autofilter, or false when the wrapper is uninitialized or stale, or libxl yields no handle.'),
     'complete autofilter failure explanation');
+$filterDoc = $docs->getMethod('autoFilter')->getDocComment();
+check(str_contains($filterDoc,
+    '@note Get or create a filter, then check the returned handle before chaining: `$filter = $t->autoFilter(); $range = $filter !== false ? $filter->getRef() : null;`.'),
+    'complete portable autofilter example');
+check(str_contains($filterDoc,
+    'This get-or-create example also works with LibXL versions before 5.2.0.'),
+    'complete version explanation');
+check(str_contains(file_get_contents(__DIR__ . '/../excel.stub.php'),
+    '/** @return ExcelAutoFilter|false Creates the filter if absent; check the handle before chaining. For a read-only existence probe, use isAutoFilter() (LibXL 5.2.0+ only). */'),
+    'stub advice agrees');
+preg_match('/@note [^`]*`([^`]+)`/', $filterDoc, $example);
+$example = $example[1] ?? '';
+preg_match('/@example [^`]*`([^`]+)`/', $filterDoc, $readOnly);
+$readOnly = $readOnly[1] ?? '';
+check($readOnly !== '', 'read-only example exists');
+check(str_contains($filterDoc, 'creating it if it does not exist.'), 'creation side effect documented');
+check(str_contains($filterDoc, 'which does not prove filter absence.'), 'older probe limitation documented');
+function documentedFilterRange($t, $example) {
+    $range = 'not assigned';
+    eval($example . ';');
+    return $range;
+}
+// Model the older API without isAutoFilter(), including the no-handle result.
+foreach ([false, new class {
+    public function getRef() { return ['row_first' => 1, 'row_last' => 3, 'col_first' => 0, 'col_last' => 1]; }
+}] as $handle) {
+    $olderTable = new class($handle) {
+        public $calls = 0;
+        private $handle;
+        public function __construct($handle) { $this->handle = $handle; }
+        public function autoFilter() { ++$this->calls; return $this->handle; }
+    };
+    try {
+        check(documentedFilterRange($olderTable, $readOnly) === null && $olderTable->calls === 0,
+            'read-only example does not call get-or-create on older API');
+        check(documentedFilterRange($olderTable, $example) === ($handle === false ? null : $handle->getRef()),
+            'get-or-create example handles older API and no-handle failure');
+    } catch (Throwable $error) {
+        check(false, 'example threw ' . get_class($error));
+    }
+}
 
 $book = new ExcelBook(null, null, true);
 $book->addSheet('Temporary');
@@ -42,6 +83,28 @@ check($table->ref() === 'A2:B4', 'live range');
 check($table->columnSize() === 2, 'live column count');
 $filter = $table->autoFilter();
 check($filter instanceof ExcelAutoFilter || $filter === false, 'live filter');
+check(documentedFilterRange($table, $example) === ($filter === false ? null : $filter->getRef()),
+    'example works with native table');
+
+// Exercise the actual native mutation, not only an already-filtered table.
+if (method_exists($table, 'removeFilter')) {
+    check($table->removeFilter(), 'remove filter');
+    check(!$table->isAutoFilter(), 'native table starts filterless');
+    check(documentedFilterRange($table, $readOnly) === null, 'read-only absent range');
+    check(!$table->isAutoFilter(), 'read-only example preserves filter absence');
+    check(documentedFilterRange($table, $example) === false, 'new filter has unset range');
+    check($table->isAutoFilter(), 'get-or-create example creates absent filter');
+    $filter = $table->autoFilter();
+    $filter->setRef(1, 3, 0, 1);
+    check(documentedFilterRange($table, $readOnly) === $filter->getRef(),
+        'read-only example reads existing native filter');
+}
+// Even a positive existence probe does not justify chaining a failed handle.
+$failedHandle = new class {
+    public function isAutoFilter() { return true; }
+    public function autoFilter() { return false; }
+};
+check(documentedFilterRange($failedHandle, $readOnly) === null, 'read-only checks returned handle');
 
 class UninitializedTable extends ExcelTable {
     public function __construct() {}
