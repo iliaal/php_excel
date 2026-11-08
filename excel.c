@@ -3510,16 +3510,22 @@ static double _php_excel_date_pack(BookHandle book, zend_long ts)
 	zend_long year;
 	int month, day, hour, minute, second;
 	int fields;
+	double dt;
 
 	formatted = php_format_date("Y n j G i s", sizeof("Y n j G i s") - 1, (time_t) ts, true);
 	fields = sscanf(ZSTR_VAL(formatted), ZEND_LONG_FMT " %d %d %d %d %d",
 		&year, &month, &day, &hour, &minute, &second);
 	zend_string_release(formatted);
-	if (fields != 6 || year < 1 || year > INT_MAX) {
+	/* LibXL aliases dates before 1900 to valid serials (for example,
+	 * 1899-12-31 and 1900-01-01 both become 1 in the 1900 system). */
+	if (fields != 6 || year < 1900 || year > INT_MAX) {
 		return -1;
 	}
 
-	return xlBookDatePack(book, (int) year, month, day, hour, minute, second, 0);
+	dt = xlBookDatePack(book, (int) year, month, day, hour, minute, second, 0);
+	/* Negative serials cannot be unpacked, and [0, 1) is reserved for
+	 * time-only values. This also excludes 1904-01-01 in the 1904 system. */
+	return dt < 1 ? -1 : dt;
 }
 
 EXCEL_METHOD(Book, packDate)

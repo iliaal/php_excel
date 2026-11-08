@@ -360,8 +360,11 @@ class ExcelBook
 	/**
 	* Pack a unix timestamp into an Excel double using PHP's configured timezone
 	*
-	* Negative timestamps are accepted when the date can be represented by the
-	* workbook's date system, just like AS_DATE writes.
+	* Negative timestamps are accepted when the local date is on or after
+	* 1900-01-01 in the 1900 date system, or 1904-01-02 in the 1904 system,
+	* just like AS_DATE writes. Earlier dates return false because they produce
+	* unsupported, colliding, or time-only serials. Use packDateValues() for
+	* time-only values.
 	*
 	* @see ExcelBook::unpackDate()
 	* @param int $timestamp
