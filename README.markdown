@@ -143,6 +143,14 @@ coordinates. Subtract one when passing a used-range end to `readRange()`;
 Check that a range is nonempty before subtracting and reading it. The used
 range can extend beyond nonempty values, for example because of formatting.
 
+`firstFilledRow()` and `firstFilledCol()` return inclusive start indexes;
+`lastFilledRow()` and `lastFilledCol()` also return **exclusive** ends, not
+the indexes of the last filled cells. For example, if the largest filled
+row and column indexes are 3 and 5, the end indexes are 4 and 6. Check that each start
+is less than its end, then subtract one from both ends when passing these
+bounds to `readRange()`. LibXL trial content can also contribute to the
+filled range, so its first indexes need not match your first written cell.
+
 Dense readers return packed arrays keyed from zero, even when the requested
 range starts elsewhere. Sparse readers keep the original sheet indexes and
 omit empty cells, but retain values such as numeric zero and boolean false.

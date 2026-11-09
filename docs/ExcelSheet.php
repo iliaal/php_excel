@@ -1680,7 +1680,7 @@ class ExcelSheet
 	}
 
 	/**
-	* Returns the 0-based first filled row in the sheet
+	* Returns the inclusive, 0-based first filled row in the sheet
 	*
 	* @return int|false
 	*/
@@ -1689,7 +1689,10 @@ class ExcelSheet
 	}
 
 	/**
-	* Returns the 0-based last filled row in the sheet
+	* Returns the exclusive end of the filled row range (last filled row + 1)
+	*
+	* Subtract one for the inclusive row end accepted by readRange() or readCol().
+	* Check firstFilledRow() < lastFilledRow() before reading to avoid an empty range.
 	*
 	* @return int|false
 	*/
@@ -1698,7 +1701,7 @@ class ExcelSheet
 	}
 
 	/**
-	* Returns the 0-based first filled column in the sheet
+	* Returns the inclusive, 0-based first filled column in the sheet
 	*
 	* @return int|false
 	*/
@@ -1707,7 +1710,10 @@ class ExcelSheet
 	}
 
 	/**
-	* Returns the 0-based last filled column in the sheet
+	* Returns the exclusive end of the filled column range (last filled column + 1)
+	*
+	* Subtract one for the inclusive column end accepted by readRange() or readRow().
+	* Check firstFilledCol() < lastFilledCol() before reading to avoid an empty range.
 	*
 	* @return int|false
 	*/
