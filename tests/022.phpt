@@ -64,14 +64,10 @@ excel
 	}
 
 	$i = 1;
-	$oClass = new ReflectionClass('ExcelFont');
-	foreach ($oClass->getConstants() as $c => $val) {
-		if (strpos($c, 'SCRIPT_') !== 0) {
-			continue;
-		}
+	foreach ([ExcelFont::NORMAL, ExcelFont::SUPERSCRIPT, ExcelFont::SUBSCRIPT] as $val) {
 
 		$font = $x->addFont();
-		$font->script($val);
+		$font->mode($val);
 		$format = $x->addFormat();
 		$format->setFont($font);
 
@@ -80,7 +76,7 @@ excel
 
 		$fmt = '';
 		$s->read(3, $i, $format);
-		echo $format->getFont()->script() . "\n";
+		echo $format->getFont()->mode() . "\n";
 
 		++$i;
 	}
@@ -432,6 +428,15 @@ bool(false)
 bool(true)
 bool(false)
 65
+bool(true)
+bool(false)
+0
+bool(true)
+bool(false)
+1
+bool(true)
+bool(false)
+2
 bool(true)
 bool(false)
 0
