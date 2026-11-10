@@ -40,7 +40,7 @@ excel
 
 			$fmt = null;
 			$s->read($row, 1, $fmt);
-			echo $fmt->fillPattern() . " - " . $format->patternBackgroundColor() . "\n";
+			echo $fmt->fillPattern() . " - " . $fmt->patternBackgroundColor() . "\n";
 
 			$format = $x->addFormat();
 			$format->fillPattern($val);
@@ -51,7 +51,7 @@ excel
 
 			$fmt = null;
 			$s->read($row, 2, $fmt);
-			echo $fmt->fillPattern() . " - " . $format->patternForegroundColor() . "\n";
+			echo $fmt->fillPattern() . " - " . $fmt->patternForegroundColor() . "\n";
 
 			$row++;
 		}
