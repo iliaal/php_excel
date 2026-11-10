@@ -25,12 +25,19 @@ excel
 	var_dump($x->getError());
 	
 	$fo = $s->cellFormat(1,1);
-	var_dump($fo->horizontalAlign(), $fo->borderStyle());
+	var_dump($fo->horizontalAlign());
+	foreach (['Left', 'Right', 'Top', 'Bottom'] as $side) {
+		$getter = 'border' . $side . 'Style';
+		var_dump($fo->$getter());
+	}
 
 	echo "OK\n";
 ?>
 --EXPECT--
 bool(false)
 int(3)
-bool(true)
+int(3)
+int(3)
+int(3)
+int(3)
 OK

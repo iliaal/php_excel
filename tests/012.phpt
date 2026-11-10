@@ -31,7 +31,17 @@ excel
 
 			$fmt = null;
 			$s->read($row, $col, $fmt);
-			echo $fmt->$f() . "\n";
+			if ($b === '') {
+				// The all-side method is write-only; inspect each real getter.
+				$values = [];
+				foreach (['Left', 'Right', 'Top', 'Bottom'] as $side) {
+					$getter = 'border' . $side . 'Style';
+					$values[] = $fmt->$getter();
+				}
+				echo implode(',', $values) . "\n";
+			} else {
+				echo $fmt->$f() . "\n";
+			}
 
 			++$row;
 			++$col;			
@@ -45,46 +55,46 @@ excel
 --EXPECT--
 bool(true)
 bool(false)
-1
+0,0,0,0
 bool(true)
 bool(false)
-1
+1,1,1,1
 bool(true)
 bool(false)
-1
+2,2,2,2
 bool(true)
 bool(false)
-1
+3,3,3,3
 bool(true)
 bool(false)
-1
+4,4,4,4
 bool(true)
 bool(false)
-1
+5,5,5,5
 bool(true)
 bool(false)
-1
+6,6,6,6
 bool(true)
 bool(false)
-1
+7,7,7,7
 bool(true)
 bool(false)
-1
+8,8,8,8
 bool(true)
 bool(false)
-1
+9,9,9,9
 bool(true)
 bool(false)
-1
+10,10,10,10
 bool(true)
 bool(false)
-1
+11,11,11,11
 bool(true)
 bool(false)
-1
+12,12,12,12
 bool(true)
 bool(false)
-1
+13,13,13,13
 bool(true)
 bool(false)
 0
