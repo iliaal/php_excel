@@ -22,6 +22,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Clarify that ExcelFormat::borderStyle() and borderColor() are write-only setters: omitted or null arguments leave borders unchanged, rather than reading their values.
 
 ### Changed
+- Reuse the shared row-coordinate validator in setRowHeight() and setRowPx(), preserving workbook-specific bounds and warning order.
 - Remove unreachable range-order checks from print-repeat and print-area setters; shared validators retain the existing warnings and return values.
 
 ## [2.9.1] - 2026-10-16
