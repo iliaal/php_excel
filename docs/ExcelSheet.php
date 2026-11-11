@@ -565,10 +565,10 @@ class ExcelSheet
 	}
 
 	/**
-	* Set/Remove horizontal page break
+	* Set or remove a horizontal page break at a row
 	*
 	* @param int $row 0-based row number
-	* @param int $break
+	* @param bool $break true to set the break, false to remove it
 	* @return bool
 	*/
 	public function horPageBreak(int $row, bool $break): bool
@@ -576,10 +576,10 @@ class ExcelSheet
 	}
 
 	/**
-	* Set/Remove vertical page break
+	* Set or remove a vertical page break at a column
 	*
 	* @param int $col 0-based column number
-	* @param int $break
+	* @param bool $break true to set the break, false to remove it
 	* @return bool
 	*/
 	public function verPageBreak(int $col, bool $break): bool
@@ -1209,20 +1209,20 @@ class ExcelSheet
 	}
 
 	/**
-	* Returns column with vertical page break at position index
+	* Return the 0-based column of a vertical page break
 	*
-	* @param int $index
-	* @return int|false
+	* @param int $index 0-based position in the page-break list, not a sheet coordinate
+	* @return int|false The column number, -1 if no break exists at that list position, or false if an extension guard rejects the call.
 	*/
 	public function getVerPageBreak(int $index): int|false
 	{
 	}
 
 	/**
-	* Returns column with horizontal page break at position index
+	* Return the 0-based row of a horizontal page break
 	*
-	* @param int $index
-	* @return int|false
+	* @param int $index 0-based position in the page-break list, not a sheet coordinate
+	* @return int|false The row number, -1 if no break exists at that list position, or false if an extension guard rejects the call.
 	*/
 	public function getHorPageBreak(int $index): int|false
 	{
