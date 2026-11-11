@@ -6462,14 +6462,7 @@ EXCEL_METHOD(Sheet, setRowHeight)
 		}
 
 		EXCEL_VALIDATE_FINITE(height)
-		{
-			excel_book_object *_vb = php_excel_resolve_book_obj(object);
-			zend_long _maxr = (_vb && _vb->is_xlsx) ? EXCEL_MAX_ROW_XLSX : EXCEL_MAX_ROW_XLS;
-			if (row < 0 || row > _maxr) {
-				php_error_docref(NULL, E_WARNING, "Invalid row: " ZEND_LONG_FMT, row);
-				RETURN_FALSE;
-			}
-		}
+		EXCEL_VALIDATE_ROW(row, object);
 		SHEET_FROM_OBJECT(sheet, object);
 
 		if (f) {
@@ -9521,14 +9514,7 @@ EXCEL_METHOD(Sheet, setRowPx)
 		RETURN_FALSE;
 	}
 
-	{
-		excel_book_object *_vb = php_excel_resolve_book_obj(object);
-		zend_long _maxr = (_vb && _vb->is_xlsx) ? EXCEL_MAX_ROW_XLSX : EXCEL_MAX_ROW_XLS;
-		if (row < 0 || row > _maxr) {
-			php_error_docref(NULL, E_WARNING, "Invalid row: " ZEND_LONG_FMT, row);
-			RETURN_FALSE;
-		}
-	}
+	EXCEL_VALIDATE_ROW(row, object);
 	EXCEL_VALIDATE_INT_RANGE(heightPx)
 	SHEET_FROM_OBJECT(sheet, object);
 
