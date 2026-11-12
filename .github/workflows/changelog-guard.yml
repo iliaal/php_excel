@@ -1,0 +1,37 @@
+name: Changelog guard
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+  push:
+    branches: [main, master]
+    paths: [CHANGELOG.md]
+
+permissions: {}
+
+concurrency:
+  group: changelog-guard-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  guard:
+    name: Check CHANGELOG.md
+    if: github.event_name == 'pull_request' || github.ref_name == github.event.repository.default_branch
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read # list open PRs to check for changelog collisions
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - name: Run changelog guard
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          MODE: ${{ github.event_name == 'pull_request' && 'pr' || 'push' }}
+          BASE: origin/${{ github.base_ref || github.ref_name }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: python3 .github/scripts/changelog_guard.py
