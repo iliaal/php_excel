@@ -1,577 +1,71 @@
 --TEST--
-Text rotation test
---INI--
-date.timezone=America/Toronto
+Text rotation preserves all angles and vertical text through XLS/XLSX save/load
 --EXTENSIONS--
 excel
 --FILE--
-<?php 
-	$x = new ExcelBook();
+<?php
+function check(bool $condition, string $label): void {
+    if (!$condition) {
+        throw new RuntimeException($label);
+    }
+}
 
-	$s = $x->addSheet("Sheet 1");
+$angles = range(0, 180);
+$angles[] = 255; // Vertical text is the one supported value above 180.
+foreach ([false, true] as $xlsx) {
+    $kind = $xlsx ? 'XLSX' : 'XLS';
+    $book = new ExcelBook(null, null, $xlsx);
+    $sheet = $book->addSheet('Rotation');
+    foreach ($angles as $index => $angle) {
+        // Row 0 is reserved by the trial library; 182 cells stay below its limit.
+        $row = $index + 1;
+        $format = $book->addFormat();
+        check($format->rotate($angle) === $angle, "$kind set rotation $angle");
+        check($format->rotate() === $angle, "$kind get rotation $angle");
+        check($format->rotate(null) === $angle, "$kind null getter $angle");
+        check($sheet->write($row, 0, "angle $angle", $format), "$kind write $angle");
+        check($book->getError() === false, "$kind write error $angle");
+    }
 
-	$data = "Test";
+    // The last format is attached to the vertical-text cell. Invalid setters
+    // must neither accept the gaps around 255 nor change that stored rotation.
+    foreach ([-1, 181, 254, 256, PHP_INT_MAX] as $angle) {
+        $warnings = [];
+        set_error_handler(function ($level, $message) use (&$warnings) {
+            $warnings[] = $message;
+            return true;
+        });
+        try {
+            $result = $format->rotate($angle);
+        } finally {
+            restore_error_handler();
+        }
+        check($result === false, "$kind reject rotation $angle");
+        check($warnings === [
+            'ExcelFormat::rotate(): Rotation can be a number between 0 and 180 or 255',
+        ], "$kind warning for rotation $angle");
+        check($format->rotate() === 255, "$kind preserve vertical text after $angle");
+    }
 
-	for ($i = 1; $i < 182; $i++) {
-		$format = $x->addFormat();
-		$format->rotate($i - 1);
-
-		var_dump($s->write($i, 0, $data, $format));
-		var_dump($x->getError());
-	}
-
-	for($i = 1; $i < 182; $i++) {
-		$format = '';
-		$s->read($i, 0, $format);
-		echo (int)$format->rotate() . "\n";
-	}
-
-
-
-	echo "OK\n";
+    $saved = $book->save();
+    check(is_string($saved) && $saved !== '', "$kind save workbook");
+    $loaded = new ExcelBook(null, null, $xlsx);
+    check($loaded->load($saved), "$kind reload workbook");
+    foreach ([$sheet, $loaded->getSheet(0)] as $stage => $readSheet) {
+        foreach ($angles as $index => $angle) {
+            $row = $index + 1;
+            $readFormat = '';
+            check($readSheet->read($row, 0, $readFormat) === "angle $angle",
+                "$kind stage $stage read $angle");
+            check($readFormat->rotate() === $angle,
+                "$kind stage $stage rotation $angle");
+            check($readSheet->cellFormat($row, 0)->rotate() === $angle,
+                "$kind stage $stage cellFormat $angle");
+        }
+    }
+    echo "$kind all rotations OK\n";
+}
 ?>
 --EXPECT--
-bool(true)
-bool(false)
-bool(true)
-bool(false)
-bool(true)
-bool(false)
-bool(true)
-bool(false)
-bool(true)
-bool(false)
-bool(true)
-bool(false)
-bool(true)
-bool(false)
-bool(true)
-bool(false)
-bool(true)
-bool(false)
-bool(true)
-bool(false)
-bool(true)
-bool(false)
-bool(true)
-bool(false)
-bool(true)
-bool(false)
-bool(true)
-bool(false)
-bool(true)
-bool(false)
-bool(true)
-bool(false)
-bool(true)
-bool(false)
-bool(true)
-bool(false)
-bool(true)
-bool(false)
-bool(true)
-bool(false)
-bool(true)
-bool(false)
-bool(true)
-bool(false)
-bool(true)
-bool(false)
-bool(true)
-bool(false)
-bool(true)
-bool(false)
-bool(true)
-bool(false)
-bool(true)
-bool(false)
-bool(true)
-bool(false)
-bool(true)
-bool(false)
-bool(true)
-bool(false)
-bool(true)
-bool(false)
-bool(true)
-bool(false)
-bool(true)
-bool(false)
-bool(true)
-bool(false)
-bool(true)
-bool(false)
-bool(true)
-bool(false)
-bool(true)
-bool(false)
-bool(true)
-bool(false)
-bool(true)
-bool(false)
-bool(true)
-bool(false)
-bool(true)
-bool(false)
-bool(true)
-bool(false)
-bool(true)
-bool(false)
-bool(true)
-bool(false)
-bool(true)
-bool(false)
-bool(true)
-bool(false)
-bool(true)
-bool(false)
-bool(true)
-bool(false)
-bool(true)
-bool(false)
-bool(true)
-bool(false)
-bool(true)
-bool(false)
-bool(true)
-bool(false)
-bool(true)
-bool(false)
-bool(true)
-bool(false)
-bool(true)
-bool(false)
-bool(true)
-bool(false)
-bool(true)
-bool(false)
-bool(true)
-bool(false)
-bool(true)
-bool(false)
-bool(true)
-bool(false)
-bool(true)
-bool(false)
-bool(true)
-bool(false)
-bool(true)
-bool(false)
-bool(true)
-bool(false)
-bool(true)
-bool(false)
-bool(true)
-bool(false)
-bool(true)
-bool(false)
-bool(true)
-bool(false)
-bool(true)
-bool(false)
-bool(true)
-bool(false)
-bool(true)
-bool(false)
-bool(true)
-bool(false)
-bool(true)
-bool(false)
-bool(true)
-bool(false)
-bool(true)
-bool(false)
-bool(true)
-bool(false)
-bool(true)
-bool(false)
-bool(true)
-bool(false)
-bool(true)
-bool(false)
-bool(true)
-bool(false)
-bool(true)
-bool(false)
-bool(true)
-bool(false)
-bool(true)
-bool(false)
-bool(true)
-bool(false)
-bool(true)
-bool(false)
-bool(true)
-bool(false)
-bool(true)
-bool(false)
-bool(true)
-bool(false)
-bool(true)
-bool(false)
-bool(true)
-bool(false)
-bool(true)
-bool(false)
-bool(true)
-bool(false)
-bool(true)
-bool(false)
-bool(true)
-bool(false)
-bool(true)
-bool(false)
-bool(true)
-bool(false)
-bool(true)
-bool(false)
-bool(true)
-bool(false)
-bool(true)
-bool(false)
-bool(true)
-bool(false)
-bool(true)
-bool(false)
-bool(true)
-bool(false)
-bool(true)
-bool(false)
-bool(true)
-bool(false)
-bool(true)
-bool(false)
-bool(true)
-bool(false)
-bool(true)
-bool(false)
-bool(true)
-bool(false)
-bool(true)
-bool(false)
-bool(true)
-bool(false)
-bool(true)
-bool(false)
-bool(true)
-bool(false)
-bool(true)
-bool(false)
-bool(true)
-bool(false)
-bool(true)
-bool(false)
-bool(true)
-bool(false)
-bool(true)
-bool(false)
-bool(true)
-bool(false)
-bool(true)
-bool(false)
-bool(true)
-bool(false)
-bool(true)
-bool(false)
-bool(true)
-bool(false)
-bool(true)
-bool(false)
-bool(true)
-bool(false)
-bool(true)
-bool(false)
-bool(true)
-bool(false)
-bool(true)
-bool(false)
-bool(true)
-bool(false)
-bool(true)
-bool(false)
-bool(true)
-bool(false)
-bool(true)
-bool(false)
-bool(true)
-bool(false)
-bool(true)
-bool(false)
-bool(true)
-bool(false)
-bool(true)
-bool(false)
-bool(true)
-bool(false)
-bool(true)
-bool(false)
-bool(true)
-bool(false)
-bool(true)
-bool(false)
-bool(true)
-bool(false)
-bool(true)
-bool(false)
-bool(true)
-bool(false)
-bool(true)
-bool(false)
-bool(true)
-bool(false)
-bool(true)
-bool(false)
-bool(true)
-bool(false)
-bool(true)
-bool(false)
-bool(true)
-bool(false)
-bool(true)
-bool(false)
-bool(true)
-bool(false)
-bool(true)
-bool(false)
-bool(true)
-bool(false)
-bool(true)
-bool(false)
-bool(true)
-bool(false)
-bool(true)
-bool(false)
-bool(true)
-bool(false)
-bool(true)
-bool(false)
-bool(true)
-bool(false)
-bool(true)
-bool(false)
-bool(true)
-bool(false)
-bool(true)
-bool(false)
-bool(true)
-bool(false)
-bool(true)
-bool(false)
-bool(true)
-bool(false)
-bool(true)
-bool(false)
-bool(true)
-bool(false)
-bool(true)
-bool(false)
-bool(true)
-bool(false)
-bool(true)
-bool(false)
-bool(true)
-bool(false)
-bool(true)
-bool(false)
-bool(true)
-bool(false)
-bool(true)
-bool(false)
-bool(true)
-bool(false)
-bool(true)
-bool(false)
-bool(true)
-bool(false)
-bool(true)
-bool(false)
-bool(true)
-bool(false)
-bool(true)
-bool(false)
-bool(true)
-bool(false)
-bool(true)
-bool(false)
-0
-1
-2
-3
-4
-5
-6
-7
-8
-9
-10
-11
-12
-13
-14
-15
-16
-17
-18
-19
-20
-21
-22
-23
-24
-25
-26
-27
-28
-29
-30
-31
-32
-33
-34
-35
-36
-37
-38
-39
-40
-41
-42
-43
-44
-45
-46
-47
-48
-49
-50
-51
-52
-53
-54
-55
-56
-57
-58
-59
-60
-61
-62
-63
-64
-65
-66
-67
-68
-69
-70
-71
-72
-73
-74
-75
-76
-77
-78
-79
-80
-81
-82
-83
-84
-85
-86
-87
-88
-89
-90
-91
-92
-93
-94
-95
-96
-97
-98
-99
-100
-101
-102
-103
-104
-105
-106
-107
-108
-109
-110
-111
-112
-113
-114
-115
-116
-117
-118
-119
-120
-121
-122
-123
-124
-125
-126
-127
-128
-129
-130
-131
-132
-133
-134
-135
-136
-137
-138
-139
-140
-141
-142
-143
-144
-145
-146
-147
-148
-149
-150
-151
-152
-153
-154
-155
-156
-157
-158
-159
-160
-161
-162
-163
-164
-165
-166
-167
-168
-169
-170
-171
-172
-173
-174
-175
-176
-177
-178
-179
-180
-OK
+XLS all rotations OK
+XLSX all rotations OK
