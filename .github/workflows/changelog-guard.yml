@@ -2,7 +2,7 @@ name: Changelog guard
 
 on:
   pull_request:
-    types: [opened, synchronize, reopened, labeled, unlabeled, closed]
+    types: [opened, synchronize, reopened, edited, labeled, unlabeled, closed]
   push:
     branches: [main, master]
     paths: [CHANGELOG.md]
@@ -10,13 +10,17 @@ on:
 permissions: {}
 
 concurrency:
-  group: changelog-guard-${{ github.event.pull_request.number || github.ref }}${{ github.event.action == 'closed' && '-closed' || '' }}
+  # closed and edited runs get their own group so they never cancel a check that is still going
+  group: changelog-guard-${{ github.event.pull_request.number || github.ref }}${{ (github.event.action == 'closed' || github.event.action == 'edited') && format('-{0}', github.event.action) || '' }}
   cancel-in-progress: true
 
 jobs:
   pr:
     name: Check CHANGELOG.md
-    if: github.event_name == 'pull_request' && github.event.action != 'closed'
+    # an edit only matters when it retargets the PR
+    if: >-
+      github.event_name == 'pull_request' && github.event.action != 'closed' &&
+      (github.event.action != 'edited' || github.event.changes.base)
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -41,9 +45,12 @@ jobs:
 
   recheck:
     name: Recheck open PRs
+    # a release or merged entry moves the base; a peer's push, reopen, retarget, merge or close can
+    # add or remove a collision for the higher-numbered PRs
     if: >-
       (github.event_name == 'push' && github.ref_name == github.event.repository.default_branch) ||
-      (github.event.action == 'closed' && !github.event.pull_request.merged)
+      contains(fromJSON('["synchronize", "reopened", "closed"]'), github.event.action) ||
+      (github.event.action == 'edited' && github.event.changes.base)
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -62,5 +69,15 @@ jobs:
           MODE: ${{ github.event_name == 'push' && 'recheck' || 'peers' }}
           BASE: ${{ github.event_name == 'push' && github.sha || format('origin/{0}', github.event.pull_request.base.ref) }}
           BASE_BRANCH: ${{ github.event_name == 'push' && github.ref_name || github.event.pull_request.base.ref }}
+          PEER: ${{ github.event.pull_request.number }}
+        run: python3 .github/scripts/changelog_guard.py
+      - name: Re-run the check on open PRs into the branch the PR left
+        if: github.event.action == 'edited' && github.event.changes.base
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          MODE: peers
+          BASE: origin/${{ github.event.changes.base.ref.from }}
+          BASE_BRANCH: ${{ github.event.changes.base.ref.from }}
           PEER: ${{ github.event.pull_request.number }}
         run: python3 .github/scripts/changelog_guard.py

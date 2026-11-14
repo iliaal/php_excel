@@ -10,20 +10,24 @@ MODE=pr (pull_request): exits 1 when merging the PR into the base branch would
     repeats another entry under the same heading (case and spacing ignored; duplicates already on
     the base branch are not blamed on the PR),
   - or, together with a lower-numbered open PR into the same base branch that also edits the
-    changelog, conflict on it or produce one of those duplicates. The later PR is the one that fails.
+    changelog, conflict on it or produce one of those duplicates. The later PR is the one that fails,
+    and its check re-runs by itself whenever that peer changes (see MODE=peers).
   Anything else inside [Unreleased], or inside a section the PR adds, is allowed: new headings,
   rewording and removals included. A PR that doesn't touch the changelog is not checked. Labels are
   read from the API, so a re-run sees the current ones.
 
-MODE=recheck (push to the base branch that touches the changelog) and MODE=peers (a PR closed without
-merging; PEER is its number): re-run this workflow's latest run on each affected open PR, so the PR's
-own check is the one signal and the label, a push or a re-run clears it. recheck covers every open PR
-that edits the changelog; peers covers the higher-numbered ones. A failure on one PR is reported and
-the loop goes on. Both modes always exit 0, because the push or close is not what's being checked.
+MODE=recheck (a push to the base branch that touches the changelog) and MODE=peers (a PR is pushed,
+reopened, retargeted, merged or closed; PEER is its number and BASE_BRANCH the branch it targeted):
+re-run the latest completed JOB job on each affected open PR, so the PR's own check is the one signal
+and the label, a push, or the peer's change clears it. recheck covers every open PR that edits the
+changelog; peers covers the higher-numbered ones. A run whose job is still queued or running is left
+alone, since it reads the current state when it starts. A failure on one PR is reported and the loop
+goes on. Both modes always exit 0, because the push or the peer is not what's being checked.
 
 Env: MODE, BASE (commit or ref to merge into), BASE_BRANCH, REPO (owner/name), PR_NUMBER in pr mode,
 PEER in peers mode, CHANGELOG (default CHANGELOG.md), OVERRIDE_LABEL (default changelog-override),
-WORKFLOW (workflow file name, default changelog-guard.yml), GH (gh binary, default gh), HEAD_REF
+WORKFLOW (workflow file name, default changelog-guard.yml), JOB (the PR check's job name, default
+Check CHANGELOG.md), GH (gh binary, default gh), HEAD_REF
 (default HEAD).
 """
 import difflib, json, os, re, subprocess, sys
@@ -31,6 +35,7 @@ import difflib, json, os, re, subprocess, sys
 CL = os.environ.get("CHANGELOG", "CHANGELOG.md")
 OVERRIDE = os.environ.get("OVERRIDE_LABEL", "changelog-override")
 WORKFLOW = os.environ.get("WORKFLOW", "changelog-guard.yml")
+JOB = os.environ.get("JOB", "Check CHANGELOG.md")
 GH = os.environ.get("GH", "gh")
 H2 = re.compile(r"^## \[([^\]]+)\]")
 H3 = re.compile(r"^### +(.+?)\s*$")
@@ -166,29 +171,42 @@ def check_peers(base, head, me, prs):
     mine = show(head) or []
     for n, _ in sorted(p for p in prs if p[0] < me):
         ref = fetch_pr(n)
+        if not touches(base, ref):
+            continue
+        again = f"this check re-runs by itself when #{n} is pushed, retargeted, merged or closed"
         tree, conflicts = merge(head, ref)
         if CL in conflicts:
-            errs.append(f"#{me}: {CL} conflicts with open #{n}; update this branch after #{n} merges")
+            errs.append(f"#{me}: {CL} conflicts with open #{n}; {again}")
             continue
         both = dup_keys(mine, released) | dup_keys(show(ref) or [], released)
-        errs += [f"#{me}: together with open #{n}, {describe(k)}; update this branch after #{n} merges"
+        errs += [f"#{me}: together with open #{n}, {describe(k)}; {again}"
                  for k in sorted(dup_keys(show(tree) or [], released) - both, key=str)]
     return errs
 
 
+def api(path):
+    return json.loads(run(GH, "api", path).stdout)
+
+
 def rerun(n, sha):
-    """Re-run this workflow's latest pull_request run on the PR's head commit. Returns a warning or None."""
-    runs = json.loads(run(GH, "api", f"repos/{repo()}/actions/workflows/{WORKFLOW}/runs"
-                                      f"?event=pull_request&head_sha={sha}&per_page=1").stdout)["workflow_runs"]
-    if not runs:
-        return f"#{n}: no {WORKFLOW} run on {sha[:7]} to re-run; push to the PR to check it"
-    r = runs[0]
-    if r["status"] != "completed":
-        print(f"#{n}: run {r['id']} is still going and checks out the current base branch")
+    """Re-run the PR's newest JOB job on its head commit (only that job, so its own peer re-runs don't
+    cascade). Runs where the job was skipped, such as a title edit, are passed over. Returns a warning
+    or None."""
+    runs = api(f"repos/{repo()}/actions/workflows/{WORKFLOW}/runs"
+               f"?event=pull_request&head_sha={sha}&per_page=20")["workflow_runs"]
+    for r in runs:  # newest first
+        jobs = [j for j in api(f"repos/{repo()}/actions/runs/{r['id']}/jobs?per_page=100")["jobs"]
+                if j["name"] == JOB and j["conclusion"] != "skipped"]
+        if not jobs:
+            continue
+        j = jobs[0]
+        if j["status"] != "completed":
+            print(f"#{n}: job {j['id']} is still {j['status']} and reads the current state when it runs")
+            return None
+        run(GH, "api", "-X", "POST", f"repos/{repo()}/actions/jobs/{j['id']}/rerun")
+        print(f"#{n}: re-ran job {j['id']}")
         return None
-    run(GH, "api", "-X", "POST", f"repos/{repo()}/actions/runs/{r['id']}/rerun")
-    print(f"#{n}: re-ran {WORKFLOW} run {r['id']}")
-    return None
+    return f"#{n}: no {JOB} job on {sha[:7]} to re-run; push to the PR to check it"
 
 
 def report(errs, warns):
