@@ -2,7 +2,7 @@ name: Changelog guard
 
 on:
   pull_request:
-    types: [opened, synchronize, reopened, labeled, unlabeled]
+    types: [opened, synchronize, reopened, labeled, unlabeled, closed]
   push:
     branches: [main, master]
     paths: [CHANGELOG.md]
@@ -10,17 +10,17 @@ on:
 permissions: {}
 
 concurrency:
-  group: changelog-guard-${{ github.event.pull_request.number || github.ref }}
+  group: changelog-guard-${{ github.event.pull_request.number || github.ref }}${{ github.event.action == 'closed' && '-closed' || '' }}
   cancel-in-progress: true
 
 jobs:
   pr:
     name: Check CHANGELOG.md
-    if: github.event_name == 'pull_request'
+    if: github.event_name == 'pull_request' && github.event.action != 'closed'
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      pull-requests: read # list open PRs to check for changelog collisions
+      pull-requests: read # list open PRs and this PR's labels
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -37,28 +37,30 @@ jobs:
           BASE: origin/${{ github.base_ref }}
           BASE_BRANCH: ${{ github.base_ref }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
-          LABELS: ${{ join(github.event.pull_request.labels.*.name, ',') }}
         run: python3 .github/scripts/changelog_guard.py
 
   recheck:
     name: Recheck open PRs
-    if: github.event_name == 'push' && github.ref_name == github.event.repository.default_branch
+    if: >-
+      (github.event_name == 'push' && github.ref_name == github.event.repository.default_branch) ||
+      (github.event.action == 'closed' && !github.event.pull_request.merged)
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      pull-requests: read # list open PRs to recheck
-      statuses: write # mark each affected PR's head commit red or green
+      pull-requests: read # list open PRs
+      actions: write # re-run each affected PR's own changelog check
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
           persist-credentials: false
-      - name: Recheck open PRs against the new base
+          ref: ${{ github.event.repository.default_branch }}
+      - name: Re-run the check on affected open PRs
         env:
           GH_TOKEN: ${{ github.token }}
           REPO: ${{ github.repository }}
-          MODE: recheck
-          BASE: ${{ github.sha }}
-          BASE_BRANCH: ${{ github.ref_name }}
-          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          MODE: ${{ github.event_name == 'push' && 'recheck' || 'peers' }}
+          BASE: ${{ github.event_name == 'push' && github.sha || format('origin/{0}', github.event.pull_request.base.ref) }}
+          BASE_BRANCH: ${{ github.event_name == 'push' && github.ref_name || github.event.pull_request.base.ref }}
+          PEER: ${{ github.event.pull_request.number }}
         run: python3 .github/scripts/changelog_guard.py

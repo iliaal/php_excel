@@ -4,26 +4,33 @@
 MODE=pr (pull_request): exits 1 when merging the PR into the base branch would
   - conflict on the changelog,
   - add, remove or change a line inside a released section, meaning a `## [x]` heading other than
-    Unreleased that already exists on the base branch (the override label turns this into a warning),
+    Unreleased that already exists on the base branch (the override label turns this into a warning;
+    link reference lines such as `[1.0.0]: https://...` are release bookkeeping and never count),
   - add a duplicate `## [x]` heading, a second `### Name` heading in one section, or an entry that
-    repeats another entry under the same heading,
-  - or, together with a lower-numbered open PR that also edits the changelog, conflict on it or
-    produce one of those duplicates. The later PR is the one that fails.
+    repeats another entry under the same heading (case and spacing ignored; duplicates already on
+    the base branch are not blamed on the PR),
+  - or, together with a lower-numbered open PR into the same base branch that also edits the
+    changelog, conflict on it or produce one of those duplicates. The later PR is the one that fails.
   Anything else inside [Unreleased], or inside a section the PR adds, is allowed: new headings,
-  rewording and removals included. A PR that doesn't touch the changelog is not checked.
+  rewording and removals included. A PR that doesn't touch the changelog is not checked. Labels are
+  read from the API, so a re-run sees the current ones.
 
-MODE=recheck (push to the base branch that touches the changelog): runs the base checks above for
-every open PR that edits the changelog and sets a `changelog-guard/base` commit status on its head
-commit, failure or success. Always exits 0, because the push itself is not what's being checked.
+MODE=recheck (push to the base branch that touches the changelog) and MODE=peers (a PR closed without
+merging; PEER is its number): re-run this workflow's latest run on each affected open PR, so the PR's
+own check is the one signal and the label, a push or a re-run clears it. recheck covers every open PR
+that edits the changelog; peers covers the higher-numbered ones. A failure on one PR is reported and
+the loop goes on. Both modes always exit 0, because the push or close is not what's being checked.
 
-Env: MODE, BASE (commit or ref to merge into), BASE_BRANCH, REPO (owner/name), PR_NUMBER and LABELS
-(comma-separated) in pr mode, CHANGELOG (default CHANGELOG.md), OVERRIDE_LABEL (default
-changelog-override), RUN_URL (optional link for statuses), GH (gh binary, default gh).
+Env: MODE, BASE (commit or ref to merge into), BASE_BRANCH, REPO (owner/name), PR_NUMBER in pr mode,
+PEER in peers mode, CHANGELOG (default CHANGELOG.md), OVERRIDE_LABEL (default changelog-override),
+WORKFLOW (workflow file name, default changelog-guard.yml), GH (gh binary, default gh), HEAD_REF
+(default HEAD).
 """
 import difflib, json, os, re, subprocess, sys
 
 CL = os.environ.get("CHANGELOG", "CHANGELOG.md")
 OVERRIDE = os.environ.get("OVERRIDE_LABEL", "changelog-override")
+WORKFLOW = os.environ.get("WORKFLOW", "changelog-guard.yml")
 GH = os.environ.get("GH", "gh")
 H2 = re.compile(r"^## \[([^\]]+)\]")
 H3 = re.compile(r"^### +(.+?)\s*$")
@@ -31,10 +38,14 @@ BULLET = re.compile(r"^[-*+]\s+(.*\S)")  # top-level entries only
 LINKREF = re.compile(r"^\[[^\]]+\]:\s")  # compare links at the bottom are release bookkeeping
 
 
+class CmdError(Exception):
+    pass
+
+
 def run(*cmd, ok=(0,)):
     p = subprocess.run(cmd, capture_output=True, text=True)
     if p.returncode not in ok:
-        sys.exit(f"{' '.join(cmd)} failed: {p.stderr.strip()}")
+        raise CmdError(f"{' '.join(cmd)} failed: {p.stderr.strip()}")
     return p
 
 
@@ -132,9 +143,17 @@ def gh_json(path):
     return items
 
 
+def repo():
+    return os.environ["REPO"]
+
+
 def open_prs():
-    prs = gh_json(f"repos/{os.environ['REPO']}/pulls?state=open&base={os.environ['BASE_BRANCH']}&per_page=100")
-    return [(p["number"], p["head"]["sha"], {l["name"] for l in p.get("labels", [])}) for p in prs]
+    prs = gh_json(f"repos/{repo()}/pulls?state=open&base={os.environ['BASE_BRANCH']}&per_page=100")
+    return [(p["number"], p["head"]["sha"]) for p in prs]
+
+
+def labels(n):
+    return {l["name"] for l in gh_json(f"repos/{repo()}/issues/{n}/labels?per_page=100")}
 
 
 def fetch_pr(n):
@@ -145,10 +164,8 @@ def fetch_pr(n):
 def check_peers(base, head, me, prs):
     errs, released = [], released_of(show(base) or [])
     mine = show(head) or []
-    for n, _, _ in sorted(p for p in prs if p[0] < me):
+    for n, _ in sorted(p for p in prs if p[0] < me):
         ref = fetch_pr(n)
-        if not touches(base, ref):
-            continue
         tree, conflicts = merge(head, ref)
         if CL in conflicts:
             errs.append(f"#{me}: {CL} conflicts with open #{n}; update this branch after #{n} merges")
@@ -159,13 +176,19 @@ def check_peers(base, head, me, prs):
     return errs
 
 
-def set_status(sha, errs):
-    desc = f"{len(errs)} changelog problem(s) after the base branch moved" if errs else "Changelog still merges cleanly"
-    args = [GH, "api", "-X", "POST", f"repos/{os.environ['REPO']}/statuses/{sha}",
-            "-f", f"state={'failure' if errs else 'success'}", "-f", "context=changelog-guard/base", "-f", f"description={desc}"]
-    if os.environ.get("RUN_URL"):
-        args += ["-f", f"target_url={os.environ['RUN_URL']}"]
-    run(*args)
+def rerun(n, sha):
+    """Re-run this workflow's latest pull_request run on the PR's head commit. Returns a warning or None."""
+    runs = json.loads(run(GH, "api", f"repos/{repo()}/actions/workflows/{WORKFLOW}/runs"
+                                      f"?event=pull_request&head_sha={sha}&per_page=1").stdout)["workflow_runs"]
+    if not runs:
+        return f"#{n}: no {WORKFLOW} run on {sha[:7]} to re-run; push to the PR to check it"
+    r = runs[0]
+    if r["status"] != "completed":
+        print(f"#{n}: run {r['id']} is still going and checks out the current base branch")
+        return None
+    run(GH, "api", "-X", "POST", f"repos/{repo()}/actions/runs/{r['id']}/rerun")
+    print(f"#{n}: re-ran {WORKFLOW} run {r['id']}")
+    return None
 
 
 def report(errs, warns):
@@ -178,30 +201,43 @@ def report(errs, warns):
             f.write("### changelog-guard\n\n" + ("\n".join(f"- {x}" for x in errs + warns) or "No changelog problems.") + "\n")
 
 
+def pr_mode(base):
+    head, me = os.environ.get("HEAD_REF", "HEAD"), int(os.environ["PR_NUMBER"])
+    if show(base) is None or not touches(base, head):
+        return print(f"{CL} not changed by #{me}, nothing to check")
+    errs, warns = check_base(base, head, f"#{me}", OVERRIDE in labels(me))
+    errs += check_peers(base, head, me, open_prs())
+    report(errs, warns)
+    sys.exit(1 if errs else 0)
+
+
+def rerun_mode(base, mode):
+    """Re-run the guard on affected open PRs. Never fails: the problems belong to the PRs."""
+    warns = []
+    try:
+        prs = open_prs()
+        if mode == "peers":
+            prs = [p for p in prs if p[0] > int(os.environ["PEER"])]
+    except (CmdError, KeyError, ValueError) as e:
+        return report([], [f"could not list open PRs: {e}"])
+    for n, sha in sorted(prs):
+        try:
+            if touches(base, fetch_pr(n)) and (w := rerun(n, sha)):
+                warns.append(w)
+        except (CmdError, KeyError, ValueError) as e:
+            warns.append(f"#{n}: could not re-run the check: {e}")
+    report([], warns)
+
+
 def main():
     base, mode = os.environ["BASE"], os.environ.get("MODE", "pr")
     if mode == "pr":
-        head, me = os.environ.get("HEAD_REF", "HEAD"), int(os.environ["PR_NUMBER"])
-        if show(base) is None or not touches(base, head):
-            return print(f"{CL} not changed by #{me}, nothing to check")
-        allow = OVERRIDE in os.environ.get("LABELS", "").split(",")
-        errs, warns = check_base(base, head, f"#{me}", allow)
-        errs += check_peers(base, head, me, open_prs())
-        report(errs, warns)
-        sys.exit(1 if errs else 0)
-    if show(base) is None:
-        return print(f"no {CL} on the base branch, nothing to recheck")
-    found = []
-    for n, sha, labels in open_prs():
-        ref = fetch_pr(n)
-        if not touches(base, ref):
-            continue
-        errs, warns = check_base(base, ref, f"#{n}", OVERRIDE in labels)
-        set_status(sha, errs)
-        print(f"#{n}: {'failure' if errs else 'success'}")
-        found += errs + warns
-    # The problems belong to the PRs (their statuses carry them), so the push itself stays green.
-    report([], found)
+        try:
+            pr_mode(base)
+        except CmdError as e:
+            sys.exit(f"changelog-guard could not run: {e}")
+    else:
+        rerun_mode(base, mode)
 
 
 if __name__ == "__main__":
