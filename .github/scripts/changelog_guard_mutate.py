@@ -48,6 +48,8 @@ M = [
     ("a PR with no check job gets a warning", '    return f"#{n}: no {JOB} job on', '    return None\n    return f"#{n}: no {JOB} job on'),
     ("a failure on one PR doesn't stop the loop", "        except (CmdError, KeyError, ValueError) as e:\n            warns.append", "        except ZeroDivisionError as e:\n            warns.append"),
     ("modes exit 0 when listing fails", "    except (CmdError, KeyError, ValueError) as e:\n        return report", "    except ZeroDivisionError as e:\n        return report"),
+    ("override warning retains changed-line details", 'f"{label}: {h} (allowed by the {OVERRIDE} label)"',
+     "f\"{label}: {h.split(':')[0]} (allowed by the {OVERRIDE} label)\""),
     # Regexes
     ("H3 strips trailing space", 'H3 = re.compile(r"^### +(.+?)\\s*$")', 'H3 = re.compile(r"^### +(.+)$")'),
     ("BULLET is top-level only", 'BULLET = re.compile(r"^[-*+]\\s+(.*\\S)")', 'BULLET = re.compile(r"^\\s*[-*+]\\s+(.*\\S)")'),
