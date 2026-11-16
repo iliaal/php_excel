@@ -236,7 +236,12 @@ class GuardTest(unittest.TestCase):
         self.f.get(1)["labels"] = ["other", "changelog-override"]
         p = self.f.run("pr", 1)
         self.assertPass(p)
-        self.assertIn("::warning", p.stdout)
+        self.assertTrue(any(
+            line.startswith("::warning title=changelog-guard::")
+            and "changes released section [1.0.0]" in line
+            and "`- First release`" in line
+            and "(allowed by the changelog-override label)" in line
+            for line in p.stdout.splitlines()), p.stdout)
 
     def test_label_does_not_clear_other_errors(self):
         self.f.pr(1, add_unreleased("- Existing fix", base=BASE_CL.replace("- First release", "- First")),
@@ -253,8 +258,12 @@ class GuardTest(unittest.TestCase):
         self.f.get(1)["labels"] = ["changelog-override"]
         p = self.f.run("pr", 1)
         self.assertPass(p)
-        self.assertIn("::warning", p.stdout)
-        self.assertIn("changes released section [1.0.0]", p.stdout)
+        self.assertTrue(any(
+            line.startswith("::warning title=changelog-guard::")
+            and "changes released section [1.0.0]" in line
+            and "`- First release`" in line
+            and "(allowed by the changelog-override label)" in line
+            for line in p.stdout.splitlines()), p.stdout)
 
     def test_empty_changelog_fails(self):
         self.f.pr(1, "")
