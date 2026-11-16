@@ -117,9 +117,8 @@ def check_base(base, head, label, allow_released):
     tree, conflicts = merge(base, head)
     if CL in conflicts:
         return [f"{label}: {CL} conflicts with the base branch; update the branch and keep entries under [Unreleased]"], []
-    old, new = show(base) or [], show(tree)
-    if new is None:
-        return [], []
+    # A deleted file removes its released entries just like an empty file.
+    old, new = show(base) or [], show(tree) or []
     osec, nsec, released = sections(old), sections(new), released_of(old)
     hits = []
     for tag, i1, i2, j1, j2 in difflib.SequenceMatcher(None, old, new, autojunk=False).get_opcodes():
