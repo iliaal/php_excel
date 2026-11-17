@@ -4,7 +4,8 @@
 MODE=pr (pull_request): exits 1 when merging the PR into the base branch would
   - conflict on the changelog,
   - add, remove or change a line inside a released section, meaning a `## [x]` heading other than
-    Unreleased that already exists on the base branch (the override label turns this into a warning;
+    Unreleased that already exists on the base branch, including whole-file deletion or renaming
+    away from the configured changelog path (the override label turns this into a warning;
     link reference lines such as `[1.0.0]: https://...` are release bookkeeping and never count),
   - add a duplicate `## [x]` heading, a second `### Name` heading in one section, or an entry that
     repeats another entry under the same heading (case and spacing ignored; duplicates already on
