@@ -377,6 +377,11 @@ class ExcelBook
 	/**
 	* Pack a date from single values into an Excel double
 	*
+	* Calendar dates before 1900 or producing serials below 1 return false,
+	* matching packDate() boundaries. All-zero year/month/day fields explicitly
+	* produce time-only values. Other calendar normalization remains LibXL-defined,
+	* including Excel's fictitious 1900-02-29 in the 1900 date system.
+	*
 	* @param int $year
 	* @param int $month
 	* @param int $day

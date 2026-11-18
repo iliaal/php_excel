@@ -3565,7 +3565,7 @@ EXCEL_METHOD(Book, packDateValues)
 
 	// all-zero date fields generate a time-only value
 	if (year != 0 || month != 0 || day != 0) {
-		if (year < 1 || year > INT_MAX) {
+		if (year < 1900 || year > INT_MAX) {
 			php_error_docref(NULL, E_WARNING, "Invalid '" ZEND_LONG_FMT "' value for year", year);
 			RETURN_FALSE;
 		}
@@ -3581,7 +3581,10 @@ EXCEL_METHOD(Book, packDateValues)
 
 	BOOK_FROM_OBJECT(book, object);
 
-	if ((dt = xlBookDatePack(book, year, month, day, hour, min, sec, 0)) == -1) {
+	dt = xlBookDatePack(book, year, month, day, hour, min, sec, 0);
+	/* Calendar serials below 1 are negative or reserved for time-only values.
+	 * Keep explicit all-zero date fields as LibXL's time-only operation. */
+	if (dt == -1 || ((year != 0 || month != 0 || day != 0) && dt < 1)) {
 		RETURN_FALSE;
 	}
 	RETURN_DOUBLE(dt);
