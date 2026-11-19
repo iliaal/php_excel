@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Windows release DLLs for PHP 8.6 (x64 and x86, TS and NTS).
 
 ### Fixed
+- On thread-safe PHP builds such as FrankenPHP on Linux with glibc, the locale changes LibXL makes while it creates, loads, saves, or releases a workbook, and in setLocale(), no longer reach other threads or PHP code. Concurrent saves could leave `LC_NUMERIC` set to `C` for the whole process, and an open workbook switched `LC_CTYPE` for every thread. LibXL now runs on a per-thread locale built from its own changes on top of `C`. phpinfo() reports the state as "LibXL locale isolation".
 - ExcelBook::packDateValues() rejects calendar years before 1900 and calendar serials below 1, matching packDate() boundaries while preserving explicit all-zero date fields for time-only values. Other LibXL calendar normalization remains unchanged.
 - ExcelBook::packDate() accepts supported pre-epoch timestamps instead of rejecting every negative timestamp. packDate() and AS_DATE writes reject local dates before 1900-01-01 (1900 system) or 1904-01-02 (1904 system), whose serials are unsupported, collide, or are reserved for time-only values.
 - Reject unsupported data-validation types, operators, and error styles with a warning and false instead of silently omitting the corresponding XLSX attributes.
@@ -26,6 +27,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Clarify that ExcelFormat::borderStyle() and borderColor() are write-only setters: omitted or null arguments leave borders unchanged, rather than reading their values.
 
 ### Changed
+- On thread-safe PHP builds on Linux with glibc, LibXL no longer follows the locale PHP code sets with setlocale(). It starts from `C` and changes only through setLocale() and its own requests, so code that relied on setlocale() reaching LibXL must call ExcelBook::setLocale() instead. Non-thread-safe builds still follow setlocale().
 - Reuse the shared row-coordinate validator in setRowHeight() and setRowPx(), preserving workbook-specific bounds and warning order.
 - Remove unreachable range-order checks from print-repeat and print-area setters; shared validators retain the existing warnings and return values.
 

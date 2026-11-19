@@ -119,6 +119,12 @@ By default, books read and write text as UTF-8 whatever the process locale is, s
 a workbook using a Latin-1 locale returns Latin-1 cell text, including after
 `load()` or `loadFile()`. See the [API reference](docs/ExcelBook.php).
 
+### Threads and the locale
+
+LibXL changes the C locale when it creates, loads, saves, or releases a workbook, and in `setLocale()`. A process has one locale, so under a thread-safe (ZTS) PHP such as FrankenPHP those changes would reach every thread. On Linux with glibc (x86_64 and aarch64), ZTS builds give LibXL a locale of its own on each thread instead. LibXL's locale changes apply only to LibXL's own calls on that thread; PHP code, PHP's `setlocale()`, and other threads never see them. LibXL's locale starts as `C` in every category LibXL has not set itself, so the locale you set with PHP's `setlocale()` does not change how LibXL converts or formats text. `phpinfo()` shows the state as "LibXL locale isolation", with the reason when it is disabled. On other platforms and on non-thread-safe builds, LibXL changes the process locale as before.
+
+This keeps LibXL from changing the locale under other threads. It does not make PHP's `setlocale()` safe on ZTS: glibc frees the previous locale names when the locale changes, so a thread that reads the process locale at the same moment can read freed memory. Set the locale before requests run, or only while no other thread is working.
+
 ## 📊 Performance
 
 Write 100,000 rows × 20 columns vs PhpSpreadsheet 5.5.0 on PHP 8.4.19 NTS, Apple M3:
