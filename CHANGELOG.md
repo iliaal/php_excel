@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Windows release DLLs for PHP 8.6 (x64 and x86, TS and NTS).
+
 ### Fixed
 - ExcelBook::packDateValues() rejects calendar years before 1900 and calendar serials below 1, matching packDate() boundaries while preserving explicit all-zero date fields for time-only values. Other LibXL calendar normalization remains unchanged.
 - ExcelBook::packDate() accepts supported pre-epoch timestamps instead of rejecting every negative timestamp. packDate() and AS_DATE writes reject local dates before 1900-01-01 (1900 system) or 1904-01-02 (1904 system), whose serials are unsupported, collide, or are reserved for time-only values.

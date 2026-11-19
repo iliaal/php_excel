@@ -10,6 +10,7 @@ build_matrix:
   - PHP-8.3
   - PHP-8.4
   - PHP-8.5
+  - PHP-8.6
 configure_base: "--with-excel --with-libxl-incdir=$HOME/ai/libxl-5.2.0.1/include_c --with-libxl-libdir=$HOME/ai/libxl-5.2.0.1/lib64"
 
 test_env:

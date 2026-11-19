@@ -169,15 +169,20 @@ jobs:
             exit 1
           fi
 
-  linux-branch:
-    name: PHP ${{ matrix.php }} - Linux (PHP-${{ matrix.php }} branch)
+  # setup-php does not ship these versions as releases yet, so build them
+  # from the verified php.net release tarball.
+  linux-source:
+    name: PHP ${{ matrix.php-src }} - Linux (release tarball)
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        php: ['8.6']
+        include:
+          - php-src: '8.6.0'
+            php-src-sha256: '5f84beaa3d763aee1e4feed99bf54ec692c383b322e25626807b589238c3a087'
     env:
-      PHP_VERSION: ${{ matrix.php }}
+      PHP_SRC: ${{ matrix.php-src }}
+      PHP_SRC_SHA256: ${{ matrix.php-src-sha256 }}
       LIBXL_VERSION: '5.2.0.1'
       WORKSPACE: ${{ github.workspace }}
 
@@ -189,18 +194,20 @@ jobs:
       - name: Install dependencies
         run: sudo apt-get update && sudo apt-get install -y re2c bison autoconf
 
-      - name: Build PHP from branch
+      - name: Build PHP from release tarball
         run: |
-          git clone --depth=1 --branch="PHP-${PHP_VERSION}" https://github.com/php/php-src.git /tmp/php-src
+          curl -fsSL "https://www.php.net/distributions/php-${PHP_SRC}.tar.xz" -o /tmp/php-src.tar.xz
+          echo "${PHP_SRC_SHA256}  /tmp/php-src.tar.xz" | sha256sum -c -
+          mkdir /tmp/php-src
+          tar -xJf /tmp/php-src.tar.xz -C /tmp/php-src --strip-components=1
           cd /tmp/php-src
-          ./buildconf --force
           ./configure \
             --disable-all \
             --enable-cli \
-            --prefix=/tmp/php-branch
+            --prefix=/tmp/php-release
           make -j$(nproc)
           make install
-          /tmp/php-branch/bin/php -v
+          /tmp/php-release/bin/php -v
 
       - name: Cache LibXL
         id: cache-libxl
@@ -222,13 +229,13 @@ jobs:
 
       - name: Build extension
         run: |
-          export PATH="/tmp/php-branch/bin:$PATH"
+          export PATH="/tmp/php-release/bin:$PATH"
           phpize
           ./configure \
             --with-excel \
             --with-libxl-incdir="${WORKSPACE}/libxl-${LIBXL_VERSION}/include_c" \
             --with-libxl-libdir="${WORKSPACE}/libxl-${LIBXL_VERSION}/lib64" \
-            --with-php-config=/tmp/php-branch/bin/php-config
+            --with-php-config=/tmp/php-release/bin/php-config
           set -o pipefail
           make -j$(nproc) 2>&1 | tee build.log
           BUILD_STATUS=${PIPESTATUS[0]}
@@ -245,17 +252,17 @@ jobs:
       - name: Run tests
         run: |
           export LD_LIBRARY_PATH="${WORKSPACE}/libxl-${LIBXL_VERSION}/lib64"
-          export TEST_PHP_EXECUTABLE=/tmp/php-branch/bin/php
+          export TEST_PHP_EXECUTABLE=/tmp/php-release/bin/php
           export TEST_PHP_ARGS="-d extension=$(pwd)/modules/excel.so"
           export NO_INTERACTION=1
-          /tmp/php-branch/bin/php -d extension=$(pwd)/modules/excel.so -r '
+          /tmp/php-release/bin/php -d extension=$(pwd)/modules/excel.so -r '
             if (!extension_loaded("excel")) {
               fwrite(STDERR, "excel extension did not load\n");
               exit(1);
             }
           '
           set -o pipefail
-          /tmp/php-branch/bin/php run-tests.php --show-diff -g FAIL,BORK,LEAK,XLEAK tests/ 2>&1 | tee test-output.txt
+          /tmp/php-release/bin/php run-tests.php --show-diff -g FAIL,BORK,LEAK,XLEAK tests/ 2>&1 | tee test-output.txt
           RUN_STATUS=${PIPESTATUS[0]}
           if [ "$RUN_STATUS" -ne 0 ]; then
             echo "::error::run-tests.php exited non-zero ($RUN_STATUS)"
