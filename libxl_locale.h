@@ -648,12 +648,45 @@ typedef struct {
 	bool found;
 	bool same_image;
 	bool overflow;
+	const char *unwrapped;
 	size_t nslots;
 	void **slots[PHP_EXCEL_LOCALE_MAX_SLOTS];
 	void *wrappers[PHP_EXCEL_LOCALE_MAX_SLOTS];
 	int prot[PHP_EXCEL_LOCALE_MAX_SLOTS];
 } php_excel_locale_scan;
 
+/* glibc functions whose result depends on the calling thread's locale. A
+ * LibXL that imports one without a wrapper above would run it under
+ * PHP's locale instead of its own, so the install is refused. */
+static const char *const php_excel_locale_dependent[] = {
+	"isalnum", "isalpha", "isblank", "iscntrl", "isdigit", "isgraph", "islower", "isprint", "ispunct",
+	"isspace", "isupper", "isxdigit", "tolower", "toupper",
+	"__ctype_b_loc", "__ctype_tolower_loc", "__ctype_toupper_loc", "__ctype_get_mb_cur_max",
+	"iswalnum", "iswalpha", "iswblank", "iswcntrl", "iswdigit", "iswgraph", "iswlower", "iswprint",
+	"iswpunct", "iswspace", "iswupper", "iswxdigit", "iswctype", "wctype", "towlower", "towupper",
+	"towctrans", "wctrans", "wcwidth", "wcswidth",
+	"mblen", "mbtowc", "wctomb", "mbstowcs", "wcstombs", "mbrlen", "mbrtowc", "wcrtomb", "mbsrtowcs",
+	"wcsrtombs", "mbsnrtowcs", "wcsnrtombs", "btowc", "wctob",
+	"strcoll", "strxfrm", "wcscoll", "wcsxfrm", "strcasecmp", "strncasecmp", "wcscasecmp", "wcsncasecmp",
+	"strcasestr",
+	"atof", "strtod", "strtof", "strtold", "strtol", "strtoll", "strtoul", "strtoull", "strtoimax",
+	"strtoumax", "wcstod", "wcstof", "wcstold", "wcstol", "wcstoll", "wcstoul", "wcstoull",
+	"__isoc23_strtol", "__isoc23_strtoll", "__isoc23_strtoul", "__isoc23_strtoull",
+	"__isoc23_wcstol", "__isoc23_wcstoll", "__isoc23_wcstoul", "__isoc23_wcstoull",
+	"printf", "fprintf", "sprintf", "snprintf", "vprintf", "vfprintf", "vsprintf", "vsnprintf",
+	"asprintf", "vasprintf", "dprintf", "vdprintf", "wprintf", "fwprintf", "swprintf", "vwprintf",
+	"vfwprintf", "vswprintf", "__printf_chk", "__fprintf_chk", "__sprintf_chk", "__snprintf_chk",
+	"__vprintf_chk", "__vfprintf_chk", "__vsprintf_chk", "__vsnprintf_chk", "__swprintf_chk",
+	"__vswprintf_chk",
+	"scanf", "fscanf", "sscanf", "vscanf", "vfscanf", "vsscanf", "wscanf", "fwscanf", "swscanf",
+	"vwscanf", "vfwscanf", "vswscanf", "__isoc99_scanf", "__isoc99_fscanf", "__isoc99_sscanf",
+	"__isoc99_vscanf", "__isoc99_vfscanf", "__isoc99_vsscanf", "__isoc99_wscanf", "__isoc99_fwscanf",
+	"__isoc99_swscanf", "__isoc99_vswscanf", "__isoc23_scanf", "__isoc23_fscanf", "__isoc23_sscanf",
+	"__isoc23_vscanf", "__isoc23_vfscanf", "__isoc23_vsscanf", "__isoc23_swscanf", "__isoc23_vswscanf",
+	"strftime", "wcsftime", "strptime", "strfmon", "nl_langinfo", "localeconv", "setlocale",
+	"iconv_open", "strerror", "strsignal", "gettext", "dgettext", "dcgettext", "regcomp", "regexec",
+	"fnmatch", "glob", "wordexp",
+};
 
 /* setlocale() and localeconv(), plus every libc function in the LibXL 4.6 to
  * 5.2 import tables whose result depends on the locale. */
@@ -717,6 +750,13 @@ static inline void php_excel_locale_scan_relocs(php_excel_locale_scan *scan, con
 			}
 		}
 		if (w == sizeof(php_excel_locale_wrappers) / sizeof(php_excel_locale_wrappers[0])) {
+			size_t d;
+
+			for (d = 0; !scan->unwrapped && d < sizeof(php_excel_locale_dependent) / sizeof(php_excel_locale_dependent[0]); d++) {
+				if (strcmp(strtab + sym->st_name, php_excel_locale_dependent[d]) == 0) {
+					scan->unwrapped = php_excel_locale_dependent[d];
+				}
+			}
 			continue;
 		}
 		if (scan->nslots == PHP_EXCEL_LOCALE_MAX_SLOTS) {
@@ -880,6 +920,13 @@ static inline bool php_excel_locale_isolation_install(const void *libxl_symbol)
 	if (scan.overflow || !has_setlocale) {
 		snprintf(php_excel_locale_isolation.status, sizeof(php_excel_locale_isolation.status),
 			"disabled (%s setlocale relocations in LibXL)", scan.overflow ? "too many" : "no");
+		return false;
+	}
+	/* Without its wrapper the function would follow PHP's locale, which is
+	 * worse than LibXL changing the process locale as it always has. */
+	if (scan.unwrapped) {
+		snprintf(php_excel_locale_isolation.status, sizeof(php_excel_locale_isolation.status),
+			"disabled (LibXL imports %s, which has no wrapper)", scan.unwrapped);
 		return false;
 	}
 	for (i = 0; i < scan.nslots; i++) {

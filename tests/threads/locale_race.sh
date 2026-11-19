@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
 # Builds tests/threads/locale_race.c against LibXL and runs it unpatched (the
 # race must reproduce) and patched (no locale change may reach another
-# thread). Linux with glibc on x86_64 or aarch64 only. Set LIBXL_LIBDIR when
+# thread). It first checks that the install is refused for a library that
+# imports a locale-dependent function without a wrapper. Linux with glibc
+# on x86_64 or aarch64 only. Set LIBXL_LIBDIR when
 # the LibXL library directory is not the one for this architecture.
 #
 # Usage: tests/threads/locale_race.sh /path/to/libxl [runs]
@@ -27,7 +29,15 @@ trap 'rm -rf "$work"' EXIT
 	"$here/locale_race.c" -o "$work/locale_race" \
 	-L"$libdir" -lxl -lpthread
 
+cflags=(-O0 -D_GNU_SOURCE -Wall -Wextra -Werror -fPIC)
+"${CC:-cc}" "${cflags[@]}" -shared "$here/locale_fake_libxl.c" -o "$work/libfake_ok.so"
+"${CC:-cc}" "${cflags[@]}" -DFAKE_UNWRAPPED -shared "$here/locale_fake_libxl.c" -o "$work/libfake_unwrapped.so"
+"${CC:-cc}" "${cflags[@]}" -I"$root" "$here/locale_unwrapped.c" -o "$work/locale_unwrapped" -ldl -lpthread
+
 status=0
+"$work/locale_unwrapped" "$work/libfake_ok.so" "enabled" || status=1
+"$work/locale_unwrapped" "$work/libfake_unwrapped.so" "disabled (LibXL imports strftime" || status=1
+
 for i in $(seq 1 "$runs"); do
 	for mode in unpatched patched; do
 		rc=0
