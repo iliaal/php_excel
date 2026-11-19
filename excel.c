@@ -35,6 +35,7 @@
 
 #include "php_excel.h"
 #include "libxl_compat.h"
+#include "libxl_locale.h"
 #include "zend_exceptions.h"
 #include "Zend/zend_smart_str.h"
 #include <locale.h>
@@ -870,7 +871,7 @@ static bool php_excel_locale_selects_utf8_decoder(const char *locale)
 {
 	return strcmp(locale, "UTF-8") == 0
 		|| php_excel_locale_name_selects_utf8_decoder(locale)
-		|| php_excel_locale_name_selects_utf8_decoder(setlocale(LC_CTYPE, NULL));
+		|| php_excel_locale_name_selects_utf8_decoder(php_excel_setlocale(LC_CTYPE, NULL));
 }
 
 /* Full state reset: bump every wrapper generation domain and drop the
@@ -951,7 +952,7 @@ static int php_excel_book_commit_scratch(zval *object, BookHandle scratch)
 	/* The scratch is a fresh libxl book, so its decoder is re-derived. The
 	 * LC_CTYPE read must precede xlBookRelease(), which restores the LC_CTYPE
 	 * that was in effect before the released book was created. */
-	utf8_decoder = php_excel_locale_name_selects_utf8_decoder(setlocale(LC_CTYPE, NULL));
+	utf8_decoder = php_excel_locale_name_selects_utf8_decoder(php_excel_setlocale(LC_CTYPE, NULL));
 	bobj->rich_text_add_failed = false;
 	if (bobj->book) {
 		xlBookRelease(bobj->book);
@@ -1593,24 +1594,24 @@ static bool php_excel_lossy_read_begin(excel_book_object *bobj, BookHandle book,
 	if (!message || (strcmp(message, "Invalid code point") != 0 && strcmp(message, "Invalid UTF-16") != 0)) {
 		return false;
 	}
-	lc_ctype = setlocale(LC_CTYPE, NULL);
+	lc_ctype = php_excel_setlocale(LC_CTYPE, NULL);
 	if (!lc_ctype) {
 		return false;
 	}
 	state->lc_ctype = estrdup(lc_ctype);
 	for (i = 0; i < sizeof(php_excel_lossy_locales) / sizeof(php_excel_lossy_locales[0]); i++) {
-		if (setlocale(LC_CTYPE, php_excel_lossy_locales[i]) && php_excel_ctype_is_utf8()) {
+		if (php_excel_setlocale(LC_CTYPE, php_excel_lossy_locales[i]) && php_excel_ctype_is_utf8()) {
 			chosen = php_excel_lossy_locales[i];
 			break;
 		}
 	}
-	setlocale(LC_CTYPE, state->lc_ctype);
+	php_excel_setlocale(LC_CTYPE, state->lc_ctype);
 	if (chosen && xlBookSetLocale(book, chosen)) {
 		return true;
 	}
 	if (chosen) {
 		xlBookSetLocale(book, bobj->locale);
-		setlocale(LC_CTYPE, state->lc_ctype);
+		php_excel_setlocale(LC_CTYPE, state->lc_ctype);
 	}
 	efree(state->lc_ctype);
 	return false;
@@ -1655,7 +1656,7 @@ static void php_excel_lossy_read_end(excel_book_object *bobj, BookHandle book, p
 	php_excel_lossy_read_keep(bobj, 1, second);
 	xlBookSetLocale(book, bobj->locale);
 	if (state->lc_ctype) {
-		setlocale(LC_CTYPE, state->lc_ctype);
+		php_excel_setlocale(LC_CTYPE, state->lc_ctype);
 		efree(state->lc_ctype);
 	}
 }
@@ -3831,7 +3832,7 @@ EXCEL_METHOD(Book, __construct)
 		/* Read before releasing a previous book, which restores the LC_CTYPE
 		 * that preceded that book's creation. */
 		utf8_decoder = utf8_locale
-			|| php_excel_locale_name_selects_utf8_decoder(setlocale(LC_CTYPE, NULL));
+			|| php_excel_locale_name_selects_utf8_decoder(php_excel_setlocale(LC_CTYPE, NULL));
 		if (obj->book) {
 			xlBookRelease(obj->book);
 			/* If the book object is being reconstructed, every existing child
@@ -11765,6 +11766,10 @@ PHP_MINIT_FUNCTION(excel)
 	REGISTER_EXCEL_CLASS_CONST_LONG(sheet, "VALIDATION_ERRSTYLE_WARNING", VALIDATION_ERRSTYLE_WARNING);
 	REGISTER_EXCEL_CLASS_CONST_LONG(sheet, "VALIDATION_ERRSTYLE_INFORMATION", VALIDATION_ERRSTYLE_INFORMATION);
 
+#ifdef ZTS
+	php_excel_locale_isolation_install((const void *) xlCreateBookCA);
+#endif
+
 	return SUCCESS;
 }
 /* }}} */
@@ -11773,10 +11778,25 @@ PHP_MINIT_FUNCTION(excel)
  */
 PHP_MSHUTDOWN_FUNCTION(excel)
 {
+	php_excel_locale_isolation_uninstall();
 	UNREGISTER_INI_ENTRIES();
 	return SUCCESS;
 }
 /* }}} */
+
+PHP_RINIT_FUNCTION(excel)
+{
+	php_excel_locale_thread_reset();
+	return SUCCESS;
+}
+
+/* Books still alive at RSHUTDOWN are released after it, so the thread is
+ * reset again once the object store is gone. */
+static ZEND_MODULE_POST_ZEND_DEACTIVATE_D(excel)
+{
+	php_excel_locale_thread_reset();
+	return SUCCESS;
+}
 
 /* {{{ PHP_MINFO_FUNCTION
  */
@@ -11789,6 +11809,11 @@ PHP_MINFO_FUNCTION(excel)
 	php_info_print_table_row(2, "Excel Version", PHP_EXCEL_VERSION);
 	snprintf(temp_api, sizeof(temp_api), "%x", LIBXL_VERSION);
 	php_info_print_table_row(2, "LibXL Version", temp_api);
+#ifdef ZTS
+	php_info_print_table_row(2, "LibXL locale isolation", php_excel_locale_isolation_status());
+#else
+	php_info_print_table_row(2, "LibXL locale isolation", "disabled (non-thread-safe build)");
+#endif
 	php_info_print_table_end();
 }
 /* }}} */
@@ -11819,14 +11844,14 @@ zend_module_entry excel_module_entry = {
 	excel_functions,
 	PHP_MINIT(excel),
 	PHP_MSHUTDOWN(excel),
-	NULL,
+	PHP_RINIT(excel),
 	NULL,
 	PHP_MINFO(excel),
 	PHP_EXCEL_VERSION,
 	PHP_MODULE_GLOBALS(excel),
 	PHP_GINIT(excel),
 	NULL,
-	NULL,
+	ZEND_MODULE_POST_ZEND_DEACTIVATE_N(excel),
 	STANDARD_MODULE_PROPERTIES_EX
 };
 /* }}} */
