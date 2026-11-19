@@ -12,7 +12,7 @@ function check($condition, $label) {
 function packWithoutWarnings($book, $parts, &$warnings) {
     $warnings = [];
     set_error_handler(function ($severity, $message) use (&$warnings) {
-        $warnings[] = $message;
+        $warnings[] = [$severity, $message];
         return true;
     });
     try {
@@ -46,6 +46,10 @@ foreach ([false, true] as $xlsx) {
             foreach ([[0, 0, 0], [12, 0, 0], [23, 59, 59]] as $time) {
                 check(packWithoutWarnings($book, [...$date, ...$time], $warnings) === false,
                     'unsupported calendar date rejected');
+                $expectedWarnings = $date[0] < 1900
+                    ? [[E_WARNING, "ExcelBook::packDateValues(): Invalid '{$date[0]}' value for year"]]
+                    : [];
+                check($warnings === $expectedWarnings, 'calendar rejection diagnostics');
             }
         }
         foreach ([[0, 0, 0], [12, 0, 0], [23, 59, 59]] as $time) {
@@ -55,13 +59,18 @@ foreach ([false, true] as $xlsx) {
             check($book->unpackDate($serial) === $seconds, 'time-only round trip');
         }
         // Invalid time validation still precedes calendar-year validation.
-        foreach ([[24, 0, 0], [0, 60, 0], [0, 0, 60]] as $time) {
+        foreach ([
+            [[24, 0, 0], "Invalid '24' value for hour"],
+            [[0, 60, 0], "Invalid '60' value for minute"],
+            [[0, 0, 60], "Invalid '60' value for second"],
+        ] as [$time, $message]) {
             check(packWithoutWarnings($book, [2024, 1, 1, ...$time], $validYearWarnings) === false,
                 'invalid time rejected');
             check(packWithoutWarnings($book, [1899, 1, 1, ...$time], $oldYearWarnings) === false,
                 'invalid time with old year rejected');
-            check(count($validYearWarnings) === 1 && $validYearWarnings === $oldYearWarnings,
-                'time validation precedence unchanged');
+            $expectedWarnings = [[E_WARNING, "ExcelBook::packDateValues(): $message"]];
+            check($validYearWarnings === $expectedWarnings, 'invalid time diagnostics');
+            check($oldYearWarnings === $expectedWarnings, 'time validation precedence unchanged');
         }
         // This change does not replace LibXL calendar normalization.
         check($book->packDateValues(2024, 2, 30, 12, 0, 0) ===
