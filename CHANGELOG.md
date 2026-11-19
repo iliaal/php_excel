@@ -27,6 +27,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Clarify that ExcelFormat::borderStyle() and borderColor() are write-only setters: omitted or null arguments leave borders unchanged, rather than reading their values.
 
 ### Changed
+- On thread-safe PHP builds on Linux with glibc, LibXL no longer follows the locale PHP code sets with setlocale(). It starts from `C` and changes only through setLocale() and its own requests, so code that relied on setlocale() reaching LibXL must call ExcelBook::setLocale() instead. Non-thread-safe builds still follow setlocale().
 - Reuse the shared row-coordinate validator in setRowHeight() and setRowPx(), preserving workbook-specific bounds and warning order.
 - Remove unreachable range-order checks from print-repeat and print-area setters; shared validators retain the existing warnings and return values.
 
