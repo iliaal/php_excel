@@ -505,19 +505,25 @@ static double php_excel_libxl_strtod(const char *s, char **end)
 	return strtod_l(s, end, php_excel_libxl_locale());
 }
 
+/* glibc 2.38 redirects these to the __isoc23_ versions under _GNU_SOURCE,
+ * which also accept a 0b prefix. LibXL imports the older ones. */
+extern long php_excel_c17_strtol_l(const char *s, char **end, int base, locale_t loc) __asm__("strtol_l");
+extern long long php_excel_c17_strtoll_l(const char *s, char **end, int base, locale_t loc) __asm__("strtoll_l");
+extern unsigned long php_excel_c17_strtoul_l(const char *s, char **end, int base, locale_t loc) __asm__("strtoul_l");
+
 static long php_excel_libxl_strtol(const char *s, char **end, int base)
 {
-	return strtol_l(s, end, base, php_excel_libxl_locale());
+	return php_excel_c17_strtol_l(s, end, base, php_excel_libxl_locale());
 }
 
 static long long php_excel_libxl_strtoll(const char *s, char **end, int base)
 {
-	return strtoll_l(s, end, base, php_excel_libxl_locale());
+	return php_excel_c17_strtoll_l(s, end, base, php_excel_libxl_locale());
 }
 
 static unsigned long php_excel_libxl_strtoul(const char *s, char **end, int base)
 {
-	return strtoul_l(s, end, base, php_excel_libxl_locale());
+	return php_excel_c17_strtoul_l(s, end, base, php_excel_libxl_locale());
 }
 
 static int php_excel_libxl_sprintf(char *s, const char *format, ...)
@@ -647,6 +653,7 @@ typedef struct {
 	void *wrappers[PHP_EXCEL_LOCALE_MAX_SLOTS];
 	int prot[PHP_EXCEL_LOCALE_MAX_SLOTS];
 } php_excel_locale_scan;
+
 
 /* setlocale() and localeconv(), plus every libc function in the LibXL 4.6 to
  * 5.2 import tables whose result depends on the locale. */
