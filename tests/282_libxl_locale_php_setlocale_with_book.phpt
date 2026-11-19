@@ -24,11 +24,14 @@ foreach ([false, true] as $xlsx) {
     printf("with book open: %.1f %s\n", 1.5, localeconv()['decimal_point']);
     var_dump(setlocale(LC_CTYPE, 'de_DE.iso88591'));
     echo "codeset with book open: ", nl_langinfo(CODESET), "\n";
-    $book->addSheet('S')->write(2, 1, 1.5);
+    $sheet = $book->addSheet('S');
+    $sheet->write(2, 1, 1.5);
+    var_dump($sheet->write(3, 1, "Grüße ä"));
     $copy = new ExcelBook(null, null, $xlsx);
     var_dump($copy->load($book->save()), $copy->getSheet(0)->read(2, 1));
+    echo "text: ", bin2hex($copy->getSheet(0)->read(3, 1)), "\n";
     printf("after save and load: %.1f %s\n", 1.5, nl_langinfo(CODESET));
-    unset($copy, $book);
+    unset($copy, $sheet, $book);
     printf("after release: %.1f %s\n", 1.5, nl_langinfo(CODESET));
     setlocale(LC_ALL, 'C');
 }
@@ -40,7 +43,9 @@ with book open: 1,5 ,
 string(14) "de_DE.iso88591"
 codeset with book open: ISO-8859-1
 bool(true)
+bool(true)
 float(1.5)
+text: 4772c3bcc39f6520c3a4
 after save and load: 1,5 ISO-8859-1
 after release: 1,5 ISO-8859-1
 == xlsx
@@ -49,6 +54,8 @@ with book open: 1,5 ,
 string(14) "de_DE.iso88591"
 codeset with book open: ISO-8859-1
 bool(true)
+bool(true)
 float(1.5)
+text: 4772c3bcc39f6520c3a4
 after save and load: 1,5 ISO-8859-1
 after release: 1,5 ISO-8859-1
