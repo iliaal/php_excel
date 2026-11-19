@@ -244,7 +244,7 @@ jobs:
             mv "$extracted" "libxl-5.2.0.1"
           fi
 
-      # 281 and tests/threads/locale_race.sh skip without these locales.
+      # 281, 282 and tests/threads/locale_race.sh skip without these locales.
       - name: Generate test locales
         run: |
           sudo localedef -i de_DE -c -f UTF-8 de_DE.UTF-8
@@ -298,9 +298,11 @@ jobs:
           export TEST_PHP_EXECUTABLE TEST_PHP_ARGS
           export NO_INTERACTION=1
           set -o pipefail
-          php run-tests.php --show-diff tests/281_libxl_locale_thread_isolation.phpt 2>&1 | tee locale-test.txt
-          if ! grep -qP 'Tests passed\s*:\s*1\b' locale-test.txt; then
-            echo "::error::281_libxl_locale_thread_isolation.phpt did not pass under ZTS"
+          php run-tests.php --show-diff \
+            tests/281_libxl_locale_thread_isolation.phpt \
+            tests/282_libxl_locale_php_setlocale_with_book.phpt 2>&1 | tee locale-test.txt
+          if ! grep -qP 'Tests passed\s*:\s*2\b' locale-test.txt; then
+            echo "::error::LibXL locale isolation tests 281 and 282 did not both pass under ZTS"
             exit 1
           fi
           tests/threads/locale_race.sh "${WORKSPACE}/libxl-5.2.0.1" 3
