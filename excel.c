@@ -1527,12 +1527,12 @@ static const char *php_excel_text_decode_error(const excel_book_object *book_obj
 #endif
 		return NULL;
 	}
-	if (mbstowcs(NULL, ZSTR_VAL(value), 0) == (size_t)-1) {
+	if (php_excel_locale_mbstowcs(NULL, ZSTR_VAL(value), 0) == (size_t)-1) {
 		return php_excel_text_unconvertible;
 	}
 #ifdef HAVE_NL_LANGINFO
 	{
-		const char *codeset = nl_langinfo(CODESET);
+		const char *codeset = php_excel_locale_codeset();
 		if (codeset && strcmp(codeset, "UTF-8") == 0 && !php_excel_is_valid_utf8(value)) {
 			return php_excel_text_invalid_utf8;
 		}
@@ -1591,7 +1591,7 @@ static const char *const php_excel_lossy_locales[] = {
 static bool php_excel_ctype_is_utf8(void)
 {
 #ifdef HAVE_NL_LANGINFO
-	const char *codeset = nl_langinfo(CODESET);
+	const char *codeset = php_excel_locale_codeset();
 	return codeset && strcmp(codeset, "UTF-8") == 0;
 #else
 	return true;

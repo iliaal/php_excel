@@ -121,9 +121,9 @@ a workbook using a Latin-1 locale returns Latin-1 cell text, including after
 
 ### Threads and the locale
 
-LibXL changes the C locale when it creates, loads, saves, or releases a workbook, and in `setLocale()`. A process has one locale, so under a thread-safe (ZTS) PHP such as FrankenPHP those changes would reach every thread. On Linux with glibc (x86_64 and aarch64), ZTS builds keep them on the thread that made the call: other threads, and the locale PHP's `setlocale()` reports, stay as they were. `phpinfo()` shows the state as "LibXL locale isolation", with the reason when it is disabled. On other platforms and on non-thread-safe builds, LibXL changes the process locale as before.
+LibXL changes the C locale when it creates, loads, saves, or releases a workbook, and in `setLocale()`. A process has one locale, so under a thread-safe (ZTS) PHP such as FrankenPHP those changes would reach every thread. On Linux with glibc (x86_64 and aarch64), ZTS builds give LibXL a locale of its own on each thread instead. LibXL's locale changes apply only to LibXL's own calls on that thread; PHP code, PHP's `setlocale()`, and other threads never see them. LibXL's locale starts as `C` in every category LibXL has not set itself, so the locale you set with PHP's `setlocale()` does not change how LibXL converts or formats text. `phpinfo()` shows the state as "LibXL locale isolation", with the reason when it is disabled. On other platforms and on non-thread-safe builds, LibXL changes the process locale as before.
 
-While LibXL holds a locale category that differs from the process locale, for example `LC_CTYPE` while a workbook is open, that thread runs on its own copy of the locale. A `setlocale()` call on that thread still changes the process locale, but the thread picks it up only at LibXL's next locale change or once it has released all its workbooks.
+This keeps LibXL from changing the locale under other threads. It does not make PHP's `setlocale()` safe on ZTS: glibc frees the previous locale names when the locale changes, so a thread that reads the process locale at the same moment can read freed memory. Set the locale before requests run, or only while no other thread is working.
 
 ## 📊 Performance
 

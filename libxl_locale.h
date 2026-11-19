@@ -16,10 +16,14 @@
 
 /* Private to excel.c. LibXL calls setlocale() around book creation, release,
  * setLocale(), load and save, which changes the locale of every thread in the
- * process. On glibc the LibXL relocations for setlocale() and localeconv()
- * are redirected to an emulation built on uselocale(), so those changes stay
- * on the calling thread. The file uses no Zend API so a standalone harness
- * can include it. */
+ * process. On glibc the LibXL relocations for setlocale() become per-thread
+ * bookkeeping: each thread records the categories LibXL set, on top of "C",
+ * and builds a locale_t from those names alone. LibXL's relocations for the
+ * locale-dependent libc functions it imports run that function under the
+ * thread's LibXL locale and return to the previous one. Outside LibXL code a
+ * thread stays on LC_GLOBAL_LOCALE, and none of this reads the global locale,
+ * which a concurrent setlocale() may be freeing. The file uses no Zend API so
+ * a standalone harness can include it. */
 
 #ifndef PHP_EXCEL_LIBXL_LOCALE_H
 #define PHP_EXCEL_LIBXL_LOCALE_H 1
@@ -47,15 +51,20 @@
 #include <errno.h>
 #include <link.h>
 #include <pthread.h>
+#include <stdarg.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/mman.h>
 #include <unistd.h>
+#include <wchar.h>
+#include <wctype.h>
+#include <ctype.h>
+#include <strings.h>
 
 #define PHP_EXCEL_LC_COUNT (LC_IDENTIFICATION + 1)
-#define PHP_EXCEL_LOCALE_MAX_SLOTS 8
+#define PHP_EXCEL_LOCALE_MAX_SLOTS 64
 
 #if defined(__x86_64__)
 # define PHP_EXCEL_R_JUMP_SLOT R_X86_64_JUMP_SLOT
@@ -70,12 +79,12 @@ typedef struct php_excel_locale_name {
 	char value[];
 } php_excel_locale_name;
 
-/* names[c] is set only while category c differs from the global locale; loc
- * is the uselocale() object for this thread, or 0 while it follows the
- * global locale. */
+/* names[c] is the category LibXL last set on this thread, or NULL for "C".
+ * loc is built from names alone, or 0 when every category is "C". */
 typedef struct {
 	locale_t loc;
 	const char *names[PHP_EXCEL_LC_COUNT];
+	const unsigned short *ctype_b;
 	struct lconv conv;
 	size_t books;
 } php_excel_thread_locale;
@@ -83,6 +92,7 @@ typedef struct {
 static struct {
 	bool active;
 	pthread_key_t key;
+	locale_t c_locale;
 	size_t nslots;
 	void **slots[PHP_EXCEL_LOCALE_MAX_SLOTS];
 	void *saved[PHP_EXCEL_LOCALE_MAX_SLOTS];
@@ -111,10 +121,11 @@ static const char *const php_excel_lc_names[PHP_EXCEL_LC_COUNT] = {
 	[LC_IDENTIFICATION] = "LC_IDENTIFICATION",
 };
 
+static char php_excel_locale_c_name[] = "C";
+
 /* LibXL keeps the pointer setlocale(cat, NULL) returned and passes it back
  * later, so every name handed out lives until the isolation is removed. The
- * set of distinct locale names a process meets is small. Interned names
- * compare by pointer. */
+ * set of distinct locale names a process meets is small. */
 static inline const char *php_excel_locale_intern(const char *name)
 {
 	php_excel_locale_name *entry;
@@ -138,13 +149,47 @@ static inline const char *php_excel_locale_intern(const char *name)
 	return entry ? entry->value : NULL;
 }
 
+/* Shared by every thread with nothing recorded; install creates it, and
+ * code that drives the emulation without installing it gets one here. */
+static inline locale_t php_excel_locale_c(void)
+{
+	locale_t c = __atomic_load_n(&php_excel_locale_isolation.c_locale, __ATOMIC_ACQUIRE);
+	locale_t fresh;
+
+	if (c) {
+		return c;
+	}
+	fresh = newlocale(LC_ALL_MASK, "C", (locale_t) 0);
+	if (!fresh) {
+		return (locale_t) 0;
+	}
+	if (!__atomic_compare_exchange_n(&php_excel_locale_isolation.c_locale, &c, fresh, false, __ATOMIC_ACQ_REL, __ATOMIC_ACQUIRE)) {
+		freelocale(fresh);
+		return c;
+	}
+	return fresh;
+}
+
+static inline locale_t php_excel_thread_locale_obj(const php_excel_thread_locale *tl)
+{
+	return tl && tl->loc ? tl->loc : php_excel_locale_c();
+}
+
+static inline void php_excel_thread_locale_set_obj(php_excel_thread_locale *tl, locale_t loc)
+{
+	locale_t effective;
+
+	if (tl->loc) {
+		freelocale(tl->loc);
+	}
+	tl->loc = loc;
+	effective = php_excel_thread_locale_obj(tl);
+	tl->ctype_b = effective ? effective->__ctype_b : NULL;
+}
+
 static inline void php_excel_thread_locale_clear(php_excel_thread_locale *tl)
 {
-	if (tl->loc) {
-		uselocale(LC_GLOBAL_LOCALE);
-		freelocale(tl->loc);
-		tl->loc = (locale_t) 0;
-	}
+	php_excel_thread_locale_set_obj(tl, (locale_t) 0);
 	memset(tl->names, 0, sizeof(tl->names));
 }
 
@@ -164,19 +209,16 @@ static inline php_excel_thread_locale *php_excel_thread_locale_get(void)
 			free(tl);
 			tl = NULL;
 		}
+		if (tl) {
+			php_excel_thread_locale_set_obj(tl, (locale_t) 0);
+		}
 	}
 	return tl;
 }
 
 static inline const char *php_excel_thread_locale_name(const php_excel_thread_locale *tl, int category)
 {
-	const char *global;
-
-	if (tl->names[category]) {
-		return tl->names[category];
-	}
-	global = setlocale(category, NULL);
-	return global ? php_excel_locale_intern(global) : NULL;
+	return tl->names[category] ? tl->names[category] : php_excel_locale_c_name;
 }
 
 /* Same form glibc uses: one name when every category agrees, otherwise
@@ -195,12 +237,9 @@ static inline const char *php_excel_thread_locale_all_name(const php_excel_threa
 			continue;
 		}
 		names[c] = php_excel_thread_locale_name(tl, c);
-		if (!names[c]) {
-			return NULL;
-		}
 		if (!first) {
 			first = names[c];
-		} else if (names[c] != first) {
+		} else if (strcmp(names[c], first) != 0) {
 			same = false;
 		}
 		len += strlen(php_excel_lc_names[c]) + strlen(names[c]) + 2;
@@ -223,15 +262,16 @@ static inline const char *php_excel_thread_locale_all_name(const php_excel_threa
 	return result;
 }
 
-/* setlocale() for the calling thread only. Categories that match the global
- * locale are not pinned, so the thread keeps following the global locale for
- * them, and a thread with nothing pinned goes back to LC_GLOBAL_LOCALE. */
+/* setlocale() as LibXL sees it, for the calling thread only. It changes
+ * nothing the thread runs on outside LibXL's libc calls. A new locale is
+ * built from "C" and the names already recorded, so neither LC_GLOBAL_LOCALE
+ * nor setlocale() is consulted. */
 static inline char *php_excel_thread_setlocale(int category, const char *value)
 {
 	php_excel_thread_locale *tl;
 	const char *names[PHP_EXCEL_LC_COUNT];
 	locale_t loc, next;
-	bool pinned = false;
+	bool any = false;
 	int mask, c, err;
 
 	if (category < 0 || category >= PHP_EXCEL_LC_COUNT) {
@@ -240,16 +280,15 @@ static inline char *php_excel_thread_setlocale(int category, const char *value)
 	}
 	tl = php_excel_thread_locale_get();
 	if (!tl) {
-		/* Without per-thread state the process-wide behavior is the only
-		 * one left; LibXL cannot handle a NULL from a query. */
-		return setlocale(category, value);
+		errno = ENOMEM;
+		return NULL;
 	}
 	if (!value) {
 		return (char *) (category == LC_ALL ? php_excel_thread_locale_all_name(tl) : php_excel_thread_locale_name(tl, category));
 	}
 
 	mask = category == LC_ALL ? LC_ALL_MASK : 1 << category;
-	loc = duplocale(LC_GLOBAL_LOCALE);
+	loc = newlocale(LC_ALL_MASK, "C", (locale_t) 0);
 	if (!loc) {
 		return NULL;
 	}
@@ -277,10 +316,17 @@ static inline char *php_excel_thread_setlocale(int category, const char *value)
 
 	memcpy(names, tl->names, sizeof(names));
 	for (c = 0; c < PHP_EXCEL_LC_COUNT; c++) {
+		const char *name;
+
 		if (c == LC_ALL || !(mask & (1 << c))) {
 			continue;
 		}
-		names[c] = php_excel_locale_intern(nl_langinfo_l(_NL_LOCALE_NAME(c), loc));
+		name = nl_langinfo_l(_NL_LOCALE_NAME(c), loc);
+		if (!name || strcmp(name, "C") == 0) {
+			names[c] = NULL;
+			continue;
+		}
+		names[c] = php_excel_locale_intern(name);
 		if (!names[c]) {
 			freelocale(loc);
 			errno = ENOMEM;
@@ -288,93 +334,229 @@ static inline char *php_excel_thread_setlocale(int category, const char *value)
 		}
 	}
 	for (c = 0; c < PHP_EXCEL_LC_COUNT; c++) {
-		const char *global;
-
-		if (!names[c]) {
-			continue;
-		}
-		global = setlocale(c, NULL);
-		if (global && php_excel_locale_intern(global) == names[c]) {
-			names[c] = NULL;
-		} else {
-			pinned = true;
-		}
+		any = any || names[c];
 	}
-
-	if (pinned) {
-		uselocale(loc);
-	} else {
-		uselocale(LC_GLOBAL_LOCALE);
+	if (!any) {
 		freelocale(loc);
 		loc = (locale_t) 0;
 	}
-	if (tl->loc) {
-		freelocale(tl->loc);
-	}
-	tl->loc = loc;
+	php_excel_thread_locale_set_obj(tl, loc);
 	memcpy(tl->names, names, sizeof(names));
 
 	return (char *) (category == LC_ALL ? php_excel_thread_locale_all_name(tl) : php_excel_thread_locale_name(tl, category));
 }
 
-/* What LibXL's setlocale() relocation points at once installed. */
+static inline locale_t php_excel_libxl_locale(void)
+{
+	return php_excel_thread_locale_obj(php_excel_thread_locale_get());
+}
+
+/* Runs one libc call under the thread's LibXL locale, keeping its errno. */
+#define PHP_EXCEL_LIBXL_CALL(type, call) do { \
+		locale_t php_excel_prev_ = uselocale(php_excel_libxl_locale()); \
+		type php_excel_ret_ = (call); \
+		int php_excel_err_ = errno; \
+		uselocale(php_excel_prev_); \
+		errno = php_excel_err_; \
+		return php_excel_ret_; \
+	} while (0)
+
+#define PHP_EXCEL_LIBXL_VCALL(type, last, vcall) do { \
+		va_list ap; \
+		locale_t php_excel_prev_; \
+		type php_excel_ret_; \
+		int php_excel_err_; \
+		va_start(ap, last); \
+		php_excel_prev_ = uselocale(php_excel_libxl_locale()); \
+		php_excel_ret_ = (vcall); \
+		php_excel_err_ = errno; \
+		uselocale(php_excel_prev_); \
+		va_end(ap); \
+		errno = php_excel_err_; \
+		return php_excel_ret_; \
+	} while (0)
+
+/* The plain names, not the ISO C99 ones the headers redirect to: LibXL
+ * imports sscanf and swscanf, which keep the GNU %a extension. */
+extern int php_excel_gnu_vsscanf(const char *s, const char *format, va_list ap) __asm__("vsscanf");
+extern int php_excel_gnu_vswscanf(const wchar_t *s, const wchar_t *format, va_list ap) __asm__("vswscanf");
+
 static char *php_excel_libxl_setlocale(int category, const char *value)
 {
 	return php_excel_thread_setlocale(category, value);
 }
 
-static inline char php_excel_langinfo_char(nl_item item)
+static inline char php_excel_langinfo_char(nl_item item, locale_t loc)
 {
-	return *nl_langinfo(item);
+	return *nl_langinfo_l(item, loc);
 }
 
-static inline char *php_excel_langinfo_grouping(nl_item item)
+static inline char *php_excel_langinfo_grouping(nl_item item, locale_t loc)
 {
-	char *grouping = nl_langinfo(item);
+	char *grouping = nl_langinfo_l(item, loc);
 
 	return *grouping == '\177' || *grouping == '\377' ? (char *) "" : grouping;
 }
 
-/* glibc's localeconv() fills one static struct for the whole process, so a
- * LibXL call running under LC_NUMERIC "C" would publish "." to every thread
- * that reads it. This builds the same fields from the calling thread's
- * locale into per-thread storage instead. */
+/* glibc's localeconv() fills one static struct for the whole process; this
+ * fills per-thread storage from the thread's LibXL locale instead. */
 static struct lconv *php_excel_libxl_localeconv(void)
 {
 	php_excel_thread_locale *tl = php_excel_thread_locale_get();
 	struct lconv *conv;
+	locale_t loc;
 
 	if (!tl) {
 		return localeconv();
 	}
+	loc = php_excel_thread_locale_obj(tl);
+	if (!loc) {
+		return localeconv();
+	}
 	conv = &tl->conv;
-	conv->decimal_point = nl_langinfo(RADIXCHAR);
-	conv->thousands_sep = nl_langinfo(THOUSEP);
-	conv->grouping = php_excel_langinfo_grouping(__GROUPING);
-	conv->int_curr_symbol = nl_langinfo(__INT_CURR_SYMBOL);
-	conv->currency_symbol = nl_langinfo(__CURRENCY_SYMBOL);
-	conv->mon_decimal_point = nl_langinfo(__MON_DECIMAL_POINT);
-	conv->mon_thousands_sep = nl_langinfo(__MON_THOUSANDS_SEP);
-	conv->mon_grouping = php_excel_langinfo_grouping(__MON_GROUPING);
-	conv->positive_sign = nl_langinfo(__POSITIVE_SIGN);
-	conv->negative_sign = nl_langinfo(__NEGATIVE_SIGN);
-	conv->int_frac_digits = php_excel_langinfo_char(__INT_FRAC_DIGITS);
-	conv->frac_digits = php_excel_langinfo_char(__FRAC_DIGITS);
-	conv->p_cs_precedes = php_excel_langinfo_char(__P_CS_PRECEDES);
-	conv->p_sep_by_space = php_excel_langinfo_char(__P_SEP_BY_SPACE);
-	conv->n_cs_precedes = php_excel_langinfo_char(__N_CS_PRECEDES);
-	conv->n_sep_by_space = php_excel_langinfo_char(__N_SEP_BY_SPACE);
-	conv->p_sign_posn = php_excel_langinfo_char(__P_SIGN_POSN);
-	conv->n_sign_posn = php_excel_langinfo_char(__N_SIGN_POSN);
-	conv->int_p_cs_precedes = php_excel_langinfo_char(__INT_P_CS_PRECEDES);
-	conv->int_p_sep_by_space = php_excel_langinfo_char(__INT_P_SEP_BY_SPACE);
-	conv->int_n_cs_precedes = php_excel_langinfo_char(__INT_N_CS_PRECEDES);
-	conv->int_n_sep_by_space = php_excel_langinfo_char(__INT_N_SEP_BY_SPACE);
-	conv->int_p_sign_posn = php_excel_langinfo_char(__INT_P_SIGN_POSN);
-	conv->int_n_sign_posn = php_excel_langinfo_char(__INT_N_SIGN_POSN);
+	conv->decimal_point = nl_langinfo_l(RADIXCHAR, loc);
+	conv->thousands_sep = nl_langinfo_l(THOUSEP, loc);
+	conv->grouping = php_excel_langinfo_grouping(__GROUPING, loc);
+	conv->int_curr_symbol = nl_langinfo_l(__INT_CURR_SYMBOL, loc);
+	conv->currency_symbol = nl_langinfo_l(__CURRENCY_SYMBOL, loc);
+	conv->mon_decimal_point = nl_langinfo_l(__MON_DECIMAL_POINT, loc);
+	conv->mon_thousands_sep = nl_langinfo_l(__MON_THOUSANDS_SEP, loc);
+	conv->mon_grouping = php_excel_langinfo_grouping(__MON_GROUPING, loc);
+	conv->positive_sign = nl_langinfo_l(__POSITIVE_SIGN, loc);
+	conv->negative_sign = nl_langinfo_l(__NEGATIVE_SIGN, loc);
+	conv->int_frac_digits = php_excel_langinfo_char(__INT_FRAC_DIGITS, loc);
+	conv->frac_digits = php_excel_langinfo_char(__FRAC_DIGITS, loc);
+	conv->p_cs_precedes = php_excel_langinfo_char(__P_CS_PRECEDES, loc);
+	conv->p_sep_by_space = php_excel_langinfo_char(__P_SEP_BY_SPACE, loc);
+	conv->n_cs_precedes = php_excel_langinfo_char(__N_CS_PRECEDES, loc);
+	conv->n_sep_by_space = php_excel_langinfo_char(__N_SEP_BY_SPACE, loc);
+	conv->p_sign_posn = php_excel_langinfo_char(__P_SIGN_POSN, loc);
+	conv->n_sign_posn = php_excel_langinfo_char(__N_SIGN_POSN, loc);
+	conv->int_p_cs_precedes = php_excel_langinfo_char(__INT_P_CS_PRECEDES, loc);
+	conv->int_p_sep_by_space = php_excel_langinfo_char(__INT_P_SEP_BY_SPACE, loc);
+	conv->int_n_cs_precedes = php_excel_langinfo_char(__INT_N_CS_PRECEDES, loc);
+	conv->int_n_sep_by_space = php_excel_langinfo_char(__INT_N_SEP_BY_SPACE, loc);
+	conv->int_p_sign_posn = php_excel_langinfo_char(__INT_P_SIGN_POSN, loc);
+	conv->int_n_sign_posn = php_excel_langinfo_char(__INT_N_SIGN_POSN, loc);
 	return conv;
 }
 
+/* The inline ctype macros LibXL was built with index this table, and the
+ * compiler may keep the returned pointer across calls, so it points at
+ * per-thread storage that follows the LibXL locale. */
+static const unsigned short **php_excel_libxl_ctype_b_loc(void)
+{
+	php_excel_thread_locale *tl = php_excel_thread_locale_get();
+
+	if (!tl || !tl->ctype_b) {
+		return __ctype_b_loc();
+	}
+	return &tl->ctype_b;
+}
+
+static size_t php_excel_libxl_ctype_get_mb_cur_max(void)
+{
+	PHP_EXCEL_LIBXL_CALL(size_t, __ctype_get_mb_cur_max());
+}
+
+static size_t php_excel_libxl_mbstowcs(wchar_t *dst, const char *src, size_t n)
+{
+	PHP_EXCEL_LIBXL_CALL(size_t, mbstowcs(dst, src, n));
+}
+
+static size_t php_excel_libxl_wcstombs(char *dst, const wchar_t *src, size_t n)
+{
+	PHP_EXCEL_LIBXL_CALL(size_t, wcstombs(dst, src, n));
+}
+
+static size_t php_excel_libxl_wcrtomb(char *s, wchar_t wc, mbstate_t *ps)
+{
+	PHP_EXCEL_LIBXL_CALL(size_t, wcrtomb(s, wc, ps));
+}
+
+static int php_excel_libxl_isalnum(int c) { return isalnum_l(c, php_excel_libxl_locale()); }
+static int php_excel_libxl_isalpha(int c) { return isalpha_l(c, php_excel_libxl_locale()); }
+static int php_excel_libxl_isspace(int c) { return isspace_l(c, php_excel_libxl_locale()); }
+static int php_excel_libxl_isxdigit(int c) { return isxdigit_l(c, php_excel_libxl_locale()); }
+static int php_excel_libxl_tolower(int c) { return tolower_l(c, php_excel_libxl_locale()); }
+static int php_excel_libxl_toupper(int c) { return toupper_l(c, php_excel_libxl_locale()); }
+static int php_excel_libxl_iswalnum(wint_t c) { return iswalnum_l(c, php_excel_libxl_locale()); }
+static int php_excel_libxl_iswalpha(wint_t c) { return iswalpha_l(c, php_excel_libxl_locale()); }
+static int php_excel_libxl_iswdigit(wint_t c) { return iswdigit_l(c, php_excel_libxl_locale()); }
+static wint_t php_excel_libxl_towlower(wint_t c) { return towlower_l(c, php_excel_libxl_locale()); }
+
+static int php_excel_libxl_strcasecmp(const char *a, const char *b)
+{
+	return strcasecmp_l(a, b, php_excel_libxl_locale());
+}
+
+static int php_excel_libxl_strcoll(const char *a, const char *b)
+{
+	return strcoll_l(a, b, php_excel_libxl_locale());
+}
+
+static int php_excel_libxl_wcscasecmp(const wchar_t *a, const wchar_t *b)
+{
+	return wcscasecmp_l(a, b, php_excel_libxl_locale());
+}
+
+static double php_excel_libxl_strtod(const char *s, char **end)
+{
+	return strtod_l(s, end, php_excel_libxl_locale());
+}
+
+static long php_excel_libxl_strtol(const char *s, char **end, int base)
+{
+	return strtol_l(s, end, base, php_excel_libxl_locale());
+}
+
+static long long php_excel_libxl_strtoll(const char *s, char **end, int base)
+{
+	return strtoll_l(s, end, base, php_excel_libxl_locale());
+}
+
+static unsigned long php_excel_libxl_strtoul(const char *s, char **end, int base)
+{
+	return strtoul_l(s, end, base, php_excel_libxl_locale());
+}
+
+static int php_excel_libxl_sprintf(char *s, const char *format, ...)
+{
+	PHP_EXCEL_LIBXL_VCALL(int, format, vsprintf(s, format, ap));
+}
+
+static int php_excel_libxl_snprintf(char *s, size_t n, const char *format, ...)
+{
+	PHP_EXCEL_LIBXL_VCALL(int, format, vsnprintf(s, n, format, ap));
+}
+
+static int php_excel_libxl_vsnprintf(char *s, size_t n, const char *format, va_list ap)
+{
+	PHP_EXCEL_LIBXL_CALL(int, vsnprintf(s, n, format, ap));
+}
+
+static int php_excel_libxl_fprintf(FILE *stream, const char *format, ...)
+{
+	PHP_EXCEL_LIBXL_VCALL(int, format, vfprintf(stream, format, ap));
+}
+
+static int php_excel_libxl_swprintf(wchar_t *s, size_t n, const wchar_t *format, ...)
+{
+	PHP_EXCEL_LIBXL_VCALL(int, format, vswprintf(s, n, format, ap));
+}
+
+static int php_excel_libxl_sscanf(const char *s, const char *format, ...)
+{
+	PHP_EXCEL_LIBXL_VCALL(int, format, php_excel_gnu_vsscanf(s, format, ap));
+}
+
+static int php_excel_libxl_swscanf(const wchar_t *s, const wchar_t *format, ...)
+{
+	PHP_EXCEL_LIBXL_VCALL(int, format, php_excel_gnu_vswscanf(s, format, ap));
+}
+
+/* php_excel's own setlocale() calls and the checks that predict how LibXL
+ * converts text use the same per-thread state as LibXL. */
 static inline char *php_excel_setlocale(int category, const char *value)
 {
 	if (php_excel_locale_isolation.active) {
@@ -383,9 +565,25 @@ static inline char *php_excel_setlocale(int category, const char *value)
 	return setlocale(category, value);
 }
 
-/* Drops whatever the calling thread pinned, for request boundaries: a book
- * released after its request has changed the global locale would otherwise
- * leave the worker thread pinned for every later request. */
+static inline size_t php_excel_locale_mbstowcs(wchar_t *dst, const char *src, size_t n)
+{
+	if (php_excel_locale_isolation.active) {
+		return php_excel_libxl_mbstowcs(dst, src, n);
+	}
+	return mbstowcs(dst, src, n);
+}
+
+static inline const char *php_excel_locale_codeset(void)
+{
+	if (php_excel_locale_isolation.active) {
+		return nl_langinfo_l(CODESET, php_excel_libxl_locale());
+	}
+	return nl_langinfo(CODESET);
+}
+
+/* Drops the calling thread's LibXL locale, for request boundaries. It also
+ * puts the thread back on LC_GLOBAL_LOCALE in case a bailout left a LibXL
+ * libc call before it could switch back. */
 static inline void php_excel_locale_thread_reset(void)
 {
 	php_excel_thread_locale *tl;
@@ -393,6 +591,7 @@ static inline void php_excel_locale_thread_reset(void)
 	if (!php_excel_locale_isolation.active) {
 		return;
 	}
+	uselocale(LC_GLOBAL_LOCALE);
 	tl = pthread_getspecific(php_excel_locale_isolation.key);
 	if (tl) {
 		php_excel_thread_locale_clear(tl);
@@ -414,10 +613,10 @@ static inline void php_excel_locale_book_created(void)
 }
 
 /* Each release restores the LC_CTYPE its book saw at creation, so books
- * released out of creation order leave a pin behind. Once the thread holds
- * no book, LibXL has nothing left to restore and the thread goes back to the
- * global locale. FrankenPHP workers skip RINIT between requests, so this,
- * not the request hooks, is what ends such a pin there. */
+ * released out of creation order leave a LibXL locale behind. Once the
+ * thread holds no book, LibXL has nothing left to restore and the thread's
+ * LibXL locale goes back to "C". FrankenPHP workers skip RINIT between
+ * requests, so this, not the request hooks, is what ends it there. */
 static inline void php_excel_locale_book_released(void)
 {
 	php_excel_thread_locale *tl;
@@ -449,12 +648,43 @@ typedef struct {
 	int prot[PHP_EXCEL_LOCALE_MAX_SLOTS];
 } php_excel_locale_scan;
 
+/* setlocale() and localeconv(), plus every libc function in the LibXL 4.6 to
+ * 5.2 import tables whose result depends on the locale. */
 static const struct {
 	const char *name;
 	void *wrapper;
 } php_excel_locale_wrappers[] = {
 	{ "setlocale", (void *) php_excel_libxl_setlocale },
 	{ "localeconv", (void *) php_excel_libxl_localeconv },
+	{ "__ctype_b_loc", (void *) php_excel_libxl_ctype_b_loc },
+	{ "__ctype_get_mb_cur_max", (void *) php_excel_libxl_ctype_get_mb_cur_max },
+	{ "mbstowcs", (void *) php_excel_libxl_mbstowcs },
+	{ "wcstombs", (void *) php_excel_libxl_wcstombs },
+	{ "wcrtomb", (void *) php_excel_libxl_wcrtomb },
+	{ "isalnum", (void *) php_excel_libxl_isalnum },
+	{ "isalpha", (void *) php_excel_libxl_isalpha },
+	{ "isspace", (void *) php_excel_libxl_isspace },
+	{ "isxdigit", (void *) php_excel_libxl_isxdigit },
+	{ "tolower", (void *) php_excel_libxl_tolower },
+	{ "toupper", (void *) php_excel_libxl_toupper },
+	{ "iswalnum", (void *) php_excel_libxl_iswalnum },
+	{ "iswalpha", (void *) php_excel_libxl_iswalpha },
+	{ "iswdigit", (void *) php_excel_libxl_iswdigit },
+	{ "towlower", (void *) php_excel_libxl_towlower },
+	{ "strcasecmp", (void *) php_excel_libxl_strcasecmp },
+	{ "strcoll", (void *) php_excel_libxl_strcoll },
+	{ "wcscasecmp", (void *) php_excel_libxl_wcscasecmp },
+	{ "strtod", (void *) php_excel_libxl_strtod },
+	{ "strtol", (void *) php_excel_libxl_strtol },
+	{ "strtoll", (void *) php_excel_libxl_strtoll },
+	{ "strtoul", (void *) php_excel_libxl_strtoul },
+	{ "sprintf", (void *) php_excel_libxl_sprintf },
+	{ "snprintf", (void *) php_excel_libxl_snprintf },
+	{ "vsnprintf", (void *) php_excel_libxl_vsnprintf },
+	{ "fprintf", (void *) php_excel_libxl_fprintf },
+	{ "swprintf", (void *) php_excel_libxl_swprintf },
+	{ "sscanf", (void *) php_excel_libxl_sscanf },
+	{ "swscanf", (void *) php_excel_libxl_swscanf },
 };
 
 static inline void php_excel_locale_scan_relocs(php_excel_locale_scan *scan, const struct dl_phdr_info *info,
@@ -592,19 +822,21 @@ static inline int php_excel_locale_scan_object(struct dl_phdr_info *info, size_t
 	return 1;
 }
 
-static inline bool php_excel_locale_write_slot(void **slot, void *value, int prot)
+/* 0 on success; -1 when nothing was written; -2 when the slot holds the new
+ * value but its page could not be made read-only again. */
+static inline int php_excel_locale_write_slot(void **slot, void *value, int prot)
 {
 	uintptr_t pagesize = (uintptr_t) sysconf(_SC_PAGESIZE);
 	void *page = (void *) ((uintptr_t) slot & ~(pagesize - 1));
 
 	if (!(prot & PROT_WRITE) && mprotect(page, pagesize, prot | PROT_WRITE) != 0) {
-		return false;
+		return -1;
 	}
 	__atomic_store_n(slot, value, __ATOMIC_SEQ_CST);
-	if (!(prot & PROT_WRITE)) {
-		mprotect(page, pagesize, prot);
+	if (!(prot & PROT_WRITE) && mprotect(page, pagesize, prot) != 0) {
+		return -2;
 	}
-	return true;
+	return 0;
 }
 
 /* libxl_symbol is the address of any function LibXL exports; it identifies
@@ -646,28 +878,46 @@ static inline bool php_excel_locale_isolation_install(const void *libxl_symbol)
 	for (i = 0; i < scan.nslots; i++) {
 		if (scan.prot[i] < 0) {
 			snprintf(php_excel_locale_isolation.status, sizeof(php_excel_locale_isolation.status),
-				"disabled (setlocale relocation outside LibXL segments)");
+				"disabled (locale relocation outside LibXL segments)");
 			return false;
 		}
 	}
+	php_excel_locale_isolation.c_locale = newlocale(LC_ALL_MASK, "C", (locale_t) 0);
+	if (!php_excel_locale_isolation.c_locale) {
+		snprintf(php_excel_locale_isolation.status, sizeof(php_excel_locale_isolation.status),
+			"disabled (newlocale failed)");
+		return false;
+	}
 	if (pthread_key_create(&php_excel_locale_isolation.key, php_excel_thread_locale_dtor) != 0) {
+		freelocale(php_excel_locale_isolation.c_locale);
+		php_excel_locale_isolation.c_locale = (locale_t) 0;
 		snprintf(php_excel_locale_isolation.status, sizeof(php_excel_locale_isolation.status),
 			"disabled (pthread_key_create failed)");
 		return false;
 	}
 	php_excel_locale_isolation.active = true;
 	for (i = 0; i < scan.nslots; i++) {
+		int written;
+
 		php_excel_locale_isolation.slots[i] = scan.slots[i];
 		php_excel_locale_isolation.prot[i] = scan.prot[i];
 		php_excel_locale_isolation.saved[i] = __atomic_load_n(scan.slots[i], __ATOMIC_SEQ_CST);
-		if (!php_excel_locale_write_slot(scan.slots[i], scan.wrappers[i], scan.prot[i])) {
+		written = php_excel_locale_write_slot(scan.slots[i], scan.wrappers[i], scan.prot[i]);
+		if (written != 0) {
 			int err = errno;
 
+			/* A page left writable is not worth running with; put every
+			 * slot back, this one included when it was written. */
+			if (written == -2) {
+				i++;
+			}
 			while (i-- > 0) {
 				php_excel_locale_write_slot(scan.slots[i], php_excel_locale_isolation.saved[i], scan.prot[i]);
 			}
-			pthread_key_delete(php_excel_locale_isolation.key);
 			php_excel_locale_isolation.active = false;
+			pthread_key_delete(php_excel_locale_isolation.key);
+			freelocale(php_excel_locale_isolation.c_locale);
+			php_excel_locale_isolation.c_locale = (locale_t) 0;
 			snprintf(php_excel_locale_isolation.status, sizeof(php_excel_locale_isolation.status),
 				"disabled (mprotect failed: %s)", strerror(err));
 			return false;
@@ -682,20 +932,32 @@ static inline bool php_excel_locale_isolation_install(const void *libxl_symbol)
 	return true;
 }
 
-/* Restores LibXL's relocations before this code can be unloaded. Threads
- * other than the caller that still pin a locale keep it until they exit. */
+/* Restores LibXL's relocations before this code can be unloaded. When a
+ * slot cannot be written back, LibXL still calls into this file, so the
+ * state it needs is kept. pthread_key_delete() runs no destructor, so the
+ * per-thread state of threads other than the caller is leaked; nothing
+ * refers to it once the relocations are restored. */
 static inline void php_excel_locale_isolation_uninstall(void)
 {
 	php_excel_thread_locale *tl;
 	php_excel_locale_name *entry;
+	bool restored = true;
 	size_t i;
 
 	if (!php_excel_locale_isolation.active) {
 		return;
 	}
 	for (i = 0; i < php_excel_locale_isolation.nslots; i++) {
-		php_excel_locale_write_slot(php_excel_locale_isolation.slots[i], php_excel_locale_isolation.saved[i],
-			php_excel_locale_isolation.prot[i]);
+		/* -2 leaves a writable page behind but the original binding is back. */
+		if (php_excel_locale_write_slot(php_excel_locale_isolation.slots[i], php_excel_locale_isolation.saved[i],
+				php_excel_locale_isolation.prot[i]) == -1) {
+			restored = false;
+		}
+	}
+	if (!restored) {
+		snprintf(php_excel_locale_isolation.status, sizeof(php_excel_locale_isolation.status),
+			"enabled (relocations could not be restored)");
+		return;
 	}
 	php_excel_locale_isolation.nslots = 0;
 	tl = pthread_getspecific(php_excel_locale_isolation.key);
@@ -706,6 +968,8 @@ static inline void php_excel_locale_isolation_uninstall(void)
 	pthread_key_delete(php_excel_locale_isolation.key);
 	php_excel_locale_isolation.active = false;
 	php_excel_locale_isolation.localeconv = false;
+	freelocale(php_excel_locale_isolation.c_locale);
+	php_excel_locale_isolation.c_locale = (locale_t) 0;
 	while ((entry = php_excel_locale_isolation.names)) {
 		php_excel_locale_isolation.names = entry->next;
 		free(entry);
@@ -719,6 +983,8 @@ static inline const char *php_excel_locale_isolation_status(void)
 }
 
 #else
+
+#include <stdlib.h>
 
 static inline bool php_excel_locale_isolation_install(const void *libxl_symbol)
 {
@@ -746,6 +1012,19 @@ static inline char *php_excel_setlocale(int category, const char *value)
 {
 	return setlocale(category, value);
 }
+
+static inline size_t php_excel_locale_mbstowcs(wchar_t *dst, const char *src, size_t n)
+{
+	return mbstowcs(dst, src, n);
+}
+
+#ifdef HAVE_NL_LANGINFO
+# include <langinfo.h>
+static inline const char *php_excel_locale_codeset(void)
+{
+	return nl_langinfo(CODESET);
+}
+#endif
 
 static inline const char *php_excel_locale_isolation_status(void)
 {
