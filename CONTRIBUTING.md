@@ -50,6 +50,7 @@ Check if the issue is already reported and try to reproduce with the latest `mas
 - Keep cell count under ~300 per workbook (trial read limit); create fresh `ExcelBook` instances to reset
 - Test both success and failure/edge cases
 - Use `new ExcelBook(null, null, true)` for xlsx-specific features
+- Changes to `libxl_locale.h` need the threaded locale check as well, which is not a PHPT. On Linux with glibc and the `de_DE.utf8` locale installed, run `tests/threads/locale_race.sh /path/to/libxl`; it exits 0 when the unpatched run reproduces the cross-thread locale change and the patched run shows none
 - Tests needing a licensed LibXL (row 0, large cell counts, 5.x-only APIs where noted) must skip cleanly without a key with this `--SKIPIF--` snippet:
   ```php
   <?php if (!extension_loaded("excel") || !ExcelBook::requiresKey() || !ini_get("excel.license_name") || !ini_get("excel.license_key")) print "skip"; ?>
