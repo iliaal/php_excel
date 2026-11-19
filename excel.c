@@ -905,6 +905,24 @@ static inline int php_excel_book_reset_state(zval *book_zv) {
  * check always runs before any dereference, so a committed swap cannot
  * strand them on the released handle. */
 
+/* Every book this extension creates and releases goes through these two, so
+ * the per-thread locale state knows when the thread holds no book. */
+static BookHandle php_excel_book_new(bool xlsx)
+{
+	BookHandle book = xlsx ? xlCreateXMLBook() : xlCreateBook();
+
+	if (book) {
+		php_excel_locale_book_created();
+	}
+	return book;
+}
+
+static void php_excel_book_release(BookHandle book)
+{
+	xlBookRelease(book);
+	php_excel_locale_book_released();
+}
+
 /* Allocate a scratch book with the object's own flavor for one reload
  * attempt. The stored per-book credentials (or the INI fallback, which is
  * process-pinned) and the stored locale are applied so a committed swap
@@ -912,7 +930,7 @@ static inline int php_excel_book_reset_state(zval *book_zv) {
 static BookHandle php_excel_book_create_scratch(zval *object)
 {
 	excel_book_object *bobj = Z_EXCEL_BOOK_OBJ_P(object);
-	BookHandle scratch = bobj->is_xlsx ? xlCreateXMLBook() : xlCreateBook();
+	BookHandle scratch = php_excel_book_new(bobj->is_xlsx);
 
 	if (!scratch) {
 		return NULL;
@@ -955,7 +973,7 @@ static int php_excel_book_commit_scratch(zval *object, BookHandle scratch)
 	utf8_decoder = php_excel_locale_name_selects_utf8_decoder(php_excel_setlocale(LC_CTYPE, NULL));
 	bobj->rich_text_add_failed = false;
 	if (bobj->book) {
-		xlBookRelease(bobj->book);
+		php_excel_book_release(bobj->book);
 	}
 	bobj->book = scratch;
 	if (bobj->locale) {
@@ -1114,7 +1132,7 @@ static void excel_book_object_free_storage(zend_object *object)
 	zend_object_std_dtor(&intern->std);
 
 	if (intern->book) {
-		xlBookRelease(intern->book);
+		php_excel_book_release(intern->book);
 		intern->book = NULL;
 	}
 	if (intern->license_name) {
@@ -2382,11 +2400,11 @@ EXCEL_METHOD(Book, load)
 	PHP_EXCEL_LOAD_TEXT(loaded, php_excel_book_object_fetch_object(Z_OBJ_P(object)), scratch, xlBookLoadRaw(scratch, ZSTR_VAL(data_zs), ZSTR_LEN(data_zs)));
 	if (!loaded) {
 		php_error_docref(NULL, E_WARNING, "Failed to load workbook: %s", xlBookErrorMessage(scratch));
-		xlBookRelease(scratch);
+		php_excel_book_release(scratch);
 		RETURN_FALSE;
 	}
 	if (!php_excel_book_commit_scratch(object, scratch)) {
-		xlBookRelease(scratch);
+		php_excel_book_release(scratch);
 		RETURN_FALSE;
 	}
 	RETURN_TRUE;
@@ -2430,17 +2448,17 @@ EXCEL_METHOD(Book, loadFile)
 	if (libxl_name) {
 		BOOK_BEGIN_SCRATCH_RELOAD(scratch, object);
 		if (!php_excel_libxl_name_decodable(php_excel_book_object_fetch_object(Z_OBJ_P(object)), libxl_name, PHP_EXCEL_LIBXL_NAME_LOAD)) {
-			xlBookRelease(scratch);
+			php_excel_book_release(scratch);
 			goto load_through_stream;
 		}
 		PHP_EXCEL_LOAD_TEXT(loaded, php_excel_book_object_fetch_object(Z_OBJ_P(object)), scratch, xlBookLoad(scratch, libxl_name));
 		if (!loaded) {
 			php_error_docref(NULL, E_WARNING, "Failed to load workbook: %s", xlBookErrorMessage(scratch));
-			xlBookRelease(scratch);
+			php_excel_book_release(scratch);
 			RETURN_FALSE;
 		}
 		if (!php_excel_book_commit_scratch(object, scratch)) {
-			xlBookRelease(scratch);
+			php_excel_book_release(scratch);
 			RETURN_FALSE;
 		}
 		RETURN_TRUE;
@@ -2493,12 +2511,12 @@ load_through_stream:
 	PHP_EXCEL_LOAD_TEXT(loaded, php_excel_book_object_fetch_object(Z_OBJ_P(object)), scratch, xlBookLoadRaw(scratch, ZSTR_VAL(contents), ZSTR_LEN(contents)));
 	if (!loaded) {
 		php_error_docref(NULL, E_WARNING, "Failed to load workbook: %s", xlBookErrorMessage(scratch));
-		xlBookRelease(scratch);
+		php_excel_book_release(scratch);
 		zend_string_release(contents);
 		RETURN_FALSE;
 	}
 	if (!php_excel_book_commit_scratch(object, scratch)) {
-		xlBookRelease(scratch);
+		php_excel_book_release(scratch);
 		zend_string_release(contents);
 		RETURN_FALSE;
 	}
@@ -2535,11 +2553,11 @@ EXCEL_METHOD(Book, loadPartially)
 	PHP_EXCEL_LOAD_TEXT(loaded, php_excel_book_object_fetch_object(Z_OBJ_P(object)), scratch, xlBookLoadRawPartially(scratch, ZSTR_VAL(data_zs), (unsigned) ZSTR_LEN(data_zs), (int) sheet_index, (int) row_first, (int) row_last, keep_all_sheets));
 	if (!loaded) {
 		php_error_docref(NULL, E_WARNING, "Failed to load workbook: %s", xlBookErrorMessage(scratch));
-		xlBookRelease(scratch);
+		php_excel_book_release(scratch);
 		RETURN_FALSE;
 	}
 	if (!php_excel_book_commit_scratch(object, scratch)) {
-		xlBookRelease(scratch);
+		php_excel_book_release(scratch);
 		RETURN_FALSE;
 	}
 	RETURN_TRUE;
@@ -2586,17 +2604,17 @@ EXCEL_METHOD(Book, loadFilePartially)
 	if (libxl_name) {
 		BOOK_BEGIN_SCRATCH_RELOAD(scratch, object);
 		if (!php_excel_libxl_name_decodable(php_excel_book_object_fetch_object(Z_OBJ_P(object)), libxl_name, PHP_EXCEL_LIBXL_NAME_LOAD)) {
-			xlBookRelease(scratch);
+			php_excel_book_release(scratch);
 			goto load_through_stream;
 		}
 		PHP_EXCEL_LOAD_TEXT(loaded, php_excel_book_object_fetch_object(Z_OBJ_P(object)), scratch, xlBookLoadPartially(scratch, libxl_name, (int) sheet_index, (int) row_first, (int) row_last, keep_all_sheets));
 		if (!loaded) {
 			php_error_docref(NULL, E_WARNING, "Failed to load workbook: %s", xlBookErrorMessage(scratch));
-			xlBookRelease(scratch);
+			php_excel_book_release(scratch);
 			RETURN_FALSE;
 		}
 		if (!php_excel_book_commit_scratch(object, scratch)) {
-			xlBookRelease(scratch);
+			php_excel_book_release(scratch);
 			RETURN_FALSE;
 		}
 		RETURN_TRUE;
@@ -2643,12 +2661,12 @@ load_through_stream:
 	PHP_EXCEL_LOAD_TEXT(loaded, php_excel_book_object_fetch_object(Z_OBJ_P(object)), scratch, xlBookLoadRawPartially(scratch, ZSTR_VAL(contents), (unsigned) ZSTR_LEN(contents), (int) sheet_index, (int) row_first, (int) row_last, keep_all_sheets));
 	if (!loaded) {
 		php_error_docref(NULL, E_WARNING, "Failed to load workbook: %s", xlBookErrorMessage(scratch));
-		xlBookRelease(scratch);
+		php_excel_book_release(scratch);
 		zend_string_release(contents);
 		RETURN_FALSE;
 	}
 	if (!php_excel_book_commit_scratch(object, scratch)) {
-		xlBookRelease(scratch);
+		php_excel_book_release(scratch);
 		zend_string_release(contents);
 		RETURN_FALSE;
 	}
@@ -2697,18 +2715,18 @@ EXCEL_METHOD(Book, loadFileWithoutEmptyCells)
 
 	BOOK_BEGIN_SCRATCH_RELOAD(scratch, object);
 	if (!php_excel_libxl_name_decodable(php_excel_book_object_fetch_object(Z_OBJ_P(object)), libxl_name, PHP_EXCEL_LIBXL_NAME_LOAD)) {
-		xlBookRelease(scratch);
+		php_excel_book_release(scratch);
 		php_error_docref(NULL, E_WARNING, "Failed to load workbook: %s", php_excel_libxl_name_undecodable);
 		RETURN_FALSE;
 	}
 	PHP_EXCEL_LOAD_TEXT(loaded, php_excel_book_object_fetch_object(Z_OBJ_P(object)), scratch, xlBookLoadWithoutEmptyCells(scratch, libxl_name));
 	if (!loaded) {
 		php_error_docref(NULL, E_WARNING, "Failed to load workbook: %s", xlBookErrorMessage(scratch));
-		xlBookRelease(scratch);
+		php_excel_book_release(scratch);
 		RETURN_FALSE;
 	}
 	if (!php_excel_book_commit_scratch(object, scratch)) {
-		xlBookRelease(scratch);
+		php_excel_book_release(scratch);
 		RETURN_FALSE;
 	}
 	RETURN_TRUE;
@@ -3817,11 +3835,7 @@ EXCEL_METHOD(Book, __construct)
 
 	{
 		excel_book_object *obj = Z_EXCEL_BOOK_OBJ_P(object);
-		if (new_excel) {
-			book = xlCreateXMLBook();
-		} else {
-			book = xlCreateBook();
-		}
+		book = php_excel_book_new(new_excel);
 		if (!book) {
 			zend_throw_exception(NULL, "Failed to create book", 0);
 			RETURN_THROWS();
@@ -3834,7 +3848,7 @@ EXCEL_METHOD(Book, __construct)
 		utf8_decoder = utf8_locale
 			|| php_excel_locale_name_selects_utf8_decoder(php_excel_setlocale(LC_CTYPE, NULL));
 		if (obj->book) {
-			xlBookRelease(obj->book);
+			php_excel_book_release(obj->book);
 			/* If the book object is being reconstructed, every existing child
 			 * wrapper now references freed libxl handles. Bump generation so
 			 * any subsequent use of those wrappers fails the stale-check
@@ -4183,16 +4197,16 @@ EXCEL_METHOD(Book, loadInfo)
 			PHP_EXCEL_LOAD_TEXT(loaded, php_excel_book_object_fetch_object(Z_OBJ_P(object)), scratch, xlBookLoadInfo(scratch, libxl_name));
 			if (!loaded) {
 				php_error_docref(NULL, E_WARNING, "Failed to load workbook: %s", xlBookErrorMessage(scratch));
-				xlBookRelease(scratch);
+				php_excel_book_release(scratch);
 				RETURN_FALSE;
 			}
 			if (!php_excel_book_commit_info_scratch(object, scratch)) {
-				xlBookRelease(scratch);
+				php_excel_book_release(scratch);
 				RETURN_FALSE;
 			}
 			RETURN_TRUE;
 		}
-		xlBookRelease(scratch);
+		php_excel_book_release(scratch);
 #if LIBXL_VERSION < 0x05000100
 		php_error_docref(NULL, E_WARNING, "Failed to load workbook: %s", php_excel_libxl_name_undecodable);
 		RETURN_FALSE;
@@ -4234,12 +4248,12 @@ EXCEL_METHOD(Book, loadInfo)
 	PHP_EXCEL_LOAD_TEXT(loaded, php_excel_book_object_fetch_object(Z_OBJ_P(object)), scratch, xlBookLoadInfoRaw(scratch, ZSTR_VAL(contents), (unsigned) ZSTR_LEN(contents)));
 	if (!loaded) {
 		php_error_docref(NULL, E_WARNING, "Failed to load workbook: %s", xlBookErrorMessage(scratch));
-		xlBookRelease(scratch);
+		php_excel_book_release(scratch);
 		zend_string_release(contents);
 		RETURN_FALSE;
 	}
 	if (!php_excel_book_commit_info_scratch(object, scratch)) {
-		xlBookRelease(scratch);
+		php_excel_book_release(scratch);
 		zend_string_release(contents);
 		RETURN_FALSE;
 	}
@@ -4444,11 +4458,11 @@ EXCEL_METHOD(Book, loadInfoRaw)
 	PHP_EXCEL_LOAD_TEXT(loaded, php_excel_book_object_fetch_object(Z_OBJ_P(object)), scratch, xlBookLoadInfoRaw(scratch, ZSTR_VAL(data), ZSTR_LEN(data)));
 	if (!loaded) {
 		php_error_docref(NULL, E_WARNING, "Failed to load workbook: %s", xlBookErrorMessage(scratch));
-		xlBookRelease(scratch);
+		php_excel_book_release(scratch);
 		RETURN_FALSE;
 	}
 	if (!php_excel_book_commit_info_scratch(object, scratch)) {
-		xlBookRelease(scratch);
+		php_excel_book_release(scratch);
 		RETURN_FALSE;
 	}
 	RETURN_TRUE;

@@ -77,6 +77,7 @@ typedef struct {
 	locale_t loc;
 	const char *names[PHP_EXCEL_LC_COUNT];
 	struct lconv conv;
+	size_t books;
 } php_excel_thread_locale;
 
 static struct {
@@ -395,12 +396,52 @@ static inline void php_excel_locale_thread_reset(void)
 	tl = pthread_getspecific(php_excel_locale_isolation.key);
 	if (tl) {
 		php_excel_thread_locale_clear(tl);
+		tl->books = 0;
+	}
+}
+
+static inline void php_excel_locale_book_created(void)
+{
+	php_excel_thread_locale *tl;
+
+	if (!php_excel_locale_isolation.active) {
+		return;
+	}
+	tl = php_excel_thread_locale_get();
+	if (tl) {
+		tl->books++;
+	}
+}
+
+/* Each release restores the LC_CTYPE its book saw at creation, so books
+ * released out of creation order leave a pin behind. Once the thread holds
+ * no book, LibXL has nothing left to restore and the thread goes back to the
+ * global locale. FrankenPHP workers skip RINIT between requests, so this,
+ * not the request hooks, is what ends such a pin there. */
+static inline void php_excel_locale_book_released(void)
+{
+	php_excel_thread_locale *tl;
+
+	if (!php_excel_locale_isolation.active) {
+		return;
+	}
+	tl = pthread_getspecific(php_excel_locale_isolation.key);
+	if (!tl) {
+		return;
+	}
+	if (tl->books > 0) {
+		tl->books--;
+	}
+	if (tl->books == 0) {
+		php_excel_thread_locale_clear(tl);
 	}
 }
 
 typedef struct {
 	uintptr_t target;
+	uintptr_t self;
 	bool found;
+	bool same_image;
 	bool overflow;
 	size_t nslots;
 	void **slots[PHP_EXCEL_LOCALE_MAX_SLOTS];
@@ -506,6 +547,15 @@ static inline int php_excel_locale_scan_object(struct dl_phdr_info *info, size_t
 		return 0;
 	}
 	scan->found = true;
+	for (i = 0; i < info->dlpi_phnum; i++) {
+		const ElfW(Phdr) *ph = &info->dlpi_phdr[i];
+		uintptr_t start = info->dlpi_addr + ph->p_vaddr;
+
+		if (ph->p_type == PT_LOAD && scan->self >= start && scan->self < start + ph->p_memsz) {
+			scan->same_image = true;
+			return 1;
+		}
+	}
 	if (!dyn) {
 		return 1;
 	}
@@ -571,10 +621,18 @@ static inline bool php_excel_locale_isolation_install(const void *libxl_symbol)
 	}
 	memset(&scan, 0, sizeof(scan));
 	scan.target = (uintptr_t) libxl_symbol;
+	scan.self = (uintptr_t) php_excel_libxl_setlocale;
 	dl_iterate_phdr(php_excel_locale_scan_object, &scan);
 	if (!scan.found) {
 		snprintf(php_excel_locale_isolation.status, sizeof(php_excel_locale_isolation.status),
 			"disabled (LibXL image not found)");
+		return false;
+	}
+	/* A static build links LibXL into the same image as this code; its
+	 * relocations then belong to PHP as a whole. */
+	if (scan.same_image) {
+		snprintf(php_excel_locale_isolation.status, sizeof(php_excel_locale_isolation.status),
+			"disabled (LibXL is not a separate shared library)");
 		return false;
 	}
 	for (i = 0; i < scan.nslots; i++) {
@@ -673,6 +731,14 @@ static inline void php_excel_locale_isolation_uninstall(void)
 }
 
 static inline void php_excel_locale_thread_reset(void)
+{
+}
+
+static inline void php_excel_locale_book_created(void)
+{
+}
+
+static inline void php_excel_locale_book_released(void)
 {
 }
 

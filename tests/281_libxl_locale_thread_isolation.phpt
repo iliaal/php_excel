@@ -58,9 +58,9 @@ foreach ([false, true] as $xlsx) {
     check('setLocale()');
     unset($copy, $sheet, $book);
     check('release');
-    /* Each release restores the LC_CTYPE its book saw at creation, and reloads
-     * release books out of that order, so the thread keeps the C.UTF-8 that a
-     * process-wide LibXL would have left in every thread. */
+    /* Reloads release books out of creation order, which leaves a
+     * process-wide LibXL on C.UTF-8. With no book left the thread is back on
+     * the global C locale. */
     echo "thread codeset: ", nl_langinfo(CODESET), "\n";
 }
 ?>
@@ -81,7 +81,7 @@ loadFile(): unchanged, 1,5
 bool(true)
 setLocale(): unchanged, 1,5
 release: unchanged, 1,5
-thread codeset: UTF-8
+thread codeset: ANSI_X3.4-1968
 == xlsx
 create: unchanged, 1,5
 bool(true)
@@ -97,4 +97,4 @@ loadFile(): unchanged, 1,5
 bool(true)
 setLocale(): unchanged, 1,5
 release: unchanged, 1,5
-thread codeset: UTF-8
+thread codeset: ANSI_X3.4-1968
