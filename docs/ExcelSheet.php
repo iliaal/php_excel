@@ -182,7 +182,8 @@ class ExcelSheet
 	* - Numbers recognized by LibXL as dates are interpreted using PHP's
 	*   configured timezone and return integer Unix timestamps. Time-only serials
 	*   in [0, 1) return integer seconds since midnight instead. Number formatting
-	*   affects date detection.
+	*   affects date detection. Calendar serials do not carry a timezone;
+	*   changing PHP's default timezone can change the timestamp read back.
 	* - Strings return string and booleans return bool.
 	* - CELLTYPE_EMPTY returns ''; CELLTYPE_BLANK returns null.
 	* - Error cells return an integer ExcelSheet::ERRORTYPE_* code, not '#DIV/0!'
