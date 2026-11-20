@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.10.0] - 2026-11-20
+
 ### Added
 - Windows release DLLs for PHP 8.6 (x64 and x86, TS and NTS).
 
@@ -25,6 +27,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Clarify nullable integer parameters and getter mode for individual ExcelFormat borders and fill properties.
 - Document the name returned by ExcelSheet::getIndexRange(), its zero-based index, and false result for missing ranges.
 - Clarify that ExcelFormat::borderStyle() and borderColor() are write-only setters: omitted or null arguments leave borders unchanged, rather than reading their values.
+- Document that ExcelTable::autoFilter() creates the filter when absent, and show checking its handle before chaining; isAutoFilter() is a read-only probe on LibXL 5.2.0 and later.
+- Document null|false returns for ExcelSheet and ExcelBook setters that extension validation can reject, and false returns from ExcelConditionalFormat, ExcelFormControl, and ExcelTable getters on an uninitialized or stale wrapper.
+- Document that a successful ExcelSheet::removeFilter() or ExcelTable::removeFilter() invalidates every ExcelAutoFilter and ExcelFilterColumn wrapper in the workbook.
+- Correct the print-repeat row and column parameter types to int in the ExcelSheet docs.
 
 ### Changed
 - On thread-safe PHP builds on Linux with glibc, LibXL no longer follows the locale PHP code sets with setlocale(). It starts from `C` and changes only through setLocale() and its own requests, so code that relied on setlocale() reaching LibXL must call ExcelBook::setLocale() instead. Non-thread-safe builds still follow setlocale().
@@ -878,7 +884,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.8] - 2010-08-01
 	* Initial Release
 
-[Unreleased]: https://github.com/iliaal/php_excel/compare/2.9.1...HEAD
+[Unreleased]: https://github.com/iliaal/php_excel/compare/2.10.0...HEAD
+[2.10.0]: https://github.com/iliaal/php_excel/releases/tag/2.10.0
 [2.9.1]: https://github.com/iliaal/php_excel/releases/tag/2.9.1
 [2.9.0]: https://github.com/iliaal/php_excel/releases/tag/2.9.0
 [2.7.0]: https://github.com/iliaal/php_excel/releases/tag/2.7.0
