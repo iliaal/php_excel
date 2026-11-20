@@ -109,3 +109,46 @@ jobs:
             echo "::error::No PHPT tests passed"
             exit 1
           fi
+
+  report:
+    name: Report master result
+    needs: php-master
+    # Runs for the weekly schedule and manual runs only; the job above never
+    # fails the workflow, so this is what surfaces a break without a PR.
+    if: ${{ always() && (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      actions: read # read this run's job conclusions
+      issues: write # open, comment on, and close the tracking issue
+    steps:
+      - name: Open, update, or close the tracking issue
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RUN_ID: ${{ github.run_id }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          JOB_NAME: PHP 8.7 (master, advisory)
+          TITLE: PHP master (8.7-dev) build is failing
+        run: |
+          set -euo pipefail
+          conclusion=$(gh run view "$RUN_ID" --json jobs --jq '.jobs[] | select(.name == env.JOB_NAME) | .conclusion')
+          issue=$(gh issue list --state open --limit 100 --json number,title --jq '.[] | select(.title == env.TITLE) | .number' | head -n 1)
+          echo "job conclusion: ${conclusion:-unknown}; open issue: ${issue:-none}"
+          case "$conclusion" in
+            failure|timed_out)
+              if [ -n "$issue" ]; then
+                gh issue comment "$issue" --body "Still failing against php-src master: $RUN_URL"
+              else
+                gh issue create --title "$TITLE" --body "The advisory job that builds and tests against php-src master (PHP 8.7-dev) failed: $RUN_URL
+
+          This issue closes itself after a later scheduled or manual run passes."
+              fi
+              ;;
+            success)
+              if [ -n "$issue" ]; then
+                gh issue comment "$issue" --body "Passing against php-src master again: $RUN_URL"
+                gh issue close "$issue"
+              fi
+              ;;
+          esac
