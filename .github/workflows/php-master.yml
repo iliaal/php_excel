@@ -1,0 +1,111 @@
+name: PHP master (advisory)
+
+# Builds against php-src master through setup-php's nightly build. The job is
+# continue-on-error, so a master regression shows up without blocking merges.
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+  workflow_dispatch:
+  schedule:
+    - cron: '23 6 * * 1'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: php-master-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  php-master:
+    name: PHP 8.7 (master, advisory)
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    timeout-minutes: 30
+    env:
+      LIBXL_VERSION: '5.2.0.1'
+      WORKSPACE: ${{ github.workspace }}
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@3c21e10268bafaf84c59e8f4e65b39acacb62ca4 # main # zizmor: ignore[stale-action-refs,ref-version-mismatch]
+        with:
+          php-version: '8.7'
+          tools: phpize, php-config
+
+      - name: Show PHP version
+        run: php -v
+
+      - name: Cache LibXL
+        id: cache-libxl
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: libxl-${{ env.LIBXL_VERSION }}
+          key: libxl-lin-${{ env.LIBXL_VERSION }}-v1
+
+      - name: Download LibXL
+        if: steps.cache-libxl.outputs.cache-hit != 'true'
+        run: |
+          curl -fsSL "https://www.libxl.com/download/libxl-lin-${LIBXL_VERSION}.tar.gz" -o libxl.tar.gz
+          tar xzf libxl.tar.gz
+          # tarball extracts as libxl-X.Y.Z.0, normalize to libxl-X.Y.Z
+          extracted=$(find . -maxdepth 1 -type d -name 'libxl-*' -printf '%f\n' | head -1)
+          if [ "$extracted" != "libxl-${LIBXL_VERSION}" ]; then
+            mv "$extracted" "libxl-${LIBXL_VERSION}"
+          fi
+          ls "libxl-${LIBXL_VERSION}/include_c/libxl.h"
+
+      - name: Build extension
+        run: |
+          phpize
+          ./configure \
+            --with-excel \
+            --with-libxl-incdir="${WORKSPACE}/libxl-${LIBXL_VERSION}/include_c" \
+            --with-libxl-libdir="${WORKSPACE}/libxl-${LIBXL_VERSION}/lib64"
+          set -o pipefail
+          make -j"$(nproc)" 2>&1 | tee build.log
+          BUILD_STATUS=${PIPESTATUS[0]}
+          if [ "$BUILD_STATUS" -ne 0 ]; then
+            echo "::error::Build failed (make exited $BUILD_STATUS)"
+            exit 1
+          fi
+          WARNINGS=$(grep -c 'warning:' build.log || true)
+          if [ "$WARNINGS" -gt 0 ]; then
+            echo "::error::Build produced $WARNINGS warning(s)"
+            exit 1
+          fi
+
+      - name: Run tests
+        run: |
+          export LD_LIBRARY_PATH="${WORKSPACE}/libxl-${LIBXL_VERSION}/lib64"
+          TEST_PHP_EXECUTABLE=$(command -v php)
+          TEST_PHP_ARGS="-d extension=$PWD/modules/excel.so"
+          export TEST_PHP_EXECUTABLE TEST_PHP_ARGS
+          export NO_INTERACTION=1
+          php -d "extension=$PWD/modules/excel.so" -r '
+            if (!extension_loaded("excel")) {
+              fwrite(STDERR, "excel extension did not load\n");
+              exit(1);
+            }
+          '
+          set -o pipefail
+          php run-tests.php --show-diff -g FAIL,BORK,LEAK,XLEAK tests/ 2>&1 | tee test-output.txt
+          RUN_STATUS=${PIPESTATUS[0]}
+          if [ "$RUN_STATUS" -ne 0 ]; then
+            echo "::error::run-tests.php exited non-zero ($RUN_STATUS)"
+            exit 1
+          fi
+          if grep -qP 'Tests (failed|leaked)\s*:\s*[1-9]' test-output.txt; then
+            echo "::error::Tests failed or leaked"
+            exit 1
+          fi
+          if ! grep -qP 'Tests passed\s*:\s*[1-9][0-9]*' test-output.txt; then
+            echo "::error::No PHPT tests passed"
+            exit 1
+          fi
