@@ -13,6 +13,12 @@ Native C extension for reading and writing Excel files in PHP, powered by [LibXL
 
 ## 🚀 Install
 
+### Unix source builds
+
+The PIE and manual commands below build the extension from source. Source
+builds require [LibXL](https://www.libxl.com/) headers version 4.6.0 or later
+and the corresponding library. Some APIs require a newer LibXL version.
+
 Via [PIE](https://github.com/php/pie) (PHP Foundation's PECL successor):
 
 ```bash
@@ -34,7 +40,18 @@ sudo make install
 
 Then add `extension=excel.so` to your `php.ini`.
 
-LibXL is a commercial library; download it from [libxl.com](http://www.libxl.com/) and point the configure flags at its `include_c` and `lib64` directories.
+LibXL is a commercial library. Download it from [libxl.com](https://www.libxl.com/)
+and point the configure flags at the appropriate header and library directories.
+
+### Windows release archives
+
+Check the assets for the [release you want](https://github.com/iliaal/php_excel/releases)
+and select the archive matching your PHP minor version, architecture (x86 or
+x64), and thread-safety mode (TS or NTS). Release [2.9.1](https://github.com/iliaal/php_excel/releases/tag/2.9.1)
+has those four variants for each PHP minor from 8.1 through 8.5. The repository
+also builds PHP 8.6 on Windows in CI, but that does not make PHP 8.6 archives
+available in 2.9.1. The LibXL header minimum above applies to source builds,
+not to the runtime compatibility of the published DLLs.
 
 ## 🛠️ Getting started
 
