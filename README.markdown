@@ -89,6 +89,20 @@ $book->save('output.xlsx');
 
 `save()` stages the workbook to a temporary sibling file and renames it into place, so a failed save leaves the destination untouched. If the rename fails, local-path saves fail closed (return `false`); stream wrappers that omit `rename()` fall back to a direct write with a warning. Failed handle creation and rejected header, footer, font-size, and staging inputs emit warnings naming the cause. Suppress them with `@` only where you handle `false` explicitly.
 
+### Dates and timezones
+
+A calendar date stored by `ExcelFormat::AS_DATE` is an Excel serial without
+a timezone. php_excel uses PHP's current default timezone to convert a Unix
+timestamp into local date and time fields when writing, and to interpret
+those fields when LibXL recognizes a cell as a date. This also applies to
+`ExcelBook::packDate()` and `ExcelBook::unpackDate()`.
+
+Reading in a different timezone can return a different timestamp. Even in
+the same timezone, two instants during the repeated hour at the end of
+daylight saving time can become the same serial. For instant-based data, use
+UTC on both write and read if you control the workbook's date convention,
+or store the timestamp or UTC offset separately.
+
 ### Using sheets after deletion or reordering
 
 A successful `deleteSheet()` invalidates every existing `ExcelSheet` wrapper

@@ -358,7 +358,9 @@ class ExcelBook
 	}
 
 	/**
-	* Pack a unix timestamp into an Excel double using PHP's configured timezone
+	* Pack a Unix timestamp into an Excel double using PHP's default timezone.
+	* The serial stores local calendar fields, not the offset; distinct
+	* instants in a repeated local hour can produce the same serial.
 	*
 	* Negative timestamps are accepted when the local date is on or after
 	* 1900-01-01 in the 1900 date system, or 1904-01-02 in the 1904 system,
@@ -375,7 +377,8 @@ class ExcelBook
 	}
 
 	/**
-	* Pack a date from single values into an Excel double
+	* Pack calendar fields directly into an Excel double without a PHP
+	* timezone conversion.
 	*
 	* Calendar dates before 1900 or producing serials below 1 return false,
 	* matching packDate() boundaries. All-zero year/month/day fields explicitly
@@ -395,7 +398,9 @@ class ExcelBook
 	}
 
 	/**
-	* Unpack an Excel double into a unix timestamp using PHP's configured timezone
+	* Unpack an Excel double using PHP's current default timezone.
+	* Calendar serials do not carry an offset. A different default timezone
+	* can return a different Unix timestamp from the same serial.
 	*
 	* Time-only serials in [0, 1) return seconds since midnight. Calendar dates
 	* outside the platform's PHP integer range return false.
