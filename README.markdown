@@ -47,11 +47,11 @@ and point the configure flags at the appropriate header and library directories.
 
 Check the assets for the [release you want](https://github.com/iliaal/php_excel/releases)
 and select the archive matching your PHP minor version, architecture (x86 or
-x64), and thread-safety mode (TS or NTS). Release [2.9.1](https://github.com/iliaal/php_excel/releases/tag/2.9.1)
-has those four variants for each PHP minor from 8.1 through 8.5. The repository
-also builds PHP 8.6 on Windows in CI, but that does not make PHP 8.6 archives
-available in 2.9.1. The LibXL header minimum above applies to source builds,
-not to the runtime compatibility of the published DLLs.
+x64), and thread-safety mode (TS or NTS). Release
+[2.10.0](https://github.com/iliaal/php_excel/releases/tag/2.10.0) publishes all
+four variants for each PHP minor from 8.1 through 8.6. The LibXL header minimum
+above applies to source builds, not to the runtime compatibility of the
+published DLLs.
 
 ## 🛠️ Getting started
 
